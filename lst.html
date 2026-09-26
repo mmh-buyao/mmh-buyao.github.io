@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src https://script.google.com https://script.googleusercontent.com; media-src 'self' blob: data:; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="buyao-v" content="v11.22.2">
+<title>清單校對</title>
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="清單校對">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#EEF2F6" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E151C" media="(prefers-color-scheme: dark)">
+<style>*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#F2F5F5;color:#152020;font-family:-apple-system,"Noto Sans TC",sans-serif;font-size:15.5px;line-height:1.7}
+@media(prefers-color-scheme:dark){body{background:#0E1615;color:#E2EBEA}}
+.w{max-width:520px;margin:0 auto;padding:0 14px 96px}
+h1{font-size:20px;margin:18px 0 2px}.sub{font-size:13px;color:#6B807F;margin:0}
+.bar{position:sticky;top:0;z-index:9;background:inherit;padding:10px 0 9px;border-bottom:1px solid #D6DFDF;font-size:13px;color:#6B807F}
+.bar b{color:inherit;font-family:ui-monospace,Menlo,monospace;font-size:15px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{font:inherit;font-size:12.5px;padding:5px 11px;border-radius:999px;cursor:pointer;background:#fff;border:1px solid #BCCACA;color:#6B807F}
+@media(prefers-color-scheme:dark){.chip{background:#17201F;border-color:#34423F}}
+.chip.on{background:#1B5C74;border-color:#1B5C74;color:#fff}
+.card{background:#fff;border:1px solid #D6DFDF;border-radius:10px;margin:12px 0;overflow:hidden}
+@media(prefers-color-scheme:dark){.card{background:#17201F;border-color:#26312F}}
+.up{padding:14px 15px}
+.drop{border:1.5px dashed #BCCACA;border-radius:9px;padding:20px 14px;text-align:center;color:#6B807F;font-size:13.5px}
+.drop b{display:block;color:inherit;font-size:15px;margin-bottom:3px}
+@media(prefers-color-scheme:dark){.drop{border-color:#34423F}}
+.drop.hot{border-color:#1B7F5C;background:#E8F5EE;color:#1B7F5C}
+#dz{position:fixed;inset:0;z-index:99;background:rgba(15,26,23,.72);display:flex;align-items:center;justify-content:center;padding:24px}
+#dz .b{border:2.5px dashed #7FD4B0;border-radius:16px;padding:34px 26px;text-align:center;color:#fff;font-size:19px;font-weight:700;background:rgba(27,127,92,.30);max-width:420px}
+#dz .b small{display:block;font-size:13.5px;font-weight:400;margin-top:8px;opacity:.85}
+/* ★ v11.13.4：hidden 一定要贏。.row{display:flex} 這種會把 hidden 蓋掉 ——
+   本來「開始辨識」那顆在還沒選照片時就一直露在外面，就是這個原因。 */
+[hidden]{display:none!important}
+.row{display:flex;gap:8px;margin-top:10px}.row>*{flex:1}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px;margin-top:11px}
+.th{position:relative;border:1px solid #D6DFDF;border-radius:7px;overflow:hidden;background:#E8EDED;aspect-ratio:3/4}
+.th img{width:100%;height:100%;object-fit:cover;display:block}
+.th .x{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(20,32,32,.72);color:#fff;font-size:13px;line-height:1;cursor:pointer;padding:0;min-height:0}
+.th .n{position:absolute;left:0;bottom:0;right:0;background:rgba(20,32,32,.72);color:#fff;font-size:11px;font-family:ui-monospace,Menlo,monospace;padding:2px 5px;display:flex;justify-content:space-between;gap:4px}
+.plist{margin-top:11px;display:grid;gap:7px}
+.p{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;font-size:13px}
+.p .s{width:19px;text-align:center}
+.p .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#3E5150}
+@media(prefers-color-scheme:dark){.p .t{color:#ACBFBE}}
+.p .r{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6B807F;white-space:nowrap}
+.p.ok .r{color:#1B7A5A}.p.bad .r{color:#B33E2E}
+.track{height:4px;border-radius:3px;background:#E8EDED;overflow:hidden;margin-top:12px}
+@media(prefers-color-scheme:dark){.track{background:#131B1A}}
+.fill{height:100%;width:0;background:#1B7A5A;transition:width .35s ease}
+@media(prefers-reduced-motion:reduce){.fill{transition:none}}
+.sec{font-size:15px;margin:22px 0 4px;color:#3E5150;display:flex;align-items:baseline;gap:8px}
+@media(prefers-color-scheme:dark){.sec{color:#ACBFBE}}
+.sec .c{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#6B807F}
+.h{padding:12px 15px 10px;border-bottom:1px solid #D6DFDF;display:flex;gap:10px;align-items:flex-start}
+@media(prefers-color-scheme:dark){.h{border-color:#26312F}}
+.code{font-family:ui-monospace,Menlo,monospace;font-size:17px;font-weight:600;color:#1B5C74}
+@media(prefers-color-scheme:dark){.code{color:#79B9D0}}
+.nm{font-size:14px;color:#3E5150;margin-top:1px}
+@media(prefers-color-scheme:dark){.nm{color:#ACBFBE}}
+.tag{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:5px;white-space:nowrap;margin-left:auto;background:#F7EBD8;color:#9A6210}
+.tag.n{background:#DFEEF4;color:#1B5C74}
+.b{padding:13px 15px}
+.f{font-size:12px;letter-spacing:.1em;color:#6B807F;font-family:ui-monospace,Menlo,monospace;text-transform:uppercase;margin:0 0 7px}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:stretch;margin-bottom:12px}
+.v{border:1px solid #D6DFDF;border-radius:7px;padding:8px 11px;background:#E8EDED;min-width:0}
+@media(prefers-color-scheme:dark){.v{background:#131B1A;border-color:#26312F}}
+.v .l{font-size:11px;color:#6B807F;display:block}
+.v .x{font-size:18px;font-weight:700;font-family:ui-monospace,Menlo,monospace;word-break:break-all;display:block;margin-top:1px}
+.v.o .x{color:#6B807F}
+.v.n{background:#DCEFE7;border-color:#1B7A5A}
+@media(prefers-color-scheme:dark){.v.n{background:#122C24;border-color:#5FC49E}}
+.v.n .l{color:#1B7A5A}
+.v.n input{width:100%;font:inherit;font-family:ui-monospace,Menlo,monospace;font-size:17px;font-weight:700;border:1px solid #1B7A5A;border-radius:5px;padding:4px 7px;background:#fff;color:#152020}
+.ar{align-self:center;color:#6B807F}
+.hand{font-size:13px;color:#C0392B;font-weight:700;margin:0 0 8px}
+.note{font-size:13px;color:#6B807F;margin:0}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 15px 14px}
+.acts .fu{grid-column:1/-1}
+button{font:inherit;font-weight:700;border:1px solid transparent;border-radius:8px;padding:12px 10px;min-height:48px;cursor:pointer}
+button:focus-visible{outline:2px solid #1B5C74;outline-offset:2px}
+.y{background:#1B7A5A;color:#fff}.no{background:transparent;color:#B33E2E;border-color:#B33E2E}
+.bindf{display:flex;gap:8px;margin:16px 0 6px}.bindf input{flex:1;min-width:0;font:inherit;font-size:22px;letter-spacing:.3em;text-align:center;border:1.5px solid #BCCACA;border-radius:10px;padding:8px 10px;background:#fff;color:#152020}
+.bindf button{flex:0 0 auto;background:#1B7A5A;color:#fff;padding:0 20px}.bindf button:disabled{opacity:.6}
+@media(prefers-color-scheme:dark){.bindf input{background:#17201F;color:#E2EBEA;border-color:#34423F}}
+.sk{background:transparent;color:#3E5150;border-color:#BCCACA;font-weight:500}
+@media(prefers-color-scheme:dark){.sk{color:#ACBFBE;border-color:#34423F}}
+.res{padding:11px 15px;font-size:13.5px;font-weight:700;border-top:1px solid #D6DFDF}
+.ok{color:#1B7A5A}.bad{color:#B33E2E}
+.cur{outline:2px solid #1B5C74;outline-offset:1px}
+.empty{text-align:center;padding:44px 16px;color:#6B807F}
+.kb{font-size:12.5px;color:#6B807F;margin:9px 0 0;line-height:1.9}
+.kb kbd{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;border:1px solid #BCCACA;border-radius:4px;padding:1px 5px}
+.fi{display:grid;grid-template-columns:64px 1fr;gap:8px;align-items:center;margin:0 0 8px}
+.fi .l{font-size:12px;color:#6B807F}
+.fi input{width:100%;font:inherit;font-size:15px;border:1px solid #BCCACA;border-radius:6px;padding:6px 8px;background:#fff;color:#152020}
+.sticky{position:fixed;left:0;right:0;bottom:0;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:#F2F5F5;border-top:1px solid #D6DFDF}
+@media(prefers-color-scheme:dark){.sticky{background:#0E1615;border-color:#26312F}}
+.sticky .in{max-width:520px;margin:0 auto}
+</style>
+<script src="lst.js?v=v11.22.2" defer></script>
+</head>
+<body>
+<div id="dz" hidden><div class="b">📥 放開就收進來<small>拖幾張都可以，會自動排隊辨識</small></div></div>
+<div class="w">
+<h1>📋 清單校對</h1>
+<p class="sub">多張一起上傳、一起辨識，下面直接審。按「寫進工作表1」「匯入工作表1」才寫入，7 天內打「復原」可還原。待審 3 天後自動清掉。</p>
+<div class="card" id="up"><div class="up">
+<p class="f">① 上傳照片</p>
+<div class="drop" id="dropbox"><b>把照片拖進來，或按下面選檔</b>位置清單那種表格，一次可以選好幾張。一次拍一欄會更準。<br>電腦上截圖後直接 <kbd>Ctrl</kbd>＋<kbd>V</kbd> 貼上也可以。</div>
+<div class="row"><button class="y" id="pick">📷 選照片</button><button class="sk" id="clr" hidden>🗑 全部清掉</button></div>
+<input type="file" id="file" accept="image/*" multiple hidden>
+<div class="thumbs" id="thumbs"></div>
+<p class="note" id="many" hidden></p>
+<div class="row" id="gorow" hidden><button class="y" id="go">🔍 開始辨識</button></div>
+<div id="prog" hidden><div class="track"><div class="fill" id="fill"></div></div><div class="plist" id="plist"></div></div>
+</div></div>
+<div id="rv">
+<div class="bar"><span id="cnt">讀取中…</span>
+<div class="chips" id="chips"><button class="chip on" data-f="all">全部</button><button class="chip" data-f="edit">🟡 不一樣</button><button class="chip" data-f="new">🔵 表上沒有</button><button class="chip" data-f="hand">✍️ 手寫改的</button></div></div>
+<p class="kb">鍵盤：<kbd>J</kbd>／<kbd>K</kbd> 上下一筆　<kbd>Enter</kbd> 寫入　<kbd>S</kbd> 跳過　<kbd>D</kbd> 不要</p>
+<div id="l"></div></div>
+</div>
+<div class="sticky" id="sticky" hidden><div class="in" style="display:flex;gap:8px"><button class="y" style="flex:2" id="all">✅ 全部寫進（<span id="alln">0</span>）</button><button class="no" style="flex:1" id="delall">🗑 全部刪除</button></div></div>
+</body>
+</html>
