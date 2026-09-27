@@ -10,7 +10,13 @@
     var p=new URLSearchParams(qs), f=[]; ["x","app","dev","lst"].forEach(function(k){ if(p.get(k)) f.push(k+"="+encodeURIComponent(p.get(k))); });
     try{ history.replaceState(null,"",location.pathname+"#"+f.join("&")); }catch(e){ location.replace(location.pathname+"#"+f.join("&")); } })();
   function hashParams(){ var o={}; String(location.hash||"").replace(/^#/,"").split("&").forEach(function(kv){ var i=kv.indexOf("="); if(i>0){ try{ o[decodeURIComponent(kv.slice(0,i))]=decodeURIComponent(kv.slice(i+1)); }catch(e){} } }); return o; }
-  var HP=hashParams(), X=HP.x||"", T=HP.dev||HP.app||"";
+  var HP=hashParams(), X=HP.x||"", T=HP.dev||HP.app||"", FROMSAVED=false;
+  /* v11.22.2：加到主畫面／桌面之後，從圖示開的網址沒有帶連結（鑰匙）→ 用這台瀏覽器記住的那一條（上一次從 LINE 開、後端說 OK 的）。
+     記在這台跟 LINE 裡那條連結一樣：拿到手機的人都開得了；鑰匙 30 天到期、或 LINE 打「網頁 重發」之後就失效，後端說失效就清掉。 */
+  function keyLoad(){ try{ var o=JSON.parse(localStorage.getItem("bk")||"null"); if (o&&/^[A-Za-z0-9_-]{20,120}$/.test(String(o.x||""))&&/^[0-9a-f]{32}$/.test(String(o.t||""))) return o; }catch(e){} return null; }
+  function keySave(){ try{ localStorage.setItem("bk", JSON.stringify({x:X, t:T})); }catch(e){} }
+  function keyDrop(){ try{ localStorage.removeItem("bk"); }catch(e){} }
+  if (!X && !T && !HP.lst){ var SK=keyLoad(); if (SK){ X=SK.x; T=SK.t; HP.app=T; FROMSAVED=true; } }
   var q=$("q"), out=$("out"), hint=$("hint");
   /* 手機那格比較窄，提示字縮短一點才放得下 */
   try{ if (window.innerWidth<480) q.placeholder="輸入藥名或 CODE，再按「搜尋」"; }catch(e){}
@@ -57,8 +63,9 @@
   /* 整頁停下來（鑰匙不對、LINE 專案連不到、舊連結、連結有問題）；開發者版這台還沒綁定 → 出輸入綁定碼的框 */
   function stop(msg, code, need){
     if (code==="bind" && need){ bindForm(msg); return; }
-    out.innerHTML='<div class="empty"><b>'+esc(msg).replace(/\n/g,"<br>")+'</b>'+(code==="tok"?"回 LINE 按下面那排的「🌐 補藥神器網頁」再開一次。":"")+'</div>';
-    setHint(""); $("sf").hidden=true;
+    if (code==="tok") keyDrop();   /* 鑰匙壞了、過期了：記住的那一條也不要了（從 LINE 開新的那一次會再記） */
+    out.innerHTML='<div class="empty"><b>'+esc(msg).replace(/\n/g,"<br>")+'</b>'+(code==="tok"?"回 LINE 按下面那排的「🌐 補藥神器網頁」再開一次。"+(FROMSAVED?"<br>開過一次，主畫面的圖示就會換成新的連結。":""):"")+'</div>';
+    setHint(""); $("sf").hidden=true; $("inst").hidden=true;
   }
   /* 開發者版：這台還沒綁定 → 輸入 LINE「開發者網頁 綁定」給的 6 位數碼（10 分鐘、只能用一次；錯 5 次鎖 1 小時；最多 3 處） */
   function bindForm(msg){
@@ -94,7 +101,7 @@
     crypto.subtle.digest("SHA-256", new TextEncoder().encode(DK+"|"+X)).then(function(b){ DKX=hex(b).slice(0,32); cb("ok"); }, function(){ cb("ok"); });
   }
   var GATE_MSG={
-    none:"🌐 請從 LINE 按下面那排的「🌐 補藥神器網頁」開這個網頁。",
+    none:"🌐 請從 LINE 按下面那排的「🌐 補藥神器網頁」開這個網頁。\n（主畫面的圖示要先從 LINE 開過一次，之後才能直接開。）",
     oldlst:"📋 清單校對的連結換新了。\n回 LINE 打「清單校對」，再按「📤 多張上傳」或「📋 待審清單」。",
     bad:"這條連結不完整。\n回 LINE 按下面那排的「🌐 補藥神器網頁」再開一次。",
     old:"這個瀏覽器太舊，開不了補藥神器。請改用最新的 Chrome 或 Safari。"
@@ -659,12 +666,56 @@
     call("appInfo",[T],function(info){
       if (info&&info.err){ stop(info.err, "tok"); return; }
       DEV=!!(info&&info.dev);
-      /*DEV*/if (DEV) $("home").insertAdjacentHTML("beforeend",'<span class="devtag">開發者版</span>');/*/DEV*/
+      /*DEV*/if (DEV && !$("home").querySelector(".devtag")){ $("home").classList.add("dev"); $("home").insertAdjacentHTML("beforeend",'<span class="devtag">開發者版</span>'); }/*/DEV*/
       if (info&&typeof info.days==="number"&&info.days<=3) HINT0='<span>⚠️ 這條連結 '+num(info.days)+' 天後過期，回 LINE 打「網頁」換新的</span> '+HINT0;
+      if (LIVE) keySave(); instShow();
       if (HP.q){ search(HP.q); return; }
       setHint(BOUND?"✅ 這台綁好了，以後在這裡直接開就好（不用再輸入）。":HINT0); BOUND=false; renderHome();
     });
   }
+
+  /* ══════════ 📲 加到主畫面／桌面（v11.22.2）══════════
+     Android 的 Chrome、電腦的 Chrome／Edge：瀏覽器先問過「這個網頁可以安裝」（beforeinstallprompt）→ 按一下就跳出安裝視窗，
+     裝好 = 手機主畫面／電腦桌面有一個「補藥神器」圖示，開起來沒有網址列。iPhone、iPad 的 Safari 沒有這種一鍵：按了出一張說明
+     （分享 → 加入主畫面）。從 LINE 裡面開的先請他改用 Safari／Chrome 開。已經是從圖示開的（standalone）就不出這顆。 */
+  var DP=null, UA=navigator.userAgent||"";
+  var IOS=/iPhone|iPad|iPod/.test(UA)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+  var ANDROID=/Android/i.test(UA), INLINE=/\bLine\//i.test(UA), MAC=/Macintosh/.test(UA)&&!IOS;
+  var SAFARI=/Safari\//.test(UA)&&!/Chrome|CriOS|Chromium|Edg|FxiOS|OPR/.test(UA);
+  var STANDALONE=false; try{ STANDALONE=(window.matchMedia&&matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true; }catch(e){}
+  var inst=$("inst");
+  inst.textContent=(IOS||ANDROID)?"📲 加到主畫面":"📲 加到桌面";
+  window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); DP=e; });
+  window.addEventListener("appinstalled", function(){ DP=null; inst.hidden=true; setHint("✅ 加好了！以後從"+((IOS||ANDROID)?"主畫面":"桌面")+"的圖示開就好。"); });
+  function instShow(){ if (!STANDALONE && LIVE) inst.hidden=false; }
+  inst.onclick=function(){
+    if (DP){ var p=DP; DP=null; try{ p.prompt(); }catch(e){ instGuide(); } return; }
+    instGuide();
+  };
+  /* LINE 裡面開的：一顆按鍵直接換到 Safari（iPhone：x-safari- 開頭的網址）／Chrome（Android：intent 網址；鑰匙放在 ?x=&app=，
+     網頁一開就搬到 # 後面），到了那邊再按一次 📲 就是一鍵。按了沒反應（少數版本不讓跳）→ 下面還有手動的做法 */
+  function handoff(){
+    var here=location.origin+location.pathname;
+    if (IOS) return "x-safari-"+here+"#x="+encodeURIComponent(X)+"&app="+encodeURIComponent(T);
+    var q="?x="+encodeURIComponent(X)+"&app="+encodeURIComponent(T);
+    return "intent://"+location.host+location.pathname+q+"#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url="+encodeURIComponent(here+q)+";end";
+  }
+  function instGuide(){
+    var h="📲 加到主畫面", p="", s=[], n="加好之後從圖示開就直接進來，不用再從 LINE 找連結。連結 30 天到期時，回 LINE 打「網頁」開一次就好。", go="";
+    if (INLINE){ go=IOS?"用 Safari 開這一頁":"用 Chrome 開這一頁"; p="LINE 裡面沒辦法加到主畫面，先按這顆換到 "+(IOS?"Safari":"Chrome")+"："; s=[]; n=(IOS?"到了 Safari 再按一次「📲 加到主畫面」，照那三步做。":"到了 Chrome 再按一次「📲 加到主畫面」→「安裝」就好。")+"\n按了沒反應的話，手動換："+(IOS?"右下角的「⋯」（或分享）→「以 Safari 開啟」":"右上角的「⋮」→「以其他瀏覽器開啟」（選 Chrome）")+"。"; }
+    else if (IOS){ p=SAFARI?"照這三步（iPhone 只能這樣加，Apple 不讓網頁自己加）：":"iPhone、iPad 要用 Safari 開才能加（把這個網址貼到 Safari）："; s=["按 Safari 下面（iPad 是上面）的 分享 ⎋（方框加箭頭）","往下找「加入主畫面」","右上角按「新增」"]; }
+    else if (ANDROID){ s=["按右上角的「⋮」","按「加到主畫面」（或「安裝應用程式」）","按「安裝」（或「新增」）"]; }
+    else if (MAC&&SAFARI){ h="📲 加到 Dock"; s=["Safari 上面的選單「檔案」→「加入 Dock」","按「加入」"]; n="加好之後從 Dock 的圖示開就直接進來。"; }
+    else { h="📲 加到桌面"; p="用 Chrome 或 Edge 開這個網頁："; s=["網址列右邊有一個「安裝」的小圖示（電腦加 ⊕），按它","按「安裝」→ 桌面就有圖示了"]; n="沒有那個小圖示：Chrome 右上角「⋮」→「投放、儲存和分享」→「安裝網頁」；Edge 是「⋯」→「應用程式」→「安裝」。"; }
+    $("insh").textContent=h; $("insp").textContent=p; $("insp").hidden=!p;
+    var g=$("insgo"); g.hidden=!go; g.textContent=go; if (go) g.setAttribute("data-href", handoff()); else g.removeAttribute("data-href");
+    $("inso").innerHTML=s.map(function(x){ return "<li>"+esc(x)+"</li>"; }).join("");
+    $("insn").textContent=n; $("inss").hidden=false; try{ $("insx").focus(); }catch(e){}
+  }
+  $("insgo").onclick=function(){ var u=this.getAttribute("data-href")||""; if (u) location.href=u; };
+  $("insx").onclick=function(){ $("inss").hidden=true; };
+  $("inss").onclick=function(e){ if (e.target===$("inss")) $("inss").hidden=true; };
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&!$("inss").hidden) $("inss").hidden=true; });
 
   var MOCK={};
 
