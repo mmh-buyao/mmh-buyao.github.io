@@ -18,9 +18,9 @@
   function keyDrop(){ try{ localStorage.removeItem("bk"); }catch(e){} }
   if (!X && !T && !HP.lst){ var SK=keyLoad(); if (SK){ X=SK.x; T=SK.t; HP.app=T; FROMSAVED=true; } }
   var q=$("q"), out=$("out"), hint=$("hint");
-  /* v11.22.2（電腦版版面）：整頁跟著視窗縮放（CSS 的 body{zoom:var(--z)}）。電腦（760 以上）：1280 寬＝150%（ZOOM_BASE），
-     再往上照寬度放大（ZOOM_FOLLOW），最多 ZOOM_MAX；760～1280 之間照比例縮（最小 80%）。手機不縮。數字是你在設計頁定的 */
-  var ZOOM_BASE=1.5, ZOOM_FOLLOW=1, ZOOM_MAX=1.5;
+  /* v11.22.2（電腦版版面）：整頁跟著視窗縮放（CSS 的 body{zoom:var(--z)}）。電腦（760 以上）：1280 寬＝125%（ZOOM_BASE），
+     再往上照寬度放大（ZOOM_FOLLOW），最多 ZOOM_MAX（你設 125%，所以再寬也是 125%）；760～1280 之間照比例縮（最小 80%）。手機不縮。數字是你在設計頁定的 */
+  var ZOOM_BASE=1.25, ZOOM_FOLLOW=1, ZOOM_MAX=1.25;
   function fitZoom(){
     var w=window.innerWidth||document.documentElement.clientWidth||0, z=1;
     if (w>=760){ z=ZOOM_BASE*(1+ZOOM_FOLLOW*(w-1280)/1280); z=Math.min(ZOOM_MAX, Math.max(0.8, z)); }
