@@ -79,8 +79,8 @@
     border-radius:12px; font-size:19px; line-height:1; padding:0}
   .search button.on{background:var(--danger-soft); border-color:var(--danger); color:var(--danger)}
   .hint{grid-column:1 / -1; grid-row:3; font-size:12.5px; color:var(--muted); padding:7px 2px 0; min-height:26px; line-height:1.5}
-  /* v11.22.2（電腦版版面，第二輪）：你在設計頁定的數字（100% 時的大小；整頁再 ×1.25）：標誌 132、字 34、距離 22、
-     搜尋框不設最寬（一直拉到「加到桌面」旁邊）、高度 19、字 15、🎤📷 54、加到桌面字 11、提示字 12、上下留白 12。
+  /* v11.22.2（電腦版版面，第三輪）：你在設計頁定的數字（100% 時的大小；整頁再 ×1.25）：標誌 132、字 34、距離 22、
+     搜尋框不設最寬（一直拉到「加到桌面」旁邊）、高度 18、字 17.5、🎤📷 58、加到桌面字 11、提示字 15、上下留白 12。
      搜尋框對齊標誌／「補藥神器」的正中間：三列＝上空／搜尋框／提示字，上下兩列平分（1fr），提示字塞在搜尋框正下方、標誌的高度裡 */
   @media (min-width:760px){
     .top{padding:12px 18px 10px}
@@ -89,11 +89,11 @@
     .hb img{width:132px; height:132px; flex-basis:132px}
     .hb b{font-size:34px}
     .search{grid-column:2; grid-row:2}
-    .search input{padding:19px 14px; font-size:15px}
-    .search input::placeholder{font-size:13px}
-    .search button{flex-basis:54px; font-size:22px}
+    .search input{padding:18px 14px; font-size:17.5px}
+    .search input::placeholder{font-size:15.5px}
+    .search button{flex-basis:58px; font-size:24px}
     .inst{grid-column:3; grid-row:2; align-self:center; justify-self:start; margin-top:0; padding:8px 13px; font-size:11px}
-    .hint{grid-column:2; grid-row:3; align-self:start; font-size:12px}
+    .hint{grid-column:2; grid-row:3; align-self:start; font-size:15px}
   }
   .hint span{display:inline-block; white-space:nowrap; margin-right:9px}
   .hint.bad{color:var(--danger)}
@@ -105,10 +105,10 @@
   /* ── 內容 ── */
   main{max-width:640px; margin:0 auto; padding:12px 14px calc(40px + env(safe-area-inset-bottom,0px));
     display:flex; flex-direction:column; gap:14px}
-  /* v11.22.2（電腦版版面，第二輪）：內容不設最寬、撐滿視窗（左右留白 26、區塊距離 64）；視窗 1080 以上首頁兩欄（公告左、所有藥品右；
+  /* v11.22.2（電腦版版面，第三輪）：內容不設最寬、撐滿視窗（左右留白 20、區塊距離 64）；視窗 1020 以上首頁兩欄（公告左、所有藥品右；
      查詢結果、卡片還是一欄——首頁才有 #nlist） */
-  @media (min-width:760px){ main{max-width:none; padding-inline:26px; gap:64px} }
-  @media (min-width:1080px){ main:has(#nlist){display:grid; grid-template-columns:1fr 1fr; align-items:start} }
+  @media (min-width:760px){ main{max-width:none; padding-inline:20px; gap:64px} }
+  @media (min-width:1020px){ main:has(#nlist){display:grid; grid-template-columns:1fr 1fr; align-items:start} }
   .empty{color:var(--muted); font-size:14px; text-align:center; padding:26px 10px 20px; line-height:1.8}
   .empty b{color:var(--ink2); display:block; font-size:15.5px; margin-bottom:4px}
   /* v11.20.1：開發者綁定碼 */
@@ -125,14 +125,14 @@
   .sh{display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding:0 3px}
   .sh b{font-size:21.5px; color:var(--ink2)}
   .sh span{font-size:12.5px; color:var(--muted)}
-  @media (min-width:760px){ .sh b{font-size:25.5px} .sh span{font-size:22.5px} }
+  @media (min-width:760px){ .sh b{font-size:25px} .sh span{font-size:22px} }
   .tabs{display:flex; gap:4px; background:var(--sunk); padding:4px; border-radius:12px}
   .tabs button{flex:1; border:0; background:transparent; color:var(--muted); border-radius:9px; padding:5px 8px;
     font-size:14.5px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:7px}
   .tabs img{width:28px; height:28px}
   .tabs button[aria-selected="true"]{background:var(--surface); color:var(--accent); box-shadow:var(--shadow)}
   .tabs button small{font-weight:500; margin-left:4px; font-size:12px}
-  @media (min-width:760px){ .tabs button{font-size:18px} .tabs img{width:54px; height:54px} .tabs button small{font-size:15.5px} }
+  @media (min-width:760px){ .tabs button{font-size:17px} .tabs img{width:44px; height:44px} .tabs button small{font-size:14.5px} }
   .sortrow{display:flex; gap:4px; align-items:center; justify-content:flex-end; font-size:12.5px; color:var(--muted); padding:0 3px}
   .sortrow button{border:0; background:transparent; color:var(--muted); padding:2px 8px; font-size:12.5px; border-radius:7px}
   .sortrow button[aria-pressed="true"]{color:var(--accent); font-weight:700; background:var(--accent-soft)}
@@ -157,7 +157,7 @@
   .tabs.wrap{flex-wrap:wrap}
   .tabs.wrap button{flex:1 1 30%; min-width:30%; padding:7px 6px; font-size:13.5px; gap:5px; white-space:nowrap}
   .tabs.wrap button[aria-selected="true"]{color:var(--warn)}
-  @media (min-width:760px){ .tabs.wrap button{font-size:17.5px; padding:9px 6px} .tabs.wrap button small{font-size:16px} }
+  @media (min-width:760px){ .tabs.wrap button{font-size:17px; padding:7px 6px} .tabs.wrap button small{font-size:15.5px} }
   /* 每一列＝LINE 公告卡的排法：小照片｜藥名／中文／（公告補充）／劑型＋CODE｜位置 */
   .row{display:grid; grid-template-columns:auto 1fr auto; gap:11px; align-items:center; padding:9px 12px 9px 10px;
     border-bottom:1px solid var(--line); background:transparent; border-left:0; border-right:0; border-top:0;
@@ -176,12 +176,12 @@
   .row .n .k img{width:19.5px; height:19.5px; object-fit:contain}
   .row .n .k .c{font-size:14px; font-weight:600; color:var(--muted); margin-left:7px}
   .row .l{font-size:17.5px; font-weight:700; color:var(--pin); white-space:nowrap}
-  /* v11.22.2（電腦版版面，第二輪）：清單每一列（100% 時）：照片 108、藥名 18、中文 15.5、位置 21、上下 13、左右 25 */
+  /* v11.22.2（電腦版版面，第三輪）：清單每一列（100% 時）：照片 112、藥名 18、中文 15.5、位置 20.5、上下 4、左右 20 */
   @media (min-width:760px){
-    .row{padding:13px 25px 13px 23px}
-    .row .ph{width:108px; height:108px; flex-basis:108px}
+    .row{padding:4px 20px 4px 18px}
+    .row .ph{width:112px; height:112px; flex-basis:112px}
     .row .n b{font-size:18px} .row .n .z{font-size:15.5px} .row .n .k{font-size:14px} .row .n .k img{width:20px; height:20px} .row .n .k .c{font-size:14.5px}
-    .row .l{font-size:21px}
+    .row .l{font-size:20.5px}
   }
 
   /* 藥品卡片 */
@@ -265,20 +265,20 @@
   .map{flex:1; min-width:0; border:1px solid var(--line); border-radius:12px; background:var(--surface);
     aspect-ratio:3/2; object-fit:contain; cursor:zoom-in}
   /* ★ 這一段一定要放在上面 .box、.photo、.loc、.map 的後面：同樣的選擇器、後面的才贏（上一包放在前面，所以卡片裡這些數字沒生效） */
-  /* v11.22.2（電腦版版面，第二輪）：藥品卡片（100% 時）：內距 30、CODE 42、藥名 26.5、中文 22、學名 16、圖示 160、說明字 18、照片寬 270、
-     公告照片寬 200（靠公告框最右）、平面圖最寬 740（靠最右）；📍 位置紅框：跟平面圖一樣高、字 65、最窄 250、上下留白 11、左右留白 24、和平面圖距離 6 */
+  /* v11.22.2（電腦版版面，第三輪）：藥品卡片（100% 時）：內距 35、CODE 64、藥名 29.5、中文 25、學名 18、圖示 200、說明字 22、照片寬 310、
+     公告照片寬 220（靠公告框最右）、平面圖最寬 680（靠最右）；📍 位置紅框：跟平面圖一樣高、字 65、最窄 300、上下留白 11、左右留白 29、和平面圖距離 36 */
   @media (min-width:760px){
-    .card{padding:30px 30px 28px}
-    .card .code{font-size:42px} .card .brand{font-size:26.5px} .card .zh{font-size:22px} .card .gen{font-size:16px}
-    .card .side{flex-basis:160px} .card .icon{width:160px; height:160px} .card .icon img{width:152px; height:152px}
-    .box .k{font-size:15px} .box .v{font-size:18px} .kv .k{font-size:15px} .kv .v{font-size:18px}
-    .zones{font-size:17px} .zones caption{font-size:14.5px}
-    .box.notice .npic{width:min(200px,36%); margin-left:auto}
-    .photo{max-width:270px}
-    .locrow{gap:6px}
-    .loc{padding:11px 24px; min-width:250px}
+    .card{padding:35px 35px 33px}
+    .card .code{font-size:64px} .card .brand{font-size:29.5px} .card .zh{font-size:25px} .card .gen{font-size:18px}
+    .card .side{flex-basis:200px} .card .icon{width:200px; height:200px} .card .icon img{width:192px; height:192px}
+    .box .k{font-size:19px} .box .v{font-size:22px} .kv .k{font-size:19px} .kv .v{font-size:22px}
+    .zones{font-size:21px} .zones caption{font-size:18.5px}
+    .box.notice .npic{width:min(220px,36%); margin-left:auto}
+    .photo{max-width:310px}
+    .locrow{gap:36px}
+    .loc{padding:11px 29px; min-width:300px}
     .loc .pin{font-size:63px} .loc .t{font-size:65px} .loc.long .t{font-size:49px}
-    .map{flex:0 1 740px; max-width:740px; margin-left:auto}
+    .map{flex:0 1 680px; max-width:680px; margin-left:auto}
   }
   .spots{display:flex; gap:7px; flex-wrap:wrap}
   .spots button{border:1.5px solid var(--line); background:var(--surface); color:var(--ink2); border-radius:9px;
