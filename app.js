@@ -530,7 +530,8 @@
   /* ══════════ 語音 ══════════
      v11.20.0：網頁在 GitHub 上是最外層的一頁，可以直接用麥克風（不用外殼幫忙）：
      按 🎤 錄最長 6 秒 → 轉成 16kHz 單聲道 WAV → 送後端聽寫（跟 LINE 語音同一套：Groq → Deepgram → Gemini）。
-     不能錄音的瀏覽器才退回瀏覽器自己的語音辨識；都不行就請他用鍵盤上的麥克風。 */
+     不能錄音的瀏覽器才退回瀏覽器自己的語音辨識；都不行就請他用鍵盤上的麥克風。
+     v11.22.2：講完點畫面任何地方就停止並送出（見 tapOn）；不用再找 🎤 按第二次，6 秒到也會自己送出。 */
   var SR=window.SpeechRecognition||window.webkitSpeechRecognition, rec=null, listening=false;
   var NOMIC=false; try{ NOMIC=localStorage.getItem("nomic")==="1"; }catch(e){}
   var canRec=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder);
@@ -538,7 +539,26 @@
   var MAX_MS=6000, mrec=null, mstream=null, chunks=[], mtimer=null, recOn=false;
   function pickMime(){ var list=["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"]; for(var i=0;i<list.length;i++){ try{ if(MediaRecorder.isTypeSupported(list[i])) return list[i]; }catch(e){} } return ""; }
   function stopRec(){ if(mtimer){ clearTimeout(mtimer); mtimer=null; } try{ if(mrec&&mrec.state!=="inactive") mrec.stop(); }catch(e){} }
-  function release(){ try{ if(mstream) mstream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){} mstream=null; mrec=null; }
+  /* v11.22.2：錄音中點畫面任何地方＝停止並送出（不用再找 🎤 按第二次）。錄音的時候蓋一層看不見的膜接住點擊：
+     點的這一下只負責停止，不會同時打開被點到的藥、跳出鍵盤、回首頁、叫出相機。停止後膜再留 0.7 秒（吃掉這一下的尾巴，不會點穿）；
+     不管出什麼事，最久 MAX_MS＋3 秒一定拿掉，不會卡住整個網頁。剛開始錄的 0.4 秒內點不算（按兩下不會變成沒錄到）。 */
+  var tapEl=null, tapFn=null, tapAt=0, tapFail=0;
+  function tapOff(now){
+    tapFn=null; clearTimeout(tapFail); tapFail=0;
+    var el=tapEl; tapEl=null; if (!el) return;
+    var rm=function(){ try{ if(el.parentNode) el.parentNode.removeChild(el); }catch(x){} };
+    if (now===true) rm(); else setTimeout(rm, 700);
+  }
+  function tapOn(fn){
+    tapOff(true); tapFn=fn; tapAt=Date.now();
+    var el=document.createElement("div"); el.setAttribute("aria-hidden","true");
+    el.style.cssText="position:fixed;top:0;left:0;right:0;bottom:0;z-index:30;background:transparent;touch-action:none;cursor:pointer;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none";
+    var hit=function(e){ try{ e.preventDefault(); e.stopPropagation(); }catch(x){} if (Date.now()-tapAt<400) return; var f=tapFn; tapFn=null; if (f){ try{ f(); }catch(x){} } };
+    el.addEventListener("pointerdown",hit); el.addEventListener("touchstart",hit,{passive:false}); el.addEventListener("click",hit);
+    document.body.appendChild(el); tapEl=el;
+    tapFail=setTimeout(function(){ tapOff(true); }, MAX_MS+3000);
+  }
+  function release(){ try{ if(mstream) mstream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){} mstream=null; mrec=null; tapOff(); }
   /* 錄音轉成 16kHz 單聲道 WAV：手機錄出來的 webm／m4a 各家不同，聽寫拿 wav 最穩；解不開就回 null、照送原檔 */
   function toWav(blob, cb){
     var AC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
@@ -566,7 +586,7 @@
       }catch(e){ return null; }
     }
   }
-  function recErr(why){ recOn=false; $("mic").className=""; setHint("🎤 "+(why==="denied"?"麥克風沒有允許：請在瀏覽器的網站設定允許麥克風（在 LINE 裡開的，請按右上角改用瀏覽器開）":"錄音失敗（"+why+"），再試一次"), true); }
+  function recErr(why){ recOn=false; $("mic").className=""; tapOff(true); setHint("🎤 "+(why==="denied"?"麥克風沒有允許：請在瀏覽器的網站設定允許麥克風（在 LINE 裡開的，請按右上角改用瀏覽器開）":"錄音失敗（"+why+"），再試一次"), true); }
   function startRec(){
     if (mrec&&mrec.state==="recording") return;
     chunks=[];
@@ -587,7 +607,7 @@
         });
       };
       mrec.onerror=function(){ release(); recErr("recorder"); };
-      mrec.start(); recOn=true; $("mic").className="on"; setHint("🎤 請講藥名或 CODE…（再按一次停止，最長 6 秒）");
+      mrec.start(); recOn=true; $("mic").className="on"; setHint("🎤 請講藥名或 CODE，講完點畫面任何地方就送出"); hint.classList.add("rec"); tapOn(stopRec);
       mtimer=setTimeout(stopRec, MAX_MS);
     }).catch(function(err){ recErr(err&&(err.name==="NotAllowedError"||err.name==="SecurityError")?"denied":(err&&err.name||"mic")); });
   }
@@ -605,17 +625,17 @@
     });
   }
   if (NOMIC || (!canRec && !SR)) { micOff(); }
-  else if (canRec) { $("mic").title="按一下講藥名（最長 6 秒）"; $("mic").onclick=function(){ if(recOn) stopRec(); else startRec(); }; }
+  else if (canRec) { $("mic").title="按一下講藥名，講完點畫面任何地方就送出（最長 6 秒）"; $("mic").onclick=function(){ if(recOn) stopRec(); else startRec(); }; }
   else {
     $("mic").onclick=function(){
       if (listening){ try{rec.stop();}catch(e){} return; }
       rec=new SR(); rec.lang="zh-TW"; rec.interimResults=true; rec.maxAlternatives=1;
-      rec.onstart=function(){ listening=true; $("mic").className="on"; setHint("🎤 請講藥名…（再按一次停止）"); };
+      rec.onstart=function(){ listening=true; $("mic").className="on"; setHint("🎤 請講藥名…講完點畫面任何地方就查"); hint.classList.add("rec"); tapOn(function(){ try{rec.stop();}catch(e){} }); };
       rec.onresult=function(e){ var t=""; for(var i=0;i<e.results.length;i++) t+=e.results[i][0].transcript; q.value=t; if(e.results[e.results.length-1].isFinal){ search(t); } };
       rec.onerror=function(e){
         if (e.error==="not-allowed"||e.error==="service-not-allowed"){ try{localStorage.setItem("nomic","1");}catch(x){} micOff(); setHint("這個瀏覽器不讓網頁用麥克風。改按鍵盤上的 🎤 講，講完按 Enter 就查", true); return; }
         setHint("🎤 沒聽到（"+(e.error||"?")+"），再試一次", true); };
-      rec.onend=function(){ listening=false; $("mic").className=""; };
+      rec.onend=function(){ listening=false; $("mic").className=""; tapOff(); if (hint.classList.contains("rec")) setHint(HINT0); };
       try{ rec.start(); }catch(e){ setHint("🎤 這個瀏覽器不能用麥克風", true); }
     };
   }
