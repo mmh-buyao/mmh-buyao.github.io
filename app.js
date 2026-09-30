@@ -36,6 +36,9 @@
   var NICON={"停止供貨":"⛔","改包裝通知":"📦","製廠缺貨":"🏭","換廠":"🔁","給慢箋":"📄","其他":"📌"};
   var HINT0='<span>點左上 logo 回首頁</span> <span>🎤 用講的</span> <span>📷 拍包裝</span>';
   var ICON={"錠":"data:image/png;base64,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","水":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAMAAAD04JH5AAABgFBMVEUTm/Wi2fkKY9XS4vMCMqobTrNhqek3xP4GnYcLnW6Qr+AZS7AkzGKU5Fdk1lUDclxPc8Vqy/otz5KV4zkDNKlRaKtLaLYAAP/8qFcDMaQrjTMVnVvt5+j/1FZUrVoA//8ib1EsUaVbZ55bqzQLdDMHbkwSR65pb2z47bEQNqCescsCc1d///9Xm1cnWTP/4xoTDnYrk06y6Y/I8qR5yzVqk6Rp01LhpaienaTzp+iYd5Sz4uoSYscinFIA/38syFh2f/azyNb0YnYmk+AA/wBLZqxvg7JqkM5xyzufq9YAPMQCR8MwjDYzpONuGWBmZjtQukhohLZrxTtg042ekW6Dk7yVsqObsc2L4E/H3OEJGy46xftLO41OeMJNrT1ilq9ticOqeW2hctCN4Tq6ztz/cpnlXeX/qioCEVsAf/8gnD9MMwBmM8xTtzd//39hzkeg8GOU5WCNxqr/AH8AAADz/P7Q+P6u9f6M6f7+/v5Jyf104/4tuP1q2v5V1f6V8/6DOF2/AAAAgHRSTlP+/v7+9/j+/v76/Wv9/fr5/P/++6Ne9gEGW/+ZEQb5AR0pF//7XJwKBS5kpgIcGwQIJf7++/aaBw4HDRRoXQKaAlwJewGUaCaFGf+qJJgNDVulaP0OYe2YnVMNtRFOJxZbCgWYqwoEBlkCjAoFQAJENnoJAgD+/v//Av///v////14JAcAAA/8SURBVHja7ZuHd9tGEoexKAuBFAtMmjIlRt0qtuTu2I7tS7k0p/d26cnlehcqAfJfv5nZRSVBUomU5L27zbMlUwrmw29mZ2Z3AeVk5gimjZOzHMrUT1c2hKlXvv6iDqMvBn5b/+IVibFyjgDBweAVstrVdaM09C6xvBIcBBvnBLDy1Xa93zWMNue8Vqux/IB/w6e8Z3T79e3B+QCsHG33dYMzprmVgzHe07v1eyvnosAzfaOmOY5Lt1yk0DRNfuo4Wq+7HZwHQHBR74F9Mdyyffwif1bT62cQiRUALEWoGJp2zgDM0ZjjIAei5P7Qx8xhtZ8BQENLCKHl/rCfCaDmaLVfCqAuAf6XFWj/H+CXBfjVzIJfUIH2r2AaQibkqbUyQO18Aba7BsN6I2tBQQEnEQWKQru7dS7l+OTgsGu0a5o2sxbWeK97+MzGuQAc7W9RL9jrYUemFQf2ZL0etIa63t9/7pya0o1gSycT1JKqhSE/16E5PTgL+xVd8faeAQ6v1e72cKQdMf2rh7JABHaDG+cI0EWAqjDAOfJzAHDsPqkLTQIgac7t2rkD7BGAh/0nKzamHi0PHKZ3B386P4CtLodUo1E68KYCaHr3meC8AAIoB3CPzGWTnblLywVIksaZrAoqAPb3dIhzRiuAiVURSsAZJeKN8wFYubfVbUMxrABwpQ+MM8nE0wBwDmDRcb3pAJ7wAUhw7+g8AJ6714cIgDkg1mDZWqxAUHMcKEYHG2cPsHEPp0AqgJOtBTMESgbkhIOzBzjY6vbIAdJwzr5TikN2FjNBmUwBFAAstZ8DcEpTsab3f7ITygAQgDIApgEkCCwh6B4OzhQgOKAArFXalwSe2K9xHOhKgjMFwAwADvA8z5kFICVgZ5ANlFIKxACAKsQya1MBUAJfEPR/Wk0oANyriwwAITgHACTQRBjw00jwYhD8J6gGoCrs0L6cMzEFywDYL8uUvKgEQfDDjc2bNysBNg6oCBYEqARAJ2lJVRqsLHT3P3z2+J1nn70ZVAEE32AE8JwAFIlVPnBJAg4S7F1aQILg3rV3nm42l5cfDzaqALaxCOYBUAG3ygdAIKKgvUA+DE72j8E82F9euxdMB8g84Gs5U5VBQJlA+mBuPtx+4x9onwD2qwCu13VGHvDdqiQwCYA+0OtPzZTgevDG38i8ALhWARA8VTc0bR5AqS8RQdCfCRAcfinNN5sWELxRBXAJAFguBKZOgpRCSwA0Te0fBDPm3vF7nyT2lxHgz4PfLAzgZotCsUktRjoVOQVBu/tVJUCwffxJp9lsCIBVBFh75mgegNiWZpxzRZ0YsFpst7OTBATQL1YBBJvH33UazcatRmp/ee2tYDYA53YYMt/nqjJlSAxauPbafDZAsPned2D8zq1bt9H+KtpffvbtmQBw00ocx77nxcrMIdQw1BkAwc1XO43bzu1OAwbYtwTAtVkAcOUo8odDDwEiMWYhqJA7KgBeJPuQU243Oo0O2EcBmnMAeBTGZjQkAD8yxajAQPPwJQ9wvag/2KdoBoDGzs4OCNBsQAzcnAWght4w9Ic+Apj5MYUC7UcKTwGCra2C/u+BXbR/u9Np7KzugADNDihgPc7PwzKAoozCWGaaOB7RCDOEzHrEMVgBIlVgY1CvZ/cW3Hjnzi0HPKA1Op3OndU7ZJ8A1h7MBAAXQAjKPCCaP5gSPiuPWM7RFCD4pru3lTrhwZevwu03GnD7YH/3DjgA7IMHFgAw/bEH1j0y63nJcVmyP2HbMFWyCZkBHO4Z/YPUAU83If5udWisrnZ2l1GJZQL4/cZMgJAAQIDxeDwUg3wRhmYxCIoAG0Gf1/aS/ux4De1rMAPB7M5qZ9WiqSAAXjiaARABwFgCQCQCxBiUSDAAIouFIkAw6HJNlV16cHP5fbTf2EEBdu/cWW2m9ucBDPMAY8/1EAAJ4liqMBVgg3Y1ev2BaK/XLA3t4/03wAGr65iKln8EgIwF3/ekAmGVAvf7BnO5WKgMblrvO9otTIB3Gju7nR0LvluW9ucDhCUFxlKDeJT4wLYnAPCcw7GZ0b8Plzpes5hD9hs7jd3VBgjQTO3PCcIiAMUAAgxTH4RmCHMQc7bCcwAHfVhURm77dQjDYHPNggQsAHZ2m+uWNE/2YRqeAqAQhkKCiLmxHdpFBVa2YVXvR4zpj+5vIIAm7Dc6KICVt2+tzcyE8wHM2PVjSEMSQKTib/s6d5lpa8brhw+Dx9bdW6g+KgACtKzlZmbfWgs2TwswLgCYMYvtQgy8jNsKkKPMSKvpj/aDNQujbqcJfwkB8vaty7OK0UIAUAeiAkDt4z2dQ6o0TQ4SbA8kAEiwvrsOAlA7mIy1a6cD8IoAVJrERMwAuKEbzHZic4QS7L1rtVpNbEGajd3dhmXl7h4B3j5aECCdBAnASObCAgDEAB4icNt2Qvgx0wDGsFrrJAEI0GxZS9L08gX8++oHiwO49Hcahczz41Bm4zyAAjY1xWUAMFJgpYQAFrSi66uru4311pIYFy5ckCHw90UBsCJ7lIooE/ku/JGJIMxcoIWKrtfs0GEhKBQBkGostVCC5uqu1QAByLi0v1S9MpoC4FIMeJ4QwHehMYAYCKFXQQKpgA8CtJnCnBhdNFLcmqqrSxQFFoagtH5haQlRrMtVa8PgD2UAl1oSHDIPwBcMQkhEcZaI+EiFCAwjxx3FOEACrhoKEVi7TauVmBfD2qzaH5gE8PIAST2cAAhBgBqLYocJgFBhGjTsSqtl4QRsWXnzS9bVaoBLVQBuPhNiNfChXYwkQIhTELppx/EFACwn3Jqhq0AAgbBOIZAN6/L9UwB4wr6XBzBNCAIoCElfjg6oxYrvOLEcoWK7beGEFnigZH+zcpOKluflPIANoZfVAggz36dpKMuxMoIZwLUodMADom0aggSMgQQRAEBGKthvle3PBSgVI6pDYZQCCAfYMAUcmKKCACTgXk3XFQyDgges1uXj6n3CqZmwXAtKANEIwo0i0HGG1Djh742gU/C4bkTohKL9CQEWBPBlcxyPGASgmQCAAyAFaNwEAVwJgJ0T/JR56AQjDwD2rwUzdkqrXIAEMBGTlggESDNxGIEAmh3hjobvpwBDTJM+hAE4wcrb33948uL10jOh8xXAvhBTcjoL0lIgHKBFsUsAHstLwMfgBNNIFIAadPn4IRj/6+f7b58yCD3xLYtzXSllgZFCAoQ+/rKfZiwgMLFhHKsggSGsW63dzUHw4Mbm8T+fXnucj4QFAFyHrsz8uAhghrg7wIQATMolAEYYIr5t6JECtRgzUuujwf1rx//65Ol1aAj+cioAdIAgSACEfUwBatsJQ3HA62UE4KxIEU5QwQmYEG99tI7VcZ16gquXjhYEoEQI35cUCBkJEKEAWhg7uazpUSCIMFTsIcXh+keadne92WiCJ6goX160KRW3PqZLwzo5iYHQ90KKAD2NAEesod1EgljsL5EE3NHuQlO4LqxDXVrbDBYNQldOQ/jKWNYSogJqRBHghhQBkwA0TfgQo+CuZZH594V9aMkWBRiXMzG1hJhq4eIjuDtVY0KA5Iw/A6DfUYYKZiPqCdPpaF1+MBsAur6xX700w1jgFIKvQTtox2IvZQKA5oEaDnXdVLJsCBzW1Zmb1VIBv7w/4KfdAMQCAqAHoCMXITgFgIJA5TbkgshIm0L0QHVLdr1KAZneGO5bhdiQQgiECAAeqACA5lQka0qH1lKCsGStVXdEGYBfAJBTmzlQENiImgFVCbmaCwE3i0EmF/KmkGAERVE1cj4oF+RJgCEB4BwcizyIkxCKPdiHTMAkAKbhtmNPAsgQSAGMJB/LinAtWBTAFQAOZgK4KQCA8Bv5EmBISxKZBiVAmoeoaEkARQZB0pIOTk4WccFYAIADsCWjYuxKBSgP86GMwQRA5oxUgNCUHUMWBKIin5wGAAfmQbEooHwsuiGYX0YewPHytQgARNeK+TJXlK3W1ZkdUZIHTADwRTOKU0D2Q9iPsqQZUcNYAvh5AOZnAiQAIQBgFGJJnmK/CoBuXCYh2Y3FuYWxAGAlgJx94YEUoIXm0f7+wgCJAn5hUZTW4sQFI7GrTCf+LN1LQ1IJEIe6HqnYnl+9PM1+BcAwAUjsDwu9QApggwT0rI/PRD+W3D94QOxlowIAAPav3Q9mH99PxoCfLMv9TADcsiYAVQJAZMitTJmDhacUyJscV66cXAC3PwhOFgMYmeHQFzEvLoozLGkHYV0ahpySvPoaxx2BOB4Oc/blFgqszpjHRB4AgD8eD+Y/wJAHkGtxcf8AwOQeZYTLglAUQ+O1tuNidY6l/unq2YxAAE8CwNLRfPOt4OTUAFmbj9dPPeD5sc2pFkA/xMgH2JK4Un7hf1PhGgKolIpV89ELR4sDKFBuxDqIzo2SNamwb0Yxs2mL0gwNPDBjIWZjKBx+nNnHhRGo5taAEyaB8ubhwcmPAUDfJzlolAAkqzLoB3S9DYEGTnCSA6Y0UWDlJg/YEALKm58FpwIIozhVIJ2BaD+/U08+0JnDOBUkTx6pEIDCcQ65DCIFPGCYv33rlACmGcfD5LAmLtlPAUIVF6YuN6lNpGHKnQNGmqg0B3TldzOfdSoBkNuw8R2Nkg2PzH4C4NsYBNiWQ1vMInm+GSVrRgFA9kMS4MbCALoGskV0M8n0Fmd2dGgXx7Ztw1TkzKZCC1FgGOBqICgfajLGcfcE5uA8AUoATMPDUKx7XvFRifzg4lg/wqZIVzHYlDKA2L5DB6hzBMg/QzKo67jFBz0RHhGJ7i4f21HBAFw6RCe0gYDjEe5U+4aizHnaTSk/SggXC5lsLpK5jWPi6NjAOBQEvl0+TeQh2Yd+8NH2wgBHH+yBBHiCH0GnQytCWeN8ioCYgsAO7ZiSIVS5MEICg4/H9IkcCuehbXMD79989Hmw+MNswWEXwhpfpxQMfm7Fhy4RZ8gx5+JBDkOF6AP7kJDYGOWyMTq4HY+GNu5fo/05AVACWAkO8WLiERk8H44iuBkcdGWeKdwGOzYURCBQ6GkOlbPkmBdyB6e3EMC+Wp/7jFXhcb7nnuCrFTx5oFSTIZ8ap+9qpAQeYfd0VYHKq8p3IZJflf9Uo0jtXTkdwEnwcE9cq/xuQf65Zpge+NKrsAMimAo901Ic8Lli9L5/uH/aZ0oH7+7ppF+bHtQpvmAiXvzlvJ2852H0DJi2hJC+/KHjWyERCnP3++f/fdqnaleeBMGTl/bSN0lgtGmAVRhGaoWs3wXGuwbmLtOMsqdKKDKM3sfPPxkEpwU4gf9jEARXXr5Y3zPy5vScYTD90sWLH16h8fzHvR7ZTZ82QZDeS1c+ffjc0QLPGU48Wb2ysiLeeR9c+fDlizDq+YEfvAxWATK4/+0AvjwYfPr81+/2srdxCO9KENzYX+g9LKXyJyvBjIGXXtmA/1Y28D35wadXLqbjwysD/IUF39JXTs5kTOItOv4LmyGziwdiNVMAAAAASUVORK5CYII="};
+  /* v11.23.0（乙-4）：小圖示每一列都要放（一頁 500 多列、每列 2～3 次）。把圖轉成短網址（blob:）只放一次，
+     不再每一列都帶一整段圖片文字：慢的手機畫清單少約 0.7 秒。轉不成（瀏覽器不讓）就照舊用原本那段 */
+  try{ ["錠","水"].forEach(function(k){ var m=/^data:([^;,]+);base64,([A-Za-z0-9+\/=]+)$/.exec(ICON[k]); if(!m) return; var b=atob(m[2]), u=new Uint8Array(b.length), i; for(i=0;i<b.length;i++) u[i]=b.charCodeAt(i); ICON[k]=URL.createObjectURL(new Blob([u],{type:m[1]})); }); }catch(e){}
   try{ TAB=localStorage.getItem("bt")||"錠"; SORT=localStorage.getItem("bs")||"name"; }catch(e){}
 
   /* ══════════ 後端：網頁專案的 API（v11.20：網頁在 GitHub，用 fetch 打 Apps Script）══════════
@@ -104,6 +107,7 @@
   window.addEventListener("pagehide", syncNow);
   /* 整頁停下來（鑰匙不對、LINE 專案連不到、舊連結、連結有問題）；開發者版這台還沒綁定 → 出輸入綁定碼的框 */
   function stop(msg, code, need){
+    if (code==="tok"||code==="bind"){ UPD=false; homeDrop(); }   /* v11.23.0：鑰匙壞了／這台還沒綁定 → 這台記著的上次清單也不要了 */
     if (code==="bind" && need){ bindForm(msg); return; }
     /* 鑰匙壞了、過期了：記住的那一條也不要了（從 LINE 開新的那一次會再記）。
        v11.23.0：只清「同一個後端」的；記的是另一個後端（例如按了「用新連結」、那條連結的後端說鑰匙不對），就不動——不該讓一條別的連結把原本好的清掉 */
@@ -161,7 +165,7 @@
   function num(x){ return +x||0; }   /* 數字才放進畫面（不信任後端給的 length） */
   /* 每一列最前面一張小照片：有藥品照片就放照片（捲到才載入），沒有就放錠／水的小圖 */
   function thumbHtml(r){
-    var th=r.thumb||(r.photo?String(r.photo).replace(/([?&]sz=w)\d+/,"$1120"):"");
+    var th=r.thumb||(r.photo?String(r.photo).replace(/([?&]sz=w)\d+/,"$1320"):"");   /* v11.23.0：w120→w320（照片框放大了） */
     return '<span class="ph"><img class="ki" src="'+ICON[kindOf(r)]+'" alt="">'+(th?'<img class="pi" src="'+esc(th)+'" loading="lazy" alt="" data-rm="">':'')+'</span>';
   }
   /* 一列的長相跟 LINE 公告卡一樣：照片｜藥名、中文（有數量就接 ×數量）、extra（公告補充）、劑型小圖＋錠／水＋CODE｜位置 */
@@ -211,7 +215,8 @@
   function homeBtn(){ return '<div class="actions"><button type="button" class="quiet" data-go="home">🏠 首頁</button></div>'; }
 
   /* ══════════ 首頁：公告＋所有藥品 ══════════ */
-  function renderHome(){
+  /* 首頁的骨架（公告、所有藥品兩個框，裡面寫「載入中…」）：不問後台。開頁時先畫這個，後台回來再填；他等的時候先去查別的，回來也不會被蓋掉 */
+  function homeShell(){
     var h='<section class="sec"><div class="sh"><b>📢 公告</b><span id="ncount"></span></div><div class="tabs wrap" role="tablist" id="ntabs"></div><div class="list" id="nlist"><div class="none">載入中…</div></div></section>';
     h+='<section class="sec"><div class="sh"><b>💊 所有藥品</b><span id="acount"></span></div>'
       +'<div class="tabs" role="tablist"><button type="button" role="tab" data-tab="錠" aria-selected="'+(TAB==="錠")+'"><img src="'+ICON["錠"]+'" alt="">錠<small id="c錠"></small></button>'
@@ -219,8 +224,11 @@
       +'<div class="sortrow">排序<button type="button" data-sort="name" aria-pressed="'+(SORT==="name")+'">藥名</button><button type="button" data-sort="loc" aria-pressed="'+(SORT==="loc")+'">位置</button></div>'
       +'<div class="list" id="alist"><div class="none">載入中…</div></div></section>';
     out.innerHTML=h;
-    if (HOME) fillHome(HOME); else call("appHome",[T],function(res){ if(!res||res.err){ setHint("❌ "+(res&&res.err||"首頁載入失敗"), true); return; } HOME=res; if($("nlist")) fillHome(res); });
     window.scrollTo({top:0});
+  }
+  function renderHome(){
+    homeShell();
+    if (HOME) fillHome(HOME); else call("appHome",[T],function(res){ if(!res||res.err){ setHint("❌ "+(res&&res.err||"首頁載入失敗"), true); return; } HOME=res; homeSave(res); if($("nlist")) fillHome(res); });
   }
   function fillHome(d){
     var n=0, groups=d.notices||[];
@@ -237,7 +245,7 @@
     $("ncount").textContent = n ? n+" 個品項" : "";
     var all=d.drugs||[], cnt={"錠":0,"水":0};
     all.forEach(function(r){ cnt[kindOf(r)]++; });
-    $("acount").textContent = all.length+" 個品項";
+    $("acount").textContent = all.length+" 個品項"+(UPD?"・更新中…":"");
     $("c錠").textContent=cnt["錠"]; $("c水").textContent=cnt["水"];
     fillAll(all);
   }
@@ -256,6 +264,7 @@
 
   /* ══════════ 清單／卡片 ══════════ */
   var LAST=null;   /* 上一份清單（回清單時要記得標題和分組） */
+  var CARD=null;   /* 現在（或最後一次）打開的卡片：{r, back}。開發者身分比卡片晚到時，補上 ✏️ 要用 */
   function renderList(rows, title, extra, loc){
     if (LAST && rows===LAST.rows){ if(title===undefined) title=LAST.title; if(extra===undefined) extra=LAST.extra; if(loc===undefined) loc=LAST.loc; }
     LAST={rows:rows, title:title, extra:extra, loc:loc};
@@ -306,7 +315,7 @@
     window.scrollTo({top:0});
   }
   function renderCard(r, backTo){
-    FULL[r.code]=r;
+    FULL[r.code]=r; CARD={r:r, back:backTo};
     var spot = SPOT[r.code] || (r.spots&&r.spots.length ? r.spots[0].name : "");
     var mapUrl = r.map||"";
     if (r.spots&&r.spots.length){ r.spots.forEach(function(s){ if(s.name===spot&&s.map) mapUrl=s.map; }); }
@@ -480,7 +489,7 @@
           $("e_picmsg").textContent="✅ 換好了（雲端 "+(res.name||"")+(res.moved&&res.moved.length?"；舊的移到「舊照片」":"")+"）新照片要幾秒鐘才會出現";
           if (res.url){ var im=$("e_picimg"); var th=String(res.url).replace(/([?&]sz=w)\d+/,"$1120"); if(im) im.src=th; else { var ph=$("e_picbtn").parentNode.querySelector(".ph"); if(ph) ph.insertAdjacentHTML("beforeend",'<img class="pi" id="e_picimg" src="'+esc(th)+'" alt="" data-rm="">'); } r.photo=res.url; r.thumb=th; if($("e_photo")) $("e_photo").value=res.url; v.photo=res.url; }
           if (res.row){ keepPh(r, res.row); FULL[res.row.code]=res.row; r=res.row; swapRow(res.row); }
-          HOME=null;
+          HOME=null; homeDrop();
           setHint("✅ "+r.code+" 照片換好了");
         });
       });
@@ -501,7 +510,7 @@
           npicDel=false; $("e_npicmsg").textContent="✅ 公告照片換好了（雲端 公告照片／"+(res.name||"")+"）"+(v.nk?"":"　⚠️ 這支藥還沒掛公告，掛上才會顯示");
           if (res.url){ var th=String(res.url).replace(/([?&]sz=w)\d+/,"$1120"); $("e_npicph").innerHTML='<img class="pi" id="e_npicimg" src="'+esc(th)+'" alt="" data-rm="">'; v.npic=res.url; }
           if (res.row){ keepPh(r, res.row); FULL[res.row.code]=res.row; r=res.row; swapRow(res.row); }
-          HOME=null;
+          HOME=null; homeDrop();
         });
       });
     }
@@ -532,7 +541,7 @@
         if (errs.length) setHint((done.length?"✅ 改好 "+done.join("、")+"；":"")+"⚠️ 沒改成："+errs.join("；"), true);
         else setHint("✅ 改好 "+done.length+" 項（"+done.join("、")+"），已寫進試算表"+(res.undo?"　↩️ 改錯了：LINE 打「復原 "+res.undo+"」":""));
         var nr=res.row?res.row:r; if(res.row){ keepPh(r, nr); FULL[nr.code]=nr; swapRow(nr); }   /* v11.22.2：照片來的那一張，改完照樣帶數量；上一份清單裡那一列也換成改好的 */
-        HOME=null;                      /* 首頁的公告、藥品清單下次回首頁重抓 */
+        HOME=null; homeDrop();                      /* 首頁的公告、藥品清單下次回首頁重抓 */
         renderCard(nr, backTo);
       });
     };
@@ -794,17 +803,80 @@
   /* 照片辨識完，搜尋框下面那行多一句提醒（只查到一支、直接出卡片時也看得到） */
   function aiWarnAdd(){ var w=document.createElement("span"); w.className="aiw"; w.textContent="⚠️ AI 可能讀錯，請核對 CODE 再拿藥"; hint.appendChild(document.createElement("br")); hint.appendChild(w); }
 
-  /* ══════════ 開場 ══════════ */
+  /* ══════════ 開場 ══════════
+     v11.23.0（乙-2、乙-3）：開頁只問後台一趟——首頁清單和「身分、版本、剩幾天」一起回來（appHome 的第二個參數 1）。
+     這台記得上次的清單（bh1，最多 7 天、同一個後端）就先畫出來，後台回來再換（一樣就不動）；後台說鑰匙不對、這台還沒綁定就清掉。
+     後台還是舊的（回來沒有 info）→ 退回原本的兩趟（appInfo；清單已經拿到就直接用）。有 ?q= 直接查的、預覽（假資料）照原本走。 */
+  var UPD=false, HOME_KEEP_MS=7*864e5;
+  function homeLoad(){ try{ var o=JSON.parse(localStorage.getItem("bh1")||"null"), now=Date.now();
+    if (o && o.x===X && typeof o.at==="number" && o.at<=now+6e4 && now-o.at<HOME_KEEP_MS && o.d && Array.isArray(o.d.notices) && Array.isArray(o.d.drugs) && o.d.drugs.length) return o;
+    if (o && o.x===X) homeDrop();   /* 同一個後端記的、但太舊／壞掉／在未來 → 順手清掉（別的後端記的不動） */
+    }catch(e){} return null; }
+  function homeSave(d){ try{ if (LIVE && d && Array.isArray(d.notices) && Array.isArray(d.drugs) && d.drugs.length) localStorage.setItem("bh1", JSON.stringify({x:X, at:Date.now(), d:{notices:d.notices, drugs:d.drugs}})); }catch(e){} }
+  function homeDrop(){ try{ var o=JSON.parse(localStorage.getItem("bh1")||"null"); if (!o || o.x===X) localStorage.removeItem("bh1"); }catch(e){ try{ localStorage.removeItem("bh1"); }catch(x){} } }
+  function homeSig(d){ try{ return JSON.stringify([d.notices, d.drugs]); }catch(e){ return ""; } }
+  function updOff(){ UPD=false; var a=$("acount"); if (a) a.textContent=a.textContent.replace("・更新中…",""); }
+  /* 原本 appInfo 回來之後做的事（順序沒變） */
+  function ready(info){
+    DEV=!!(info&&info.dev);
+    /*DEV*/if (DEV && !$("home").querySelector(".devtag")){ $("home").classList.add("dev"); $("home").insertAdjacentHTML("beforeend",'<span class="devtag">開發者版</span>'); }/*/DEV*/
+    if (info&&typeof info.days==="number"&&info.days<=3) HINT0='<span>⚠️ 這條連結 '+num(info.days)+' 天後過期，回 LINE 打「網頁」換新的</span> '+HINT0;
+    if (LIVE){ keySave(); hideKey(); } instShow();
+    noticeFirst();
+    /* 先秒開了上次的清單、他在後台回來前就點進某一支：那時還不知道是不是開發者，卡片沒有 ✏️ → 身分到了補上（重畫同一張卡片） */
+    /*DEV*/if (DEV && CARD && !$("edit") && out.querySelector("article.card[data-code]")) renderCard(CARD.r, CARD.back);/*/DEV*/
+  }
+  /* 開發者版才有：搜尋框下面一行小字，量「開頁」到底等了幾秒（藥師看不到） */
+  function devTime(ms, srv, cached){
+    /*DEV*/if (!DEV) return;
+    var w=document.createElement("span"); w.className="tm";
+    w.textContent="⏱ 開頁 "+(ms/1000).toFixed(1)+" 秒"+(typeof srv==="number"?"（後台算清單 "+(srv/1000).toFixed(1)+" 秒）":"")+(cached?"・先秒開了上次的清單":"");
+    hint.appendChild(document.createElement("br")); hint.appendChild(w);/*/DEV*/
+  }
+  function hint0(){ return BOUND?"✅ 這台綁好了，以後在這裡直接開就好（不用再輸入）。":HINT0; }
   function start(){
-    call("appInfo",[T],function(info){
-      if (info&&info.err){ stop(info.err, "tok"); return; }
-      DEV=!!(info&&info.dev);
-      /*DEV*/if (DEV && !$("home").querySelector(".devtag")){ $("home").classList.add("dev"); $("home").insertAdjacentHTML("beforeend",'<span class="devtag">開發者版</span>'); }/*/DEV*/
-      if (info&&typeof info.days==="number"&&info.days<=3) HINT0='<span>⚠️ 這條連結 '+num(info.days)+' 天後過期，回 LINE 打「網頁」換新的</span> '+HINT0;
-      if (LIVE){ keySave(); hideKey(); } instShow();
-      noticeFirst();
-      if (HP.q){ search(HP.q); return; }
-      setHint(BOUND?"✅ 這台綁好了，以後在這裡直接開就好（不用再輸入）。":HINT0); BOUND=false; renderHome();
+    if (!LIVE || HP.q){
+      call("appInfo",[T],function(info){
+        if (info&&info.err){ stop(info.err, "tok"); return; }
+        ready(info);
+        if (HP.q){ search(HP.q); return; }
+        setHint(hint0()); BOUND=false; renderHome();
+      });
+      return;
+    }
+    var t0=Date.now(), c=homeLoad(), shown=!!c;
+    /* 先把畫面放好（這樣等後台的時候他可以先做別的事，後台回來不會蓋掉他做的）：提示行、首頁（有記住的 → 上次的清單，個數後面標「更新中…」；沒有 → 「載入中…」的骨架） */
+    setHint(hint0());
+    var h0=hint.innerHTML+"|"+hint.className;
+    if (c){ HOME=c.d; UPD=true; renderHome(); } else homeShell();
+    call("appHome",[T,1],function(res){
+      if (!res){ updOff(); setHint("❌ 首頁載入失敗", true); return; }
+      if (res.err){ stop(res.err, "tok"); return; }
+      function go(info){
+        var ms=Date.now()-t0, d={notices:res.notices||[], drugs:res.drugs||[], ms:res.ms};
+        ready(info);
+        /* 搜尋框下面那行：他這段時間沒動它才更新（他已經在查東西、拍照的話不動） */
+        var mine=(hint.innerHTML+"|"+hint.className)===h0;
+        if (mine) setHint(hint0());
+        BOUND=false;
+        if (shown && !d.drugs.length){   /* 後台這次沒給藥品清單（讀不到）：不蓋掉、不記；他看到的還是上次的 */
+          updOff();
+          if (mine) setHint("⚠️ 後台這次沒給藥品清單，先顯示上次的（可能不是最新）", true);
+          return;
+        }
+        var same=shown && homeSig(HOME)===homeSig(d);
+        HOME=d.drugs.length?d:null; homeSave(d);   /* 沒有藥品（後台這次讀不到）就不留著，點 logo 回首頁時會再問一次 */
+        if ($("nlist")){ if (same) updOff(); else { UPD=false; fillHome(d); } }   /* 還在首頁才動畫面；他已經去別的畫面了，回首頁時會用新的 */
+        else UPD=false;
+        if (mine) devTime(ms, res.ms, shown);
+      }
+      if (res.info) go(res.info);
+      else call("appInfo",[T],function(info){ if (info&&info.err){ stop(info.err, "tok"); return; } go(info); },   /* 後台還是舊的 → 原本的兩趟 */
+        function(){ go(null); });   /* 這一趟也斷了：清單已經拿到了，照樣顯示（身分讀不到就當藥師） */
+    }, function(e){
+      updOff();
+      if (shown && $("acount")){ setHint("⚠️ "+(e&&e.net?"連不上後端":(e&&e.message||"後台沒有回應"))+"，先顯示上次的清單（可能不是最新）", true); return; }
+      setHint("❌ "+(e&&e.message||e), true);
     });
   }
 

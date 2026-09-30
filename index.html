@@ -124,20 +124,20 @@
   /* 首頁區塊 */
   .sec{display:flex; flex-direction:column; gap:8px}
   .sh{display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding:0 3px}
-  .sh b{font-size:21.5px; color:var(--ink2)}
+  .sh b{font-size:18px; color:var(--ink2)}
   .sh span{font-size:12.5px; color:var(--muted)}
-  @media (min-width:760px){ .sh b{font-size:23.5px} .sh span{font-size:20.5px} }
+  @media (min-width:760px){ .sh b{font-size:19.5px} .sh span{font-size:14px} }   /* v11.23.0（清單改版）：標題 23.5→19.5、個數 20.5→14 */
   .tabs{display:flex; gap:4px; background:var(--sunk); padding:4px; border-radius:12px}
   .tabs button{flex:1; border:0; background:transparent; color:var(--muted); border-radius:9px; padding:5px 8px;
-    font-size:14.5px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:7px}
+    font-size:13.5px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:7px}
   .tabs img{width:28px; height:28px}
   .tabs button[aria-selected="true"]{background:var(--surface); color:var(--accent); box-shadow:var(--shadow)}
   .tabs button small{font-weight:500; margin-left:4px; font-size:12px}
-  @media (min-width:760px){ .tabs button{font-size:15.5px} .tabs img{width:44px; height:44px} .tabs button small{font-size:13px} }
+  @media (min-width:760px){ .tabs button{font-size:14px} .tabs img{width:36px; height:36px} .tabs button small{font-size:13px} }
   .sortrow{display:flex; gap:4px; align-items:center; justify-content:flex-end; font-size:12.5px; color:var(--muted); padding:0 3px}
   .sortrow button{border:0; background:transparent; color:var(--muted); padding:2px 8px; font-size:12.5px; border-radius:7px}
   .sortrow button[aria-pressed="true"]{color:var(--accent); font-weight:700; background:var(--accent-soft)}
-  @media (min-width:760px){ .sortrow,.sortrow button{font-size:14px} }
+  @media (min-width:760px){ .sortrow,.sortrow button{font-size:13px} }
 
   /* 清單 */
   .list{background:var(--surface); border:1px solid var(--line); border-radius:14px; overflow:hidden; box-shadow:var(--shadow)}
@@ -159,33 +159,37 @@
   @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .list .kg .fold{color:#B8A6E6} :root:not([data-theme="light"]) .list .kg.same{color:#C9B8F2; background:#2A2340} :root:not([data-theme="light"]) .list .sub{color:#B8A6E6; background:#231D33} }
   .row .n i.fl{color:var(--muted); font-size:12px}
   .tabs.wrap{flex-wrap:wrap}
-  .tabs.wrap button{flex:1 1 30%; min-width:30%; padding:7px 6px; font-size:13.5px; gap:5px; white-space:nowrap}
+  .tabs.wrap button{flex:1 1 30%; min-width:30%; padding:7px 6px; font-size:13px; gap:5px; white-space:nowrap}
   .tabs.wrap button[aria-selected="true"]{color:var(--warn)}
-  @media (min-width:760px){ .tabs.wrap button{font-size:16px; padding:6px 6px} .tabs.wrap button small{font-size:14.5px} }
-  /* 每一列＝LINE 公告卡的排法：小照片｜藥名／中文／（公告補充）／劑型＋CODE｜位置 */
-  .row{display:grid; grid-template-columns:auto 1fr auto; gap:11px; align-items:center; padding:9px 12px 9px 10px;
+  @media (min-width:760px){ .tabs.wrap button{font-size:14px; padding:6px 6px} .tabs.wrap button small{font-size:13px} }
+  #ntabs:empty{display:none}   /* v11.23.0：等後台時的「載入中…」骨架，公告分類列還是空的 → 先不要露出一條灰底空條 */
+  /* 每一列＝LINE 公告卡的排法：照片｜藥名／中文／（公告補充）／劑型＋CODE｜位置
+     v11.23.0（清單改版）：照片放大成 4:3（手機 104×78、電腦 100% 時 148×111，整個包裝看得到），字縮小約 10%，藥名太長最多兩行；
+     標誌、搜尋列、整頁縮放、藥品卡片不動 */
+  .row{display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; padding:8px 12px 8px 8px;
     border-bottom:1px solid var(--line); background:transparent; border-left:0; border-right:0; border-top:0;
     width:100%; text-align:left; color:var(--ink)}
   .row:last-child{border-bottom:0}
   .row:hover{background:var(--sunk)}
-  .row .ph{position:relative; width:64px; height:64px; border-radius:8px; overflow:hidden; background:var(--sunk); border:1px solid var(--line); flex:0 0 64px}
+  .row .ph{position:relative; width:104px; height:78px; border-radius:8px; overflow:hidden; background:var(--sunk); border:1px solid var(--line); flex:0 0 104px}
   .row .ph img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block}
   .row .ph .ki{object-fit:contain; padding:8px; opacity:.45}
   .row .ph .pi{background:#fff}
   .row .n{display:flex; flex-direction:column; min-width:0; gap:1px}
-  .row .n b{font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .row .n .z{font-size:15px; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .row .n i{font-style:normal; font-size:12.5px; color:var(--warn); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .row .n .k{display:flex; align-items:center; gap:4px; font-size:13.5px; color:var(--muted); line-height:1.2; white-space:nowrap}
-  .row .n .k img{width:19.5px; height:19.5px; object-fit:contain}
-  .row .n .k .c{font-size:14px; font-weight:600; color:var(--muted); margin-left:7px}
-  .row .l{font-size:17.5px; font-weight:700; color:var(--pin); white-space:nowrap}
-  /* v11.22.2（電腦版版面，第四輪）：清單每一列（100% 時）：照片 94、藥名 18、中文 15.5、位置 20.5、上下 4、左右 20 */
+  .row .n b{font-size:14.5px; white-space:normal; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-height:1.25; overflow:hidden; word-break:break-word; overflow-wrap:anywhere}
+  .row .n .z{font-size:13px; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .row .n i{font-style:normal; font-size:12px; color:var(--warn); white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .row .n .k{display:flex; align-items:center; gap:4px; font-size:12px; color:var(--muted); line-height:1.2; white-space:nowrap}
+  .row .n .k img{width:16px; height:16px; object-fit:contain}
+  .row .n .k .c{font-size:12.5px; font-weight:600; color:var(--muted); margin-left:6px}
+  .row .l{font-size:16px; font-weight:700; color:var(--pin); white-space:nowrap}
+  @media (max-width:340px){ .row{gap:8px; padding:8px 10px 8px 6px} .row .ph{width:84px; height:63px; flex-basis:84px} }   /* 很窄的手機（320 寬）：照片小一點，不然位置、CODE 那一列擠在一起 */
+  /* v11.23.0（清單改版，電腦版）：清單每一列（100% 時）：照片 148×111、藥名 15.5、中文 13.5、位置 18、上下 6、左 10、右 16（v11.22.2 是照片 94 方塊、藥名 18、中文 15.5、位置 20.5） */
   @media (min-width:760px){
-    .row{padding:4px 20px 4px 18px}
-    .row .ph{width:94px; height:94px; flex-basis:94px}
-    .row .n b{font-size:18px} .row .n .z{font-size:15.5px} .row .n .k{font-size:14px} .row .n .k img{width:20px; height:20px} .row .n .k .c{font-size:14.5px}
-    .row .l{font-size:20.5px}
+    .row{gap:14px; padding:6px 16px 6px 10px}
+    .row .ph{width:148px; height:111px; flex-basis:148px}
+    .row .n b{font-size:15.5px} .row .n .z{font-size:13.5px} .row .n .k{font-size:12.5px} .row .n .k img{width:17px; height:17px} .row .n .k .c{font-size:13px}
+    .row .l{font-size:18px}
   }
 
   /* 藥品卡片 */
@@ -345,6 +349,7 @@
   .sheetin p b{color:var(--ink)}
   .sheetin .ids{margin:0 0 10px; padding:8px 10px; background:var(--sunk); border-radius:10px; font:13.5px/1.7 ui-monospace,Menlo,Consolas,monospace; color:var(--ink); white-space:pre-line; word-break:break-all}
   .sheetin .go + .x{margin-top:0}
+  .hint .tm{white-space:normal}   /* v11.23.0：開發者版才有的「開頁幾秒」小字 */
   .hint .aiw{white-space:normal; color:var(--warn); font-weight:700}   /* v11.23.0：照片辨識完，搜尋框下面多一句「AI 可能讀錯」 */
   @media (min-width:760px){ .sheet{align-items:center; padding:20px} .sheetin{border-radius:16px; padding:18px 20px} }
   .demo{position:fixed; left:0; right:0; bottom:0; z-index:6; background:var(--warn-soft); color:var(--warn); font-size:12px;
