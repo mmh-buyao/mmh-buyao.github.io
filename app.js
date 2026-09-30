@@ -1,4 +1,4 @@
-/* 補藥神器網頁 v11.22.2（藥品查詢）：畫面在 GitHub，資料由網頁專案的 API 給（見 index.html 的安全設定）。這個檔沒有任何秘密。 */
+/* 補藥神器網頁 v11.23.0（藥品查詢）：畫面在 GitHub，資料由網頁專案的 API 給（見 index.html 的安全設定）。這個檔沒有任何秘密。 */
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   /* ══════════ 安全：不讓別的網站用框框把這一頁包進去（防有人做假網站騙人點）══════════ */
@@ -105,7 +105,9 @@
   /* 整頁停下來（鑰匙不對、LINE 專案連不到、舊連結、連結有問題）；開發者版這台還沒綁定 → 出輸入綁定碼的框 */
   function stop(msg, code, need){
     if (code==="bind" && need){ bindForm(msg); return; }
-    if (code==="tok") keyDrop();   /* 鑰匙壞了、過期了：記住的那一條也不要了（從 LINE 開新的那一次會再記） */
+    /* 鑰匙壞了、過期了：記住的那一條也不要了（從 LINE 開新的那一次會再記）。
+       v11.23.0：只清「同一個後端」的；記的是另一個後端（例如按了「用新連結」、那條連結的後端說鑰匙不對），就不動——不該讓一條別的連結把原本好的清掉 */
+    if (code==="tok"){ var sk=keyLoad(); if (!sk || sk.x===X) keyDrop(); }
     out.innerHTML='<div class="empty"><b>'+esc(msg).replace(/\n/g,"<br>")+'</b>'+(code==="tok"?"回 LINE 按下面那排的「🌐 補藥神器網頁」再開一次。"+(FROMSAVED?"<br>開過一次，主畫面的圖示就會換成新的連結。":""):"")+'</div>';
     setHint(""); $("sf").hidden=true; $("inst").hidden=true;
   }
@@ -730,6 +732,7 @@
         if (res.truncated) warn.push("可能沒讀完");
         if (res.hand) warn.push("手寫");
         setHint("📷 讀到 "+(res.read||[]).length+" 行、查到 "+n+" 個品項"+(warn.length?"（"+warn.join("、")+"）":"")+(res.ms?"　"+(res.ms/1000).toFixed(1)+" 秒":""), false);
+        if ((res.read||[]).length) aiWarnAdd();
         renderPhoto(res);
       }, function(e){
         setHint(e&&e.net?"❌ 照片送不出去（"+e.tech+"；照片 "+sent.join("→")+" KB）。網路不穩的話，換個訊號好的地方再按 📷；急的話直接把照片傳到 LINE 給補藥神器":"❌ "+(e&&e.message||e), true);
@@ -749,6 +752,48 @@
   $("lb").onclick=function(e){ if(e.target===$("lb")) $("lbx").onclick(); };
   document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&!$("lb").hidden) $("lbx").onclick(); });
 
+  /* ══════════ 提醒／確認視窗（v11.23.0）══════════
+     note(opt, cb)：跳出一張跟「加到主畫面」同樣式的視窗，一定要按其中一顆才會關（點旁邊、按 Esc 都不算）。
+     opt＝{h:標題, p:第一段（可以帶 <b>，只放我們自己寫死的字）, ids:等寬的兩行字（用 textContent 放）, q:第二段, n:小字, go:主要按鍵的字（不給就不出）, x:次要按鍵的字}；
+     cb("go") 或 cb("x")。 */
+  function note(opt, cb){
+    $("nth").textContent=opt.h||"";
+    var p=$("ntp"); p.innerHTML=opt.p||""; p.hidden=!opt.p;
+    var ids=$("nti"); ids.textContent=opt.ids||""; ids.hidden=!opt.ids;
+    var q=$("ntq"); q.innerHTML=opt.q||""; q.hidden=!opt.q;
+    $("ntn").textContent=opt.n||"";
+    var g=$("ntgo"), x=$("ntx"); g.textContent=opt.go||""; g.hidden=!opt.go; x.textContent=opt.x||"知道了";
+    var done=false;
+    function fin(v){ if (done) return; done=true; $("nts").hidden=true; if (cb) cb(v); }
+    g.onclick=function(){ fin("go"); };
+    x.onclick=function(){ fin("x"); };
+    $("nts").hidden=false; try{ (opt.go?g:x).focus(); }catch(e){}
+  }
+  /* 第一次使用：拍照、錄音前的提醒（每個瀏覽器只出現一次，按「知道了」就記住；瀏覽器不讓記的就每次都出） */
+  var NOTE_KEY="bn1";
+  function noticeSeen(){ try{ return localStorage.getItem(NOTE_KEY)==="1"; }catch(e){ return false; } }
+  function noticeFirst(){
+    if (noticeSeen()) return;
+    note({h:"📷 拍照、錄音前請注意", p:"AI 可能讀錯，請核對 CODE 再拿藥。",
+          n:"這個網頁請只從 LINE 的按鈕「🌐 補藥神器網頁」開，不要點別人傳來的連結。", x:"知道了"},
+         function(){ try{ localStorage.setItem(NOTE_KEY,"1"); }catch(e){} });
+  }
+  /* 防釣魚：這台瀏覽器記著原本的後端（bk.x），這次連結帶的後端卻不一樣 → 先問，不直接蓋掉。
+     只看連結裡有沒有帶新的後端（#x=…）；沒帶（從主畫面圖示開）、或這台還沒記過（第一次）都不問。
+     按「維持原來的」＝照舊用記住的那一條、把網址列清掉；按「用新連結」＝用這條，後端說 OK 之後才蓋掉原本記的。 */
+  function backendCheck(cb){
+    var S=keyLoad();
+    if (!S || !HP.x || S.x===HP.x || !/^[A-Za-z0-9_-]{20,120}$/.test(HP.x) || !(HP.dev||HP.app)){ cb(); return; }
+    note({h:"⚠️ 這條連結要連到不同的後端", p:"這支手機原本用的後端，跟這次連結的不一樣：", ids:"原本用的：…"+S.x.slice(-6)+"\n這次連結：…"+HP.x.slice(-6),
+          q:"不是開發者叫你換的，請按「維持原來的」。", go:"維持原來的", x:"用新連結"},
+         function(v){
+           if (v==="go"){ X=S.x; T=S.t; HP.x=S.x; HP.app=S.t; HP.dev=""; FROMSAVED=true; try{ history.replaceState(null,"",location.pathname); }catch(e){} }
+           cb();
+         });
+  }
+  /* 照片辨識完，搜尋框下面那行多一句提醒（只查到一支、直接出卡片時也看得到） */
+  function aiWarnAdd(){ var w=document.createElement("span"); w.className="aiw"; w.textContent="⚠️ AI 可能讀錯，請核對 CODE 再拿藥"; hint.appendChild(document.createElement("br")); hint.appendChild(w); }
+
   /* ══════════ 開場 ══════════ */
   function start(){
     call("appInfo",[T],function(info){
@@ -757,6 +802,7 @@
       /*DEV*/if (DEV && !$("home").querySelector(".devtag")){ $("home").classList.add("dev"); $("home").insertAdjacentHTML("beforeend",'<span class="devtag">開發者版</span>'); }/*/DEV*/
       if (info&&typeof info.days==="number"&&info.days<=3) HINT0='<span>⚠️ 這條連結 '+num(info.days)+' 天後過期，回 LINE 打「網頁」換新的</span> '+HINT0;
       if (LIVE){ keySave(); hideKey(); } instShow();
+      noticeFirst();
       if (HP.q){ search(HP.q); return; }
       setHint(BOUND?"✅ 這台綁好了，以後在這裡直接開就好（不用再輸入）。":HINT0); BOUND=false; renderHome();
     });
@@ -808,9 +854,11 @@
   var MOCK={};
 
   /* 先確認連結格式對，才開始連後端；預覽（沒有連結、有假資料）就用假資料 */
-  gate(function(g){
-    if (g==="ok"){ LIVE=true; API="https://script.google.com/macros/s/"+X+"/exec"; start(); return; }
-    if (g==="none" && MOCK && MOCK.appInfo){ $("demo").hidden=false; start(); return; }
-    stop(GATE_MSG[g]||GATE_MSG.bad, g);
+  backendCheck(function(){
+    gate(function(g){
+      if (g==="ok"){ LIVE=true; API="https://script.google.com/macros/s/"+X+"/exec"; start(); return; }
+      if (g==="none" && MOCK && MOCK.appInfo){ $("demo").hidden=false; start(); return; }
+      stop(GATE_MSG[g]||GATE_MSG.bad, g);
+    });
   });
 })();

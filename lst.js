@@ -1,4 +1,4 @@
-/* 補藥神器網頁 v11.22.2（清單校對，開發者用）：畫面在 GitHub，資料由網頁專案的 API 給。這個檔沒有任何秘密。 */
+/* 補藥神器網頁 v11.23.0（清單校對，開發者用）：畫面在 GitHub，資料由網頁專案的 API 給。這個檔沒有任何秘密。 */
 /* v11.20.1：清單校對的網頁放在 GitHub，用 fetch 打網頁專案的 API（跟藥品查詢同一套：鑰匙、裝置碼跟部署 ID 一起算、開發者綁定碼） */
 if(window.top!==window.self){try{document.documentElement.innerHTML="";}catch(e){}throw new Error("framed");}
 function hashParams(){var o={};String(location.hash||"").replace(/^#/,"").split("&").forEach(function(kv){var i=kv.indexOf("=");if(i>0){try{o[decodeURIComponent(kv.slice(0,i))]=decodeURIComponent(kv.slice(i+1));}catch(e){}}});return o;}

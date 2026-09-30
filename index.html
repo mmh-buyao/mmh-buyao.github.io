@@ -5,7 +5,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src https://script.google.com https://script.googleusercontent.com; media-src 'self' blob: data:; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="buyao-v" content="v11.22.2">
+<meta name="buyao-v" content="v11.23.0">
 <title>補藥神器</title>
 <link rel="icon" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
@@ -341,11 +341,16 @@
   .sheetin ol{margin:0 0 10px; padding-left:22px; font-size:15px; line-height:1.75}
   .sheetin small{display:block; color:var(--muted); font-size:12.5px; line-height:1.55; margin-bottom:12px; white-space:pre-line}
   .sheetin .x{width:100%; border:1.5px solid var(--line); background:var(--sunk); color:var(--ink); border-radius:12px; padding:11px; font-size:15.5px; font-weight:700}
+  /* v11.23.0：提醒／確認視窗（第一次使用、連結換了後端），跟上面加到主畫面同一個樣子 */
+  .sheetin p b{color:var(--ink)}
+  .sheetin .ids{margin:0 0 10px; padding:8px 10px; background:var(--sunk); border-radius:10px; font:13.5px/1.7 ui-monospace,Menlo,Consolas,monospace; color:var(--ink); white-space:pre-line; word-break:break-all}
+  .sheetin .go + .x{margin-top:0}
+  .hint .aiw{white-space:normal; color:var(--warn); font-weight:700}   /* v11.23.0：照片辨識完，搜尋框下面多一句「AI 可能讀錯」 */
   @media (min-width:760px){ .sheet{align-items:center; padding:20px} .sheetin{border-radius:16px; padding:18px 20px} }
   .demo{position:fixed; left:0; right:0; bottom:0; z-index:6; background:var(--warn-soft); color:var(--warn); font-size:12px;
     text-align:center; padding:6px 12px calc(6px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--line)}
 </style>
-<script src="app.js?v=v11.22.2" defer></script>
+<script src="app.js?v=v11.23.0" defer></script>
 </head>
 <body>
 <header class="top"><div class="topin">
@@ -364,6 +369,7 @@
 
 <div class="lb" id="lb" hidden><img id="lbimg" alt=""><button id="lbx" aria-label="關閉">✕</button></div>
 <div class="sheet" id="inss" hidden role="dialog" aria-modal="true" aria-labelledby="insh"><div class="sheetin"><h3 id="insh">📲 加到主畫面</h3><p id="insp" hidden></p><button type="button" class="go" id="insgo" hidden></button><ol id="inso"></ol><small id="insn"></small><button type="button" class="x" id="insx">知道了</button></div></div>
+<div class="sheet" id="nts" hidden role="dialog" aria-modal="true" aria-labelledby="nth"><div class="sheetin"><h3 id="nth"></h3><p id="ntp" hidden></p><div class="ids" id="nti" hidden></div><p id="ntq" hidden></p><small id="ntn"></small><button type="button" class="go" id="ntgo" hidden></button><button type="button" class="x" id="ntx">知道了</button></div></div>
 <div class="demo" id="demo" hidden>預覽模式 —— 這裡的藥品是假資料，正式版接的是工作表1</div>
 </body>
 </html>
