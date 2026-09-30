@@ -23,7 +23,7 @@
     --leaf:#1B7F5C; --leaf-soft:#E3F1EA;
     --warn:#B26A00; --warn-soft:#FFF4DE;
     --danger:#B0392B; --danger-soft:#FDE9E6;
-    --pin:#E8514B;
+    --pin:#E8514B; --pnl:#F1F4F8;
     --shadow:0 1px 2px rgba(20,32,43,.06), 0 8px 22px rgba(20,32,43,.06);
   }
   @media (prefers-color-scheme: dark){
@@ -34,7 +34,7 @@
       --leaf:#5FC49E; --leaf-soft:#16392C;
       --warn:#EBB05C; --warn-soft:#37290F;
       --danger:#E8897C; --danger-soft:#3A1F1B;
-      --pin:#F0726C; --shadow:none;
+      --pin:#F0726C; --shadow:none; --pnl:#1B2733;
     }
   }
   :root[data-theme="dark"]{
@@ -44,7 +44,7 @@
     --leaf:#5FC49E; --leaf-soft:#16392C;
     --warn:#EBB05C; --warn-soft:#37290F;
     --danger:#E8897C; --danger-soft:#3A1F1B;
-    --pin:#F0726C; --shadow:none;
+    --pin:#F0726C; --shadow:none; --pnl:#1B2733;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
   [hidden]{display:none!important}
@@ -195,7 +195,8 @@
   /* 藥品卡片 */
   .card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:18px 18px 16px;
     box-shadow:var(--shadow); display:flex; flex-direction:column; gap:12px}
-  .card .head{display:flex; gap:12px; align-items:flex-start}
+  .card .head{display:flex; flex-wrap:wrap; gap:10px 12px; align-items:flex-start}
+  .card .head > .box.notice{flex:0 0 100%}
   .card .head .t{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px}
   .card .code{font-size:34px; font-weight:700; line-height:1.05; color:var(--ink2); letter-spacing:-.01em}
   .card .qty{font-size:16px; font-weight:700; color:var(--warn); background:var(--warn-soft); border-radius:8px; padding:2px 8px; vertical-align:middle}
@@ -244,7 +245,11 @@
   .box{border-radius:10px; padding:10px 13px; display:flex; flex-direction:column; gap:2px; line-height:1.5}
   .box .k{font-size:12px; font-weight:700}
   .box .v{font-size:15px; font-weight:700; overflow-wrap:anywhere; white-space:pre-line}   /* 換行照顯示（跳行） */
-  .box.notice{background:var(--warn-soft)} .box.notice .k,.box.notice .v{color:var(--warn)}
+  .box.notice{background:var(--warn-soft); flex-direction:row; flex-wrap:wrap; align-items:baseline; column-gap:7px; row-gap:0}
+  .box.notice .k,.box.notice .v{color:var(--warn)}
+  .box.notice .k{flex:0 0 auto; font-size:15px}
+  .box.notice .v{flex:1 1 0; min-width:0}
+  .box.notice .nrow{flex:0 0 100%}
   /* 公告框裡的公告照片、各區位置表格（v11.17.0） */
   /* 公告照片跟藥品照片同一個尺寸（v11.17.2）：表格在左、照片在右 */
   .nrow{display:flex; gap:12px; align-items:flex-start; margin-top:6px}
@@ -272,21 +277,52 @@
   .loc.long .t{font-size:18px}
   .map{flex:1; min-width:0; border:1px solid var(--line); border-radius:12px; background:var(--surface);
     aspect-ratio:3/2; object-fit:contain; cursor:zoom-in}
-  /* ★ 這一段一定要放在上面 .box、.photo、.loc、.map 的後面：同樣的選擇器、後面的才贏（上一包放在前面，所以卡片裡這些數字沒生效） */
-  /* v11.22.2（電腦版版面，第四輪）：藥品卡片（100% 時）：內距 40、CODE 41、藥名 25.5、中文 22、學名 15、圖示 200、說明字 17.5、照片寬 320、
-     公告照片寬 220（靠公告框最右）、平面圖最寬 600（靠最右）；📍 位置紅框：只包住字、靠上（不再跟平面圖一樣高）、字 49、最窄 270、上下留白 17、左右留白 33、和平面圖距離 24 */
+  /* ★ 這一段一定要放在上面 .box、.photo、.loc、.map 的後面：同樣的選擇器、後面的才贏 */
+  /* v11.23.0（第 3 批）（卡片頁排法，跟 LINE 卡片一樣）：
+     ① 灰底外框 .pnl 包住「藥品特徵＋適應症＋照片」（LINE 卡片就是這樣，網頁以前沒有這個框）；
+     ② 公告變成一行黃條（⚠️＋粗體字）；
+     ③ 電腦（760 以上）：標題區（CODE 41／藥名 25.5／中文 22／學名 15／圖示 200）數字完全不動；標題下面分左右兩欄
+        （左：灰底外框；右：📍位置＋平面圖），卡片最寬 1000、置中，照片、平面圖、說明字縮小，整張卡片在一般視窗裡一屏看完；
+     ④ 視窗不夠高時 fitCard() 把整張卡片再縮一點（最多縮到 65%），縮到底才會出現捲軸 */
+  .pnl{background:var(--pnl); border-radius:14px; padding:10px 11px; display:flex; flex-direction:column; gap:9px; min-width:0}
+  .pnl .box.feat{padding:8px 11px}
+  .pinfo{display:flex; flex-direction:column; gap:9px; min-width:0}
+  .cbody,.lcol{display:contents}          /* 手機：不多包一層，排法跟以前一樣 */
+  #same:empty{display:none}               /* 藥品家族還沒來、或這支沒有家族：空的框不要佔卡片的間距 */
   @media (min-width:760px){
-    .card{padding:40px 40px 38px}
+    .card{padding:40px 40px 38px}          /* 修改模式的卡片：不動 */
     .card .code{font-size:41px} .card .brand{font-size:25.5px} .card .zh{font-size:22px} .card .gen{font-size:15px}
     .card .side{flex-basis:200px} .card .icon{width:200px; height:200px} .card .icon img{width:192px; height:192px}
-    .box .k{font-size:14.5px} .box .v{font-size:17.5px} .kv .k{font-size:14.5px} .kv .v{font-size:17.5px}
-    .zones{font-size:16.5px} .zones caption{font-size:14px}
-    .box.notice .npic{width:min(220px,36%); margin-left:auto}
-    .photo{max-width:320px}
-    .locrow{gap:24px; align-items:flex-start}
-    .loc{padding:17px 33px; min-width:270px}
-    .loc .pin{font-size:47px} .loc .t{font-size:49px} .loc.long .t{font-size:37px}
-    .map{flex:0 1 600px; max-width:600px; margin-left:auto}
+    .zones{font-size:16px} .zones caption{font-size:13.5px}
+    #card{width:100%; max-width:1000px; margin-inline:auto; padding:22px 28px 14px; gap:10px; zoom:var(--cz,1)}
+    #card .head{display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto minmax(0,1fr); grid-template-areas:"t s" "n s"; gap:0 12px; align-items:start}
+    #card .head > .t{grid-area:t} #card .head > .side{grid-area:s} #card .head > .box.notice{grid-area:n; align-self:end; margin-top:10px}
+    main:has(#card){padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
+    /* 藥品家族：收合時只留一條（分段小標題展開才出來），大螢幕連這一條也放得下 */
+    #card .samebox{margin-top:0}
+    #card .samebox .kg.same[aria-expanded="false"]{border-bottom:0}
+    #card .samebox .kg.same[aria-expanded="false"] ~ .sub{display:none}
+    #card .box{padding:8px 13px}
+    #card .box .k,#card .kv .k{font-size:13.5px} #card .box .v,#card .kv .v{font-size:16.5px}
+    #card .box.notice{padding:8px 14px} #card .box.notice .k{font-size:17.5px} #card .box.notice .v{font-size:17.5px}
+    #card .box.notice .npic{width:min(150px,30%); margin-left:auto}
+    .cbody{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px; align-items:start}
+    .cbody:not(:has(.pnl)){grid-template-columns:minmax(0,1fr)}
+    .cbody:not(:has(.pnl)) .lcol{max-width:480px}      /* 沒有特徵、照片的藥：位置＋平面圖靠左，不要把平面圖拉到整張卡片那麼大 */
+    .lcol{display:flex; flex-direction:column; gap:10px; min-width:0}
+    .pnl{padding:12px 14px}
+    /* 灰底框裡：左＝藥品特徵＋適應症（上下疊），右＝照片（跟左邊兩塊一樣高）；沒有的東西那格就不出現 */
+    .pnl{display:grid; grid-template-columns:var(--gc,minmax(0,1fr) auto); grid-template-areas:var(--ga,"f p" "i p"); gap:9px 14px; align-items:start}
+    .pnl .grid2{display:contents}
+    .pnl .feat{grid-area:f} .pnl .pinfo{grid-area:i} .pnl .photo{grid-area:p; justify-self:end; width:var(--phw,240px); max-width:none}
+    .pnl .pinfo:empty{display:none}
+    .pnl .kv .v{overflow-wrap:anywhere}
+    .pnl.solo{justify-content:center}
+    .locrow{display:grid; grid-template-columns:auto minmax(0,1fr); gap:12px; align-items:start}
+    .loc{padding:12px 18px; min-width:0; max-width:190px; gap:8px}
+    .loc .pin{font-size:32px} .loc .t{font-size:40px} .loc.long .t{font-size:28px}
+    .map{flex:none; width:100%; max-width:none; margin-left:0}
+    #card .actions{margin-top:0} #card .actions button{flex:0 0 auto; padding:8px 22px}
   }
   .spots{display:flex; gap:7px; flex-wrap:wrap}
   .spots button{border:1.5px solid var(--line); background:var(--surface); color:var(--ink2); border-radius:9px;

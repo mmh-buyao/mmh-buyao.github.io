@@ -29,7 +29,38 @@
     if (w>=760){ z=ZOOM_BASE*(1+ZOOM_FOLLOW*(w-1280)/1280); z=Math.min(ZOOM_MAX, Math.max(0.8, z)); }
     document.documentElement.style.setProperty("--z", String(Math.round(z*1000)/1000));
   }
-  fitZoom(); window.addEventListener("resize", fitZoom);
+  fitZoom();
+  /* v11.23.0（第 3 批）：卡片頁（電腦）整張卡片一屏看完。先用 100%，如果整頁比視窗還高，就縮小卡片（一格 2%：98、96、…、66，最多縮到 65%），
+     用二分法找「放得下的最大一格」（最多量 6 次，不是一格一格試 18 次——每縮一格字就換一個大小，第一次排版很花時間）。
+     不算「藥品家族」（它是後來才載入的，載入完不要整張卡片又縮一次）。手機不縮。
+     ・量的時候把家族藏起來、頁面會變短，瀏覽器會把捲動位置往上夾 → 量完把捲動位置放回原處。
+     ・改視窗大小時等 80 毫秒（拖視窗一路都在觸發）才算一次；手機／平板這種觸控裝置，網址列收起來、鍵盤跳出來也會觸發，
+       只有「寬度」變了（轉向）才重算，光是高度變不重算。 */
+  var CARD_MIN=0.65, FIT_W=0, FIT_T=0, FIT_S=[], COARSE=false;
+  for (var fk=0; fk<=17; fk++) FIT_S.push(Math.round((1-0.02*fk)*100)/100);
+  FIT_S.push(CARD_MIN);
+  try{ COARSE=!!(window.matchMedia&&window.matchMedia("(pointer:coarse)").matches); }catch(e){}
+  function fitCard(){
+    var c=document.getElementById("card"); if(!c) return;
+    c.style.removeProperty("--cz");
+    var w=window.innerWidth||document.documentElement.clientWidth||0; FIT_W=w; if (w<760) return;
+    var se=document.getElementById("same"), sd=se?se.style.display:"", de=document.documentElement, y=window.pageYOffset||0;
+    function put(i){ if (i) c.style.setProperty("--cz", String(FIT_S[i])); else c.style.removeProperty("--cz"); }
+    function fits(i){ put(i); return de.scrollHeight<=de.clientHeight; }
+    if (se) se.style.display="none";
+    if (!fits(0)){
+      var lo=0, hi=FIT_S.length-1, mid;      /* lo：放不下；hi：放得下（或已經是最小的 65%） */
+      while (hi-lo>1){ mid=(lo+hi)>>1; if (fits(mid)) hi=mid; else lo=mid; }
+      put(hi);
+    }
+    if (se) se.style.display=sd;
+    if (y) window.scrollTo(0,y);
+  }
+  window.addEventListener("resize", function(){
+    fitZoom();
+    clearTimeout(FIT_T);
+    FIT_T=setTimeout(function(){ if (COARSE&&(window.innerWidth||0)===FIT_W) return; fitCard(); }, 80);
+  });
   /* 手機那格比較窄，提示字縮短一點才放得下 */
   try{ if (window.innerWidth<480) q.placeholder="輸入藥名或 CODE，再按「搜尋」"; }catch(e){}
   var DEV=false, SPOT={}, FULL={}, HOME=null, TAB="錠", SORT="name", NCAT=0;
@@ -324,37 +355,44 @@
       +(r.chName?'<div class="zh">'+esc(r.chName)+'</div>':'')+(r.generic?'<div class="gen">'+esc(r.generic)+'</div>':'')+'</div>'
       +'<div class="side">'+(r.ref?'<a class="icon" href="'+esc(r.ref)+'" target="_blank" rel="noopener noreferrer" title="點圖院內藥物查詢">':'<div class="icon" title="'+esc(r.form||"")+'">')
       +'<img src="'+ICON[kindOf(r)]+'" alt="'+esc(kindOf(r))+'">'+(r.ref?'</a><small class="ref">點圖院內藥物查詢</small>':'</div>')
-      +'</div></div>';
+      +'</div>';
     if (r.notice){
-      h+='<div class="box notice"><span class="k">⚠️ 公告</span><span class="v">'+esc(r.notice)+'</span>';
+      h+='<div class="box notice"><span class="k" role="img" aria-label="公告">⚠️</span><span class="v">'+esc(r.notice)+'</span>';
       var zt=(r.zones&&r.zones.length)?'<table class="zones"><caption>📍 各區位置</caption>'+r.zones.map(function(z){ return '<tr><th>'+esc(z.name)+'</th><td>'+esc(z.pos)+'</td></tr>'; }).join("")+'</table>':'';
       var np=r.npic?'<img class="npic" src="'+esc(String(r.npic).replace(/([?&]sz=w)\d+/,"$1400"))+'" alt="公告照片" data-big="'+esc(r.npic)+'">':'';
       if (zt||np) h+='<div class="nrow">'+(zt||(np?'<span class="sp"></span>':''))+np+'</div>';
       h+='</div>';
     }
-    if (r.feat)   h+='<div class="box feat"><span class="k">🔍 藥品特徵</span><span class="v">'+esc(r.feat)+'</span></div>';
+    h+='</div>';   /* /.head（公告放在標題區裡：手機在標題下面整條；電腦在文字欄下面的空位） */
+    /* v11.23.0（第 3 批）：灰底外框（.pnl）包住 藥品特徵＋適應症（＋注意、曾用藥品、縮寫）＋照片；右邊一欄是 📍位置＋平面圖（＋多個位置的按鍵） */
     var left='', hasNote=!!(r.pair||r.note||r.old||r.abbr);
     if (r.pair) left+='<div class="box pair"><span class="k">⚠️ 注意</span><span class="v">'+esc(r.pair)+'</span></div>';
     if (r.note) left+='<div class="kv"><span class="k">適應症</span><span class="v">'+esc(r.note)+'</span></div>';
     if (r.old)  left+='<div class="kv"><span class="k">曾用藥品</span><span class="v">'+esc(r.old)+'</span></div>';
     if (r.abbr) left+='<div class="kv"><span class="k">縮寫</span><span class="v">'+esc(r.abbr)+'</span></div>';
-    if (hasNote||r.photo){
-      h+='<div class="grid2"><div style="display:flex;flex-direction:column;gap:9px;min-width:0">'+left+'</div>'
-        +(r.photo?'<img class="photo" src="'+esc(r.photo)+'" alt="藥品照片" data-big="'+esc(r.photo)+'">':'')+'</div>';
-    }
+    var pn='', hf=!!r.feat, hp=!!r.photo;
+    if (hf) pn+='<div class="box feat"><span class="k">🔍 藥品特徵</span><span class="v">'+esc(r.feat)+'</span></div>';
+    if (hasNote||hp) pn+='<div class="grid2"><div class="pinfo">'+left+'</div>'
+      +(hp?'<img class="photo" src="'+esc(r.photo)+'" alt="藥品照片" data-big="'+esc(r.photo)+'">':'')+'</div>';
+    /* 電腦版灰底框裡的格子：有什麼放什麼（f＝特徵、i＝適應症那一疊、p＝照片） */
+    var ga = hp ? (hf&&hasNote ? "'f p' 'i p'" : hf ? "'f p'" : hasNote ? "'i p'" : "'p'") : (hf&&hasNote ? "'f' 'i'" : hf ? "'f'" : "'i'");
+    var gc = hp&&!hf&&!hasNote ? 'auto' : hp ? 'minmax(0,1fr) auto' : 'minmax(0,1fr)';
     /* 位置＋平面圖 */
-    h+='<div class="locrow"><div class="loc'+((r.location||"").length>4?" long":"")+'"><span class="pin">📍</span><span class="t">'+esc(r.location||"—")+'</span></div>'
+    var lr='<div class="locrow"><div class="loc'+((r.location||"").length>4?" long":"")+'"><span class="pin">📍</span><span class="t">'+esc(r.location||"—")+'</span></div>'
       +(mapUrl?'<img class="map" src="'+esc(mapUrl)+'" alt="平面圖" data-big="'+esc(r.mapBig||mapUrl)+'">':'')+'</div>';
+    var sp='';
     if (r.spots&&r.spots.length>1){
-      h+='<div class="spots">'+r.spots.map(function(s){ return '<button type="button" data-spot="'+esc(s.name)+'" aria-pressed="'+(s.name===spot)+'">'+esc(s.name)+'</button>'; }).join("")+'</div>';
+      sp='<div class="spots">'+r.spots.map(function(s){ return '<button type="button" data-spot="'+esc(s.name)+'" aria-pressed="'+(s.name===spot)+'">'+esc(s.name)+'</button>'; }).join("")+'</div>';
     }
-    /* 藥品家族（v11.18.0）：位置下面；另外問後端，有才出現 */
-    h+='<div id="same">'+(SAME[r.code]?sameHtml(SAME[r.code]):'')+'</div>';
-    /* 卡片最下面：有清單才有「← 回清單」；開發者版多一顆「✏️ 修改」（跟 LINE 卡片一樣）。首頁請點左上 logo。 */
+    h+='<div class="cbody">'+(pn?'<div class="pnl'+(hp&&!hf&&!hasNote?' solo':'')+'" style="--ga:'+ga+';--gc:'+gc+'">'+pn+'</div>':'')+'<div class="lcol">'+lr+sp+'</div></div>';
+    /* 有清單才有「← 回清單」；開發者版多一顆「✏️ 修改」（跟 LINE 卡片一樣）。首頁請點左上 logo。
+       v11.23.0（第 3 批）：按鍵放在藥品家族「上面」——家族是後來才載入的，放在按鍵上面會把按鍵擠出視窗（手機也會往下跳一下） */
     var acts=[];
     if (backTo&&(backTo.length>1||(LAST&&LAST.photo&&LAST.rows===backTo))) acts.push('<button type="button" class="quiet" id="back">← 回清單</button>');
     /*DEV*/if (DEV) acts.push('<button type="button" class="edit" id="edit">✏️ 修改</button>');/*/DEV*/
     if (acts.length) h+='<div class="actions">'+acts.join("")+'</div>';
+    /* 藥品家族（v11.18.0）：卡片最下面；另外問後端，有才出現 */
+    h+='<div id="same">'+(SAME[r.code]?sameHtml(SAME[r.code]):'')+'</div>';
     h+='</article>';
     out.innerHTML=h;
     Array.prototype.forEach.call(out.querySelectorAll("img[data-big]"),function(im){ im.onclick=function(){ $("lbimg").src=im.dataset.big; $("lb").hidden=false; }; });
@@ -362,6 +400,7 @@
     if ($("back")) $("back").onclick=function(){ if (LAST&&LAST.photo&&LAST.rows===backTo) renderPhoto(LAST.photo); else renderList(backTo); };
     if (!SAME[r.code]) call("appSame",[T, r.code],function(res){ if(!res||res.err) return; SAME[r.code]=res; var el=$("same"); if(el&&out.contains(el)&&el.closest("article")&&el.closest("article").getAttribute("data-code")===String(r.code)) el.innerHTML=sameHtml(res); });   /* v11.22.2：比卡片上記的 CODE（以前比 .code 的字，有「×數量」時永遠對不上，藥品家族第一次打開出不來） */
     /*DEV*/if ($("edit")) $("edit").onclick=function(){ renderEdit(r, backTo); };/*/DEV*/
+    fitCard();
     window.scrollTo({top:0});
   }
   /* 點清單任何一列：查過的直接開卡片，沒查過的（首頁的精簡列）用 CODE 去後端拿完整資料 */
