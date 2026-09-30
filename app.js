@@ -47,24 +47,54 @@
     if (/^[0-9a-f]{32}$/.test(k)) return k;
     try{ var a=new Uint8Array(16); crypto.getRandomValues(a); k=Array.prototype.map.call(a,function(x){ return ("0"+x.toString(16)).slice(-2); }).join(""); localStorage.setItem("bdk",k); if(localStorage.getItem("bdk")!==k) k=""; }catch(e){ k=""; }
     return k; })();
-  function post(fn, a, bg){
-    return fetch(API, {method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify({v:1, fn:fn, t:T, dk:DKX, a:a}),
-      credentials:"omit", cache:"no-store", referrerPolicy:"no-referrer", redirect:"follow", keepalive:!!bg})
-      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); });
+  /* 送一次。ms＝這一次最久等多久（逾時就當這一次斷線，由 call 自動重送）；沒給就不設時限 */
+  function post(fn, a, bg, ms){
+    var ctl=(ms&&window.AbortController)?new AbortController():null, tm=0;
+    if (ctl) tm=setTimeout(function(){ try{ ctl.abort(); }catch(e){} }, ms);
+    var o={method:"POST", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify({v:1, fn:fn, t:T, dk:DKX, a:a}),
+      credentials:"omit", cache:"no-store", referrerPolicy:"no-referrer", redirect:"follow", keepalive:!!bg};
+    if (ctl) o.signal=ctl.signal;
+    return fetch(API, o)
+      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .then(function(j){ clearTimeout(tm); return j; }, function(e){ clearTimeout(tm); throw (e&&e.name==="AbortError")?new Error("等太久沒回應"):e; });
   }
-  function call(fn, args, ok, bad){
+  /* v11.22.2（斷線自動重送）：只是「查」或「辨識」的，同樣的東西再送一次不會出事 → 斷線、等太久、Google 回怪東西時自動重送
+     （最多 3 次，中間隔 0.7、1.6 秒）。iPhone 的 Safari 常在「拍完照回來的第一個請求」出 Load failed，重送一次就過了。
+     會改資料、存照片的（appEdit、appPic、appBind）只送一次：怕重送變兩份。 */
+  var SAFE={appInfo:1, appHome:1, appSearch:1, appSame:1, appPhoto:1, appVoice:1, appEditInfo:1};
+  /* 照片（appPhoto）：伺服器最慢的情況是 AI 慢加上 OCR 慢（45 秒上下），40 秒就放棄的話，伺服器還在跑的那一份白做、又重送一份 → 照片每一次最久等 90 秒，其他 40 秒 */
+  var TRIES=3, WAITS=[700,1600], LIMIT_MS=40000, LIMIT_PHOTO=90000;
+  function snip(j){ var s=""; try{ s=JSON.stringify(j); }catch(e){} return String(s===undefined?"":s).replace(/\s+/g," ").slice(0,60); }
+  function call(fn, args, ok, bad, opt){
     if (!LIVE){ setTimeout(function(){ MOCK[fn].apply(null, args.concat([ok, bad])); }, 260); return; }
+    opt=opt||{};
     var fail=bad||function(e){ setHint("❌ "+(e&&e.message||e), true); };
-    post(fn, args.slice(1)).then(function(j){
-      if (!j || j.ok!==1){
-        var code=j&&j.code||"", msg=j&&j.err||"後端沒有回應";
-        if (code==="tok"||code==="bind"||code==="down"||code==="moved"){ stop(msg, code, j.need); return; }
-        fail(new Error(msg)); return;
-      }
-      var res=j.r;
-      if (res && res.sync) syncSoon();
-      ok(res);
-    }, function(err){ fail(new Error("連不上後端（"+(err&&err.message||err)+"），網路好了再試一次")); });
+    var tries=SAFE[fn]?TRIES:1, n=0, t0=Date.now();
+    function again(){ setTimeout(go, WAITS[n-1]||1600); }
+    function go(){
+      n++;
+      var a=(opt.args?opt.args(n):args).slice(1);
+      if (n>1&&opt.retrying) opt.retrying(n);
+      post(fn, a, false, SAFE[fn]?(fn==="appPhoto"?LIMIT_PHOTO:LIMIT_MS):0).then(function(j){
+        if (!j || j.ok!==1){
+          var code=j&&j.code||"", msg=j&&j.err||"";
+          if (!msg&&!code&&n<tries){ again(); return; }   /* 收到的不是補藥神器的格式（多半是 Google 那邊一時的狀況）→ 重送 */
+          if (!msg) msg="後端沒有回應"+(code?"":"（收到的不是補藥神器的格式："+snip(j)+(n>1?"；已自動再試 "+(n-1)+" 次":"")+"）");
+          if (code==="tok"||code==="bind"||code==="down"||code==="moved"){ stop(msg, code, j.need); return; }
+          fail(new Error(msg)); return;
+        }
+        var res=j.r;
+        if (res && res.sync) syncSoon();
+        ok(res);
+      }, function(err){
+        if (n<tries){ again(); return; }
+        var why=String(err&&err.message||err||"?"), sec=Math.max(1,Math.round((Date.now()-t0)/1000));
+        var e=new Error("連不上後端（"+why+(n>1?"；已自動再試 "+(n-1)+" 次、共 "+sec+" 秒":"")+"），網路好了再試一次");
+        e.net=true; e.tech=why+"；試了 "+n+" 次、共 "+sec+" 秒";
+        fail(e);
+      });
+    }
+    go();
   }
   /* 改了資料（sync:1）→ 1.5 秒內沒有再改，就在背景通知 LINE 那邊清快取（這裡不用等）；
      還沒送就切走、關掉網頁 → 馬上送（萬一還是沒送到，網頁專案的保溫排程 30 分鐘內會補） */
@@ -157,6 +187,8 @@
   }
   /* 同成分彙整：三段（不同劑量／不同劑型／同劑量其他廠牌），列的長相跟清單一樣，點了開那支藥 */
   var SAME={};
+  /* 藥品家族收起／打開（跟 LINE 一樣預設收起）：按過「▸ 打開」就記住，每支手機各記各的 */
+  var FAMFOLD=true; try{ FAMFOLD=localStorage.getItem("bfam")!=="0"; }catch(x){}
   var SAME_SEC=[["dose","💊 同成分不同劑量"],["form","🔁 同成分不同劑型"],["brand","🏷 同成分同劑量"]];
   function sameHtml(res){
     /* 固定三段＋複方：多出來的成分一段（➕ CLAVULANATE 的成分）、只有部分成分的照它們有的成分一段（🧩 AMOXYCILLIN 的成分） */
@@ -167,10 +199,10 @@
     var h='', total=0;
     secs.forEach(function(sec){ total+=num(sec.rows.length); });
     if (!total) return '';
-    h+='<div class="kg same"><img src="'+ICON["錠"]+'" alt="">藥品家族<b>'+total+' 個品項</b></div>';
+    h+='<button type="button" class="kg same" data-fam="1" aria-expanded="'+(!FAMFOLD)+'"><img src="'+ICON["錠"]+'" alt="">藥品家族<b>'+total+' 個品項</b><span class="fold">'+(FAMFOLD?'▸ 打開':'▾ 收起')+'</span></button>';
     secs.forEach(function(sec){
       h+='<div class="sub">'+esc(sec.title)+'<b>'+num(sec.rows.length)+' 個品項</b></div>';
-      sec.rows.forEach(function(x){ h+=rowHtml(x, x.formLabel?'<i class="fl">'+esc(x.formLabel)+'</i>':''); });
+      if (!FAMFOLD) sec.rows.forEach(function(x){ h+=rowHtml(x, x.formLabel?'<i class="fl">'+esc(x.formLabel)+'</i>':''); });
     });
     return '<div class="list samebox">'+h+'</div>';
   }
@@ -334,6 +366,7 @@
   out.addEventListener("click", function(e){
     var b=e.target.closest ? e.target.closest("button") : null; if(!b) return;
     if (b.dataset.code){ openCode(b.dataset.code, b.hasAttribute("data-ph")); return; }
+    if (b.hasAttribute("data-fam")){ FAMFOLD=!FAMFOLD; try{localStorage.setItem("bfam",FAMFOLD?"1":"0");}catch(x){} var fe=$("same"), fa=fe&&fe.closest("article"), fc=fa&&fa.getAttribute("data-code"); if (fe&&SAME[fc]) fe.innerHTML=sameHtml(SAME[fc]); return; }
     if (b.dataset.go==="home"){ renderHome(); return; }
     if (b.dataset.ncat!==undefined){ NCAT=+b.dataset.ncat; Array.prototype.forEach.call(out.querySelectorAll("[data-ncat]"),function(t){ t.setAttribute("aria-selected", +t.dataset.ncat===NCAT); }); if(HOME) fillNotice(HOME.notices||[]); return; }
     if (b.dataset.tab){ TAB=b.dataset.tab; try{localStorage.setItem("bt",TAB);}catch(x){} Array.prototype.forEach.call(out.querySelectorAll("[data-tab]"),function(t){ t.setAttribute("aria-selected", t.dataset.tab===TAB); }); if(HOME) fillAll(HOME.drugs||[]); return; }
@@ -622,7 +655,7 @@
       if (rows.length){ setHint(heard+(res.kw!==res.said?" → 查「"+res.kw+"」":"")+(res.loose?"（沒有完全一樣的，用最接近的）":"")+"：找到 "+rows.length+" 個品項"); if(rows.length===1) renderCard(rows[0],null); else renderList(rows); return; }
       if (asks.length){ setHint(heard+" → 查「"+res.kw+"」沒有完全一樣的，可能是下面這幾個品項", true); renderPhoto({rows:[],asks:asks,read:[]}); return; }
       setHint(heard+" → 查無「"+res.kw+"」😥　聽錯字的話改講 CODE 最準", true);
-    });
+    }, null, { retrying:function(n){ setHint("🎤 網路剛斷了一下，自動再送一次（第 "+n+" 次）…", false, true); } });
   }
   if (NOMIC || (!canRec && !SR)) { micOff(); }
   else if (canRec) { $("mic").title="按一下講藥名，講完點畫面任何地方就送出（最長 6 秒）"; $("mic").onclick=function(){ if(recOn) stopRec(); else startRec(); }; }
@@ -661,21 +694,35 @@
     if (editOpen()&&EDIT_ZONE){ EDIT_ZONE[EDIT_ZONE.active](f); return; }   /* 表單開著卻沒拖進格子 → 給最後點過的那格 */
     sendPhoto(f);
   });
-  function shrink(file, cb){
-    var MAXPX=2600, MAXKB=3000, fr=new FileReader();   /* 縮到最長邊 2600px、3MB 內再送（一次送太大後端會拒收） */
-    fr.onload=function(){ var raw=String(fr.result), im=new Image();
-      im.onload=function(){ var w=im.width,h=im.height,lg=Math.max(w,h),kb=Math.round(raw.length*3/4/1024);
-        if(lg<=MAXPX&&kb<=MAXKB){ cb(raw.substring(raw.indexOf(",")+1), file.type||"image/jpeg", kb); return; }
-        var sc=MAXPX/lg,cv=document.createElement("canvas"); cv.width=Math.round(w*sc); cv.height=Math.round(h*sc);
+  /* 縮圖。opt＝{px:最長邊, q:JPEG 品質, kb:目標大小(KB), fail:讀不到檔時呼叫}；沒給＝存藥品照片用的老樣子（2600px、品質 .92、3MB 內）。
+     v11.22.2：檔案超過目標大小 → 品質一格一格降（最多降 4 次）直到進目標；不會再把小圖放大。
+     cb(b64, mime, kb, alt)：alt(px, q, kb) 可以再縮出一個更小的版本（照片已經讀進來了，不用重讀）；照片解不開時 alt 是 null。 */
+  function shrink(file, cb, opt){
+    opt=opt||{};
+    var fr=new FileReader();
+    fr.onload=function(){ var raw=String(fr.result), im=new Image(), mime=file.type||"image/jpeg";
+      var enc=function(px, q, kbMax){
+        var w=im.width,h=im.height,lg=Math.max(w,h),kb=Math.round(raw.length*3/4/1024);
+        if(lg<=px&&kb<=kbMax) return {b64:raw.substring(raw.indexOf(",")+1), mime:mime, kb:kb};
+        var sc=Math.min(1,px/lg),cv=document.createElement("canvas"); cv.width=Math.round(w*sc); cv.height=Math.round(h*sc);
         cv.getContext("2d").drawImage(im,0,0,cv.width,cv.height);
-        var u=cv.toDataURL("image/jpeg",.92); cb(u.substring(u.indexOf(",")+1),"image/jpeg",Math.round(u.length*3/4/1024)); };
-      im.onerror=function(){ cb(raw.substring(raw.indexOf(",")+1), file.type||"image/jpeg", Math.round(file.size/1024)); };
+        var u="", k=0;
+        for (var i=0;i<5;i++){ u=cv.toDataURL("image/jpeg",q); k=Math.round(u.length*3/4/1024); if (k<=kbMax||q<=.55) break; q=Math.max(.55,q-.1); }
+        return {b64:u.substring(u.indexOf(",")+1), mime:"image/jpeg", kb:k};
+      };
+      im.onload=function(){ var r=enc(opt.px||2600, opt.q||.92, opt.kb||3000); cb(r.b64, r.mime, r.kb, enc); };
+      im.onerror=function(){ cb(raw.substring(raw.indexOf(",")+1), mime, Math.round(file.size/1024), null); };
       im.src=raw; };
+    fr.onerror=function(){ if (opt.fail) opt.fail(); };
     fr.readAsDataURL(file);
   }
+  /* v11.22.2：辨識用的照片縮到最長邊 2000px、900KB 內（以前 2600px、3MB：手機上傳一大包，網路一晃就斷）；
+     斷線會自動重送，第 3 次改送最小的版本（1280px、250KB）。 */
+  var PH_MAIN={px:2000, q:.85, kb:900}, PH_SMALL={px:1280, q:.75, kb:250};
   function sendPhoto(file){
     setHint("📷 讀照片…", false, true);
-    shrink(file,function(b64,mime,kb){
+    shrink(file,function(b64,mime,kb,alt){
+      var cur={b64:b64, mime:mime, kb:kb, small:false}, sent=[];
       setHint("📷 辨識中（"+kb+" KB）…通常 3～8 秒", false, true);
       call("appPhoto",[T,b64,mime],function(res){
         if (!res || res.err){ setHint("❌ "+(res&&res.err||"辨識失敗"), true); return; }
@@ -684,8 +731,17 @@
         if (res.hand) warn.push("手寫");
         setHint("📷 讀到 "+(res.read||[]).length+" 行、查到 "+n+" 個品項"+(warn.length?"（"+warn.join("、")+"）":"")+(res.ms?"　"+(res.ms/1000).toFixed(1)+" 秒":""), false);
         renderPhoto(res);
+      }, function(e){
+        setHint(e&&e.net?"❌ 照片送不出去（"+e.tech+"；照片 "+sent.join("→")+" KB）。網路不穩的話，換個訊號好的地方再按 📷；急的話直接把照片傳到 LINE 給補藥神器":"❌ "+(e&&e.message||e), true);
+      }, {
+        args:function(n){
+          if (n>=3&&alt&&!cur.small){ var s=alt(PH_SMALL.px, PH_SMALL.q, PH_SMALL.kb); if (s&&s.kb<cur.kb) cur={b64:s.b64, mime:s.mime, kb:s.kb, small:true}; }
+          sent.push(cur.kb);
+          return [T,cur.b64,cur.mime];
+        },
+        retrying:function(n){ setHint("📷 "+(cur.small?"還是沒通，改送縮小的照片":"網路剛斷了一下，自動再送一次")+"（第 "+n+" 次，"+cur.kb+" KB）…", false, true); }
       });
-    });
+    }, {px:PH_MAIN.px, q:PH_MAIN.q, kb:PH_MAIN.kb, fail:function(){ setHint("❌ 讀不到這張照片，請再選一次", true); }});
   }
 
   /* ══════════ 燈箱 ══════════ */

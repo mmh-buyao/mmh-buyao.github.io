@@ -151,9 +151,12 @@
   .list .kg.same{color:#5B3FA0; background:#F3EFFB; font-size:15px; padding:9px 14px 7px}
   .list .sub{font-size:12.5px; font-weight:700; color:#7A5FC0; background:#F8F5FD; padding:6px 14px 4px; border-bottom:1px solid var(--line)}
   .list .sub b{margin-left:6px; font-weight:500}
+  .list button.kg{width:100%; margin:0; border:0; border-bottom:1px solid var(--line); text-align:left; font-family:inherit; cursor:pointer}
+  .list .kg .fold{margin-left:auto; font-size:13px; font-weight:700; color:#7A5FC0; white-space:nowrap}
+  :root[data-theme="dark"] .list .kg .fold{color:#B8A6E6}
   :root[data-theme="dark"] .list .kg.same{color:#C9B8F2; background:#2A2340}
   :root[data-theme="dark"] .list .sub{color:#B8A6E6; background:#231D33}
-  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .list .kg.same{color:#C9B8F2; background:#2A2340} :root:not([data-theme="light"]) .list .sub{color:#B8A6E6; background:#231D33} }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .list .kg .fold{color:#B8A6E6} :root:not([data-theme="light"]) .list .kg.same{color:#C9B8F2; background:#2A2340} :root:not([data-theme="light"]) .list .sub{color:#B8A6E6; background:#231D33} }
   .row .n i.fl{color:var(--muted); font-size:12px}
   .tabs.wrap{flex-wrap:wrap}
   .tabs.wrap button{flex:1 1 30%; min-width:30%; padding:7px 6px; font-size:13.5px; gap:5px; white-space:nowrap}
