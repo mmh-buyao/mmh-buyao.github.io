@@ -345,6 +345,8 @@
     out.innerHTML=h+homeBtn();
     window.scrollTo({top:0});
   }
+  /* v11.23.0（第 4 批）：位置框裡的紅色圖釘（一小段內嵌的向量圖，不用另外載圖，也不違反網頁的安全設定 CSP；給讀螢幕軟體念「位置」） */
+  var PIN2='<svg class="pinsvg" viewBox="0 0 24 30" role="img" aria-label="位置" focusable="false"><path d="M12 0C5.4 0 0 5.3 0 11.8 0 20.4 12 30 12 30s12-9.6 12-18.2C24 5.3 18.6 0 12 0z" fill="#E5403A"/><circle cx="12" cy="11.8" r="6.8" fill="#fff"/><g transform="rotate(-45 12 11.8)"><rect x="6.6" y="8.6" width="10.8" height="6.4" rx="3.2" fill="#fff" stroke="#E5403A" stroke-width="1.3"/><path d="M6.6 11.8a3.2 3.2 0 0 1 3.2-3.2H12v6.4H9.8a3.2 3.2 0 0 1-3.2-3.2z" fill="#E5403A"/></g></svg>';
   function renderCard(r, backTo){
     FULL[r.code]=r; CARD={r:r, back:backTo};
     var spot = SPOT[r.code] || (r.spots&&r.spots.length ? r.spots[0].name : "");
@@ -353,8 +355,8 @@
     var h='<article class="card" id="card" data-code="'+esc(r.code)+'">';
     h+='<div class="head"><div class="t"><div class="code mono">'+esc(r.code)+(r.qty?' <span class="qty">×'+esc(r.qty)+'</span>':'')+'</div><div class="brand">'+esc(r.brand)+'</div>'
       +(r.chName?'<div class="zh">'+esc(r.chName)+'</div>':'')+(r.generic?'<div class="gen">'+esc(r.generic)+'</div>':'')+'</div>'
-      +'<div class="side">'+(r.ref?'<a class="icon" href="'+esc(r.ref)+'" target="_blank" rel="noopener noreferrer" title="點圖院內藥物查詢">':'<div class="icon" title="'+esc(r.form||"")+'">')
-      +'<img src="'+ICON[kindOf(r)]+'" alt="'+esc(kindOf(r))+'">'+(r.ref?'</a><small class="ref">點圖院內藥物查詢</small>':'</div>')
+      +'<div class="side">'+(r.ref?'<a class="icon" href="'+esc(r.ref)+'" target="_blank" rel="noopener noreferrer" title="點圖院內藥物查詢" aria-label="點圖院內藥物查詢">':'<div class="icon" title="'+esc(r.form||"")+'">')
+      +'<img src="'+ICON[kindOf(r)]+'" alt="'+esc(kindOf(r))+'">'+(r.ref?'</a>':'</div>')
       +'</div>';
     if (r.notice){
       h+='<div class="box notice"><span class="k" role="img" aria-label="公告">⚠️</span><span class="v">'+esc(r.notice)+'</span>';
@@ -363,8 +365,8 @@
       if (zt||np) h+='<div class="nrow">'+(zt||(np?'<span class="sp"></span>':''))+np+'</div>';
       h+='</div>';
     }
-    h+='</div>';   /* /.head（公告放在標題區裡：手機在標題下面整條；電腦在文字欄下面的空位） */
-    /* v11.23.0（第 3 批）：灰底外框（.pnl）包住 藥品特徵＋適應症（＋注意、曾用藥品、縮寫）＋照片；右邊一欄是 📍位置＋平面圖（＋多個位置的按鍵） */
+    h+='</div>';   /* /.head（公告放在標題區裡：標題下面整條淡黃橫幅） */
+    /* v11.23.0（第 4 批）：灰底外框（.pnl）包住 藥品特徵＋適應症（＋注意、曾用藥品、縮寫）＋照片；位置（📍粉紅框＋平面圖＋多個位置的按鍵）自己一整行，在灰底外框下面 */
     var left='', hasNote=!!(r.pair||r.note||r.old||r.abbr);
     if (r.pair) left+='<div class="box pair"><span class="k">⚠️ 注意</span><span class="v">'+esc(r.pair)+'</span></div>';
     if (r.note) left+='<div class="kv"><span class="k">適應症</span><span class="v">'+esc(r.note)+'</span></div>';
@@ -372,19 +374,19 @@
     if (r.abbr) left+='<div class="kv"><span class="k">縮寫</span><span class="v">'+esc(r.abbr)+'</span></div>';
     var pn='', hf=!!r.feat, hp=!!r.photo;
     if (hf) pn+='<div class="box feat"><span class="k">🔍 藥品特徵</span><span class="v">'+esc(r.feat)+'</span></div>';
-    if (hasNote||hp) pn+='<div class="grid2"><div class="pinfo">'+left+'</div>'
+    if (hasNote||hp) pn+='<div class="grid2'+(hp?'':' nophoto')+'"><div class="pinfo">'+left+'</div>'
       +(hp?'<img class="photo" src="'+esc(r.photo)+'" alt="藥品照片" data-big="'+esc(r.photo)+'">':'')+'</div>';
-    /* 電腦版灰底框裡的格子：有什麼放什麼（f＝特徵、i＝適應症那一疊、p＝照片） */
-    var ga = hp ? (hf&&hasNote ? "'f p' 'i p'" : hf ? "'f p'" : hasNote ? "'i p'" : "'p'") : (hf&&hasNote ? "'f' 'i'" : hf ? "'f'" : "'i'");
-    var gc = hp&&!hf&&!hasNote ? 'auto' : hp ? 'minmax(0,1fr) auto' : 'minmax(0,1fr)';
-    /* 位置＋平面圖 */
-    var lr='<div class="locrow"><div class="loc'+((r.location||"").length>4?" long":"")+'"><span class="pin">📍</span><span class="t">'+esc(r.location||"—")+'</span></div>'
-      +(mapUrl?'<img class="map" src="'+esc(mapUrl)+'" alt="平面圖" data-big="'+esc(r.mapBig||mapUrl)+'">':'')+'</div>';
+    /* 電腦版灰底框裡的格子：有什麼放什麼（f＝特徵、i＝注意＋適應症那一疊、p＝照片）；特徵和注意／適應症都有就排成 3 欄（手機是直排，不用這兩串） */
+    var ga = hp ? (hf&&hasNote ? "'f i p'" : hf ? "'f p'" : hasNote ? "'i p'" : "'p'") : (hf&&hasNote ? "'f i'" : hf ? "'f'" : "'i'");
+    var gc = hp&&!hf&&!hasNote ? 'auto' : hp ? (hf&&hasNote ? 'minmax(0,1.1fr) minmax(0,1fr) auto' : 'minmax(0,1fr) auto') : (hf&&hasNote ? 'minmax(0,1.1fr) minmax(0,1fr)' : 'minmax(0,1fr)');
+    /* 位置（自己一整行）：粉紅框跟字一樣寬、文字一行不換行；多個位置的按鍵放在粉紅框正下面；平面圖在右邊（手機放不下就換到下面） */
     var sp='';
     if (r.spots&&r.spots.length>1){
       sp='<div class="spots">'+r.spots.map(function(s){ return '<button type="button" data-spot="'+esc(s.name)+'" aria-pressed="'+(s.name===spot)+'">'+esc(s.name)+'</button>'; }).join("")+'</div>';
     }
-    h+='<div class="cbody">'+(pn?'<div class="pnl'+(hp&&!hf&&!hasNote?' solo':'')+'" style="--ga:'+ga+';--gc:'+gc+'">'+pn+'</div>':'')+'<div class="lcol">'+lr+sp+'</div></div>';
+    var lr='<div class="locrow"><div class="lleft"><div class="loc"><span class="pin">'+PIN2+'</span><span class="t">'+esc(r.location||"—")+'</span></div>'+sp+'</div>'
+      +(mapUrl?'<img class="map" src="'+esc(mapUrl)+'" alt="平面圖" data-big="'+esc(r.mapBig||mapUrl)+'">':'')+'</div>';
+    h+='<div class="cbody">'+(pn?'<div class="pnl'+(hp&&!hf&&!hasNote?' solo':'')+'" style="--ga:'+ga+';--gc:'+gc+'">'+pn+'</div>':'')+lr+'</div>';
     /* 有清單才有「← 回清單」；開發者版多一顆「✏️ 修改」（跟 LINE 卡片一樣）。首頁請點左上 logo。
        v11.23.0（第 3 批）：按鍵放在藥品家族「上面」——家族是後來才載入的，放在按鍵上面會把按鍵擠出視窗（手機也會往下跳一下） */
     var acts=[];

@@ -23,7 +23,11 @@
     --leaf:#1B7F5C; --leaf-soft:#E3F1EA;
     --warn:#B26A00; --warn-soft:#FFF4DE;
     --danger:#B0392B; --danger-soft:#FDE9E6;
-    --pin:#E8514B; --pnl:#F1F4F8;
+    --pin:#E8514B;
+    /* v11.23.0（第 4 批）藥品卡片的新顏色：照 LINE 卡片的色碼（淺色的灰字比 LINE 原色稍微加深，字才看得清楚）；深色模式是另外配的 */
+    --c2-ink:#3C4043; --c2-mute:#757575; --c2-lab:#707070; --c2-val:#5F5F5F;
+    --c2-feat:#E8F3FA; --c2-feat-ink:#0B5F8A; --c2-pair:#FFE9E9; --c2-pair-ink:#C62828;
+    --c2-loc:#FFF0F0; --c2-loc-ink:#CF4540; --c2-pnl:#F7F7F7; --c2-note:#FFF6E0; --c2-note-ink:#9E5D00;
     --shadow:0 1px 2px rgba(20,32,43,.06), 0 8px 22px rgba(20,32,43,.06);
   }
   @media (prefers-color-scheme: dark){
@@ -34,7 +38,10 @@
       --leaf:#5FC49E; --leaf-soft:#16392C;
       --warn:#EBB05C; --warn-soft:#37290F;
       --danger:#E8897C; --danger-soft:#3A1F1B;
-      --pin:#F0726C; --shadow:none; --pnl:#1B2733;
+      --pin:#F0726C; --shadow:none;
+      --c2-ink:#E3EAF0; --c2-mute:#9FAFBB; --c2-lab:#93A3B0; --c2-val:#BCC8D2;
+      --c2-feat:#12344D; --c2-feat-ink:#8CCBF0; --c2-pair:#3A1F1B; --c2-pair-ink:#F0958B;
+      --c2-loc:#3A1F1B; --c2-loc-ink:#F0726C; --c2-pnl:#1B2733; --c2-note:#37290F; --c2-note-ink:#EBB05C;
     }
   }
   :root[data-theme="dark"]{
@@ -44,7 +51,10 @@
     --leaf:#5FC49E; --leaf-soft:#16392C;
     --warn:#EBB05C; --warn-soft:#37290F;
     --danger:#E8897C; --danger-soft:#3A1F1B;
-    --pin:#F0726C; --shadow:none; --pnl:#1B2733;
+    --pin:#F0726C; --shadow:none;
+    --c2-ink:#E3EAF0; --c2-mute:#9FAFBB; --c2-lab:#93A3B0; --c2-val:#BCC8D2;
+    --c2-feat:#12344D; --c2-feat-ink:#8CCBF0; --c2-pair:#3A1F1B; --c2-pair-ink:#F0958B;
+    --c2-loc:#3A1F1B; --c2-loc-ink:#F0726C; --c2-pnl:#1B2733; --c2-note:#37290F; --c2-note-ink:#EBB05C;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
   [hidden]{display:none!important}
@@ -212,7 +222,6 @@
   .card .icon{width:88px; height:88px; border-radius:18px; background:var(--sunk);
     display:flex; align-items:center; justify-content:center; text-decoration:none}
   .card .icon img{width:80px; height:80px}
-  .card .ref{font-size:10.5px; color:var(--muted); line-height:1.2}
   /* 手機：字縮小、圖縮小，位置（在最後）才進得了第一個畫面 */
   @media (max-width:480px){
     .card{padding:14px 14px 12px; gap:10px}
@@ -226,10 +235,6 @@
     .box{padding:8px 11px}
     .box .v{font-size:14px}
     .kv .v{font-size:14px}
-    .loc{padding:9px 13px; min-width:92px}
-    .loc .t{font-size:21px}
-    .loc.long .t{font-size:16px}
-    .loc .pin{font-size:19px}
     .photo{max-width:100%; aspect-ratio:16/9}
   }
   /*DEV*/
@@ -269,34 +274,59 @@
   @media (max-width:420px){ .grid2{grid-template-columns:1fr} .photo{max-width:100%; justify-self:stretch; aspect-ratio:16/10} }
   .photo{width:100%; max-width:220px; aspect-ratio:4/3; object-fit:cover; border-radius:10px; border:1px solid var(--line);
     background:var(--sunk); cursor:zoom-in; justify-self:end}
-  .locrow{display:flex; gap:12px; align-items:stretch}
-  .loc{flex:0 0 auto; display:flex; align-items:center; gap:8px; background:var(--danger-soft); border-radius:12px;
-    padding:12px 16px; min-width:110px}
-  .loc .pin{font-size:22px; line-height:1; color:var(--pin)}
-  .loc .t{font-size:24px; font-weight:800; color:var(--pin); line-height:1.1; overflow-wrap:anywhere}
-  .loc.long .t{font-size:18px}
-  .map{flex:1; min-width:0; border:1px solid var(--line); border-radius:12px; background:var(--surface);
+  /* v11.23.0（第 4 批）位置那一行（自己一整行，在灰底外框下面）：粉紅位置框跟字一樣寬、文字一行不換行也不縮小；
+     多個位置的按鍵緊貼在粉紅框下面（.lleft 把兩個包成一組）；平面圖旁邊放得下 200 寬就放旁邊，放不下整張換到粉紅框下面（全寬） */
+  .locrow{display:flex; flex-wrap:wrap; align-items:flex-start; gap:10px}
+  .lleft{display:flex; flex-direction:column; align-items:flex-start; gap:8px; flex:0 0 auto; min-width:0; max-width:100%}
+  .loc{flex:0 0 auto; display:flex; align-items:center; gap:8px; width:max-content; max-width:100%; min-width:0;
+    background:var(--c2-loc); border-radius:12px; padding:10px 14px}
+  .loc .pin{display:inline-flex; line-height:0; font-size:0}
+  .pinsvg{display:block; width:19px; height:24px}
+  .loc .t{font-size:24px; font-weight:800; color:var(--c2-loc-ink); line-height:1.1; min-width:0; overflow-wrap:break-word}   /* min-width:0＝整行真的放不下時（超長英文字）才在字中間斷行，不撐破卡片 */
+  .map{flex:1 1 200px; min-width:200px; border:0; border-radius:10px; background:var(--surface);
     aspect-ratio:3/2; object-fit:contain; cursor:zoom-in}
-  /* ★ 這一段一定要放在上面 .box、.photo、.loc、.map 的後面：同樣的選擇器、後面的才贏 */
-  /* v11.23.0（第 3 批）（卡片頁排法，跟 LINE 卡片一樣）：
-     ① 灰底外框 .pnl 包住「藥品特徵＋適應症＋照片」（LINE 卡片就是這樣，網頁以前沒有這個框）；
-     ② 公告變成一行黃條（⚠️＋粗體字）；
-     ③ 電腦（760 以上）：標題區（CODE 41／藥名 25.5／中文 22／學名 15／圖示 200）數字完全不動；標題下面分左右兩欄
-        （左：灰底外框；右：📍位置＋平面圖），卡片最寬 1000、置中，照片、平面圖、說明字縮小，整張卡片在一般視窗裡一屏看完；
-     ④ 視窗不夠高時 fitCard() 把整張卡片再縮一點（最多縮到 65%），縮到底才會出現捲軸 */
-  .pnl{background:var(--pnl); border-radius:14px; padding:10px 11px; display:flex; flex-direction:column; gap:9px; min-width:0}
+  /* ★ 這一段一定要放在上面 .box、.photo、.map 的後面：同樣的選擇器、後面的才贏 */
+  /* v11.23.0（第 4 批）（卡片頁排法，照 LINE 卡片的長相；第 3 批的「左右兩欄」改成單欄、位置自己一整行）：
+     ① 標題區：CODE（灰黑、一般字體）、藥名、綠色中文名、灰色學名；右上角小圖示（沒有底色框、沒有說明字）；公告在標題下面一整條淡黃橫幅；
+     ② 灰底外框 .pnl 包住「淡藍特徵框＋注意＋適應症＋照片」：電腦 3 欄（特徵｜注意＋適應症｜照片），手機直排；
+     ③ 位置（粉紅框＋平面圖）自己一整行，在灰底外框下面（上面的 .locrow）；
+     ④ 電腦（760 以上）：卡片最寬 1000、置中、單欄，整張卡片在一般視窗裡一屏看完；
+     ⑤ 視窗不夠高時 fitCard() 把整張卡片再縮一點（最多縮到 65%），縮到底才會出現捲軸。
+     標題區、公告、框、照片的規則都用 #card 限定：✏️ 修改畫面（用 .card 但沒有 id）、清單、首頁不受影響。
+     --phw（電腦的照片寬，預設 240）、--maph（電腦的平面圖高，預設 185）是調整用的，想讓卡片少縮一點可以改小。 */
+  #card{border-radius:18px}
+  #card .head{display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto auto; grid-template-areas:"t s" "n n"; gap:0 10px; align-items:start}
+  #card .head > .t{grid-area:t} #card .head > .side{grid-area:s; flex:none; align-self:start}
+  #card .head > .box.notice{grid-area:n; align-self:auto; margin-top:10px}
+  #card .code{color:var(--c2-ink); font-family:inherit; font-weight:600; letter-spacing:0}
+  #card .brand{color:var(--c2-ink)}
+  #card .zh{color:var(--leaf)}
+  #card .gen{color:var(--c2-mute)}
+  #card .icon{width:64px; height:64px; border-radius:0; background:none}
+  #card .icon img{width:64px; height:64px}
+  #card .box.notice{background:var(--c2-note); border-radius:12px; padding:9px 13px}
+  #card .box.notice .k{font-size:17px} #card .box.notice .v{font-size:15px}
+  #card .box.notice .k,#card .box.notice .v,#card .zones th,#card .zones td,#card .zones caption{color:var(--c2-note-ink)}
+  #card .zones th,#card .zones caption{opacity:1}          /* 原本是 .85／.8 的淡化，淺色底上對比不到 4.5；改成不淡化，靠字級、粗細分主次 */
+  #card .box{border-radius:10px}
+  #card .box.feat{background:var(--c2-feat)} #card .box.feat .k,#card .box.feat .v{color:var(--c2-feat-ink)}
+  #card .box.pair{background:var(--c2-pair)} #card .box.pair .k,#card .box.pair .v{color:var(--c2-pair-ink)}
+  #card .kv .k{color:var(--c2-lab)} #card .kv .v{color:var(--c2-val); font-weight:400; overflow-wrap:anywhere}
+  #card .grid2{grid-template-columns:minmax(0,1fr) auto; gap:10px}
+  #card .grid2.nophoto{grid-template-columns:minmax(0,1fr)}   /* 沒有照片：不留右邊空的那一欄（不然文字少 10px 寬，跟上面的特徵框右邊對不齊） */
+  #card .photo{width:40vw; max-width:160px; aspect-ratio:4/3; object-fit:contain; background:transparent; border:0; border-radius:8px; justify-self:end}
+  .pnl{background:var(--c2-pnl); border-radius:14px; padding:10px 10px 11px; display:flex; flex-direction:column; gap:10px; min-width:0}
   .pnl .box.feat{padding:8px 11px}
   .pinfo{display:flex; flex-direction:column; gap:9px; min-width:0}
-  .cbody,.lcol{display:contents}          /* 手機：不多包一層，排法跟以前一樣 */
+  .cbody{display:contents}                /* 手機：不多包一層，排法跟以前一樣 */
   #same:empty{display:none}               /* 藥品家族還沒來、或這支沒有家族：空的框不要佔卡片的間距 */
   @media (min-width:760px){
     .card{padding:40px 40px 38px}          /* 修改模式的卡片：不動 */
     .card .code{font-size:41px} .card .brand{font-size:25.5px} .card .zh{font-size:22px} .card .gen{font-size:15px}
-    .card .side{flex-basis:200px} .card .icon{width:200px; height:200px} .card .icon img{width:192px; height:192px}
     .zones{font-size:16px} .zones caption{font-size:13.5px}
-    #card{width:100%; max-width:1000px; margin-inline:auto; padding:22px 28px 14px; gap:10px; zoom:var(--cz,1)}
-    #card .head{display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto minmax(0,1fr); grid-template-areas:"t s" "n s"; gap:0 12px; align-items:start}
-    #card .head > .t{grid-area:t} #card .head > .side{grid-area:s} #card .head > .box.notice{grid-area:n; align-self:end; margin-top:10px}
+    #card{width:100%; max-width:1000px; margin-inline:auto; padding:20px 28px 14px; gap:10px; zoom:var(--cz,1)}
+    #card .head{gap:0 12px}
+    #card .icon{width:128px; height:128px} #card .icon img{width:128px; height:128px}
     main:has(#card){padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
     /* 藥品家族：收合時只留一條（分段小標題展開才出來），大螢幕連這一條也放得下 */
     #card .samebox{margin-top:0}
@@ -304,24 +334,22 @@
     #card .samebox .kg.same[aria-expanded="false"] ~ .sub{display:none}
     #card .box{padding:8px 13px}
     #card .box .k,#card .kv .k{font-size:13.5px} #card .box .v,#card .kv .v{font-size:16.5px}
-    #card .box.notice{padding:8px 14px} #card .box.notice .k{font-size:17.5px} #card .box.notice .v{font-size:17.5px}
+    #card .box.notice{padding:9px 16px} #card .box.notice .k{font-size:19px} #card .box.notice .v{font-size:19px}
     #card .box.notice .npic{width:min(150px,30%); margin-left:auto}
-    .cbody{display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:14px; align-items:start}
-    .cbody:not(:has(.pnl)){grid-template-columns:minmax(0,1fr)}
-    .cbody:not(:has(.pnl)) .lcol{max-width:480px}      /* 沒有特徵、照片的藥：位置＋平面圖靠左，不要把平面圖拉到整張卡片那麼大 */
-    .lcol{display:flex; flex-direction:column; gap:10px; min-width:0}
-    .pnl{padding:12px 14px}
-    /* 灰底框裡：左＝藥品特徵＋適應症（上下疊），右＝照片（跟左邊兩塊一樣高）；沒有的東西那格就不出現 */
-    .pnl{display:grid; grid-template-columns:var(--gc,minmax(0,1fr) auto); grid-template-areas:var(--ga,"f p" "i p"); gap:9px 14px; align-items:start}
+    #card .photo{width:var(--phw,240px); max-width:none}
+    .cbody{display:grid; grid-template-columns:minmax(0,1fr); gap:10px; align-items:start}
+    /* 灰底框裡 3 欄：特徵｜注意＋適應症（上下疊）｜照片；沒有的東西那格就不出現 */
+    .pnl{padding:12px 14px; display:grid; grid-template-columns:var(--gc,minmax(0,1fr) auto); grid-template-areas:var(--ga,"f p" "i p"); gap:9px 14px; align-items:start}
     .pnl .grid2{display:contents}
-    .pnl .feat{grid-area:f} .pnl .pinfo{grid-area:i} .pnl .photo{grid-area:p; justify-self:end; width:var(--phw,240px); max-width:none}
+    .pnl .feat{grid-area:f} .pnl .pinfo{grid-area:i} .pnl .photo{grid-area:p}
     .pnl .pinfo:empty{display:none}
-    .pnl .kv .v{overflow-wrap:anywhere}
     .pnl.solo{justify-content:center}
-    .locrow{display:grid; grid-template-columns:auto minmax(0,1fr); gap:12px; align-items:start}
-    .loc{padding:12px 18px; min-width:0; max-width:190px; gap:8px}
-    .loc .pin{font-size:32px} .loc .t{font-size:40px} .loc.long .t{font-size:28px}
-    .map{flex:none; width:100%; max-width:none; margin-left:0}
+    /* 位置那一行：粉紅框（和它下面的多位置按鍵）在左、平面圖在右，靠左排；旁邊放不下整張平面圖（位置名稱特別長、視窗又窄）就換到粉紅框下面，跟手機同一套，不縮小、不超出卡片 */
+    .locrow{gap:10px 14px}
+    .loc{padding:12px 18px}
+    .loc .t{font-size:40px}
+    .pinsvg{width:29px; height:36px}
+    .map{flex:0 0 auto; width:auto; min-width:0; max-width:100%; height:var(--maph,185px); margin-left:0}
     #card .actions{margin-top:0} #card .actions button{flex:0 0 auto; padding:8px 22px}
   }
   .spots{display:flex; gap:7px; flex-wrap:wrap}
