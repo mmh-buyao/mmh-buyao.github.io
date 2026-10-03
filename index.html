@@ -275,7 +275,8 @@
   .photo{width:100%; max-width:220px; aspect-ratio:4/3; object-fit:cover; border-radius:10px; border:1px solid var(--line);
     background:var(--sunk); cursor:zoom-in; justify-self:end}
   /* v11.23.0（第 4 批）位置那一行（自己一整行，在灰底外框下面）：粉紅位置框跟字一樣寬、文字一行不換行也不縮小；
-     多個位置的按鍵緊貼在粉紅框下面（.lleft 把兩個包成一組）；平面圖旁邊放得下 200 寬就放旁邊，放不下整張換到粉紅框下面（全寬） */
+     多個位置的按鍵緊貼在粉紅框下面（.lleft 把兩個包成一組）；平面圖旁邊放得下 200 寬就放旁邊，放不下整張換到粉紅框下面（全寬）
+     （第 5 批：電腦版平面圖靠最右邊（margin-left:auto），粉紅框的大小跟著字數走，字、框、照片、平面圖、圖示的大小照使用者在畫布上調的） */
   .locrow{display:flex; flex-wrap:wrap; align-items:flex-start; gap:10px}
   .lleft{display:flex; flex-direction:column; align-items:flex-start; gap:8px; flex:0 0 auto; min-width:0; max-width:100%}
   .loc{flex:0 0 auto; display:flex; align-items:center; gap:8px; width:max-content; max-width:100%; min-width:0;
@@ -293,7 +294,9 @@
      ④ 電腦（760 以上）：卡片最寬 1000、置中、單欄，整張卡片在一般視窗裡一屏看完；
      ⑤ 視窗不夠高時 fitCard() 把整張卡片再縮一點（最多縮到 65%），縮到底才會出現捲軸。
      標題區、公告、框、照片的規則都用 #card 限定：✏️ 修改畫面（用 .card 但沒有 id）、清單、首頁不受影響。
-     --phw（電腦的照片寬，預設 240）、--maph（電腦的平面圖高，預設 185）是調整用的，想讓卡片少縮一點可以改小。 */
+     電腦版的大小有 5 個調整用的開關（只有 CSS、沒有程式在用；想讓卡片少縮一點可以改小，想更大也可以改大；有測試保證改了有效）：
+     --icons（右上角圖示，預設 134）、--phw（照片寬，預設 284）、--maph（平面圖高，預設 278，寬＝高×1.5）、
+     --locfs（位置名稱的字，預設 54；圖釘跟著字一起放大）、--lochh（粉紅位置框最矮多少，預設 117；字多、框會變寬，高度不變）。 */
   #card{border-radius:18px}
   #card .head{display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto auto; grid-template-areas:"t s" "n n"; gap:0 10px; align-items:start}
   #card .head > .t{grid-area:t} #card .head > .side{grid-area:s; flex:none; align-self:start}
@@ -326,7 +329,7 @@
     .zones{font-size:16px} .zones caption{font-size:13.5px}
     #card{width:100%; max-width:1000px; margin-inline:auto; padding:20px 28px 14px; gap:10px; zoom:var(--cz,1)}
     #card .head{gap:0 12px}
-    #card .icon{width:128px; height:128px} #card .icon img{width:128px; height:128px}
+    #card .icon{width:var(--icons,134px); height:var(--icons,134px)} #card .icon img{width:var(--icons,134px); height:var(--icons,134px)}
     main:has(#card){padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
     /* 藥品家族：收合時只留一條（分段小標題展開才出來），大螢幕連這一條也放得下 */
     #card .samebox{margin-top:0}
@@ -336,7 +339,7 @@
     #card .box .k,#card .kv .k{font-size:13.5px} #card .box .v,#card .kv .v{font-size:16.5px}
     #card .box.notice{padding:9px 16px} #card .box.notice .k{font-size:19px} #card .box.notice .v{font-size:19px}
     #card .box.notice .npic{width:min(150px,30%); margin-left:auto}
-    #card .photo{width:var(--phw,240px); max-width:none}
+    #card .photo{width:var(--phw,284px); max-width:none}
     .cbody{display:grid; grid-template-columns:minmax(0,1fr); gap:10px; align-items:start}
     /* 灰底框裡 3 欄：特徵｜注意＋適應症（上下疊）｜照片；沒有的東西那格就不出現 */
     .pnl{padding:12px 14px; display:grid; grid-template-columns:var(--gc,minmax(0,1fr) auto); grid-template-areas:var(--ga,"f p" "i p"); gap:9px 14px; align-items:start}
@@ -344,12 +347,13 @@
     .pnl .feat{grid-area:f} .pnl .pinfo{grid-area:i} .pnl .photo{grid-area:p}
     .pnl .pinfo:empty{display:none}
     .pnl.solo{justify-content:center}
-    /* 位置那一行：粉紅框（和它下面的多位置按鍵）在左、平面圖在右，靠左排；旁邊放不下整張平面圖（位置名稱特別長、視窗又窄）就換到粉紅框下面，跟手機同一套，不縮小、不超出卡片 */
+    /* 位置那一行：粉紅框（和它下面的多位置按鍵）靠左、平面圖靠最右邊（margin-left:auto）；粉紅框的寬度跟著字數走（width:max-content），高度最矮 --lochh；
+       旁邊放不下整張平面圖（位置名稱特別長、視窗又窄）就換到粉紅框下面（一樣靠右），跟手機同一套，不縮小、不超出卡片 */
     .locrow{gap:10px 14px}
-    .loc{padding:12px 18px}
-    .loc .t{font-size:40px}
-    .pinsvg{width:29px; height:36px}
-    .map{flex:0 0 auto; width:auto; min-width:0; max-width:100%; height:var(--maph,185px); margin-left:0}
+    .loc{gap:12px; padding:12px 24px; min-height:var(--lochh,117px)}
+    .loc .t{font-size:var(--locfs,54px)}
+    .pinsvg{width:calc(var(--locfs,54px)*.72); height:calc(var(--locfs,54px)*.9)}
+    .map{flex:0 0 auto; width:auto; min-width:0; max-width:100%; height:var(--maph,278px); margin-left:auto}
     #card .actions{margin-top:0} #card .actions button{flex:0 0 auto; padding:8px 22px}
   }
   .spots{display:flex; gap:7px; flex-wrap:wrap}
