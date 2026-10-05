@@ -5,7 +5,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src https://script.google.com https://script.googleusercontent.com; media-src 'self' blob: data:; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="buyao-v" content="v11.23.0">
+<meta name="buyao-v" content="v11.22.2 beta">
 <title>補藥神器</title>
 <link rel="icon" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
@@ -24,7 +24,9 @@
     --warn:#B26A00; --warn-soft:#FFF4DE;
     --danger:#B0392B; --danger-soft:#FDE9E6;
     --pin:#E8514B;
-    /* v11.23.0（第 4 批）藥品卡片的新顏色：照 LINE 卡片的色碼（淺色的灰字比 LINE 原色稍微加深，字才看得清楚）；深色模式是另外配的 */
+    /* v11.22.2 beta 審查後：輸入框／格子的邊框要看得出來（對比 3 以上）、小字和提示字要夠深（對比 4.5 以上） */
+    --edge:#708392; --hintc:#566B7B;
+    /* v11.22.2 beta（第 4 批）藥品卡片的新顏色：照 LINE 卡片的色碼（淺色的灰字比 LINE 原色稍微加深，字才看得清楚）；深色模式是另外配的 */
     --c2-ink:#3C4043; --c2-mute:#757575; --c2-lab:#707070; --c2-val:#5F5F5F;
     --c2-feat:#E8F3FA; --c2-feat-ink:#0B5F8A; --c2-pair:#FFE9E9; --c2-pair-ink:#C62828;
     --c2-loc:#FFF0F0; --c2-loc-ink:#CF4540; --c2-pnl:#F7F7F7; --c2-note:#FFF6E0; --c2-note-ink:#9E5D00;
@@ -39,6 +41,7 @@
       --warn:#EBB05C; --warn-soft:#37290F;
       --danger:#E8897C; --danger-soft:#3A1F1B;
       --pin:#F0726C; --shadow:none;
+      --edge:#64798A; --hintc:#97A9B6;
       --c2-ink:#E3EAF0; --c2-mute:#9FAFBB; --c2-lab:#93A3B0; --c2-val:#BCC8D2;
       --c2-feat:#12344D; --c2-feat-ink:#8CCBF0; --c2-pair:#3A1F1B; --c2-pair-ink:#F0958B;
       --c2-loc:#3A1F1B; --c2-loc-ink:#F0726C; --c2-pnl:#1B2733; --c2-note:#37290F; --c2-note-ink:#EBB05C;
@@ -52,6 +55,7 @@
     --warn:#EBB05C; --warn-soft:#37290F;
     --danger:#E8897C; --danger-soft:#3A1F1B;
     --pin:#F0726C; --shadow:none;
+    --edge:#64798A; --hintc:#97A9B6;
     --c2-ink:#E3EAF0; --c2-mute:#9FAFBB; --c2-lab:#93A3B0; --c2-val:#BCC8D2;
     --c2-feat:#12344D; --c2-feat-ink:#8CCBF0; --c2-pair:#3A1F1B; --c2-pair-ink:#F0958B;
     --c2-loc:#3A1F1B; --c2-loc-ink:#F0726C; --c2-pnl:#1B2733; --c2-note:#37290F; --c2-note-ink:#EBB05C;
@@ -130,13 +134,63 @@
   .bindf button:disabled{opacity:.6}
   .bindm{display:block; min-height:1.7em; color:var(--danger); font-size:14px}
   .bindbox small{display:block; color:var(--muted); font-size:12.5px}
+  /* v11.22.2 beta：代號登入（沒有 LINE 連結的瀏覽器）：上面一行「後端代號」讓人核對是不是真的補藥神器；下面是代號區塊（.pairbx；不能叫 .pair——藥品卡片的「注意」框已經用了 .box.pair）、驗證碼輸入框（一個輸入框＋四格「系統看懂的字」＋登入鍵） */
+  .codebox{width:100%; max-width:460px; margin:0 auto; padding-inline:4px}   /* width:100%：不然 main（flex 直欄）會把它縮到「最寬那行字」的寬度，代號區塊在「有代號」「作廢」之間寬度會跳 */
+  .codebox small{display:block; color:var(--ink2); font-size:12.5px; margin-top:6px}
+  .cdhead{display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px 14px}
+  .cdhead > b{margin:0}   /* .empty b 的 margin-bottom 不要：標題和「後端代號」同一列，放不下才換行 */
+  .cdbk{display:inline-block; margin:0; padding:3px 12px; border-radius:999px; background:var(--sunk); color:var(--ink2); font-size:13px; line-height:1.6}
+  .cdbk b{display:inline; margin:0; font-size:14.5px; letter-spacing:.08em; color:var(--ink)}
+  .cdbox{display:flex; flex-direction:column; gap:12px; margin:14px auto 4px; max-width:420px; text-align:center}
+  .cdin{width:100%; min-width:0; border:1.5px solid var(--edge); background:var(--surface); color:var(--ink); border-radius:12px; padding:13px 14px; font-size:19px; line-height:1.3; text-align:center}
+  .cdin::placeholder{color:var(--hintc); font-size:15px}
+  .cdslots{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px}
+  .cds{border:1.5px dashed var(--edge); border-radius:12px; background:var(--surface); padding:8px 2px 7px; min-height:94px; display:flex; flex-direction:column; align-items:center; gap:1px; min-width:0}
+  .cdc{font-size:34px; font-weight:700; line-height:1.2; min-height:1.2em; color:var(--ink)}
+  .cdz,.cdp{font-size:12.5px; color:var(--ink2); line-height:1.4; min-height:1.4em; max-width:100%; overflow-wrap:anywhere}
+  .cds.ok{border-style:solid; border-color:var(--leaf); background:var(--leaf-soft)} .cds.ok .cdc{color:var(--leaf)}
+  .cds.amb{border-style:solid; border-color:var(--warn); background:var(--warn-soft)} .cds.amb .cdc{color:var(--warn)}
+  .cds.bad,.cds.junk{border-style:solid; border-color:var(--danger); background:var(--danger-soft)} .cds.bad .cdc,.cds.junk .cdc{color:var(--danger)}
+  .cds.pend .cdc{color:var(--muted)}
+  .cdh{min-height:1.7em; font-size:13.5px; color:var(--ink2); line-height:1.6}
+  .cdgo{border:0; border-radius:12px; padding:13px; min-height:max(48px, calc(48px / var(--z,1))); background:var(--accent); color:var(--accent-ink); font-size:17px; font-weight:700}
+  .bindm.wait{color:var(--ink2)}   /* 「確認中…」不是錯誤，不用紅字 */
+  .retry{margin-top:10px; min-height:max(44px, calc(44px / var(--z,1))); border:1.5px solid var(--edge); background:var(--sunk); color:var(--accent); border-radius:10px; padding:10px 18px; font-size:15px; font-weight:700}
+  .cdgo:disabled{opacity:.6; cursor:default}
+  /* v11.22.2 beta：代號登入 ① 代號（6 位數大字、倒數、重新取得）→ ② 到 LINE 換驗證碼，打在下面的輸入框。
+     .pairbx 裡的 <b> 要蓋掉 .empty b（那個是 block、15.5px）；沒有代號的狀態（過期、作廢、沒拿到）用 .pcode.gone 當標題＋ .pbtn 重新取得 */
+  .pairbx{margin:14px auto 0; max-width:420px; padding:12px; border:1.5px solid var(--edge); border-radius:14px; background:var(--surface); text-align:center}
+  .pst{font-size:14px; color:var(--ink2); line-height:1.6; overflow-wrap:anywhere; text-wrap:balance}   /* 兩行的時候平均分，不要最後一行只剩一兩個字 */
+  .pst b,.pst2 b,.pmeta b{display:inline; margin:0; font-size:inherit; color:var(--ink)}
+  .pmeta b.low{color:var(--danger)}   /* 倒數剩 20 秒以內 */
+  .pnote{margin:0 0 10px; padding:8px 12px; border-radius:10px; background:var(--warn-soft); border-left:4px solid var(--warn); color:var(--ink); font-size:13.5px; line-height:1.6; font-weight:700; text-align:left; overflow-wrap:anywhere}   /* 自動換新代號之後的說明（字用 --ink：--warn 在淺色底上對比不到 4.5） */
+  .pcode{font-size:40px; font-weight:800; letter-spacing:.16em; margin:6px 0 4px; color:var(--ink); line-height:1.25; font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; font-variant-numeric:tabular-nums; -webkit-user-select:all; user-select:all}
+  .pcode.gone{font-size:20px; letter-spacing:0; color:var(--ink2); font-family:inherit; margin:12px 0 8px; -webkit-user-select:auto; user-select:auto}
+  .pmeta{font-size:12.5px; color:var(--ink2); line-height:1.8}
+  .plink{border:0; background:transparent; color:var(--accent); font-size:13.5px; font-weight:700; text-decoration:underline; padding:8px 14px; min-height:max(44px, calc(44px / var(--z,1)))}
+  .pbtn{margin-top:6px; min-height:max(44px, calc(44px / var(--z,1))); border:1.5px solid var(--accent); background:var(--surface); color:var(--accent); border-radius:10px; padding:8px 18px; font-size:15px; font-weight:700}
+  .pbtn:disabled,.plink:disabled{opacity:.6; cursor:default}
+  .pst2{margin:16px auto 0; font-size:14px; color:var(--ink2); line-height:1.6}
+  /* 電腦（760 以上，整頁有放大 --z）：① 代號在左、② 驗證碼輸入在右，並排——筆電（1366×768 瀏覽器內約 650 高）第一屏就看得到輸入格和登入鍵。
+     兩欄的寬度是固定的（各 430）：右邊還沒有輸入框（拿代號中、沒拿到、過期；#cdwrap 是 hidden＝不占位置）的時候，右欄空著，左邊的代號框不會在拿到代號的那一刻往左跳。手機維持上下排 */
+  @media (min-width:760px){
+    .codebox{max-width:900px; padding-top:0}
+    .cdgrid{display:grid; grid-template-columns:repeat(2,minmax(0,430px)); gap:16px; justify-content:center; align-items:start; margin-top:10px}
+    .cdgrid .pairbx{margin:0; max-width:none}
+    .cdgrid #cdwrap{padding:10px 12px; border:1.5px solid var(--edge); border-radius:14px; background:var(--surface)}
+    .cdgrid .pst2{margin:0 auto}
+    .cdgrid .cdbox{margin:8px auto 0; gap:8px}
+  }
+  /* v11.22.2 beta：首頁最下面的小字「登出這台」 */
+  .lo{grid-column:1 / -1; text-align:center; padding:6px 0 2px; font-size:12.5px; color:var(--ink2)}
+  .lo button{border:0; background:transparent; color:var(--ink2); font-size:13.5px; text-decoration:underline; padding:10px 18px; min-height:max(44px, calc(44px / var(--z,1)))}
 
   /* 首頁區塊 */
   .sec{display:flex; flex-direction:column; gap:8px}
   .sh{display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding:0 3px}
   .sh b{font-size:18px; color:var(--ink2)}
   .sh span{font-size:12.5px; color:var(--muted)}
-  @media (min-width:760px){ .sh b{font-size:19.5px} .sh span{font-size:14px} }   /* v11.23.0（清單改版）：標題 23.5→19.5、個數 20.5→14 */
+  @media (min-width:760px){ .sh b{font-size:19.5px} .sh span{font-size:14px} }   /* v11.22.2 beta（清單改版）：標題 23.5→19.5、個數 20.5→14 */
   .tabs{display:flex; gap:4px; background:var(--sunk); padding:4px; border-radius:12px}
   .tabs button{flex:1; border:0; background:transparent; color:var(--muted); border-radius:9px; padding:5px 8px;
     font-size:13.5px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:7px}
@@ -172,9 +226,9 @@
   .tabs.wrap button{flex:1 1 30%; min-width:30%; padding:7px 6px; font-size:13px; gap:5px; white-space:nowrap}
   .tabs.wrap button[aria-selected="true"]{color:var(--warn)}
   @media (min-width:760px){ .tabs.wrap button{font-size:14px; padding:6px 6px} .tabs.wrap button small{font-size:13px} }
-  #ntabs:empty{display:none}   /* v11.23.0：等後台時的「載入中…」骨架，公告分類列還是空的 → 先不要露出一條灰底空條 */
+  #ntabs:empty{display:none}   /* v11.22.2 beta：等後台時的「載入中…」骨架，公告分類列還是空的 → 先不要露出一條灰底空條 */
   /* 每一列＝LINE 公告卡的排法：照片｜藥名／中文／（公告補充）／劑型＋CODE｜位置
-     v11.23.0（清單改版）：照片放大成 4:3（手機 104×78、電腦 100% 時 148×111，整個包裝看得到），字縮小約 10%，藥名太長最多兩行；
+     v11.22.2 beta（清單改版）：照片放大成 4:3（手機 104×78、電腦 100% 時 148×111，整個包裝看得到），字縮小約 10%，藥名太長最多兩行；
      標誌、搜尋列、整頁縮放、藥品卡片不動 */
   .row{display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; padding:8px 12px 8px 8px;
     border-bottom:1px solid var(--line); background:transparent; border-left:0; border-right:0; border-top:0;
@@ -194,7 +248,7 @@
   .row .n .k .c{font-size:12.5px; font-weight:600; color:var(--muted); margin-left:6px}
   .row .l{font-size:16px; font-weight:700; color:var(--pin); white-space:nowrap}
   @media (max-width:340px){ .row{gap:8px; padding:8px 10px 8px 6px} .row .ph{width:84px; height:63px; flex-basis:84px} }   /* 很窄的手機（320 寬）：照片小一點，不然位置、CODE 那一列擠在一起 */
-  /* v11.23.0（清單改版，電腦版）：清單每一列（100% 時）：照片 148×111、藥名 15.5、中文 13.5、位置 18、上下 6、左 10、右 16（v11.22.2 是照片 94 方塊、藥名 18、中文 15.5、位置 20.5） */
+  /* v11.22.2 beta（清單改版，電腦版）：清單每一列（100% 時）：照片 148×111、藥名 15.5、中文 13.5、位置 18、上下 6、左 10、右 16（v11.22.2 是照片 94 方塊、藥名 18、中文 15.5、位置 20.5） */
   @media (min-width:760px){
     .row{gap:14px; padding:6px 16px 6px 10px}
     .row .ph{width:148px; height:111px; flex-basis:148px}
@@ -274,7 +328,7 @@
   @media (max-width:420px){ .grid2{grid-template-columns:1fr} .photo{max-width:100%; justify-self:stretch; aspect-ratio:16/10} }
   .photo{width:100%; max-width:220px; aspect-ratio:4/3; object-fit:cover; border-radius:10px; border:1px solid var(--line);
     background:var(--sunk); cursor:zoom-in; justify-self:end}
-  /* v11.23.0（第 4 批）位置那一行（自己一整行，在灰底外框下面）：粉紅位置框跟字一樣寬、文字一行不換行也不縮小；
+  /* v11.22.2 beta（第 4 批）位置那一行（自己一整行，在灰底外框下面）：粉紅位置框跟字一樣寬、文字一行不換行也不縮小；
      多個位置的按鍵緊貼在粉紅框下面（.lleft 把兩個包成一組）；平面圖旁邊放得下 200 寬就放旁邊，放不下整張換到粉紅框下面（全寬）
      （第 5 批：電腦版平面圖靠最右邊（margin-left:auto），粉紅框的大小跟著字數走，字、框、照片、平面圖、圖示的大小照使用者在畫布上調的） */
   .locrow{display:flex; flex-wrap:wrap; align-items:flex-start; gap:10px}
@@ -287,7 +341,7 @@
   .map{flex:1 1 200px; min-width:200px; border:0; border-radius:10px; background:var(--surface);
     aspect-ratio:3/2; object-fit:contain; cursor:zoom-in}
   /* ★ 這一段一定要放在上面 .box、.photo、.map 的後面：同樣的選擇器、後面的才贏 */
-  /* v11.23.0（第 4 批）（卡片頁排法，照 LINE 卡片的長相；第 3 批的「左右兩欄」改成單欄、位置自己一整行）：
+  /* v11.22.2 beta（第 4 批）（卡片頁排法，照 LINE 卡片的長相；第 3 批的「左右兩欄」改成單欄、位置自己一整行）：
      ① 標題區：CODE（灰黑、一般字體）、藥名、綠色中文名、灰色學名；右上角小圖示（沒有底色框、沒有說明字）；公告在標題下面一整條淡黃橫幅；
      ② 灰底外框 .pnl 包住「淡藍特徵框＋注意＋適應症＋照片」：電腦 3 欄（特徵｜注意＋適應症｜照片），手機直排；
      ③ 位置（粉紅框＋平面圖）自己一整行，在灰底外框下面（上面的 .locrow）；
@@ -413,17 +467,18 @@
   .sheetin ol{margin:0 0 10px; padding-left:22px; font-size:15px; line-height:1.75}
   .sheetin small{display:block; color:var(--muted); font-size:12.5px; line-height:1.55; margin-bottom:12px; white-space:pre-line}
   .sheetin .x{width:100%; border:1.5px solid var(--line); background:var(--sunk); color:var(--ink); border-radius:12px; padding:11px; font-size:15.5px; font-weight:700}
-  /* v11.23.0：提醒／確認視窗（第一次使用、連結換了後端），跟上面加到主畫面同一個樣子 */
+  /* v11.22.2 beta：提醒／確認視窗（第一次使用、連結換了後端），跟上面加到主畫面同一個樣子 */
   .sheetin p b{color:var(--ink)}
   .sheetin .ids{margin:0 0 10px; padding:8px 10px; background:var(--sunk); border-radius:10px; font:13.5px/1.7 ui-monospace,Menlo,Consolas,monospace; color:var(--ink); white-space:pre-line; word-break:break-all}
   .sheetin .go + .x{margin-top:0}
-  .hint .tm{white-space:normal}   /* v11.23.0：開發者版才有的「開頁幾秒」小字 */
-  .hint .aiw{white-space:normal; color:var(--warn); font-weight:700}   /* v11.23.0：照片辨識完，搜尋框下面多一句「AI 可能讀錯」 */
+  .hint .tm{white-space:normal}   /* v11.22.2 beta：開發者版才有的「開頁幾秒」小字 */
+  .hint .aiw{white-space:normal; color:var(--warn); font-weight:700}   /* v11.22.2 beta：照片辨識完，搜尋框下面多一句「AI 可能讀錯」 */
   @media (min-width:760px){ .sheet{align-items:center; padding:20px} .sheetin{border-radius:16px; padding:18px 20px} }
   .demo{position:fixed; left:0; right:0; bottom:0; z-index:6; background:var(--warn-soft); color:var(--warn); font-size:12px;
     text-align:center; padding:6px 12px calc(6px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--line)}
 </style>
-<script src="app.js?v=v11.23.0" defer></script>
+<script src="cfg.js" defer></script>
+<script src="app.js?v=v11.22.2%20beta" defer></script>
 </head>
 <body>
 <header class="top"><div class="topin">
