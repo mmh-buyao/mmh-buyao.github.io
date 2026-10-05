@@ -117,6 +117,15 @@
   @keyframes spin{to{transform:rotate(360deg)}}
   @media (prefers-reduced-motion:reduce){ .hint.busy::before{animation:none} }
 
+  /* v11.22.2 beta（第 8 批）：查無的時候，搜尋列下面、內容最上面多一個黃色提示框（跟藥品卡片上「停止供貨」公告那種黃框同一種：淡黃底、圓角、左邊符號、粗體字）。
+     LINE 的「查無」卡片最上面也是同一句話（01 的 NOT_FOUND_TIP）；改這句話兩邊要一起改。長相跟這頁其他黃框（.pnote）一樣：淡黃底、左邊一條粗黃線、粗體字；
+     字用 --ink（不用黃棕色的 --warn：黃棕字在淡黃底上對比只有 3.9，字太淡），深色模式用 --warn／--warn-soft／--ink，會跟著換。 */
+  .nobox{max-width:640px; margin:0 auto; padding:12px 14px 0}
+  @media (min-width:760px){ .nobox{max-width:none; padding-inline:20px} }
+  .nbx{display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:12px; background:var(--warn-soft); border-left:4px solid var(--warn); color:var(--ink); font-size:15px; line-height:1.55}
+  .nbx .ic{flex:none; font-size:20px; line-height:1}
+  .nbx b{min-width:0; font-weight:700; overflow-wrap:anywhere; text-wrap:balance}
+
   /* ── 內容 ── */
   main{max-width:640px; margin:0 auto; padding:12px 14px calc(40px + env(safe-area-inset-bottom,0px));
     display:flex; flex-direction:column; gap:14px}
@@ -492,6 +501,8 @@
   </form>
   <div class="hint" id="hint"></div>
 </div></header>
+
+<div class="nobox" id="nobox" hidden><div class="nbx"><span class="ic" aria-hidden="true">📋</span><b>如果查詢不到，請翻閱『藥品位置查詢表』。</b></div></div>
 
 <main id="out"></main>
 

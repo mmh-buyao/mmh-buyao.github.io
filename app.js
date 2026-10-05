@@ -341,7 +341,7 @@ var CodeIn = (function () {
   /* v11.22.2：鑰匙已經記在這台瀏覽器了 → 網址列只留短的（複製貼上分享出去就不會帶著鑰匙）。沒記成功（瀏覽器不讓記）就不藏，不然重新整理就進不來了 */
   function keyOk(){ var o=keyLoad(); return !!(o && o.x===X && o.t===T); }
   function hideKey(){ try{ if (!HP.lst && /(^|[#&])(x|app|dev)=/.test(location.hash||"") && keyOk()) history.replaceState(null,"",location.pathname); }catch(e){} }
-  var q=$("q"), out=$("out"), hint=$("hint");
+  var q=$("q"), out=$("out"), hint=$("hint"), nobox=$("nobox");
   /* v11.22.2（電腦版版面）：整頁跟著視窗縮放（CSS 的 body{zoom:var(--z)}）。電腦（760 以上）：1280 寬＝125%（ZOOM_BASE），
      再往上照寬度放大（ZOOM_FOLLOW），最多 ZOOM_MAX（你設 125%，所以再寬也是 125%）；760～1280 之間照比例縮（最小 80%）。手機不縮。數字是你在設計頁定的 */
   var ZOOM_BASE=1.25, ZOOM_FOLLOW=1, ZOOM_MAX=1.25;
@@ -755,7 +755,13 @@ var CodeIn = (function () {
   /* 照片載不到就拿掉那一張（v11.20.0：不寫行內的錯誤處理，嚴格的安全設定不准網頁裡有行內程式） */
   document.addEventListener("error", function(e){ var t=e.target; if(t&&t.tagName==="IMG"&&t.hasAttribute("data-rm")&&t.parentNode) t.parentNode.removeChild(t); }, true);
   function esc(s){ return String(s===null||s===undefined?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
-  function setHint(s, bad, busy){ if(s===HINT0) hint.innerHTML=s+(window.innerWidth>=700?' <span>拖照片進來或 Ctrl+V 貼上也能辨識</span>':''); else hint.textContent=s||""; hint.className="hint"+(bad?" bad":"")+(busy?" busy":""); }
+  /* v11.22.2 beta（第 8 批）：查無時搜尋列下面的黃色提示框，跟著「這一屏」：換提示字（查下一個、回首頁、登出…）或內容換掉（開一支藥、回首頁、換成登入畫面…）就收起來。
+     只有「查無」那兩處，在畫面排好之後叫 noBox(true)（這一輪的內容變動不算，下一輪才算；顯示時捲回最上面，一定看得到）。 */
+  var nbKeep=false;
+  function nbHide(){ if (nobox) nobox.hidden=true; }   /* 保險：index.html 漏換（找不到黃框那個元素）時，黃框的程式整個略過，其他功能照常 */
+  if (nobox && window.MutationObserver) new MutationObserver(function(){ if (!nbKeep) nbHide(); }).observe(out,{childList:true});
+  function noBox(on){ if (!nobox) return; nobox.hidden=!on; nbKeep=!!on; if (on){ setTimeout(function(){ nbKeep=false; },0); window.scrollTo({top:0}); } }
+  function setHint(s, bad, busy){ nbHide(); if(s===HINT0) hint.innerHTML=s+(window.innerWidth>=700?' <span>拖照片進來或 Ctrl+V 貼上也能辨識</span>':''); else hint.textContent=s||""; hint.className="hint"+(bad?" bad":"")+(busy?" busy":""); }
   /* 錠／水：正式版由後端算好 r.kind；這裡的規則＝劑型有「水、液、漿、滴、注射、針」或位置開頭是「水」→ 水，其他都算錠 */
   function kindOf(r){ if(r.kind==="水"||r.kind==="錠") return r.kind; var f=String(r.form||""), l=String(r.location||""); return (/水|液|漿|滴|注射|針/.test(f)||/^\s*水/.test(l))?"水":"錠"; }   /* 只認「錠」「水」兩個字，後端給別的一律自己算 */
   function num(x){ return +x||0; }   /* 數字才放進畫面（不信任後端給的 length） */
@@ -1169,6 +1175,7 @@ var CodeIn = (function () {
     if (!rows.length){
       setHint(label+"：查無 😥　換個關鍵字，或打 CODE 試試", true);
       if (res.guess&&res.guess.length) renderGuess(kw||"", res.guess);
+      noBox(true);   /* 要在畫面排好之後才叫：下面那個「內容一換就收起來」不會把剛出現的黃框收掉 */
       return;
     }
     if (res.warn) setHint("⚠️ "+res.warn, true);
@@ -1279,6 +1286,7 @@ var CodeIn = (function () {
       if (rows.length){ setHint(heard+(res.kw!==res.said?" → 查「"+res.kw+"」":"")+(res.loose?"（沒有完全一樣的，用最接近的）":"")+"：找到 "+rows.length+" 個品項"); if(rows.length===1) renderCard(rows[0],null); else renderList(rows); return; }
       if (asks.length){ setHint(heard+" → 查「"+res.kw+"」沒有完全一樣的，可能是下面這幾個品項", true); renderPhoto({rows:[],asks:asks,read:[]}); return; }
       setHint(heard+" → 查無「"+res.kw+"」😥　聽錯字的話改講 CODE 最準", true);
+      noBox(true);
     }, null, { retrying:function(n){ setHint("🎤 網路剛斷了一下，自動再送一次（第 "+n+" 次）…", false, true); } });
   }
   if (NOMIC || (!canRec && !SR)) { micOff(); }
