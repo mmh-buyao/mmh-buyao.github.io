@@ -98,19 +98,22 @@
   function me(t) { return { w: "me", t: t }; }
   function bot(t) { return { w: "bot", t: t }; }
   function act(t) { return { w: "act", t: t }; }
-  function pic(c) { return { w: "me", pic: c }; }
+  function pic(label, kind) { return { w: "me", pic: label, k: kind || "t" }; }   /* 您傳的照片：kind t 藥盒、w 瓶身、three 好幾盒、blur 模糊的 */
   function voice() { return { w: "me", voice: "0:03" }; }
   function hand(lines) { return { w: "me", note: lines }; }
   function dc(code, o) { return { w: "dc", c: code, o: o || {} }; }
   function car(codes, o) { return { w: "car", cs: codes.map(function(c) { return { c: c, o: o || {} }; }) }; }
   function ll(spec) { return { w: "ll", s: spec }; }
-  function ask(codes, shown) { return { w: "ask", cs: codes, shown: shown }; }
+  function ask(codes, shown, how) { return { w: "ask", cs: codes, shown: shown, how: how || "" }; }
+  function sheet(codes) { return { w: "tb", cs: codes }; }   /* 超過 5 個品項的「總表」卡（照片、手寫讀到太多行的時候） */
+  function nf(kw) { return { w: "nf", kw: kw }; }   /* 「查無」卡：最上面黃色框 */
   function bigplan(hit) { return { w: "pl", hit: hit || "K2" }; }
   /* 編出來的藥（b 商品名、z 中文名、g 學名、f 劑型、w 水劑、ind 適應症、feat 藥品特徵、loc 位置、ph 有沒有照片） */
   var DR = {
     "90101": { b: "TESTOLOL* 25MG TAB", z: "測試洛爾錠 25 毫克", g: "TESTOLOL HCL", f: "錠劑", w: 0, ind: "高血壓、心絞痛", feat: "白色圓形錠，一面有刻痕", loc: "K2", ph: 1 },
     "90102": { b: "DEMOSYRUP* 60ML", z: "示範康糖漿 60 毫升", g: "SAMPLEXIN", f: "口服液", w: 1, ind: "咳嗽、化痰", feat: "透明棕色瓶", loc: "水棧一", ph: 1 },
     "90103": { b: "MODELPRIL* 5MG TAB", z: "模擬普利錠 5 毫克", g: "MODELPRIL MALEATE", f: "錠劑", w: 0, ind: "高血壓", loc: "B1", ph: 0 },
+    "90104": { b: "SAMPLESPOT* 20MG TAB", z: "示範多處錠 20 毫克", g: "SAMPLESPOT", f: "錠劑", w: 0, ind: "過敏", loc: "K2", ph: 0 },
     "90105": { b: "TESTONIN* 100MG CAP", z: "測試寧膠囊 100 毫克", g: "TESTONIN", f: "膠囊", w: 0, ind: "退燒、止痛", loc: "C3", ph: 1 },
     "90106": { b: "TESTAMOL* 500MG TAB", z: "測試醇錠 500 毫克", g: "TESTAMOL", f: "錠劑", w: 0, ind: "發炎、關節痛", loc: "D1", ph: 0 },
     "90107": { b: "DEMOCARD* 10MG TAB", z: "示範卡錠 10 毫克", g: "DEMOCARD", f: "錠劑", w: 0, ind: "心律不整", loc: "K2", ph: 0 },
@@ -119,13 +122,15 @@
     "90110": { b: "BREATHEZ* 10MG TAB", z: "範例舒錠 10 毫克", g: "BREATHEZ", f: "錠劑", w: 0, ind: "過敏性鼻炎、咳嗽", loc: "D4", ph: 1 },
     "90111": { b: "SAMPLEXIN* 250MG CAP", z: "示範寧膠囊 250 毫克", g: "SAMPLEXIN", f: "膠囊", w: 0, ind: "細菌感染", loc: "K2", ph: 0 },
     "90112": { b: "SAMPLEXIN* 500MG TAB", z: "示範寧錠 500 毫克", g: "SAMPLEXIN", f: "錠劑", w: 0, ind: "細菌感染", loc: "K3", ph: 1 },
-    "90114": { b: "TESTOLOL* 50MG TAB", z: "測試洛爾錠 50 毫克", g: "TESTOLOL HCL", f: "錠劑", w: 0, ind: "高血壓、心絞痛", loc: "K3", ph: 1 },
-    "90115": { b: "TESTOLOL-X* 25MG TAB", z: "測試洛爾 X 錠 25 毫克", g: "TESTOLOL HCL", f: "錠劑", w: 0, ind: "高血壓", loc: "A3", ph: 0 },
+    "90114": { b: "TESTBETA* 50MG TAB", z: "測試貝他錠 50 毫克", g: "TESTOLOL HCL", f: "錠劑", w: 0, ind: "高血壓、心絞痛", loc: "K3", ph: 1 },
+    "90115": { b: "TESTLOL-X* 25MG TAB", z: "測試洛得 X 錠 25 毫克", g: "TESTOLOL HCL", f: "錠劑", w: 0, ind: "高血壓", loc: "A3", ph: 0 },
     "90116": { b: "SAMPLECOR* 10MG TAB", z: "示範可錠 10 毫克", g: "SAMPLECOR", f: "錠劑", w: 0, ind: "心絞痛", loc: "B1", ph: 1 },
     "90117": { b: "MODELTAB* 25MG TAB", z: "模擬他錠 25 毫克", g: "MODELTAB", f: "錠劑", w: 0, ind: "高血脂", loc: "B1", ph: 0 },
     "90118": { b: "EXAMPLOL* 40MG TAB", z: "範例洛錠 40 毫克", g: "EXAMPLOL", f: "錠劑", w: 0, ind: "高血脂", loc: "B1", ph: 0 },
     "90119": { b: "SAMPLEGEL* 20MG CAP", z: "示範凝膠囊 20 毫克", g: "SAMPLEGEL", f: "膠囊", w: 0, ind: "胃潰瘍", loc: "B1", ph: 1 }
   };
+  var TM = "上午 9:41";   /* 示範聊天室裡每一則的時間（編的） */
+  var WARN = "⚠️ AI 可能讀錯，請核對 CODE 再拿藥";   /* 照片、手寫查藥：真的 LINE 回覆最前面那一句（見 02 的 PHOTO_AI_WARN） */
   var N1 = "改包裝通知，示範：這支藥換包裝了，瓶身標籤顏色不一樣";
   var N2 = "停止供貨，示範：預計下個月恢復供貨，這段時間先找替代藥";
   /* 藥品家族（紫色框）：cats＝每一類的標題和裡面的藥 */
@@ -162,7 +167,7 @@
   var PLANP = {
     hit: { n: "紅框", t: "紅框是這支藥放的那一格。看圖的時候，先找紅框；其他的方塊都只是幫你認路的地標。" },
     b: { n: "藍色方塊", t: "藍色方塊是棧板（圖上寫「棧」）：放在地上的一塊一塊。看紅框在哪一塊旁邊，就知道要往哪裡找。" },
-    bar: { n: "灰色長條", t: "灰色長條是一整排的區域（上面寫 L 2、L 3 這種字），也是很好用的地標。" },
+    bar: { n: "灰色長條", t: "灰色長條是一整排的區域，上面寫 L 2、L 3 這種字，也是很好用的地標。**L 3** 是第三線（奇數線）、**L 2** 是第二線（偶數線）、**L 1** 是第一線（兒線）。" },
     door: { n: "大門", t: "圖上寫著「大門」和一個箭頭，指的就是**大門處或是出入口**在這張圖的哪一邊。下一段教你用它來對方向。" }
   };
   /* 「大門處或是出入口在你哪一邊」：它在你的前面、右手邊、後面、左手邊時，這張示範圖（圖上的「大門」在左邊）要怎麼轉、轉好後紅框在哪一側。
@@ -177,7 +182,7 @@
     { k: "web", t: "🌐 網頁", n: "**🌐 網頁**：直接開補藥神器網頁版（不是幫你打字）。" },
     { k: "guide", t: "📖 教學", n: "**📖 教學**：幫你打「教學」，就是回到這一份教學。" },
     { k: "notice", t: "📢 藥品通知", n: "**📢 藥品通知**：幫你打「公告」，一次看完停止供貨、改包裝、缺貨的通知。" },
-    { k: "bug", t: "🛠 BUG", n: "**🛠 BUG**：幫你打「bug」，然後寫一句話回報問題。" }
+    { k: "bug", t: "🛠 BUG", n: "**🛠 BUG**：幫你打「bug」；再照提示，連「bug」一起打、後面寫一句話回報問題。" }
   ];
 
   var LESSONS = [
@@ -208,15 +213,15 @@
         warn: "圖上沒有「你在這裡」，一定要先用大門處或是出入口對方向；不要直接照圖上的左右走。" },
       { t: "轉好之後，照紅框走", p: "轉好以後，圖的方向就跟你眼前的藥局一樣：**圖的上面是前面、下面是後面、左右也一樣**。看紅框在圖的哪一邊，就往藥局的那一側走；走到附近，再對一下卡片上的位置名稱。",
         d: { k: "chat", ttl: "點平面圖，看大圖", ch: [
-          { l: "點一下小圖", m: [dc("90101", { crop: "low", noPan: true }), act("👆 點一下卡片上的平面圖"), bigplan("K2")],
+          { l: "點一下小圖", m: [dc("90104"), act("👆 點一下卡片上的平面圖"), bigplan("K2")],
             n: "小圖看不清楚的時候，**點一下小圖**，聊天室會再傳一張**大圖**；點大圖，兩指撐開還能再放大。" }
         ] },
         note: "有些位置**沒有平面圖**（例如公藥區），卡片上就不會有小圖。照粉紅框裡的位置文字找就好。" },
       { t: "一支藥放好幾個地方", p: "有的藥放在好幾個地方，粉紅框裡就會有**幾顆按鍵**：亮的那一顆，是現在看的地方，右邊的平面圖也是那一個地方。按另一顆，會再傳一張新的卡片，亮的換成你按的那一顆，平面圖也跟著換。",
         d: { k: "chat", ttl: "按按看", ch: [
-          { l: "按 B1", m: [dc("90101", { crop: "low", noPan: true, spots: SPOTS, on: 0 }), act("👆 按「B1」"), dc("90101", { crop: "low", noPan: true, spots: SPOTS, on: 1 })],
+          { l: "按 B1", m: [dc("90104", { spots: SPOTS, on: 0 }), act("👆 按「B1」"), dc("90104", { spots: SPOTS, on: 1 })],
             n: "按了 **B1**：亮的換成 B1，平面圖也換成 B1 那一區。" },
-          { l: "按 棧一", m: [dc("90101", { crop: "low", noPan: true, spots: SPOTS, on: 0 }), act("👆 按「棧一」"), dc("90101", { crop: "low", noPan: true, spots: SPOTS, on: 2 })],
+          { l: "按 棧一", m: [dc("90104", { spots: SPOTS, on: 0 }), act("👆 按「棧一」"), dc("90104", { spots: SPOTS, on: 2 })],
             n: "按了 **棧一**：亮的換成棧一，平面圖也換成棧一那一區。" }
         ] } }
     ], tryp: { kind: "code", p: "回 LINE，查一支真的藥，找找卡片上的平面圖，照上面的三個步驟對方向。", label: "在 LINE 查一支真的藥", hint: "會回到 LINE 聊天室，查一支真的藥，再看它的平面圖。" },
@@ -238,26 +243,30 @@
           { l: "打「測試」（2 個字）→ 有 3 支，一張一張往左滑", m: [me("測試"), car(["90101", "90105", "90106"])], n: "只記得開頭也沒關係：打幾個字，符合的藥會排成一排卡片，**往左滑**看下一張。" },
           { l: "打「測試洛爾」（4 個字）→ 只剩 1 支，一張卡片", m: [me("測試洛爾"), C1], n: "字打得越多，剩下的越少，**最多打到只剩一支，就只有一張卡片**。" }
         ] } },
-      { t: "打錯字也沒關係", p: "打錯一兩個字，系統會核對最接近的藥，問你「您是不是要找…」，並直接把卡片帶出來，不用重打。",
-        d: { k: "chat", ttl: "故意打錯一個字", ch: [
-          { l: "測試落爾", m: [me("測試落爾"), bot("您是不是要找 測試洛爾？"), C1], n: "" }
+      { t: "打錯字也沒關係", p: "打錯一兩個字也找得到：系統會直接找**最接近的藥**，把卡片帶出來，不用重打。拿藥前，**核對卡片上的名稱**。",
+        d: { k: "chat", ttl: "選一種看看", ch: [
+          { l: "錯一個字", m: [me("測試落爾"), C1], n: "打成「測試**落**爾」（正確是「洛」），系統**直接**帶出最接近的那支藥，**不會先問你**。不是你要的，就換個字再查。" },
+          { l: "CODE 打錯", m: [me("09101"), bot("⚠️ 找不到 CODE「09101」\n\n下面列出的是「CODE 相近」的品項,\n不是你輸入的那一支藥。\n請務必核對卡片上的 CODE 再補藥 🙏"), C1],
+            n: "打錯 **CODE** 要特別小心：系統先寫「⚠️ 找不到 CODE」，再列出 **CODE 相近**的藥——**不是你輸入的那一支**。一定要核對卡片上的 CODE 再補藥。" },
+          { l: "查不到", m: [me("abcxyz"), nf("abcxyz")], n: "真的找不到的時候，會出一張**黃框**的卡片：請翻閱紙本『藥品位置查詢表』；下面還有幾個小技巧。有相近的藥時，卡片裡還會問「有相符的藥品嗎？」，輸入框上面的按鈕點一個就查。" }
         ] } }
     ], tryp: { kind: "typo", p: "回 LINE，故意打錯一個字，看它怎麼接住你。", label: "在 LINE 試試看", hint: "會回到 LINE 聊天室，照上面的說明做做看。" },
-    recap: ["**什麼都能打**：CODE、藥名、學名、位置，都查得到。", "**打前面幾個字就好**：中文 2 個字、英文 3 個字母開始找。", "**打錯字沒關係**：系統會問「您是不是要找…」，並直接帶出卡片。"],
+    recap: ["**什麼都能打**：CODE、藥名、學名、位置，都查得到。", "**打前面幾個字就好**：中文 2 個字、英文 3 個字母開始找。", "**打錯字沒關係**：系統直接帶出最接近的藥；打錯 CODE 要核對卡片上的 CODE；真的查不到，翻『藥品位置查詢表』。"],
     quiz: { q: "手上的紙條寫著 CODE 90101，怎麼查最準？", h: "提示：CODE 是每一支藥獨一無二的編號。", o: ["打「90101」", "打藥名的前兩個字", "打位置「K2」", "拍一張包裝照"], a: 0, why: "CODE 是每一支藥獨一無二的編號，打它不會抓到別支藥。" } },
 
     { id: "photo", ch: 1, name: "拍照查藥", secs: [
       { t: "包裝拍起來，直接傳", p: "包裝、鋁箔、瓶身都可以，不用打半個字。",
         d: { k: "chat", ttl: "選一種拍法", ch: [
-          { l: "藥盒", m: [pic("藥盒包裝"), C1], n: "字面朝上、光線夠、一張一盒，出卡片最快。" },
-          { l: "鋁箔／瓶身", m: [pic("鋁箔或瓶身"), dc("90102")], n: "鋁箔、瓶身上有印字的，一樣拍起來就傳。" },
-          { l: "好幾盒", m: [pic("三盒一起拍"), car(["90101", "90102", "90103"])],
+          { l: "藥盒", m: [pic("藥盒包裝", "t"), bot(WARN), C1], n: "字面朝上、光線夠、一張一盒，出卡片最快。回覆最前面會先提醒一句：**AI 可能讀錯，核對 CODE 再拿藥**。" },
+          { l: "鋁箔／瓶身", m: [pic("鋁箔或瓶身", "w"), bot(WARN), dc("90102")], n: "鋁箔、瓶身上有印字的，一樣拍起來就傳。" },
+          { l: "好幾盒", m: [pic("三盒一起拍", "three"), bot(WARN), car(["90101", "90102", "90103"])],
             n: "一次拍好幾盒也可以，**全部一起出卡片**，往左滑看下一張；超過 5 個品項會變成一張總表，點一列出卡片。" }
         ] } },
       { t: "拍得清楚，出得最快", p: "字面朝上、對到焦、避開反光；拍好再按快門。",
         d: { k: "chat", ttl: "比比看", ch: [
-          { l: "拍得清楚", m: [pic("清楚的包裝"), C1], n: "對得上藥名的，**直接出卡片**。" },
-          { l: "拍得模糊", m: [pic("模糊的包裝"), ask(["90101", "90105"], "TESTO")], n: "對不上的，會列出很像的藥，按「是這個藥品？」就出卡片。**都不是的話，直接打字查最快。**" }
+          { l: "拍得清楚", m: [pic("清楚的包裝", "t"), bot(WARN), C1], n: "對得上藥名的，**直接出卡片**。" },
+          { l: "拍得模糊", m: [pic("模糊的包裝", "blur"), bot(WARN), ask(["90101", "90105"], "TESTO", "用「TESTO」這個字找到的"), act("👆 按「是這個藥品？」"), me("90101"), C1],
+            n: "對不上的，會列出很像的藥，按「是這個藥品？」就出卡片（按下去，會幫你把那支的 CODE 打出來）。**都不是的話，直接打字查最快。**" }
         ] },
         warn: "⚠️ AI 可能讀錯，請核對 CODE 再拿藥。" }
     ], tryp: { kind: "open", p: "回 LINE，拍一盒藥傳傳看。", label: "回 LINE 拍一張試試", hint: "會回到 LINE 聊天室，點輸入框旁邊的相機拍一盒藥。" },
@@ -268,7 +277,7 @@
       { t: "講一句就查", p: "按住 LINE 的麥克風講藥名，放開就查——手上忙、戴手套的時候最好用。",
         d: { k: "chat", ttl: "選一種講法", ch: [
           { l: "講藥名", m: [voice(), bot("🎤 聽到「測試洛爾」"), C1], n: "回覆最前面會先寫「🎤 聽到「…」」，**聽錯了一眼就看得出來**。" },
-          { l: "講 CODE", m: [voice(), bot("🎤 聽到「90101」"), C1], n: "講 **CODE** 也可以：「九零一零一」，唸數字就好。聽錯字的時候，改講 CODE 最準。" },
+          { l: "講 CODE", m: [voice(), bot("🎤 聽到「九零一零一」→ 查「90101」"), C1], n: "講 **CODE** 也可以：「九零一零一」，唸數字就好；回覆會寫成「聽到…→ 查…」。聽錯字的時候，改講 CODE 最準。" },
           { l: "講指令", m: [voice(), bot("🎤 聽到「公告」"), ll(L_NOTICE)], n: "講「公告」「教學」也會執行，**跟打字一樣**。" }
         ] } },
       { t: "麥克風在這裡", p: "按住右下角的 🎤 講話，放開就送出。",
@@ -282,13 +291,15 @@
     { id: "hand", ch: 1, name: "手寫", secs: [
       { t: "手寫菜單直接拍", p: "手寫的菜單拍起來傳，一行一個品項，讀到的直接出卡片。",
         d: { k: "chat", ttl: "選一種情況", ch: [
-          { l: "字寫清楚", m: [hand(["示範康糖漿", "測試洛爾", "模擬普利"]), car(["90102", "90101", "90103"])],
+          { l: "字寫清楚", m: [hand(["示範康糖漿", "測試洛爾", "模擬普利"]), bot(WARN), car(["90102", "90101", "90103"])],
             n: "讀到的直接出卡片，往左滑看下一張。**一張 10 行以內**最準、最快；紙條長就分兩張拍。" },
-          { l: "有一行看不清", m: [hand(["示範康糖漿", "測試洛■", "模擬普利"]), car(["90102", "90103"]), ask(["90101", "90105"], "測試洛■")],
-            n: "看不清的行，會列出很像的藥讓你點；**都不是，就直接打字查**。超過 5 個品項會變成一張總表，一列一個。" }
+          { l: "有一行看不清", m: [hand(["示範康糖漿", "測試洛■", "模擬普利"]), bot(WARN), car(["90102", "90103"]), ask(["90101", "90105"], "測試洛■", "拼法相近的")],
+            n: "看不清的行，會列出很像的藥讓你點；**都不是，就直接打字查**。" },
+          { l: "超過 5 行", m: [hand(["示範康糖漿", "測試洛爾", "模擬普利", "測試寧", "測試醇", "示範卡錠"]), sheet(["90102", "90101", "90103", "90105", "90106", "90107"])],
+            n: "超過 5 個品項，會變成**一張總表**，一列一支藥（「⚠️ AI 可能讀錯」那句寫在表的標題下面）。**點一列**，就出那支藥的完整卡片。" }
         ] } }
     ], tryp: { kind: "open", p: "回 LINE，拍一張手寫的藥名傳傳看。", label: "回 LINE 拍一張試試", hint: "會回到 LINE 聊天室，拍一張手寫的藥名試試。" },
-    recap: ["**手寫的藥名也能拍**：一行一個品項。", "**一張 10 行以內**最準；太長就分兩張拍。", "看不清的行會列出很像的藥讓你點；**都不是就直接打字查**。"],
+    recap: ["**手寫的藥名也能拍**：一行一個品項。", "**一張 10 行以內**最準；太長就分兩張拍；超過 5 個品項會變成一張總表。", "看不清的行會列出很像的藥讓你點；**都不是就直接打字查**。"],
     quiz: { q: "手上的紙條有 20 行藥名，怎麼拍最好？", h: "提示：一張 10 行以內最準、最快。", o: ["一張全部拍進去，字小一點沒關係", "分兩張拍，每張 10 行以內", "拍遠一點，一次拍完", "改用語音一行一行講"], a: 1, why: "一張 10 行以內最準、最快；紙條長就分兩張拍。" } },
 
     { id: "agg", ch: 2, name: "彙整卡片", secs: [
@@ -308,7 +319,7 @@
     { id: "family", ch: 2, name: "藥品家族", secs: [
       { t: "卡片上的紫色框", p: "有些藥的卡片最下面，有一個紫色的**藥品家族**框：院內同成分的其他藥（換劑量、換劑型、換廠牌）。平常收起來，一類一行。",
         d: { k: "chat", ttl: "按「▸ 打開」", ch: [
-          { l: "打開看看", m: [dc("90101", { crop: "low", noPan: true, fam: FAM1 }), act("👆 按「▸ 打開」"), dc("90101", { crop: "low", noPan: true, fam: FAM1, opened: 1 })],
+          { l: "打開看看", m: [dc("90101", { fam: FAM1 }), act("👆 按卡片上的「▸ 打開」"), me("▸ 打開"), dc("90101", { fam: FAM1, opened: 1 })],
             n: "按「▸ 打開」，會再傳一張卡片，這次家族**全部攤開**：一類一組，一列一支藥，按任何一列就出那支藥的卡片。" }
         ] } },
       { t: "加個符號，整批列出來", p: "想找同成分的所有藥，在**學名**前面加一個符號（. ＃ ／ 任何一個都可以）；也可以在符號後面打**適應症**，同一類的藥全列出來。",
@@ -338,15 +349,16 @@
         note: "任何時候都可以按，**不會影響你剛才查的東西**。" },
       { t: "📢 藥品通知", p: "停止供貨、改包裝、缺貨……一次看完，一類一疊，往左滑。",
         d: { k: "chat", ttl: "按下去會怎樣", ch: [
-          { l: "按「📢 藥品通知」", m: [act("👆 按「📢 藥品通知」＝打「公告」"), ll(L_NOTICE)], n: "有通知的藥，查到它的時候，**卡片上也會有黃色的 ⚠️ 框**（第 1 課）。" }
+          { l: "按「📢 藥品通知」", m: [act("👆 按輸入框上面的「📢 藥品通知」"), me("公告"), ll(L_NOTICE)], n: "按下去，等於幫你打「公告」。有通知的藥，查到它的時候，**卡片上也會有黃色的 ⚠️ 框**（第 1 課）。" }
         ] } },
-      { t: "🛠 BUG", p: "位置錯、照片不對、查不到——寫一句話就好，開發者會收到。",
+      { t: "🛠 BUG", p: "位置錯、照片不對、查不到——按它，再照提示寫一句話，開發者就會收到。",
         d: { k: "chat", ttl: "回報一次", ch: [
-          { l: "回報", m: [act("👆 按「🛠 BUG」＝打「bug」"), bot("要回報什麼？寫在後面就好 🙏\n例：90101 位置不對，實際在 K5"), me("90101 位置不對，實際在 K5"), bot("收到了，謝謝您 🙏\n\n已經記下來，開發者會看到。")], n: "" }
+          { l: "回報", m: [act("👆 按輸入框上面的「🛠 BUG」"), me("bug"), bot("要回報什麼？寫在後面就好 🙏\n\n例：\n　bug 22975 位置不對，實際在 K2\n　/bug 23661 照片是別支藥的\n　．bug 這支查不到\n\n（前面打不打符號都可以，半形全形都認得。）"), me("bug 90101 位置不對，實際在 K5"), bot("收到了，謝謝您 🙏\n\n「90101 位置不對，實際在 K5」\n\n已經記下來，開發者會看到。\n\n如果是位置不對，麻煩補藥時先以實際位置為準。")],
+            n: "按「🛠 BUG」＝幫你打「bug」。機器人會問你要回報什麼：照它的例子，**連「bug」一起打**，後面寫一句話就好。" }
         ] } }
     ], tryp: { kind: "text", text: "教學", p: "回 LINE，按一顆按鈕，或打「教學」「公告」「bug」試試。", label: "在 LINE 試試看", hint: "會回到 LINE 聊天室，已經幫你填好「教學」，按送出就行。" },
-    recap: ["**輸入框上面那排按鈕永遠都在**，按一下就好，不用記指令。", "**🌐 網頁**開大畫面、**📖 教學**回到這裡、**📢 藥品通知**一次看完通知。", "發現位置錯、照片不對，按**「🛠 BUG」**，寫一句話。"],
-    quiz: { q: "發現某支藥的位置寫錯了，怎麼回報給開發者？", h: "提示：輸入框上面那排按鈕有答案。", o: ["按「🛠 BUG」，寫一句話", "按「📢 藥品通知」", "按「📖 教學」", "按「🌐 網頁」"], a: 0, why: "按「🛠 BUG」（等於打「bug」），寫一句話，開發者會收到。例：90101 位置不對，實際在 K5。" } }
+    recap: ["**輸入框上面那排按鈕永遠都在**，按一下就好，不用記指令。", "**🌐 網頁**開大畫面、**📖 教學**回到這裡、**📢 藥品通知**一次看完通知。", "發現位置錯、照片不對，按**「🛠 BUG」**，再照提示寫一句話（連「bug」一起打）。"],
+    quiz: { q: "發現某支藥的位置寫錯了，怎麼回報給開發者？", h: "提示：輸入框上面那排按鈕有答案。", o: ["按「🛠 BUG」，再照提示寫一句話", "按「📢 藥品通知」", "按「📖 教學」", "按「🌐 網頁」"], a: 0, why: "按「🛠 BUG」（等於打「bug」），再照提示連「bug」一起打、後面寫一句話，開發者會收到。例：bug 90101 位置不對，實際在 K5。" } }
   ];
   var N = LESSONS.length;
   function lessonIdx(id) {
@@ -371,7 +383,7 @@
     [373, 465, 517, 512, 3.9]
   ];
   var PBAR = [[76, 144, 674, 195, "L 3"], [76, 417, 674, 462, "L 2"]];   /* 灰色長條：[左, 上, 右, 下, 字] */
-  var PHIT = { "K2": [246, 90, 388, 148], "B1": [194, 278, 249, 342], "棧一": [373, 465, 517, 512] };   /* 紅框：哪一個位置亮在哪裡 */
+  var PHIT = { "K2": [246, 90, 388, 142], "B1": [194, 278, 249, 342], "棧一": [373, 465, 517, 512] };   /* 紅框：哪一個位置亮在哪裡 */
   function pbox(e, r, fs) {
     e.style.left = (r[0] * 100 / PW) + "%";
     e.style.top = (r[1] * 100 / PH) + "%";
@@ -490,10 +502,11 @@
     b.appendChild(el("div", { class: "lb-ft", text: s.ft }));
     return b;
   }
-  /* 照片認不準的時候：「是這個藥品？」卡 */
-  function askEl(codes, shown) {
-    var b = el("div", { class: "lk", role: "img", "aria-label": "「是這個藥品？」卡：「" + shown + "」有 " + codes.length + " 個品項很像，每一個後面都有一顆「是這個藥品？」按鈕" });
+  /* 照片認不準的時候：「是這個藥品？」卡（how＝這幾個是怎麼找到的，寫在標題下面的小字；沒有就不寫） */
+  function askEl(codes, shown, how) {
+    var b = el("div", { class: "lk", role: "img", "aria-label": "「是這個藥品？」卡：「" + shown + "」有 " + codes.length + " 個品項很像" + (how ? "（" + how + "）" : "") + "，每一個後面都有一顆「是這個藥品？」按鈕" });
     b.appendChild(el("div", { class: "lk-t", text: "❓ 「" + shown + "」有 " + codes.length + " 個品項很像，是哪一個？" }));
+    if (how) b.appendChild(el("div", { class: "lk-h", text: how }));
     codes.forEach(function(code, i) {
       var r = DR[code], mid = [el("div", { class: "lk-b", text: r.b })];
       if (r.g && r.g.toUpperCase() !== r.b.toUpperCase()) mid.push(el("div", { class: "lk-g", text: r.g }));
@@ -502,6 +515,33 @@
       if (i < codes.length - 1) b.appendChild(el("div", { class: "lk-s" }));
     });
     b.appendChild(el("div", { class: "lk-ft", text: "都不是 → 直接打字查（CODE 最準）" }));
+    return b;
+  }
+  /* 超過 5 個品項的「總表」卡：一列一支藥（小照片、商品名、中文名＋CODE、右邊位置），按一列出完整卡片；「⚠️ AI 可能讀錯」寫在標題底下 */
+  function tbEl(m) {
+    var names = m.cs.map(function(c) { return DR[c].b; });
+    var b = el("div", { class: "lb tb", role: "img", "aria-label": "總表卡：讀到 " + m.cs.length + " 個品項，標題底下寫「" + WARN + "」；有 " + names.join("、") + "；每一列右邊是位置；最下面寫「點一列 → 完整卡片」" });
+    b.appendChild(el("div", { class: "sl-t", text: "📝 讀到 " + m.cs.length + " 個品項" }));
+    b.appendChild(el("div", { class: "sl-s warn", text: WARN + "　·　點一列 → 完整卡片" }));
+    m.cs.forEach(function(code) {
+      var r = DR[code];
+      b.appendChild(el("div", { class: "sl-r" }, [
+        el("div", { class: "lb-p s44" + (r.ph ? (r.w ? " w" : " t") : ""), text: r.ph ? "" : "無圖" }),
+        el("div", { class: "sl-m" }, [el("div", { class: "sl-b", text: r.b }), el("div", { class: "sl-z", text: r.z + "　" + code })]),
+        el("div", { class: "sl-l", text: r.loc })
+      ]));
+    });
+    b.appendChild(el("div", { class: "lb-ft", text: "點一列 → 完整卡片" }));
+    return b;
+  }
+  /* 「查無」卡：最上面黃色框（📋 請翻閱『藥品位置查詢表』），再來是「查無「…」相關藥品 😥」和幾個小技巧（字照 LINE 真的那張） */
+  var NF_TIPS = ["・只打前面幾個字就好, 例「CURA」「諾快寧」", "・空格多關鍵字縮小範圍, 例「aspirin 100」", "・輸入位置名稱可查該位置藥品, 例「棧板」「A2」", "・打錯一兩個字也找得到, 認不出來時再換個關鍵字", "・打「公告」看所有藥品通知（停供、改包裝等）"];
+  function nfEl(kw) {
+    var b = el("div", { class: "nf", role: "img", "aria-label": "「查無」卡：最上面黃色框寫「如果查詢不到，請翻閱『藥品位置查詢表』。」；查無「" + kw + "」相關藥品；下面有幾個小技巧" });
+    b.appendChild(el("div", { class: "lc-note" }, [el("div", { class: "lc-nw", text: "📋" }), el("div", { class: "lc-nt", text: "如果查詢不到，\n請翻閱『藥品位置查詢表』。" })]));
+    b.appendChild(el("div", { class: "nf-t", text: "查無「" + kw + "」相關藥品 😥" }));
+    b.appendChild(el("div", { class: "nf-x f", text: "小技巧:" }));
+    NF_TIPS.forEach(function(t) { b.appendChild(el("div", { class: "nf-x", text: t })); });
     return b;
   }
   /* 看平面圖的三個步驟：一個圓圈數字＋一行粗體＋一行小字 */
@@ -515,10 +555,43 @@
   }
 
   /* ───────── 示範區的小零件 ───────── */
-  function bubble(m, animated) {
-    var b = bubble0(m);
+  /* 聊天室的一列，照 LINE 排：您傳的靠右（左邊有「已讀＋時間」）；官方帳號回的靠左，一串回覆的第一則有官方帳號的頭像
+     （卡片比整個聊天室還寬，頭像放在卡片的上面一行）；第一則的泡泡有一個尖角。act（👆 按…）只是旁白，不算一則訊息。 */
+  var WIDE = { dc: 1, car: 1, ll: 1, ask: 1, nf: 1, tb: 1 };
+  function firstFlags(msgs) {
+    var prev = "";
+    return msgs.map(function(m) {
+      if (m.w === "act") return false;
+      var side = m.w === "me" ? "me" : "bot", f = side !== prev;
+      prev = side;
+      return f;
+    });
+  }
+  function bubble(m, animated, first) {
+    var w = m.w, inner = bubble0(m), cls = first ? " first" : "", b;
+    if (w === "act") b = inner;
+    else if (w === "me") b = el("div", { class: "rw me" + cls }, [el("div", { class: "mt", "aria-hidden": "true" }, [el("span", { text: "已讀" }), el("span", { text: TM })]), inner]);
+    else if (WIDE[w]) b = el("div", { class: "rw card" + cls }, first ? [el("span", { class: "ava", "aria-hidden": "true" }), inner] : [inner]);
+    else b = el("div", { class: "rw bot" + cls }, [el("span", { class: "ava" + (first ? "" : " sp"), "aria-hidden": "true" }), inner]);
     if (animated) b.classList.add("pop");
     return b;
+  }
+  /* 您傳的照片：就是一張圖（沒有泡泡）。k：t 藥盒、w 瓶身、three 好幾盒、blur 拍糊了 */
+  function phEl(m) {
+    var k = m.k || "t";
+    return el("div", { class: "pho" + (k === "w" ? " w" : k === "three" ? " three" : k === "blur" ? " blur" : ""), role: "img", "aria-label": "傳了一張照片：" + m.pic }, [el("i", { "aria-hidden": "true" })]);
+  }
+  /* 語音：綠色泡泡，左邊白色圓形播放鍵，中間聲波，右邊長度 */
+  function voEl(m) {
+    return el("div", { class: "vo", role: "img", "aria-label": "傳了一段語音，長度 " + m.voice }, [
+      el("span", { class: "vp", "aria-hidden": "true" }),
+      el("span", { class: "bars", "aria-hidden": "true" }, [6, 11, 16, 9, 14, 19, 12, 7, 15, 10, 17, 8].map(function(h) { var i = el("i"); i.style.height = h + "px"; return i; })),
+      el("span", { "aria-hidden": "true", text: m.voice })
+    ]);
+  }
+  /* 手寫的紙條：一張拍起來的紙（小張的照片，上面一行一個品項） */
+  function ppEl(m) {
+    return el("div", { class: "pho pp", role: "img", "aria-label": "傳了一張手寫的照片：" + m.note.join("、") }, [el("div", { class: "pa", "aria-hidden": "true" }, m.note.map(function(t) { return el("div", { text: t }); }))]);
   }
   function bubble0(m) {
     var w = m.w;
@@ -529,16 +602,14 @@
       var ss = Array.isArray(m.s) ? m.s : [m.s];
       return ss.length > 1 ? carEl(ss.map(listEl), ss.length + " 張列表卡，往左滑看下一張") : el("div", { class: "lcw" }, [listEl(ss[0])]);
     }
-    if (w === "ask") return el("div", { class: "lcw" }, [askEl(m.cs, m.shown)]);
+    if (w === "ask") return el("div", { class: "lcw" }, [askEl(m.cs, m.shown, m.how)]);
+    if (w === "tb") return el("div", { class: "lcw" }, [tbEl(m)]);
+    if (w === "nf") return el("div", { class: "lcw" }, [nfEl(m.kw)]);
     if (w === "pl") return el("div", { class: "pimg", role: "img", "aria-label": "大張的平面圖：紅框是這支藥放的那一格，圖的左邊寫著「大門」" }, [planEl(m.hit)]);
     if (w === "bot") return el("div", { class: "bub bot", text: m.t });
-    if (m.pic) return el("div", { class: "bub me pic", role: "img", "aria-label": "傳了一張照片：" + m.pic }, [el("span", { class: "pbox", text: "📷", "aria-hidden": "true" }), el("span", { class: "pcap", text: m.pic })]);
-    if (m.voice) return el("div", { class: "bub me voice", role: "img", "aria-label": "傳了一段語音" }, [
-      el("span", { text: "🎤", "aria-hidden": "true" }),
-      el("span", { class: "bars", "aria-hidden": "true" }, [8, 14, 10, 18, 12, 16, 9, 13].map(function(h) { var i = el("i"); i.style.height = h + "px"; return i; })),
-      el("span", { text: m.voice })
-    ]);
-    if (m.note) return el("div", { class: "bub me paper", role: "img", "aria-label": "傳了一張手寫的照片：" + m.note.join("、") }, [el("div", { class: "paper-in" }, m.note.map(function(t) { return el("div", { text: t }); }))]);
+    if (m.pic) return phEl(m);
+    if (m.voice) return voEl(m);
+    if (m.note) return ppEl(m);
     return el("div", { class: "bub me", text: m.t });
   }
   function noteBox(s) {
@@ -556,17 +627,17 @@
     function stop() { timers.forEach(clearTimeout); timers = []; }
     function play(msgs, animate) {
       stop();
-      var h = chat.offsetHeight;
+      var h = chat.offsetHeight, fl = firstFlags(msgs);
       chat.textContent = "";
       if (!animate || REDUCE) {
-        msgs.forEach(function(m) { chat.appendChild(bubble(m)); });
+        msgs.forEach(function(m, i) { chat.appendChild(bubble(m, false, fl[i])); });
         chat.style.minHeight = "";
         return;
       }
       chat.style.minHeight = h + "px";
       msgs.forEach(function(m, i) {
         timers.push(setTimeout(function() {
-          chat.appendChild(bubble(m, true));
+          chat.appendChild(bubble(m, true, fl[i]));
           if (i === msgs.length - 1) chat.style.minHeight = "";
         }, i * 480));
       });
@@ -706,7 +777,7 @@
     }
     bar.appendChild(el("div", { class: "inbar", "aria-hidden": "true" }, [
       el("span", { class: "inic", text: "＋" }), el("span", { class: "inic", text: "📷" }), el("span", { class: "inic g", text: "🖼" }),
-      el("span", { class: "inbox", text: "輸入訊息" }),
+      el("span", { class: "inbox" }, [el("span", { text: "Aa" }), el("span", { text: "☺" })]),
       el("span", { class: "inic" + (d.hot === "mic" ? " on" : ""), text: "🎤" })
     ]));
     function showChip(k) {
