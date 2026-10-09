@@ -141,9 +141,9 @@
     padding:10px 12px; font-size:22px; letter-spacing:.3em; text-align:center; font-variant-numeric:tabular-nums}
   .bindf button{border:0; border-radius:12px; padding:0 20px; background:var(--accent); color:var(--accent-ink); font-weight:700; font-size:16px}
   .bindf button:disabled{opacity:.6}
-  .bindm{display:block; min-height:1.7em; color:var(--danger); font-size:14px}
+  .bindm{display:block; min-height:1.7em; color:var(--danger); font-size:14px; overflow-wrap:anywhere}   /* 後端回的字很長、沒有空白（亂碼、網址）也要折行，不能把網頁撐出橫向捲軸 */
   .bindbox small{display:block; color:var(--muted); font-size:12.5px}
-  /* v11.22.2 beta：代號登入（沒有 LINE 連結的瀏覽器）：上面一行「後端代號」讓人核對是不是真的補藥神器；下面是代號區塊（.pairbx；不能叫 .pair——藥品卡片的「注意」框已經用了 .box.pair）、驗證碼輸入框（一個輸入框＋四格「系統看懂的字」＋登入鍵） */
+  /* v11.22.2 beta：代號登入（沒有 LINE 連結的瀏覽器）：上面一行「後端代號」讓人核對是不是真的補藥神器；下面是代號區塊（.pairbx；不能叫 .pair——藥品卡片的「注意」框已經用了 .box.pair）、驗證碼輸入框（一個 6 位數的輸入框＋登入鍵）、最下面小小的「開發者登入」 */
   .codebox{width:100%; max-width:460px; margin:0 auto; padding-inline:4px}   /* width:100%：不然 main（flex 直欄）會把它縮到「最寬那行字」的寬度，代號區塊在「有代號」「作廢」之間寬度會跳 */
   .codebox small{display:block; color:var(--ink2); font-size:12.5px; margin-top:6px}
   .cdhead{display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px 14px}
@@ -151,35 +151,34 @@
   .cdbk{display:inline-block; margin:0; padding:3px 12px; border-radius:999px; background:var(--sunk); color:var(--ink2); font-size:13px; line-height:1.6}
   .cdbk b{display:inline; margin:0; font-size:14.5px; letter-spacing:.08em; color:var(--ink)}
   .cdbox{display:flex; flex-direction:column; gap:12px; margin:14px auto 4px; max-width:420px; text-align:center}
-  .cdin{width:100%; min-width:0; border:1.5px solid var(--edge); background:var(--surface); color:var(--ink); border-radius:12px; padding:13px 14px; font-size:19px; line-height:1.3; text-align:center}
-  .cdin::placeholder{color:var(--hintc); font-size:15px}
-  .cdslots{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px}
-  .cds{border:1.5px dashed var(--edge); border-radius:12px; background:var(--surface); padding:8px 2px 7px; min-height:94px; display:flex; flex-direction:column; align-items:center; gap:1px; min-width:0}
-  .cdc{font-size:34px; font-weight:700; line-height:1.2; min-height:1.2em; color:var(--ink)}
-  .cdz,.cdp{font-size:12.5px; color:var(--ink2); line-height:1.4; min-height:1.4em; max-width:100%; overflow-wrap:anywhere}
-  .cds.ok{border-style:solid; border-color:var(--leaf); background:var(--leaf-soft)} .cds.ok .cdc{color:var(--leaf)}
-  .cds.amb{border-style:solid; border-color:var(--warn); background:var(--warn-soft)} .cds.amb .cdc{color:var(--warn)}
-  .cds.bad,.cds.junk{border-style:solid; border-color:var(--danger); background:var(--danger-soft)} .cds.bad .cdc,.cds.junk .cdc{color:var(--danger)}
-  .cds.pend .cdc{color:var(--muted)}
+  .cdin{width:100%; min-width:0; border:1.5px solid var(--edge); background:var(--surface); color:var(--ink); border-radius:12px; padding:12px 14px; font-size:28px; font-weight:700; line-height:1.3; text-align:center; letter-spacing:.32em; text-indent:.32em;
+    font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; font-variant-numeric:tabular-nums}   /* 6 位數字：等寬、字距拉開、置中（text-indent 抵掉最後一個字後面多出來的字距） */
+  .cdin::placeholder{color:var(--hintc); font-size:16px; font-weight:400; letter-spacing:0; text-indent:0; font-family:inherit}
   .cdh{min-height:1.7em; font-size:13.5px; color:var(--ink2); line-height:1.6}
   .cdgo{border:0; border-radius:12px; padding:13px; min-height:max(48px, calc(48px / var(--z,1))); background:var(--accent); color:var(--accent-ink); font-size:17px; font-weight:700}
   .bindm.wait{color:var(--ink2)}   /* 「確認中…」不是錯誤，不用紅字 */
   .retry{margin-top:10px; min-height:max(44px, calc(44px / var(--z,1))); border:1.5px solid var(--edge); background:var(--sunk); color:var(--accent); border-radius:10px; padding:10px 18px; font-size:15px; font-weight:700}
   .cdgo:disabled{opacity:.6; cursor:default}
-  /* v11.22.2 beta：代號登入 ① 代號（6 位數大字、倒數、重新取得）→ ② 到 LINE 換驗證碼，打在下面的輸入框。
-     .pairbx 裡的 <b> 要蓋掉 .empty b（那個是 block、15.5px）；沒有代號的狀態（過期、作廢、沒拿到）用 .pcode.gone 當標題＋ .pbtn 重新取得 */
+  /* v11.22.2 beta：代號登入 ① 代號（大字、複製、倒數、重新取得）→ ② 到 LINE 換驗證碼，打在下面的輸入框。
+     .pairbx 裡的 <b> 要蓋掉 .empty b（那個是 block、15.5px）；沒有代號的狀態（過期、作廢、沒拿到）用 .pcode.gone 當標題＋ .pbtn 重新取得。
+     藥師的代號是 9 個英數字（.pcode），開發者的是 6 個數字（.pcode.num，字更大）；手機最窄 320 也放得下（字寬跟著螢幕寬度縮，最大 40px） */
   .pairbx{margin:14px auto 0; max-width:420px; padding:12px; border:1.5px solid var(--edge); border-radius:14px; background:var(--surface); text-align:center}
   .pst{font-size:14px; color:var(--ink2); line-height:1.6; overflow-wrap:anywhere; text-wrap:balance}   /* 兩行的時候平均分，不要最後一行只剩一兩個字 */
   .pst b,.pst2 b,.pmeta b{display:inline; margin:0; font-size:inherit; color:var(--ink)}
   .pmeta b.low{color:var(--danger)}   /* 倒數剩 20 秒以內 */
+  .prole{display:inline-block; margin:0 0 6px; padding:2px 12px; border-radius:999px; background:var(--accent-soft); color:var(--ink); font-size:13px; font-weight:700}   /* 開發者登入的小標籤（字用 --ink：淺色的 --accent 壓在淡藍底上對比只有 4.2，不到 4.5） */
   .pnote{margin:0 0 10px; padding:8px 12px; border-radius:10px; background:var(--warn-soft); border-left:4px solid var(--warn); color:var(--ink); font-size:13.5px; line-height:1.6; font-weight:700; text-align:left; overflow-wrap:anywhere}   /* 自動換新代號之後的說明（字用 --ink：--warn 在淺色底上對比不到 4.5） */
-  .pcode{font-size:40px; font-weight:800; letter-spacing:.16em; margin:6px 0 4px; color:var(--ink); line-height:1.25; font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; font-variant-numeric:tabular-nums; -webkit-user-select:all; user-select:all}
+  .pcode{font-size:min(40px, 9.6vw); font-weight:800; letter-spacing:.1em; margin:6px 0 4px; color:var(--ink); line-height:1.25; font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; font-variant-numeric:tabular-nums; -webkit-user-select:all; user-select:all; overflow-wrap:anywhere}
+  .pcode.num{font-size:min(44px, 11.5vw); letter-spacing:.18em}
   .pcode.gone{font-size:20px; letter-spacing:0; color:var(--ink2); font-family:inherit; margin:12px 0 8px; -webkit-user-select:auto; user-select:auto}
+  .pcopy{display:block; margin:2px auto 6px; min-height:max(44px, calc(44px / var(--z,1))); border:1.5px solid var(--accent); background:var(--surface); color:var(--accent); border-radius:10px; padding:6px 18px; font-size:14px; font-weight:700}
   .pmeta{font-size:12.5px; color:var(--ink2); line-height:1.8}
   .plink{border:0; background:transparent; color:var(--accent); font-size:13.5px; font-weight:700; text-decoration:underline; padding:8px 14px; min-height:max(44px, calc(44px / var(--z,1)))}
   .pbtn{margin-top:6px; min-height:max(44px, calc(44px / var(--z,1))); border:1.5px solid var(--accent); background:var(--surface); color:var(--accent); border-radius:10px; padding:8px 18px; font-size:15px; font-weight:700}
   .pbtn:disabled,.plink:disabled{opacity:.6; cursor:default}
   .pst2{margin:16px auto 0; font-size:14px; color:var(--ink2); line-height:1.6}
+  .cdrole{text-align:center; margin-top:4px}   /* 最下面小小的「開發者登入」／「← 回藥師登入」 */
+  .cdrole .plink{color:var(--ink2); font-size:13px; font-weight:500}
   /* 電腦（760 以上，整頁有放大 --z）：① 代號在左、② 驗證碼輸入在右，並排——筆電（1366×768 瀏覽器內約 650 高）第一屏就看得到輸入格和登入鍵。
      兩欄的寬度是固定的（各 430）：右邊還沒有輸入框（拿代號中、沒拿到、過期；#cdwrap 是 hidden＝不占位置）的時候，右欄空著，左邊的代號框不會在拿到代號的那一刻往左跳。手機維持上下排 */
   @media (min-width:760px){
