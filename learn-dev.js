@@ -120,6 +120,7 @@
   function lp(o) { return { w: "lp", o: o || {} }; }   /* LINE 內建瀏覽器裡的這份教學。o.pg：toc 目錄頁、lesson 一課的頁；o.hot：row／stage／next／title／close */
   function qb(k) { return { w: "qb", k: k }; }   /* LINE 的輸入框（上面一排小按鈕＋下面的輸入框），k＝圈起來的那顆按鈕（web／guide／notice／bug）：「按輸入框上面的…」那一步，先畫出它在哪裡，手指再去按 */
   function gd(o) { return { w: "gd", o: o || {} }; }   /* LINE 回的「📖 補藥神器　教學」卡片（有藍色的「開始學習」）。o.hot：圈起「開始學習」 */
+  function jn(k) { return { w: "jn", k: k }; }   /* LINE 回的「加入補藥神器」兩張卡片（照 07_操作.gs 的 _joinQrCard_、_joinStepsCard_）。k：qr＝「👥 邀請同事一起用」（QR）、steps＝「加入只要 3 步」 */
   var DEMO_SIX = "482915";   /* 編的 6 位數驗證碼（跟 cdEl 那張卡片是同一組） */
   var DEMO_CODE = "Kd7mPq4Xr";   /* 編的示範代號：9 個英數字（沒有 I O l o 0 1），真的代號是網頁每次向後端要的，這一組領不到任何東西 */
   /* 編出來的藥（b 商品名、z 中文名、g 學名、f 劑型、w 水劑、ind 適應症、feat 藥品特徵、loc 位置、ph 有沒有照片） */
@@ -8566,7 +8567,7 @@
   var CH = [{ n: "改資料" }, { n: "日常維護" }, { n: "進階與網頁" }];
   function qr(items, cap) { return { w: "qr", items: items, cap: cap || "" }; }
   /* 釘住的那排按鈕：訊息自己沒有小按鈕時，接在最後一則下面（開發者多一顆「🔧 開發者」） */
-  var BAR = ["🌐 網頁", "📖 教學", "📢 藥品通知", "🛠 BUG", "🔧 開發者"];
+  var BAR = ["🌐 網頁", "📖 教學", "📢 藥品通知", "🛠 BUG", "👥 加入補藥神器", "🔧 開發者"];
   /* 改完一格／存檔之後，最後一則下面：「↩️ 復原 CODE」排在最前面，後面接釘住的那排（多行的欄位再多一顆「↵ 再加一句」排最前面） */
   function undoQ(code, multi) { return qr((multi ? ["↵ 再加一句"] : []).concat(["↩️ 復原 " + code], BAR), "輸入框上面會出現（第一顆可以復原）"); }
   /* 新藥格子：小按鈕＝黃色那一格的常用選項（位置：常用位置；劑型：9 種），可以跳過的多一顆「跳過」，最後一定有「取消」 */
@@ -8758,7 +8759,8 @@
     { k: "web", t: "🌐 網頁", n: "**🌐 網頁**：直接開補藥神器網頁版（不是幫你打字）。" },
     { k: "guide", t: "📖 教學", n: "**📖 教學**：幫你打「教學」，就是回到這一份教學。" },
     { k: "notice", t: "📢 藥品通知", n: "**📢 藥品通知**：幫你打「公告」，一次看完停止供貨、改包裝、缺貨的通知。" },
-    { k: "bug", t: "🛠 BUG", n: "**🛠 BUG**：幫你打「bug」；再照提示，連「bug」一起打、後面寫一句話回報問題。" }
+    { k: "bug", t: "🛠 BUG", n: "**🛠 BUG**：幫你打「bug」；再照提示，連「bug」一起打、後面寫一句話回報問題。" },
+    { k: "join", t: "👥 加入補藥神器", n: "**👥 加入補藥神器**：幫你打「加入補藥神器」；機器人會傳一張 QR，請同事用 LINE 掃，就能加入（最後面那一顆，手機上要往左滑、電腦要拉按鈕下面的捲軸才看得到）。" }
   ];
 
   var LESSONS = [
@@ -9459,6 +9461,48 @@
       el("div", { class: "gc-f", "aria-hidden": "true" }, [el("div", { class: "gc-b" + (o.hot ? " hot" : ""), text: "開始學習" })])
     ]);
   }
+  /* 「👥 加入補藥神器」按下去，官方帳號回的兩張卡片（字照 07_操作.gs 的 _joinQrCard_、_joinStepsCard_：標題＋說明＋QR＋官方帳號 ID／「加入只要 3 步」＋三步）。
+     官方帳號 ID 是編的（@xxxxxxxx）；QR 是畫給你看的：三個角的定位方塊＋亂數排的小方塊，掃了沒有用（真的 QR 是你們官方帳號的加入好友連結）。 */
+  var JN = { t: "👥 邀請同事一起用", p: "請同事用 LINE 掃下面的 QR，就能加入「補藥神器」。", id: "官方帳號 ID　@xxxxxxxx", h: "加入只要 3 步", s: ["LINE 首頁右上角「加好友」→「QR 碼」，掃上面的圖", "看到補藥神器，按「加入」", "跟著歡迎訊息，先看一下教學"] };
+  function jnQrGrid() {
+    var n = 29, seed = 20260929, r, c, dark, fin = [[0, 0], [0, n - 7], [n - 7, 0]], g = el("div", { class: "jc-g", "aria-hidden": "true" });
+    function rnd() { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
+    for (r = 0; r < n; r++) {
+      for (c = 0; c < n; c++) {
+        dark = null;
+        fin.forEach(function(f) {   /* 三個角的定位方塊：7×7（外框黑、裡面一圈白、正中間 3×3 黑），外面再空一圈 */
+          var y = r - f[0], x = c - f[1];
+          if (y >= -1 && y <= 7 && x >= -1 && x <= 7) dark = y >= 0 && y <= 6 && x >= 0 && x <= 6 && (y === 0 || y === 6 || x === 0 || x === 6 || (y >= 2 && y <= 4 && x >= 2 && x <= 4));
+        });
+        if (dark === null && r === 6) dark = c % 2 === 0;   /* 橫的、直的虛線 */
+        if (dark === null && c === 6) dark = r % 2 === 0;
+        if (dark === null) {   /* 右下角的小定位方塊 */
+          var ay = r - (n - 9), ax = c - (n - 9);
+          if (ay >= 0 && ay <= 4 && ax >= 0 && ax <= 4) dark = ay === 0 || ay === 4 || ax === 0 || ax === 4 || (ay === 2 && ax === 2);
+        }
+        if (dark === null) dark = rnd() < 0.5;
+        g.appendChild(el("i", { class: dark ? "k" : null }));   /* 整頁不放任何圖形或圖片（安全規則）：QR 用 29×29 個小方格排出來 */
+      }
+    }
+    return g;
+  }
+  function jnEl(k) {
+    if (k === "steps") {
+      return el("div", { class: "jcard js", role: "img", "aria-label": "LINE 回的第二張卡片「" + JN.h + "」：" + JN.s.map(function(t, i) { return "第 " + (i + 1) + " 步，" + t; }).join("；") }, [
+        el("div", { class: "jc-h", "aria-hidden": "true", text: JN.h })
+      ].concat(JN.s.map(function(t, i) {
+        return el("div", { class: "jc-r", "aria-hidden": "true" }, [el("span", { class: "jc-n", text: String(i + 1) }), el("span", { class: "jc-s", text: t })]);
+      })));
+    }
+    var q = el("div", { class: "jc-q", "aria-hidden": "true" });
+    q.appendChild(jnQrGrid());
+    return el("div", { class: "jcard jq", role: "img", "aria-label": "LINE 回的卡片「" + JN.t + "」：" + JN.p + JN.id.replace("　", " ") + "（QR 是示意圖，掃了沒有用）" }, [
+      el("div", { class: "jc-t", "aria-hidden": "true", text: JN.t }),
+      el("div", { class: "jc-p", "aria-hidden": "true", text: JN.p }),
+      q,
+      el("div", { class: "jc-id", "aria-hidden": "true", text: JN.id })
+    ]);
+  }
   /* LINE 內建瀏覽器裡的這份教學：上面一條（✕ 關閉、頁面標題＋網址、⋯）；目錄頁（toc）＝標題、進度、「繼續學」、第一章的三課；一課的頁（lesson）＝課名 ▾／第 n 課、一塊白底區塊（裡面有灰底的示範區）、最下面的「‹ 上一課／下一課 ›」。
      hot：圈起來的那一塊（close 關閉、row 一課、stage 示範區、next 下一課、title 課名） */
   function lpEl(o) {
@@ -9529,6 +9573,7 @@
      （卡片比整個聊天室還寬，頭像放在卡片的上面一行）；第一則的泡泡有一個尖角。act（👆 按…）只是旁白，不算一則訊息。 */
   var WIDE = { dc: 1, car: 1, ll: 1, ask: 1, nf: 1, tb: 1, cd: 1, gc: 1, gcar: 1 };
   WIDE.gd = 1;   /* 「📖 補藥神器　教學」卡片：官方帳號回的卡片，跟藥品卡片一樣在上面一行放頭像 */
+  WIDE.jn = 1;   /* 「加入補藥神器」的兩張卡片：官方帳號回的卡片，跟藥品卡片一樣在上面一行放頭像 */
   var SCENE = { br: 1, lp: 1, qb: 1 };   /* 不是聊天的訊息：電腦的瀏覽器視窗、LINE 內建瀏覽器的畫面。一整列、置中、沒有頭像，跟 act 一樣不算「誰說的」 */
   function firstFlags(msgs) {
     var prev = "";
@@ -9585,6 +9630,7 @@
     if (w === "br") return el("div", { class: "lcw" }, [brEl(m.o)]);
     if (w === "lp") return el("div", { class: "lcw" }, [lpEl(m.o)]);
     if (w === "gd") return el("div", { class: "lcw" }, [gdEl(m.o)]);
+    if (w === "jn") return el("div", { class: "lcw" }, [jnEl(m.k)]);
     if (w === "qb") return el("div", { class: "lcw" }, [qbarEl({ chips: true, hot: m.k })]);
     if (w === "bot") return el("div", { class: "bub bot", text: m.t });
     if (m.pic) return phEl(m);
@@ -9810,10 +9856,17 @@
   }
   /* LINE 輸入列的畫面本身：上面那排按鈕（chips）＋下面的輸入框；hot＝圈起來的那一顆（mic 或按鈕）；pick＝按鈕可以點（chipEls 收按鈕、onPick 是點了之後做什麼）。示範區（demoQbar）和聊天示範裡的 qb 畫面共用 */
   function qbarEl(d, chipEls, onPick) {
-    var bar = el("div", { class: "qbar", role: d.pick ? "group" : "img", "aria-label": d.chips ? "LINE 的輸入框，上面有一排按鈕：網頁、教學、藥品通知、BUG" : "LINE 的輸入框，最右邊是麥克風" });
+    var bar = el("div", { class: "qbar", role: d.pick ? "group" : "img", "aria-label": d.chips ? "LINE 的輸入框，上面有一排按鈕：網頁、教學、藥品通知、BUG、加入補藥神器" : "LINE 的輸入框，最右邊是麥克風" });
     chipEls = chipEls || {};
     if (d.chips) {
       var row = el("div", { class: "qrow" });
+      if (d.pick) on(row, "focusin", function(e) {   /* 這一排放不下時（第 5 顆）：用 Tab 跳到哪一顆，就把那一排捲到看得到那一顆——這個框是「container-type」，瀏覽器不會自己幫忙捲 */
+        var t = e.target, tr, rr, pad = 8;
+        if (!t || !t.getBoundingClientRect) return;
+        tr = t.getBoundingClientRect(); rr = row.getBoundingClientRect();
+        if (tr.right > rr.right - pad) row.scrollLeft += tr.right - rr.right + pad;
+        else if (tr.left < rr.left + pad) row.scrollLeft -= rr.left + pad - tr.left;
+      });
       QCHIPS.forEach(function(c) {
         var on_ = d.hot === c.k;
         if (d.pick) {

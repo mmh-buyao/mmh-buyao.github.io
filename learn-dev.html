@@ -177,7 +177,7 @@
   .inbox{flex:1; min-width:0; display:flex; align-items:center; justify-content:space-between; min-height:36px; padding:0 12px; border-radius:18px; background:var(--sunk); color:var(--muted); font-size:15px; white-space:nowrap; overflow:hidden}
   @media (max-width:359px){ .inic.g{display:none} }   /* 老瀏覽器（不支援 cqw）又很窄時：少畫一個相簿圖示，輸入框才放得下 */
   @supports (width:1cqw){
-    .qrow{flex-wrap:nowrap; gap:2cqw; padding:2.2cqw; overflow-x:auto; scrollbar-width:none}
+    .qrow{flex-wrap:nowrap; gap:2cqw; padding:2.2cqw; overflow-x:auto; scroll-padding-inline:2.2cqw; scrollbar-width:none}
     .qrow::-webkit-scrollbar{display:none}
     .qchip{min-height:9.2cqw; padding:0 3.1cqw; font-size:3.6cqw}
     button.qchip{min-height:max(44px,9.6cqw)}
@@ -185,6 +185,14 @@
     .inic,.inic.g{display:inline-flex; width:8.8cqw; height:8.8cqw; font-size:5cqw}
     .inbox{min-height:9.2cqw; padding:0 3.1cqw; border-radius:4.6cqw; font-size:3.9cqw}
   }
+  /* 第 18 批：按鈕變 5 顆，這一排放不下（跟真的 LINE 手機一樣，往左滑才看得到最後一顆）。手機用滑的；電腦（有滑鼠、視窗夠寬）多一條細捲軸，用滑鼠的人才拉得到。
+     只有「真的按得下去」的那排（role=group）才可以自己滑；聊天示範裡畫出來的輸入框（role=img）只是圖：不給滑、也不讓 Tab 停在上面（瀏覽器會讓放不下的捲動區塊變成鍵盤可以停的地方）。 */
+  @media (hover:hover) and (pointer:fine) and (min-width:700px){
+    .qbar[role="group"] .qrow{scrollbar-width:thin; scrollbar-color:var(--line) transparent}
+    .qbar[role="group"] .qrow::-webkit-scrollbar{display:block; height:8px}
+    .qbar[role="group"] .qrow::-webkit-scrollbar-thumb{border-radius:4px; background:var(--line)}
+  }
+  .qbar[role="img"] .qrow{overflow-x:hidden}
   .cmd{align-self:center; padding:6px 16px; border-radius:999px; background:var(--btn); color:var(--btn-ink); font-size:14px; font-weight:700; text-align:center; line-height:1.5}
   .tiles{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:12px}
   @media (max-width:440px){ .tiles{grid-template-columns:1fr} }
@@ -319,8 +327,8 @@
   .cdc-x.w{color:#B0392B}
   /* ── 電腦瀏覽器視窗（網頁登入）、LINE 內建瀏覽器（這份教學）、「📖 教學」卡片 ──（第 17 批）
      跟上面的卡片一樣：用 --u 等比例縮放、永遠是淺色（不跟著這頁的深淺色走）。--bu＝--u，但不小於 .857px：窄手機上字最小也有 12px（14 × .857），放不下的就折行，不再縮小 */
-  .bw,.lpf,.gcard{--bu:max(.857px, var(--u)); box-sizing:border-box; background:#fff; color:#14202B; font-size:calc(14*var(--bu)); line-height:1.5; font-weight:400; letter-spacing:0; text-align:left; font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif}
-  .bw *,.lpf *,.gcard *{box-sizing:border-box}
+  .bw,.lpf,.gcard,.jcard{--bu:max(.857px, var(--u)); box-sizing:border-box; background:#fff; color:#14202B; font-size:calc(14*var(--bu)); line-height:1.5; font-weight:400; letter-spacing:0; text-align:left; font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif}
+  .bw *,.lpf *,.gcard *,.jcard *{box-sizing:border-box}
   .bw,.lpf{width:100%; overflow:hidden; box-shadow:0 0 0 1px rgba(20,32,43,.3), 0 calc(3*var(--u)) calc(14*var(--u)) rgba(20,32,43,.22)}
   .bw{border-radius:calc(10*var(--u))}
   .bw .hot,.lpf .hot{box-shadow:0 0 0 calc(3*var(--u)) #2F66E0}   /* 要你看的那一塊：藍色粗框（跟上面卡片的「點名稱」同色） */
@@ -395,6 +403,21 @@
   .gc-f{padding:calc(2*var(--u)) calc(13*var(--u)) calc(13*var(--u))}
   .gc-b{padding:calc(11*var(--u)); border-radius:calc(8*var(--u)); background:#1F6FD0; color:#fff; text-align:center; font-size:calc(16*var(--bu)); font-weight:700}
   .gcard .hot{box-shadow:0 0 0 calc(3*var(--u)) #2F66E0}
+  /* 「加入補藥神器」的兩張卡片（第 18 批）：跟 07 的 _joinQrCard_（mega＝300）、_joinStepsCard_（kilo＝260）一樣大；永遠是淺色 */
+  .jcard{display:flex; flex-direction:column; padding:calc(16*var(--u)); border-radius:calc(16*var(--u)); line-height:1.4; box-shadow:0 0 0 1px rgba(0,0,0,.08)}   /* LINE 的規則：子元件有寫 margin，就用 margin（取代 spacing）；沒寫就用外層 box 的 spacing。所以 QR 卡（spacing sm＝4）：標題→說明 4、說明→QR 框 8（margin md）、QR 框→官方帳號 ID 4（margin sm） */
+  .jcard.jq{width:calc(300*var(--u)); max-width:100%}
+  .jcard.js{width:calc(260*var(--u)); max-width:100%; gap:calc(8*var(--u))}
+  .jc-t{color:#1B7F5C; font-size:calc(19*var(--bu)); font-weight:700; overflow-wrap:anywhere}
+  .jc-p{margin-top:calc(4*var(--u)); color:#3C4043; font-size:calc(14*var(--bu)); overflow-wrap:anywhere}
+  .jc-q{margin-top:calc(8*var(--u)); padding:calc(10*var(--u)); border:1px solid #DADCE0; border-radius:calc(8*var(--u)); background:#FFFFFF; line-height:0}
+  .jc-g{display:grid; grid-template-columns:repeat(29,1fr); grid-auto-rows:1fr; width:100%; aspect-ratio:1/1; background:#FFFFFF}
+  .jc-g i{display:block; min-width:0; min-height:0}
+  .jc-g i.k{background:#000000}
+  .jc-id{margin-top:calc(4*var(--u)); color:#5F6368; font-size:calc(13*var(--bu)); text-align:center; overflow-wrap:anywhere}
+  .jc-h{color:#1F1F1F; font-size:calc(16*var(--bu)); font-weight:700}
+  .jc-r{display:flex; align-items:flex-start; gap:calc(8*var(--u))}
+  .jc-n{flex:none; width:calc(20*var(--u)); height:calc(20*var(--u)); border-radius:50%; background:#1B7F5C; color:#FFFFFF; font-size:calc(11*var(--bu)); font-weight:700; line-height:1; text-align:center; display:flex; align-items:center; justify-content:center}
+  .jc-s{flex:1 1 0%; min-width:0; color:#3C4043; font-size:calc(14*var(--bu)); overflow-wrap:anywhere}
   .rw.scene{flex-direction:column; align-items:stretch}
   .rw.scene .lcw{margin-inline:auto}
   .pk .pt{display:block; min-width:0}

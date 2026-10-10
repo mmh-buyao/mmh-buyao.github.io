@@ -120,6 +120,7 @@
   function lp(o) { return { w: "lp", o: o || {} }; }   /* LINE 內建瀏覽器裡的這份教學。o.pg：toc 目錄頁、lesson 一課的頁；o.hot：row／stage／next／title／close */
   function qb(k) { return { w: "qb", k: k }; }   /* LINE 的輸入框（上面一排小按鈕＋下面的輸入框），k＝圈起來的那顆按鈕（web／guide／notice／bug）：「按輸入框上面的…」那一步，先畫出它在哪裡，手指再去按 */
   function gd(o) { return { w: "gd", o: o || {} }; }   /* LINE 回的「📖 補藥神器　教學」卡片（有藍色的「開始學習」）。o.hot：圈起「開始學習」 */
+  function jn(k) { return { w: "jn", k: k }; }   /* LINE 回的「加入補藥神器」兩張卡片（照 07_操作.gs 的 _joinQrCard_、_joinStepsCard_）。k：qr＝「👥 邀請同事一起用」（QR）、steps＝「加入只要 3 步」 */
   var DEMO_SIX = "482915";   /* 編的 6 位數驗證碼（跟 cdEl 那張卡片是同一組） */
   var DEMO_CODE = "Kd7mPq4Xr";   /* 編的示範代號：9 個英數字（沒有 I O l o 0 1），真的代號是網頁每次向後端要的，這一組領不到任何東西 */
   /* 編出來的藥（b 商品名、z 中文名、g 學名、f 劑型、w 水劑、ind 適應症、feat 藥品特徵、loc 位置、ph 有沒有照片） */
@@ -205,7 +206,8 @@
     { k: "web", t: "🌐 網頁", n: "**🌐 網頁**：直接開補藥神器網頁版（不是幫你打字）。" },
     { k: "guide", t: "📖 教學", n: "**📖 教學**：幫你打「教學」，就是回到這一份教學。" },
     { k: "notice", t: "📢 藥品通知", n: "**📢 藥品通知**：幫你打「公告」，一次看完停止供貨、改包裝、缺貨的通知。" },
-    { k: "bug", t: "🛠 BUG", n: "**🛠 BUG**：幫你打「bug」；再照提示，連「bug」一起打、後面寫一句話回報問題。" }
+    { k: "bug", t: "🛠 BUG", n: "**🛠 BUG**：幫你打「bug」；再照提示，連「bug」一起打、後面寫一句話回報問題。" },
+    { k: "join", t: "👥 加入補藥神器", n: "**👥 加入補藥神器**：幫你打「加入補藥神器」；機器人會傳一張 QR，請同事用 LINE 掃，就能加入（最後面那一顆，手機上要往左滑、電腦要拉按鈕下面的捲軸才看得到）。" }
   ];
 
   var LESSONS = [
@@ -413,7 +415,7 @@
     ] },
 
     { id: "pin", ch: 2, name: "釘住的按鈕", secs: [
-      { t: "不用記指令，按就好", p: "機器人**每一次回覆**的下面，輸入框上面，都會有一排按鈕。點一下，就等於幫你打好那個字。按按看下面這四顆。",
+      { t: "不用記指令，按就好", p: "機器人**每一次回覆**的下面，輸入框上面，都會有一排按鈕。點一下，就等於幫你打好那個字。按按看下面這五顆。這一排放不下，手機往左滑、電腦拉下面的捲軸，後面還有。",
         d: { k: "qbar", chips: true, pick: true },
         note: "按鈕不見了？它只出現在**機器人最新傳的那一則**下面。隨便傳個字（例如「教學」）等它回，按鈕就回來了；直接打「教學」「公告」「bug」也一樣。" },
       { t: "🌐 網頁", p: "按它，直接開補藥神器網頁版——在 LINE 裡面開，不用另外登入。想用比較大的畫面看清單、查藥、看藥品通知的時候，就按它。",
@@ -455,9 +457,16 @@
         d: { k: "chat", ttl: "回報一次", ch: [
           { l: "回報", m: [qb("bug"), act("👆 按輸入框上面的「🛠 BUG」", ".qchip.on"), me("bug"), bot("要回報什麼？寫在後面就好 🙏\n\n例：\n　bug 22975 位置不對，實際在 K2\n　/bug 23661 照片是別支藥的\n　．bug 這支查不到\n\n（前面打不打符號都可以，半形全形都認得。）"), me("bug 90101 位置不對，實際在 K5"), bot("收到了，謝謝您 🙏\n\n「90101 位置不對，實際在 K5」\n\n已經記下來，開發者會看到。\n\n如果是位置不對，麻煩補藥時先以實際位置為準。")],
             n: "按「🛠 BUG」＝幫你打「bug」。機器人會問你要回報什麼：照它的例子，**連「bug」一起打**，後面寫一句話就好。" }
-        ] } }
+        ] } },
+      { t: "👥 加入補藥神器", p: "想請同事一起用？按它，機器人會傳一張 **QR**，請同事用 LINE 掃，就能加入。它在那排按鈕的**最後面**，手機上要往左滑、電腦要拉按鈕下面的捲軸才看得到。",
+        d: { k: "chat", ttl: "邀請同事", cap: "示意畫面：官方帳號 ID 是編的；QR 是畫給你看的，掃了沒有用，真的 QR 是你們官方帳號的。", ch: [
+          { l: "邀請同事", m: [qb("join"), act("👆 按輸入框上面的「👥 加入補藥神器」", ".qchip.on"), me("加入補藥神器"), jn("qr"), jn("steps")],
+            n: "按「👥 加入補藥神器」＝幫你打「加入補藥神器」。機器人傳**兩張卡片**：第一張是 **QR**，請同事用 LINE 掃；第二張是「**加入只要 3 步**」，同事不知道怎麼掃的話，照著做。" }
+        ] },
+        note: "同事掃了 QR、按「加入」之後，會自動收到歡迎訊息和「開始學習」的教學卡片，不用你再教一次。",
+        warn: "這個 QR 任何人掃了都能加入，**只給院內的同事**，不要貼在公開的地方。" }
     ], tryp: { kind: "text", text: "教學", p: "回 LINE，按一顆按鈕，或打「教學」「公告」「bug」試試。", label: "在 LINE 試試看", hint: "會回到 LINE 聊天室，已經幫你填好「教學」，按送出就行。" },
-    recap: ["**機器人每次回覆的下面，都有那排按鈕**，按一下就好，不用記指令；不見了就隨便傳個字，等它回覆。", "**🌐 網頁**開大畫面（用電腦開：貼**代號**、拿 **6 位數驗證碼**）、**📖 教學**回到這裡、**📢 藥品通知**一次看完通知。", "發現位置錯、照片不對，按**「🛠 BUG」**，再照提示寫一句話（連「bug」一起打）。"],
+    recap: ["**機器人每次回覆的下面，都有那排按鈕**，按一下就好，不用記指令；不見了就隨便傳個字，等它回覆。", "**🌐 網頁**開大畫面（用電腦開：貼**代號**、拿 **6 位數驗證碼**）、**📖 教學**回到這裡、**📢 藥品通知**一次看完通知、**🛠 BUG**回報位置錯、照片不對（連「bug」一起打，後面寫一句話）。", "想請同事一起用，按最後面的**「👥 加入補藥神器」**，給他一張 QR 掃；掃了、按「加入」就加入了。"],
     quiz: [
       { q: "發現某支藥的位置寫錯了，怎麼回報給開發者？", h: "提示：輸入框上面那排按鈕有答案。", o: ["按「🛠 BUG」，再照提示寫一句話", "按「📢 藥品通知」", "按「📖 教學」", "按「🌐 網頁」"], a: 0, why: "按「🛠 BUG」（等於打「bug」），再照提示連「bug」一起打、後面寫一句話，開發者會收到。例：bug 90101 位置不對，實際在 K5。" },
       { q: "輸入框上面那排按鈕不見了，怎麼辦？", h: "提示：它只出現在機器人最新傳的那一則下面。", o: ["隨便傳個字（例如「教學」），等機器人回覆，按鈕就回來了", "重新安裝 LINE", "等到明天", "按「🌐 網頁」"], a: 0, why: "按鈕只出現在機器人最新傳的那一則下面。隨便傳個字等它回，按鈕就回來；直接打「教學」「公告」「bug」也一樣。" },
@@ -465,7 +474,9 @@
       { q: "網頁上的「代號」，要貼在哪裡？", h: "提示：是跟機器人的聊天室。", o: ["跟補藥神器的一對一聊天室", "任何一個群組", "電腦的搜尋框", "寄電子郵件給管理者"], a: 0, why: "要貼在跟補藥神器的一對一聊天室，不是群組。" },
       { q: "LINE 回的 6 位數驗證碼，要怎麼用？", h: "提示：像銀行簡訊的驗證碼。", o: ["打回出現代號的那個網頁；只能用一次，不要傳給任何人", "傳給同事，大家一起用", "貼到群組裡備份", "存起來，下次再用"], a: 0, why: "驗證碼只能用在出現代號的那個網頁，而且只能用一次；不要傳給任何人。" },
       { q: "按輸入框上面的「📖 教學」，等於做了什麼？", h: "提示：按鈕＝幫你打好那個字。", o: ["幫你打「教學」，機器人回一張有「開始學習」的卡片", "開網頁版", "回報問題", "列出藥品通知"], a: 0, why: "按「📖 教學」等於幫你打「教學」；機器人會傳一張卡片，最下面有藍色的「開始學習」。" },
-      { q: "「🌐 網頁」跟另外三顆按鈕有什麼不同？", h: "提示：另外三顆是幫你打字。", o: ["它是直接開網頁版（不是幫你打字）", "它是用來關閉機器人的", "它會刪掉你的紀錄", "沒有不同"], a: 0, why: "按「🌐 網頁」＝開補藥神器網頁版（不是幫你打字）；📖 教學、📢 藥品通知、🛠 BUG 才是幫你打字。" }
+      { q: "「🌐 網頁」跟另外四顆按鈕有什麼不同？", h: "提示：另外四顆是幫你打字。", o: ["它是直接開網頁版（不是幫你打字）", "它是用來關閉機器人的", "它會刪掉你的紀錄", "沒有不同"], a: 0, why: "按「🌐 網頁」＝開補藥神器網頁版（不是幫你打字）；📖 教學、📢 藥品通知、🛠 BUG、👥 加入補藥神器 才是幫你打字。" },
+      { q: "想請新同事一起用補藥神器，怎麼做最快？", h: "提示：輸入框上面那排按鈕，最後面那一顆。", o: ["按「👥 加入補藥神器」，請同事用 LINE 掃機器人傳的 QR", "把自己的 LINE 帳號和密碼告訴同事", "把藥品位置表用 Email 寄給同事", "叫同事自己猜官方帳號的名字"], a: 0, why: "按「👥 加入補藥神器」（等於打「加入補藥神器」），機器人會傳一張 QR 和一張「加入只要 3 步」的小卡片；同事用 LINE 掃 QR、按「加入」就加入了。" },
+      { q: "同事掃了 QR、按了「加入」之後，會怎樣？", h: "提示：機器人會自己打招呼。", o: ["自動收到歡迎訊息和有「開始學習」的教學卡片", "要等你一個一個教", "要先填一張申請表", "什麼都沒有，要自己找教學"], a: 0, why: "同事一加入，機器人就自己傳歡迎訊息，和一張有「開始學習」的教學卡片；不用你再教一次。" }
     ] }
   ];
   var N = LESSONS.length;
@@ -708,6 +719,48 @@
       el("div", { class: "gc-f", "aria-hidden": "true" }, [el("div", { class: "gc-b" + (o.hot ? " hot" : ""), text: "開始學習" })])
     ]);
   }
+  /* 「👥 加入補藥神器」按下去，官方帳號回的兩張卡片（字照 07_操作.gs 的 _joinQrCard_、_joinStepsCard_：標題＋說明＋QR＋官方帳號 ID／「加入只要 3 步」＋三步）。
+     官方帳號 ID 是編的（@xxxxxxxx）；QR 是畫給你看的：三個角的定位方塊＋亂數排的小方塊，掃了沒有用（真的 QR 是你們官方帳號的加入好友連結）。 */
+  var JN = { t: "👥 邀請同事一起用", p: "請同事用 LINE 掃下面的 QR，就能加入「補藥神器」。", id: "官方帳號 ID　@xxxxxxxx", h: "加入只要 3 步", s: ["LINE 首頁右上角「加好友」→「QR 碼」，掃上面的圖", "看到補藥神器，按「加入」", "跟著歡迎訊息，先看一下教學"] };
+  function jnQrGrid() {
+    var n = 29, seed = 20260929, r, c, dark, fin = [[0, 0], [0, n - 7], [n - 7, 0]], g = el("div", { class: "jc-g", "aria-hidden": "true" });
+    function rnd() { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
+    for (r = 0; r < n; r++) {
+      for (c = 0; c < n; c++) {
+        dark = null;
+        fin.forEach(function(f) {   /* 三個角的定位方塊：7×7（外框黑、裡面一圈白、正中間 3×3 黑），外面再空一圈 */
+          var y = r - f[0], x = c - f[1];
+          if (y >= -1 && y <= 7 && x >= -1 && x <= 7) dark = y >= 0 && y <= 6 && x >= 0 && x <= 6 && (y === 0 || y === 6 || x === 0 || x === 6 || (y >= 2 && y <= 4 && x >= 2 && x <= 4));
+        });
+        if (dark === null && r === 6) dark = c % 2 === 0;   /* 橫的、直的虛線 */
+        if (dark === null && c === 6) dark = r % 2 === 0;
+        if (dark === null) {   /* 右下角的小定位方塊 */
+          var ay = r - (n - 9), ax = c - (n - 9);
+          if (ay >= 0 && ay <= 4 && ax >= 0 && ax <= 4) dark = ay === 0 || ay === 4 || ax === 0 || ax === 4 || (ay === 2 && ax === 2);
+        }
+        if (dark === null) dark = rnd() < 0.5;
+        g.appendChild(el("i", { class: dark ? "k" : null }));   /* 整頁不放任何圖形或圖片（安全規則）：QR 用 29×29 個小方格排出來 */
+      }
+    }
+    return g;
+  }
+  function jnEl(k) {
+    if (k === "steps") {
+      return el("div", { class: "jcard js", role: "img", "aria-label": "LINE 回的第二張卡片「" + JN.h + "」：" + JN.s.map(function(t, i) { return "第 " + (i + 1) + " 步，" + t; }).join("；") }, [
+        el("div", { class: "jc-h", "aria-hidden": "true", text: JN.h })
+      ].concat(JN.s.map(function(t, i) {
+        return el("div", { class: "jc-r", "aria-hidden": "true" }, [el("span", { class: "jc-n", text: String(i + 1) }), el("span", { class: "jc-s", text: t })]);
+      })));
+    }
+    var q = el("div", { class: "jc-q", "aria-hidden": "true" });
+    q.appendChild(jnQrGrid());
+    return el("div", { class: "jcard jq", role: "img", "aria-label": "LINE 回的卡片「" + JN.t + "」：" + JN.p + JN.id.replace("　", " ") + "（QR 是示意圖，掃了沒有用）" }, [
+      el("div", { class: "jc-t", "aria-hidden": "true", text: JN.t }),
+      el("div", { class: "jc-p", "aria-hidden": "true", text: JN.p }),
+      q,
+      el("div", { class: "jc-id", "aria-hidden": "true", text: JN.id })
+    ]);
+  }
   /* LINE 內建瀏覽器裡的這份教學：上面一條（✕ 關閉、頁面標題＋網址、⋯）；目錄頁（toc）＝標題、進度、「繼續學」、第一章的三課；一課的頁（lesson）＝課名 ▾／第 n 課、一塊白底區塊（裡面有灰底的示範區）、最下面的「‹ 上一課／下一課 ›」。
      hot：圈起來的那一塊（close 關閉、row 一課、stage 示範區、next 下一課、title 課名） */
   function lpEl(o) {
@@ -778,6 +831,7 @@
      （卡片比整個聊天室還寬，頭像放在卡片的上面一行）；第一則的泡泡有一個尖角。act（👆 按…）只是旁白，不算一則訊息。 */
   var WIDE = { dc: 1, car: 1, ll: 1, ask: 1, nf: 1, tb: 1, cd: 1 };
   WIDE.gd = 1;   /* 「📖 補藥神器　教學」卡片：官方帳號回的卡片，跟藥品卡片一樣在上面一行放頭像 */
+  WIDE.jn = 1;   /* 「加入補藥神器」的兩張卡片：官方帳號回的卡片，跟藥品卡片一樣在上面一行放頭像 */
   var SCENE = { br: 1, lp: 1, qb: 1 };   /* 不是聊天的訊息：電腦的瀏覽器視窗、LINE 內建瀏覽器的畫面。一整列、置中、沒有頭像，跟 act 一樣不算「誰說的」 */
   function firstFlags(msgs) {
     var prev = "";
@@ -833,6 +887,7 @@
     if (w === "br") return el("div", { class: "lcw" }, [brEl(m.o)]);
     if (w === "lp") return el("div", { class: "lcw" }, [lpEl(m.o)]);
     if (w === "gd") return el("div", { class: "lcw" }, [gdEl(m.o)]);
+    if (w === "jn") return el("div", { class: "lcw" }, [jnEl(m.k)]);
     if (w === "qb") return el("div", { class: "lcw" }, [qbarEl({ chips: true, hot: m.k })]);
     if (w === "bot") return el("div", { class: "bub bot", text: m.t });
     if (m.pic) return phEl(m);
@@ -1058,10 +1113,17 @@
   }
   /* LINE 輸入列的畫面本身：上面那排按鈕（chips）＋下面的輸入框；hot＝圈起來的那一顆（mic 或按鈕）；pick＝按鈕可以點（chipEls 收按鈕、onPick 是點了之後做什麼）。示範區（demoQbar）和聊天示範裡的 qb 畫面共用 */
   function qbarEl(d, chipEls, onPick) {
-    var bar = el("div", { class: "qbar", role: d.pick ? "group" : "img", "aria-label": d.chips ? "LINE 的輸入框，上面有一排按鈕：網頁、教學、藥品通知、BUG" : "LINE 的輸入框，最右邊是麥克風" });
+    var bar = el("div", { class: "qbar", role: d.pick ? "group" : "img", "aria-label": d.chips ? "LINE 的輸入框，上面有一排按鈕：網頁、教學、藥品通知、BUG、加入補藥神器" : "LINE 的輸入框，最右邊是麥克風" });
     chipEls = chipEls || {};
     if (d.chips) {
       var row = el("div", { class: "qrow" });
+      if (d.pick) on(row, "focusin", function(e) {   /* 這一排放不下時（第 5 顆）：用 Tab 跳到哪一顆，就把那一排捲到看得到那一顆——這個框是「container-type」，瀏覽器不會自己幫忙捲 */
+        var t = e.target, tr, rr, pad = 8;
+        if (!t || !t.getBoundingClientRect) return;
+        tr = t.getBoundingClientRect(); rr = row.getBoundingClientRect();
+        if (tr.right > rr.right - pad) row.scrollLeft += tr.right - rr.right + pad;
+        else if (tr.left < rr.left + pad) row.scrollLeft -= rr.left + pad - tr.left;
+      });
       QCHIPS.forEach(function(c) {
         var on_ = d.hot === c.k;
         if (d.pick) {
