@@ -16,7 +16,7 @@
 <meta name="theme-color" content="#1F1E1C" media="(prefers-color-scheme: dark)">
 <meta name="robots" content="noindex, nofollow">
 <style>
-  /* 補藥神器開發者教學網頁（第 16 批；樣式跟藥師版教學一樣，後面多接開發者用的幾種畫面）：照「氛圍學院」單元頁的排法——課程目錄＋一課一頁往下捲（白底圓角區塊、淺藍說明框、重點回顧、最下面上一課／下一課；開發者版沒有隨堂測驗）。
+  /* 補藥神器開發者教學網頁（第 16 批；樣式跟藥師版教學一樣，後面多接開發者用的幾種畫面）：照「氛圍學院」單元頁的排法——課程目錄＋一課一頁往下捲（白底圓角區塊、淺藍說明框、重點回顧、最下面上一課／下一課）。
      不用登入、不連任何網站（沒有後端、沒有外部網址）；示範區是 LINE 聊天的假畫面，裡面的藥品卡片、列表卡、平面圖都照 LINE 上真的畫（見下面「藥品卡片示意」）；示範的藥名、位置、照片全是編的。
      第 15 批：拿掉「▶ 1 分鐘」；新增「看平面圖」一課（站在藥局裡，看大門處或是出入口在哪，再轉圖對方向）；最上面那條不放「✕」「不用登入」。
      手機（LINE 內部瀏覽器）優先，電腦也看得下去；淺色、深色都有。 */
@@ -393,6 +393,40 @@
   .lp-chips{display:flex; flex-wrap:wrap; gap:calc(6*var(--u)); margin-top:calc(6*var(--u))}
   .lp-chips i{padding:calc(5*var(--u)) calc(12*var(--u)); border:1.5px solid #E3E2DD; border-radius:999px; background:#fff; font-style:normal; font-size:calc(13*var(--bu)); font-weight:700}
   .lp-chips i.on{border-color:#252423; background:#252423; color:#fff}
+  /* ★ 第 21 批：「往下捲，看示範」（lp 的 hot:stage）會自己演。.lp-dm＝只露出一截的頁面（往下捲＝裡面的 .lp-scr 往上移）；靜態就是捲好、第三個選項亮著的樣子，動畫只是從一開始的樣子走到最後 */
+  .lp-dm{height:calc(272*var(--u)); overflow:hidden}
+  .lp-dm .lp-scr{transform:translateY(calc(-118*var(--u)))}
+  .lp-ld{display:flex; flex-direction:column; gap:calc(6*var(--u)); margin:0 0 calc(10*var(--u))}
+  .lp-ld i{display:block; height:calc(9*var(--u)); border-radius:999px; background:#E6E4DF}
+  .lp-ld i:nth-child(2){width:92%}
+  .lp-ld i:nth-child(3){width:70%}
+  .lp-dm .lp-st{position:relative}
+  .lp-dm .lp-chips i{flex:0 0 calc(58*var(--u)); padding-inline:0; text-align:center; font-size:calc(12*var(--bu))}
+  .lp-pl{margin-top:calc(8*var(--u)); height:calc(112*var(--u)); overflow:hidden; border-radius:calc(8*var(--u))}   /* 平面圖只露出上半（紅框、棧、L 3 都在上半），下面那句說明才放得進畫面 */
+  .lp-pl .pl{border:1px solid #D5D8E6; border-radius:calc(8*var(--u))}
+  .lp-nt{display:grid; margin-top:calc(8*var(--u)); padding:calc(6*var(--u)) calc(8*var(--u)); border-radius:calc(8*var(--u)); background:#EEF3FD; color:#1D3F94; font-size:calc(11.5*var(--bu)); line-height:1.4}
+  .lp-nt>span{grid-area:1 / 1}
+  .lp-nt>.n1,.lp-nt>.n2{visibility:hidden}
+  .lp-fg{position:absolute; left:0; top:0; font-size:calc(26*var(--u)); line-height:1; visibility:hidden; pointer-events:none; filter:drop-shadow(0 1px 2px rgba(0,0,0,.3))}
+  /* 時間軸：0.5 秒後往下捲（0.5 秒）→ 0.9 秒「自動示範中」亮 → 2.0 秒手指點「藍色方塊」→ 3.8 秒點「灰色長條」→ 4.2 秒手指收起來，5.0 秒整段結束 */
+  .rw.pop .lp-dm .lp-scr{animation:lpscr .5s .5s ease-in-out backwards}
+  .rw.pop .lp-dm .lp-sth em{animation:bwoff .01s .9s backwards}
+  .rw.pop .lp-dm .lp-chips i:nth-child(1){animation:lpchipon .01s 2s backwards}
+  .rw.pop .lp-dm .lp-chips i:nth-child(2){animation:lpchipon 1.8s 2s}
+  .rw.pop .lp-dm .lp-chips i:nth-child(3){animation:lpchipoff .01s 3.8s backwards}
+  .rw.pop .lp-dm .lp-pl [data-part="hit"]{animation:lpon .01s 2s backwards}
+  .rw.pop .lp-dm .lp-pl [data-part="b"]{animation:lpon 1.8s 2s}
+  .rw.pop .lp-dm .lp-pl [data-part="bar"]{animation:lpoff .01s 3.8s backwards}
+  .rw.pop .lp-dm .lp-nt>.n1{animation:bwon .01s 2s backwards}
+  .rw.pop .lp-dm .lp-nt>.n2{animation:bwon 1.8s 2s}
+  .rw.pop .lp-dm .lp-nt>.n3{animation:bwoff .01s 3.8s backwards}
+  .rw.pop .lp-dm .lp-fg{animation:lpfg 3s 1.2s}
+  @keyframes lpscr{from{transform:none}}
+  @keyframes lpchipon{from,to{border-color:#252423; background:#252423; color:#fff}}
+  @keyframes lpchipoff{from,to{border-color:#E3E2DD; background:#fff; color:#14202B}}
+  @keyframes lpon{from,to{box-shadow:inset 0 0 0 max(2px,.9cqw) #2F66E0}}
+  @keyframes lpoff{from,to{box-shadow:none}}
+  @keyframes lpfg{0%{visibility:visible; opacity:0; transform:translate(calc(230*var(--u)),calc(130*var(--u)))} 8%{opacity:1} 26%{transform:translate(calc(88*var(--u)),calc(44*var(--u))) scale(1)} 29%{transform:translate(calc(88*var(--u)),calc(44*var(--u))) scale(.82)} 36%{transform:translate(calc(88*var(--u)),calc(44*var(--u))) scale(1)} 80%{transform:translate(calc(152*var(--u)),calc(44*var(--u))) scale(1)} 86%{transform:translate(calc(152*var(--u)),calc(44*var(--u))) scale(.82)} 92%{opacity:1; transform:translate(calc(152*var(--u)),calc(44*var(--u))) scale(1)} 100%{visibility:visible; opacity:0; transform:translate(calc(152*var(--u)),calc(44*var(--u)))}}
   .lp-nb{display:flex; align-items:center; justify-content:space-between; gap:calc(8*var(--u)); margin-top:calc(10*var(--u)); padding:calc(8*var(--u)) calc(10*var(--u)); border-top:1px solid #E3E2DD; background:#fff}
   .lp-nb b{padding:calc(8*var(--u)) calc(14*var(--u)); border:1.5px solid #E3E2DD; border-radius:calc(12*var(--u)); font-size:calc(13.5*var(--bu))}
   .lp-nb b.nx{border-color:#252423; background:#252423; color:#fff}
@@ -403,7 +437,7 @@
   .gc-f{padding:calc(2*var(--u)) calc(13*var(--u)) calc(13*var(--u))}
   .gc-b{padding:calc(11*var(--u)); border-radius:calc(8*var(--u)); background:#1F6FD0; color:#fff; text-align:center; font-size:calc(16*var(--bu)); font-weight:700}
   .gcard .hot{box-shadow:0 0 0 calc(3*var(--u)) #2F66E0}
-  /* 「加入補藥神器」的兩張卡片（第 18 批）：跟 07 的 _joinQrCard_（mega＝300）、_joinStepsCard_（kilo＝260）一樣大；永遠是淺色 */
+  /* 「加入補藥神器」的卡片（第 18 批）：跟 07 的 _joinQrCard_（mega＝300）一樣大；永遠是淺色。第 21 批：「加入只要 3 步」改成左右滑的 4 張圖卡（.jcard.sl，見下面） */
   .jcard{display:flex; flex-direction:column; padding:calc(16*var(--u)); border-radius:calc(16*var(--u)); line-height:1.4; box-shadow:0 0 0 1px rgba(0,0,0,.08)}   /* LINE 的規則：子元件有寫 margin，就用 margin（取代 spacing）；沒寫就用外層 box 的 spacing。所以 QR 卡（spacing sm＝4）：標題→說明 4、說明→QR 框 8（margin md）、QR 框→官方帳號 ID 4（margin sm） */
   .jcard.jq{width:calc(300*var(--u)); max-width:100%}
   .jcard.js{width:calc(260*var(--u)); max-width:100%; gap:calc(8*var(--u))}
@@ -418,6 +452,15 @@
   .jc-r{display:flex; align-items:flex-start; gap:calc(8*var(--u))}
   .jc-n{flex:none; width:calc(20*var(--u)); height:calc(20*var(--u)); border-radius:50%; background:#1B7F5C; color:#FFFFFF; font-size:calc(11*var(--bu)); font-weight:700; line-height:1; text-align:center; display:flex; align-items:center; justify-content:center}
   .jc-s{flex:1 1 0%; min-width:0; color:#3C4043; font-size:calc(14*var(--bu)); overflow-wrap:anywhere}
+  /* ★ 第 21 批：「加入只要 3 步」改成左右滑的 4 張圖卡（放在 .lcar 裡；每張照 07 的 JOIN_SLIDES：最上面一行小灰字、圓角細框的圖、粗體一行、小字一行） */
+  .lcar>.jcard.sl{flex:0 0 calc(300*var(--u)); width:calc(300*var(--u)); padding:calc(12*var(--u)); gap:calc(4*var(--u)); scroll-snap-align:start}
+  .jc-x{color:#6B7280; font-size:calc(13*var(--bu))}
+  .jc-ph{display:block; width:100%; border:1px solid #DADCE0; border-radius:calc(8*var(--u)); background:#FFFFFF center / contain no-repeat}
+  .jc-ph.pt{aspect-ratio:494/720; background-image:url(5v3cfxbw40tw.png)}
+  .jc-ph.scan{aspect-ratio:494/720; background-image:url(zqjnprvqm5ru.png); background-size:cover}
+  .jc-ph.add{aspect-ratio:484/392; background-image:url(4v0zrahpan6i.png)}
+  .jc-ph.welcome{aspect-ratio:712/552; background-image:url(j4zrsdc7pxwg.png)}
+  .jcard.sl .jc-h{margin-top:calc(4*var(--u))}   /* LINE 的規則：標題寫了 margin md（8）就用它取代 spacing；上面的 gap 已經是 4，再加 4＝8 */
   .rw.scene{flex-direction:column; align-items:stretch}
   .rw.scene .lcw{margin-inline:auto}
   .pk .pt{display:block; min-width:0}
@@ -485,6 +528,20 @@
   .st{display:flex; flex-direction:column; min-width:0; line-height:1.55}
   .st b{font-size:15px}
   .st span{color:var(--muted); font-size:13px}
+  /* ★ 第 21 批：同事手機的截圖（只有「👥 加入補藥神器」那一課的動畫示範用）：不是 img 標籤，是 div 的背景圖；圖檔跟 learn.html 放同一個 GitHub 資料夾（相對網址，不連外面的網站；CSP 的 img-src 'self' 本來就准）。
+     檔名是亂碼（圖裡有醫院的名字）：這裡寫代號（JP_PAGE 那種，前後各兩個底線），gen_gh.js 換成 src8/_join_names.json 裡的檔名；每一張都有 aria-label 說明圖在講什麼。
+     page＝整個「聊天」頁的上半（掃描鈕已經圈了紅圈）；scan＝掃描畫面。一整列置中（跟電腦瀏覽器那種畫面一樣）；.sc-hot＝手指要按的地方（掃描鈕：搜尋列最右邊，用百分比定位在圖上，本身看不見） */
+  .scp{position:relative; width:calc(200*var(--u)); max-width:100%; margin-inline:auto; border-radius:calc(10*var(--u)); background:#FFFFFF center / 100% 100% no-repeat; box-shadow:0 0 0 1px rgba(0,0,0,.14)}
+  .scp.page{aspect-ratio:494/720; background-image:url(yootwcx01h5h.png)}
+  .scp.scan{aspect-ratio:472/1024; background-image:url(zqjnprvqm5ru.png)}
+  .sc-hot{position:absolute; left:88.4%; top:7.6%; width:7%; height:4.8%; border-radius:50%; pointer-events:none}
+  /* 掃到 QR 之後 LINE 跳出來的小視窗（照真的畫的：頭像、名字、「官方帳號」、綠色的「加入」） */
+  .frs{--bu:max(.857px, var(--u)); box-sizing:border-box; display:flex; flex-direction:column; align-items:center; gap:calc(6*var(--u)); width:calc(260*var(--u)); max-width:100%; margin-inline:auto; padding:calc(18*var(--u)) calc(16*var(--u)) calc(16*var(--u)); border-radius:calc(16*var(--u)); background:#fff; color:#14202B; line-height:1.4; text-align:center; box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+  .frs .fa{width:calc(64*var(--u)); height:calc(64*var(--u)); border-radius:50%; background:#fff var(--i-ava) center / 88% no-repeat; box-shadow:0 0 0 1px rgba(0,0,0,.08)}
+  .frs .fn{font-size:calc(17*var(--bu)); font-weight:700}
+  .frs .fo{color:#6B7A88; font-size:calc(12*var(--bu))}
+  .frs .fb{margin-top:calc(8*var(--u)); width:100%; padding:calc(11*var(--u)); border-radius:calc(8*var(--u)); background:#06C755; color:#fff; font-size:calc(16*var(--bu)); font-weight:700}
+  .frs .fb.hot{box-shadow:0 0 0 calc(3*var(--u)) #2F66E0}
 
   /* ── 動手試試／重點回顧 ── */
   .btn{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:52px; padding:0 18px; border:0; border-radius:14px; background:var(--btn); color:var(--btn-ink); font-size:16.5px; font-weight:800; text-decoration:none; text-align:center}
@@ -492,18 +549,6 @@
   .rc{display:flex; flex-direction:column; gap:12px; margin:0; padding:0; list-style:none}
   .rc li{display:flex; align-items:flex-start; gap:12px; font-size:15.5px; line-height:1.75}
   .rn{flex:none; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; margin-top:1px; border-radius:50%; background:var(--btn); color:var(--btn-ink); font-size:14px; font-weight:800}
-  .q{margin:0 0 4px; font-size:17px; font-weight:800; line-height:1.65}
-  .hint{margin:0 0 6px; color:var(--muted); font-size:14px; line-height:1.7}
-  .opt{display:flex; align-items:center; gap:12px; width:100%; min-height:54px; margin-top:8px; padding:10px 14px; border:1.5px solid var(--line); border-radius:14px; background:var(--surface); text-align:left; font-size:15.5px; font-weight:600; line-height:1.6}
-  .ol{flex:none; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border:1px solid var(--line); border-radius:50%; background:var(--bg); font-size:14px; font-weight:800}
-  .opt.ok{border-color:var(--ok); background:var(--ok-soft)}
-  .opt.ok .ol{border-color:var(--ok); background:var(--ok); color:var(--surface)}
-  .opt.no{border-color:var(--no); background:var(--no-soft); color:var(--ink2)}
-  .opt.no .ol{border-color:var(--no); background:var(--no); color:var(--surface)}
-  .opt:disabled{cursor:default}
-  .res{min-height:1.7em; margin:10px 2px 0; font-size:15px; font-weight:700; line-height:1.75}
-  .res.ok{color:var(--ok)} .res.no{color:var(--no)}
-  .res span{display:block; color:var(--ink2); font-weight:500}
   .end{height:1px}
 
   /* ── 最下面（上一課／百分比／下一課），固定在畫面底 ── */
@@ -546,6 +591,36 @@
   .rw.pop .bw-in.v ~ .bw-h{animation:dig .25s 1s both}
   @keyframes dig{from{opacity:0} to{opacity:1}}
   @keyframes goon{from{opacity:.6} to{opacity:1}}
+  /* 第 21 批：「輸入網址」（電腦打開網頁版第 1 步，br 的 enter）。只有示範（.rw.pop）才有動畫：電腦的瀏覽器剛開一個新分頁、網址列是空的（放 --d0 毫秒），
+     然後網址一個字一個字打進網址列（第 k 個字在 --d0 + k × --per 毫秒），打完按 Enter（鍵帽閃一下），到 --tl 毫秒，分頁名、🔒、頁面一起換成補藥神器的頁面（向後端要代號中）。
+     沒有 .pop（第一次畫出來、減少動態）就直接是最後的樣子：動畫只是讓畫面從「一開始的樣子」走到最後（backwards＝動畫還沒開始之前先停在第一格）。 */
+  .bwx .bw-tab{display:grid; padding:0}
+  .bwx .bw-tab>span{grid-area:1 / 1; min-width:0; padding:calc(5*var(--u)) calc(16*var(--u)); overflow:hidden; text-overflow:ellipsis}
+  .bwx .bw-tab>.t0,.bwx .bw-lk>.l0,.bwx .bw-ph0{visibility:hidden}
+  .bwx .bw-url{position:relative}
+  .bwx .bw-lk{display:grid}
+  .bwx .bw-lk>span{grid-area:1 / 1}
+  .bwx .bw-addr{display:grid; align-items:center; color:#14202B}
+  .bwx .bw-addr>span{grid-area:1 / 1; min-width:0; overflow:hidden; text-overflow:ellipsis}
+  .bwx .bw-ph0{color:#7A8B99}
+  .bwx .bw-tx i{font-style:normal}
+  .bw-caret{display:none; width:calc(1.5*var(--u)); height:1.2em; margin-left:1px; background:#14202B; vertical-align:text-bottom}
+  .bw-key{position:absolute; right:calc(14*var(--u)); top:50%; margin-top:calc(-11*var(--u)); padding:calc(2*var(--u)) calc(8*var(--u)); border:1.5px solid #708392; border-bottom-width:calc(3*var(--u)); border-radius:calc(6*var(--u)); background:#fff; color:#14202B; font-size:calc(11.5*var(--bu)); font-weight:800; line-height:1.4; visibility:hidden}
+  .bwx .bw-pg{display:grid}
+  .bwx .bw-pg>*{grid-area:1 / 1; min-width:0}
+  .rw.pop .bwx .bw-ph0{animation:bwon .01s calc(var(--d0)*1ms) backwards}
+  .rw.pop .bwx .bw-tab>.t0,.rw.pop .bwx .bw-lk>.l0{animation:bwon .01s calc(var(--tl)*1ms) backwards}
+  .rw.pop .bwx .bw-tab>.t1,.rw.pop .bwx .bw-lk>.l1{animation:bwoff .01s calc(var(--tl)*1ms) backwards}
+  .rw.pop .bwx .bw-s1{animation:s1in .3s calc(var(--tl)*1ms) backwards}
+  .rw.pop .bwx .bw-tx i{animation:typ .01s calc((var(--d0) + var(--k)*var(--per))*1ms) backwards}
+  .rw.pop .bwx .bw-caret{display:inline-block; opacity:0; animation:caret calc((var(--n)*var(--per) + 600)*1ms) calc(var(--d0)*1ms)}
+  .rw.pop .bwx .bw-key{animation:keyf .6s calc((var(--d0) + var(--n)*var(--per) + 160)*1ms) backwards}
+  @keyframes bwon{from,to{visibility:visible}}
+  @keyframes bwoff{from,to{visibility:hidden}}
+  @keyframes typ{from{font-size:0}}
+  @keyframes caret{0%,99%{opacity:1} 100%{opacity:0}}
+  @keyframes keyf{0%{visibility:hidden; opacity:0; transform:translateY(calc(3*var(--u)))} 1%{visibility:visible; opacity:0} 22%,75%{visibility:visible; opacity:1; transform:none} 99%{visibility:visible; opacity:0} 100%{visibility:hidden; opacity:0}}
+  @keyframes s1in{0%{visibility:hidden; opacity:0} 1%{visibility:visible; opacity:0} 100%{visibility:visible; opacity:1}}
   @media (max-width:374px){ .autob{padding:0 4px; font-size:0} .autob::before{margin-right:0} }   /* 窄手機（320～374）：「自動示範中」只留那顆圓點，標題＋圓點＋「停止」＋「重播」才放得進同一行（折到下一行，示範區就會在開始／結束的時候上下跳） */
   /* 目錄頁：「怎麼用這份教學」（可以收起來） */
   .how{margin:18px 0 0; border:1px solid var(--line); border-radius:18px; background:var(--surface); overflow:hidden}

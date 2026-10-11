@@ -4,7 +4,7 @@
   /* ═══ 補藥神器開發者教學網頁（第 16 批；從藥師版教學改出來，只放開發者用的功能）═══
      不登入、不連任何網站：沒有 fetch、沒有外部網址，畫面上的藥全是編的示範。藥品卡片、列表卡、平面圖都是用元素＋CSS 畫出來的（五張小圖放在最上面 :root 的 --i-* 變數）。
      只有兩樣東西會「記」在這支手機裡：學習進度、從 LINE「教學」帶進來的「回聊天室」資訊（見最下面 boot）。
-     排法照氛圍學院：目錄頁（#/）＝章節分組、一課一列；一課的頁（#/l/課名）＝白底區塊一塊接一塊往下捲，最後有「重點回顧」，最下面固定「上一課／下一課」（開發者版沒有隨堂測驗）。 */
+     排法照氛圍學院：目錄頁（#/）＝章節分組、一課一列；一課的頁（#/l/課名）＝白底區塊一塊接一塊往下捲，最後有「重點回顧」，最下面固定「上一課／下一課」。 */
   var root = document.getElementById("main"), topEl = document.getElementById("top"), botEl = document.getElementById("bot");
   var NS = "buyao_learndev_", mem = {};
   var store = {
@@ -95,7 +95,7 @@
 
   /* ───────── 課程內容 ─────────
      每一課：id、ch（第幾章）、name、secs（一塊一塊的白底區塊：t 標題、p 說明、d 示範區、note 淺藍說明框、warn 黃色提醒、tips 三個小提醒；tipsFirst＝改成放在示範區前面的「步驟 1、2、3」）、
-     keys（示範區下面灰底的「記住 n 件事」）、tryp（動手試試）、recap（重點回顧）；開發者版沒有 quiz（隨堂測驗）。
+     keys（示範區下面灰底的「記住 n 件事」）、tryp（動手試試）、recap（重點回顧）。
      示範區 d：chat＝LINE 聊天的假畫面（ch＝可以點選的幾種情況；每種有 m 聊天內容、n 下面的說明；一種就只有重播鍵）、anat＝在真的卡片上點名稱看每一塊、
      plan＝平面圖上點名稱看每一塊、turn＝「大門在你哪一邊，圖要怎麼轉」、qbar＝LINE 輸入列、sim＝練習聊天室（自己打字、按送出，深色框說明機器人怎麼找；pre 只打前幾個字的範例字（第一個也是自動示範的那個）、ex 其他查法的範例字、bad 故意打錯的字）。
      聊天內容 m：me 自己說的、bot 官方帳號回的、dc 一張藥品卡片、car 一排卡片（往左滑）、ll 列表卡、ask「是這個藥品？」卡、pl 大張平面圖、
@@ -120,7 +120,11 @@
   function lp(o) { return { w: "lp", o: o || {} }; }   /* LINE 內建瀏覽器裡的這份教學。o.pg：toc 目錄頁、lesson 一課的頁；o.hot：row／stage／next／title／close */
   function qb(k) { return { w: "qb", k: k }; }   /* LINE 的輸入框（上面一排小按鈕＋下面的輸入框），k＝圈起來的那顆按鈕（web／guide／notice／bug）：「按輸入框上面的…」那一步，先畫出它在哪裡，手指再去按 */
   function gd(o) { return { w: "gd", o: o || {} }; }   /* LINE 回的「📖 補藥神器　教學」卡片（有藍色的「開始學習」）。o.hot：圈起「開始學習」 */
-  function jn(k) { return { w: "jn", k: k }; }   /* LINE 回的「加入補藥神器」兩張卡片（照 07_操作.gs 的 _joinQrCard_、_joinStepsCard_）。k：qr＝「👥 邀請同事一起用」（QR）、steps＝「加入只要 3 步」 */
+  function jn(k) { return { w: "jn", k: k }; }
+  function sc(k, hot) { return { w: "sc", k: k, hot: !!hot }; }   /* 第 21 批：同事手機的截圖（page＝LINE 聊天頁整頁、scan＝掃描畫面）；hot＝畫面上有手指要按的地方（掃描鈕） */
+  function fr(o) { return { w: "fr", o: o || {} }; }   /* 第 21 批：掃到 QR 之後 LINE 跳出的「補藥神器」小視窗（綠色的「加入」）。o.hot：圈起「加入」 */
+  /* 第 21 批：同事一加入，官方帳號自己送的歡迎文字（字照 07_操作.gs 的 _followWelcomeText_(false, true)；AI 提醒那句照 02 的 PHOTO_AI_WARN_SHORT）。放在課程資料前面，課程資料才拿得到 */
+  var FW = "👋 歡迎使用補藥神器！\n\n這裡可以查藥品放在哪裡：\n・打字：CODE、藥名（中文或英文前幾個字）、學名或位置（例如 K2）\n・拍照：藥盒、鋁箔、瓶身，或手寫的藥名\n・語音：按住麥克風，講藥名或 CODE\n\n⚠️ AI 可能讀錯，請核對 CODE 再拿藥。\n\n輸入框上面那排按鈕一直都在：\n・🌐 網頁：開網頁版\n・📖 教學：功能教學\n・📢 藥品通知：停止供貨、改包裝、缺貨\n・🛠 BUG：回報問題\n・👥 加入補藥神器：邀請同事一起用\n\n第一次用，先按下面卡片的「開始學習」。";   /* LINE 回的「加入補藥神器」兩則（照 07_操作.gs 的 _joinQrCard_、_joinStepsCard_）。k：qr＝「👥 邀請同事一起用」（QR）、steps＝「加入只要 3 步」（第 21 批起：左右滑的 4 張圖卡） */
   var DEMO_SIX = "482915";   /* 編的 6 位數驗證碼（跟 cdEl 那張卡片是同一組） */
   var DEMO_CODE = "Kd7mPq4Xr";   /* 編的示範代號：9 個英數字（沒有 I O l o 0 1），真的代號是網頁每次向後端要的，這一組領不到任何東西 */
   /* 編出來的藥（b 商品名、z 中文名、g 學名、f 劑型、w 水劑、ind 適應症、feat 藥品特徵、loc 位置、ph 有沒有照片） */
@@ -9412,10 +9416,12 @@
   /* 電腦瀏覽器裡的「代號登入」畫面（照真的網頁 _app_page.html 的 codeForm／renderPair 畫）：上面是瀏覽器的標題列＋網址列；網頁裡：標誌＋「補藥神器」→「🔐 登入補藥神器」→
      ① 打開 LINE 補藥神器…把這組代號貼進去（大大的代號、「複製代號」鍵、倒數、這台）→ ② LINE 會回你 6 位數的驗證碼，打在這裡（輸入框、「登入」鍵）。
      st：load（剛打開，向後端要代號中）／code（有代號）／copied（按了「複製代號」）／type（6 位數打好了，「登入」亮了）／ok（登入成功，進到首頁）；hot：圈起來的那一塊（code／copy／input／go）。代號、6 位數都是編的。 */
+  function brUrl() { return APP_URL ? APP_URL.replace(/^https?:\/\//, "") : "（你們的補藥神器網址）"; }   /* 網址列要寫的網址：這一頁自己的位置（打不出來就寫「（你們的補藥神器網址）」） */
   function brEl(o) {
     o = o || {};
     var st = o.st || "code", hot = o.hot || "", ld = st === "load", ok = st === "ok", ty = st === "type";
-    var url = APP_URL ? APP_URL.replace(/^https?:\/\//, "") : "（你們的補藥神器網址）";
+    var url = brUrl();
+    if (st === "enter") return enterEl(url);   /* 第 21 批：剛開新分頁、網址列空的，示範的時候網址自己打進去（見 enterEl） */
     var say = {
       load: "電腦的瀏覽器剛打開補藥神器網頁版，網頁正在向後端要代號",
       code: "電腦的瀏覽器：網頁上有一組代號 " + DEMO_CODE.split("").join(" ") + "，下面有「複製代號」鍵和倒數，再下面是打 6 位數驗證碼的輸入框和「登入」鍵",
@@ -9452,6 +9458,55 @@
       el("div", { class: "bw-pg", "aria-hidden": "true" }, pg)
     ]);
   }
+  /* 第 21 批：同事手機的截圖（真的照片，放在教學網頁的資料夾，亂碼檔名；LINE 的「加入只要 3 步」卡片也用同一組圖）。hot＝掃描鈕那一點（手指要按的地方，.sc-hot 用百分比定位在搜尋列最右邊的紅圈上） */
+  var SCS = {
+    page: "同事的 LINE「聊天」頁：最上面是「聊天」「好友」和搜尋列，搜尋列最右邊的方框小圖示是掃描鈕（已經用紅圈圈起來），下面是聊天清單",
+    scan: "按了掃描鈕之後的掃描畫面：鏡頭對著你手機上的 QR 卡片，把 QR 放進框裡，下面寫著「掃描行動條碼」"
+  };
+  function scEl(m) {
+    return el("div", { class: "scp " + m.k, role: "img", "aria-label": SCS[m.k] || "截圖" }, m.hot ? [el("i", { class: "sc-hot", "aria-hidden": "true" })] : []);
+  }
+  /* 第 21 批：掃到 QR 之後，LINE 跳出來的小視窗（頭像、「補藥神器」、「官方帳號」、綠色的「加入」），照真的畫的 */
+  function frEl(o) {
+    o = o || {};
+    return el("div", { class: "frs", role: "img", "aria-label": "LINE 跳出一個小視窗：補藥神器（官方帳號），下面有綠色的「加入」鍵" }, [
+      el("i", { class: "fa", "aria-hidden": "true" }),
+      el("div", { class: "fn", "aria-hidden": "true", text: "補藥神器" }),
+      el("div", { class: "fo", "aria-hidden": "true", text: "官方帳號" }),
+      el("div", { class: "fb" + (o.hot ? " hot" : ""), "aria-hidden": "true", text: "加入" })
+    ]);
+  }
+  /* 第 21 批：「輸入網址」（「用電腦開網頁版」第 1 步）。電腦的瀏覽器剛開了一個新分頁、網址列是空的；示範的時候，網址一個字一個字打進網址列、按 Enter，網頁開始向後端要代號。
+     全是 CSS 動畫（只有示範 .rw.pop 才動；每個字的延遲＝--d0 + --k × --per），不用計時器，也沒有要人點的東西（靜態畫面直接是最後的樣子，跟打 6 位數一樣）。
+     enterPlan：n 網址幾個字；per 每個字幾毫秒（網址越長打越快，打完大約 2 秒）；d0 空的新分頁先放多久；tl 打完、按完 Enter、換成網頁的那一刻；ms 整段演完要多久（示範區算「這一步要放多久」用）。 */
+  function enterPlan(url) {
+    var n = url.length, per = Math.max(24, Math.min(60, Math.round(2000 / n))), d0 = 700, tl = d0 + n * per + 700;
+    return { n: n, per: per, d0: d0, tl: tl, ms: tl + 400 };
+  }
+  function enterEl(url) {
+    var p = enterPlan(url);
+    var tx = el("span", { class: "bw-tx" }, url.split("").map(function(ch, i) {
+      var c = el("i", { text: ch });
+      c.style.setProperty("--k", String(i + 1));
+      return c;
+    }));
+    var s1 = el("div", { class: "bw-s1" }, Array.prototype.slice.call(brEl({ st: "load" }).querySelector(".bw-pg").childNodes));
+    var root = el("div", { class: "bw bwx", role: "img", "aria-label": "電腦的瀏覽器：開了一個新分頁，把補藥神器的網址打進網址列、按 Enter，網頁正在向後端要代號" }, [
+      el("div", { class: "bw-top", "aria-hidden": "true" }, [el("span", { class: "bw-dots" }, [el("i"), el("i"), el("i")]), el("span", { class: "bw-tab" }, [el("span", { class: "t0", text: "新分頁" }), el("span", { class: "t1", text: "補藥神器" })])]),
+      el("div", { class: "bw-url", "aria-hidden": "true" }, [
+        el("span", { class: "bw-lk" }, [el("span", { class: "l0", text: "🔍" }), el("span", { class: "l1", text: "🔒" })]),
+        el("span", { class: "bw-addr" }, [el("span", { class: "bw-ph0", text: "搜尋或輸入網址" }), el("span", { class: "bw-ln" }, [tx, el("span", { class: "bw-caret" })])]),
+        el("span", { class: "bw-key", text: "Enter ⏎" })
+      ]),
+      el("div", { class: "bw-pg", "aria-hidden": "true" }, [s1])
+    ]);
+    root.style.setProperty("--n", String(p.n));
+    root.style.setProperty("--per", String(p.per));
+    root.style.setProperty("--d0", String(p.d0));
+    root.style.setProperty("--tl", String(p.tl));
+    root.setAttribute("data-ms", String(p.ms));
+    return root;
+  }
   /* 「📖 補藥神器　教學」卡片（照 07 的 _guideWebCard_：標題、「9 課，一課一個重點。」、藍色的「開始學習」） */
   function gdEl(o) {
     o = o || {};
@@ -9461,9 +9516,9 @@
       el("div", { class: "gc-f", "aria-hidden": "true" }, [el("div", { class: "gc-b" + (o.hot ? " hot" : ""), text: "開始學習" })])
     ]);
   }
-  /* 「👥 加入補藥神器」按下去，官方帳號回的兩張卡片（字照 07_操作.gs 的 _joinQrCard_、_joinStepsCard_：標題＋說明＋QR＋官方帳號 ID／「加入只要 3 步」＋三步）。
+  /* 「👥 加入補藥神器」按下去，官方帳號回的兩則（字照 07_操作.gs 的 _joinQrCard_、_joinStepsCard_：標題＋說明＋QR＋官方帳號 ID／「加入只要 3 步」左右滑的 4 張圖卡，照 07 的 JOIN_SLIDES：標題、說明、長寬比、會不會動、fit／cover 都一樣）。
      官方帳號 ID 是編的（@xxxxxxxx）；QR 是畫給你看的：三個角的定位方塊＋亂數排的小方塊，掃了沒有用（真的 QR 是你們官方帳號的加入好友連結）。 */
-  var JN = { t: "👥 邀請同事一起用", p: "請同事用 LINE 掃下面的 QR，就能加入「補藥神器」。", id: "官方帳號 ID　@xxxxxxxx", h: "加入只要 3 步", s: ["LINE 首頁右上角「加好友」→「QR 碼」，掃上面的圖", "看到補藥神器，按「加入」", "跟著歡迎訊息，先看一下教學"] };
+  var JN = { t: "👥 邀請同事一起用", p: "請同事用 LINE 掃下面的 QR，就能加入「補藥神器」。", id: "官方帳號 ID　@xxxxxxxx", h: "加入只要 3 步", sl: [{ k: "pt", r: "494/720", a: true, h: "① 點「聊天」，按搜尋列最右邊的掃描鈕", s: "紅圈那一顆（圖會動：手指去按的地方），然後掃上面的 QR", m: "fit" }, { k: "scan", r: "494/720", a: false, h: "① 把 QR 放進框裡", s: "對準你手機上的那張 QR，LINE 會跳出「補藥神器」", m: "cover" }, { k: "add", r: "484/392", a: true, h: "② 按「加入」", s: "按綠色的「加入」就加入了（圖會動）", m: "fit" }, { k: "welcome", r: "712/552", a: true, h: "③ 跟著歡迎訊息，先看一下教學", s: "一加入就會收到歡迎訊息和教學卡片，按「開始學習」（圖會動）", m: "fit" }] };
   function jnQrGrid() {
     var n = 29, seed = 20260929, r, c, dark, fin = [[0, 0], [0, n - 7], [n - 7, 0]], g = el("div", { class: "jc-g", "aria-hidden": "true" });
     function rnd() { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; }
@@ -9487,12 +9542,16 @@
     return g;
   }
   function jnEl(k) {
-    if (k === "steps") {
-      return el("div", { class: "jcard js", role: "img", "aria-label": "LINE 回的第二張卡片「" + JN.h + "」：" + JN.s.map(function(t, i) { return "第 " + (i + 1) + " 步，" + t; }).join("；") }, [
-        el("div", { class: "jc-h", "aria-hidden": "true", text: JN.h })
-      ].concat(JN.s.map(function(t, i) {
-        return el("div", { class: "jc-r", "aria-hidden": "true" }, [el("span", { class: "jc-n", text: String(i + 1) }), el("span", { class: "jc-s", text: t })]);
-      })));
+    if (k === "steps") {   /* 第 21 批：左右滑的 4 張圖卡（手機上往左滑、電腦拉捲軸），一張＝小灰字（第幾張、往左滑）＋圖＋標題＋說明 */
+      var n = JN.sl.length;
+      return el("div", { class: "lcar", role: "group", tabindex: "0", "aria-label": "LINE 回的第二則「" + JN.h + "」：左右滑的 " + n + " 張圖卡（往左滑看下一張）" }, JN.sl.map(function(p, i) {
+        return el("div", { class: "jcard js sl", role: "img", "aria-label": "第 " + (i + 1) + " 張：" + p.h + "。" + p.s }, [
+          el("div", { class: "jc-x", "aria-hidden": "true", text: JN.h + "　" + (i + 1) + " / " + n + (i < n - 1 ? "　往左滑 ›" : "") }),
+          el("div", { class: "jc-ph " + p.k, "aria-hidden": "true" }),
+          el("div", { class: "jc-h", "aria-hidden": "true", text: p.h }),
+          el("div", { class: "jc-s", "aria-hidden": "true", text: p.s })
+        ]);
+      }));
     }
     var q = el("div", { class: "jc-q", "aria-hidden": "true" });
     q.appendChild(jnQrGrid());
@@ -9530,19 +9589,31 @@
         ])
       ]);
     } else {
+      /* 第 21 批：hot:stage（「往下捲，看示範」）不只是圈起來——示範區自己演：頁面往下捲、「自動示範中」亮起來、手指點兩個選項、平面圖上的藍框和下面那句說明跟著換（動畫在 CSS，見 .lp-dm） */
+      var demo = hot === "stage";
+      function first(x) { return x.t.split("。")[0].replace(/\*\*/g, "") + "。"; }   /* 說明只放第一句 */
+      var stKids = [
+        el("div", { class: "lp-sth" }, [el("span", { text: "點一個，看它是什麼" }), el("em", { text: "自動示範中" }), el("span", { text: "↺ 重播" })]),
+        el("div", { class: "lp-chips" }, [el("i", { class: demo ? "" : "on", text: PLANP.hit.n }), el("i", { text: PLANP.b.n }), el("i", { class: demo ? "on" : "", text: PLANP.bar.n }), el("i", { text: PLANP.door.n })])
+      ];
+      if (demo) {
+        var pl = planEl("K2", false);
+        Array.prototype.forEach.call(pl.querySelectorAll('[data-part="bar"]'), function(n) { n.classList.add("on"); });
+        stKids.push(el("div", { class: "lp-pl" }, [pl]));
+        stKids.push(el("div", { class: "lp-nt" }, [el("span", { class: "n1", text: first(PLANP.hit) }), el("span", { class: "n2", text: first(PLANP.b) }), el("span", { class: "n3", text: first(PLANP.bar) })]));
+        stKids.push(el("span", { class: "lp-fg", text: "👆" }));
+      }
+      var sec = el("div", { class: "lp-sec" }, [el("h4", { text: cur.secs[0].t }), demo ? el("div", { class: "lp-ld" }, [el("i"), el("i"), el("i")]) : null, el("div", { class: "lp-st" + (demo ? " hot" : "") }, stKids)]);
       body = el("div", { "aria-hidden": "true" }, [
         el("div", { class: "lp-bar" + (hot === "title" ? " hot" : "") }, [el("b", { text: cur.name + " ▾" }), el("span", { text: "第 " + (lessonIdx(cur.id) + 1) + " 課 / " + N })]),
-        el("div", { class: "lp-pg" }, [el("div", { class: "lp-sec" }, [
-          el("h4", { text: cur.secs[0].t }),
-          el("div", { class: "lp-st" + (hot === "stage" ? " hot" : "") }, [
-            el("div", { class: "lp-sth" }, [el("span", { text: "點一個，看它是什麼" }), el("em", { text: "自動示範中" }), el("span", { text: "↺ 重播" })]),
-            el("div", { class: "lp-chips" }, [el("i", { class: "on", text: PLANP.hit.n }), el("i", { text: PLANP.b.n }), el("i", { text: PLANP.bar.n }), el("i", { text: PLANP.door.n })])
-          ])
-        ])]),
+        el("div", { class: "lp-pg" + (demo ? " lp-dm" : "") }, [demo ? el("div", { class: "lp-scr" }, [sec]) : sec]),
         el("div", { class: "lp-nb" }, [el("b", { text: "‹ 上一課" }), el("span", { text: "0%" }), el("b", { class: "nx" + (hot === "next" ? " hot" : ""), text: "下一課 ›" })])
       ]);
+      if (demo) say = "LINE 內建瀏覽器裡的「" + cur.name + "」這一課，往下捲到灰底的示範區：示範區自己示範——「自動示範中」亮起來，手指點「藍色方塊」，平面圖上的藍框跳到棧板、下面的說明跟著換；再點「灰色長條」，藍框跳到長條";
     }
-    return el("div", { class: "lpf", role: "img", "aria-label": say }, [top, body]);
+    var root = el("div", { class: "lpf", role: "img", "aria-label": say }, [top, body]);
+    if (hot === "stage") root.setAttribute("data-ms", "5000");   /* 整段演完要 5 秒（示範區換下一步之前會等它） */
+    return root;
   }
   function nfEl(kw) {
     var b = el("div", { class: "nf", role: "img", "aria-label": "「查無」卡：最上面黃色框寫「如果查詢不到，請翻閱『藥品位置查詢表』。」；查無「" + kw + "」相關藥品；下面有幾個小技巧" });
@@ -9574,7 +9645,7 @@
   var WIDE = { dc: 1, car: 1, ll: 1, ask: 1, nf: 1, tb: 1, cd: 1, gc: 1, gcar: 1 };
   WIDE.gd = 1;   /* 「📖 補藥神器　教學」卡片：官方帳號回的卡片，跟藥品卡片一樣在上面一行放頭像 */
   WIDE.jn = 1;   /* 「加入補藥神器」的兩張卡片：官方帳號回的卡片，跟藥品卡片一樣在上面一行放頭像 */
-  var SCENE = { br: 1, lp: 1, qb: 1 };   /* 不是聊天的訊息：電腦的瀏覽器視窗、LINE 內建瀏覽器的畫面。一整列、置中、沒有頭像，跟 act 一樣不算「誰說的」 */
+  var SCENE = { br: 1, lp: 1, qb: 1, sc: 1, fr: 1 };   /* 不是聊天的訊息：電腦的瀏覽器視窗、LINE 內建瀏覽器的畫面。一整列、置中、沒有頭像，跟 act 一樣不算「誰說的」 */
   function firstFlags(msgs) {
     var prev = "";
     return msgs.map(function(m) {
@@ -9631,6 +9702,8 @@
     if (w === "lp") return el("div", { class: "lcw" }, [lpEl(m.o)]);
     if (w === "gd") return el("div", { class: "lcw" }, [gdEl(m.o)]);
     if (w === "jn") return el("div", { class: "lcw" }, [jnEl(m.k)]);
+    if (w === "sc") return el("div", { class: "lcw" }, [scEl(m)]);
+    if (w === "fr") return el("div", { class: "lcw" }, [frEl(m.o)]);
     if (w === "qb") return el("div", { class: "lcw" }, [qbarEl({ chips: true, hot: m.k })]);
     if (w === "bot") return el("div", { class: "bub bot", text: m.t });
     if (m.pic) return phEl(m);
@@ -9676,6 +9749,8 @@
   var MSG_GAP = 480, TAP_GAP = 820, TYPE_GAP = 1300, CHAT_CAP = 4000;
   function tapTxt(s) { return String(s).replace(/\s+/g, " ").replace(/^ | $/g, ""); }
   function isType(m) { return m.w === "br" && !!m.o && m.o.st === "type"; }
+  /* 第 21 批：會自己演一段的畫面（「輸入網址」的瀏覽器、「往下捲，看示範」的教學畫面）在最外層寫 data-ms＝整段演完要幾毫秒；這一列出來之後要等它演完，再換下一列 */
+  function rowMs(row) { var e = row && row.querySelector ? row.querySelector("[data-ms]") : null; return e ? parseInt(e.getAttribute("data-ms"), 10) || 0 : 0; }
   /* 這句 act 要按的是前面哪一塊：找到回那個元素，找不到回 null。rows＝這個情況所有的列（畫好了，還沒放進畫面也行）、j＝這句是第幾列。
      act 的第二個參數 tap：不寫＝照句子裡第一個「」裡的字，找前面一樣寫著這幾個字的那一小塊；字串＝選擇器；[選擇器, 第幾個]；false＝這句不按。 */
   function tapFind(rows, j, m) {
@@ -9697,12 +9772,13 @@
   /* 內建瀏覽器那張畫面（lp）有圈起來的地方，就是要按的：示範區那一種，按裡面第二個名稱（往下捲看示範、點裡面的選項） */
   function sceneTap(m, row) {
     if (m.w !== "lp" || !m.o || !m.o.hot) return null;
+    if (m.o.hot === "stage") return null;   /* 第 21 批：「往下捲，看示範」那一張自己演（手指畫在畫面裡），不另外派手指 */
     return row.querySelector(".lp-st.hot .lp-chips i:nth-child(2)") || row.querySelector(".hot");
   }
-  function chatPlan(msgs, tg) {
+  function chatPlan(msgs, tg, rows) {
     var n = msgs.length, g = [], at = [0], fixed = 0, plain = 0, base = MSG_GAP, i;
     for (i = 0; i < n - 1; i++) {
-      g.push(tg[i] ? TAP_GAP : isType(msgs[i]) ? TYPE_GAP : 0);
+      g.push(tg[i] ? TAP_GAP : isType(msgs[i]) ? TYPE_GAP : rowMs(rows[i]) || 0);
       if (g[i]) fixed += g[i]; else plain++;
     }
     if (plain && fixed + plain * MSG_GAP > CHAT_CAP) base = Math.max(240, Math.floor((CHAT_CAP - fixed) / plain));
@@ -9727,8 +9803,8 @@
       }
       rows = msgs.map(function(m, i) { return bubble(m, true, fl[i]); });
       tg = msgs.map(function(m, i) { return m.w === "act" ? tapFind(rows, i, m) : sceneTap(m, rows[i]); });
-      at = chatPlan(msgs, tg);
-      lastMs = at[last] + (isType(msgs[last]) ? 900 : tg[last] ? 1000 : 200);   /* 最後一則出來之後，還要等它自己的動畫：6 位數打完 0.9 秒、手指按完 1 秒、一般的跳出來 0.2 秒 */
+      at = chatPlan(msgs, tg, rows);
+      lastMs = at[last] + (isType(msgs[last]) ? 900 : rowMs(rows[last]) || (tg[last] ? 1000 : 200));   /* 最後一則出來之後，還要等它自己的動畫：6 位數打完 0.9 秒、會自己演的畫面演完（data-ms：網址打進去換成網頁、往下捲看示範）、手指按完 1 秒、一般的跳出來 0.2 秒 */
       chat.style.minHeight = h + "px";
       rows.forEach(function(row, i) {
         timers.push(setTimeout(function() {
@@ -10422,11 +10498,12 @@
      從這個選項點下去，到下一個選項點下去，最多 6 秒（AUTO_MAX_MS）：說明很長也不會等更久；訊息很多的聊天示範，把訊息跳出來的間隔縮短，4 秒內放完。
      做法：不改每種示範自己的程式——直接對示範區裡的選項按鈕呼叫 click()（跟真的點一樣：一樣有動畫、一樣換下面的說明）。
      真人點的 click 是 isTrusted、程式呼叫的不是，靠這個分辨「誰點的」（用 pointerdown 不行：手指在示範區上捲動也會算）。
-     不動的時候：裝置設定「減少動態」（REDUCE）、示範區沒有露出 60%、分頁在背景、已經被人動過（按「停止」也算）、這一輪已經示範完。（目錄頁不再有「自動示範」的開關：一律是開的。）
+     不動的時候：裝置設定「減少動態」（REDUCE）、示範區沒有露出 60%、分頁在背景、已經被人動過（按「停止」也算）、這一次停留已經示範滿 3 遍。（目錄頁不再有「自動示範」的開關：一律是開的。）
+     ★ 第 21 批：學員停在哪一個示範區，它就在那裡一遍一遍自己示範（一遍放完停 AUTO_LOOP_MS，再從第一個選項重來），最多 AUTO_LOOPS＝3 遍才停；捲走再捲回來算新的一次停留，又可以放 3 遍。按「重播」也從 3 遍重新算。
      捲走了（露出不到 25%）就暫停，捲回來接著做；換頁（render）一律全部停掉重來。
      「露出多少」是跟「示範區自己的高度、畫面能看的高度」比較小的那個比：示範區比畫面還高（手機橫著拿、很長的聊天示範）的時候，只要畫面被它占滿六成就算，不然永遠到不了六成、就永遠不會動。
      手指（或兩指／滑鼠橫向捲）正在示範區裡滑動：先不換示範的內容（輪播、輸入列正在手指底下，換掉會跳），手放開、或最後一次滑動過了 1.2 秒才接著示範；手指一直壓著超過 10 秒就當作卡住，照常往下做。 */
-  var AUTO_ON_VIS = 0.6, AUTO_OFF_VIS = 0.25, AUTO_START_MS = 900, AUTO_TAP_MS = 700, AUTO_MIN_MS = 2500, AUTO_MAX_MS = 6000, AUTO_AFTER_MS = 1200, AUTO_LIST = [], autoIO = null;
+  var AUTO_ON_VIS = 0.6, AUTO_OFF_VIS = 0.25, AUTO_START_MS = 900, AUTO_TAP_MS = 700, AUTO_MIN_MS = 2500, AUTO_MAX_MS = 6000, AUTO_AFTER_MS = 1200, AUTO_LOOPS = 3, AUTO_LOOP_MS = 1200, AUTO_LIST = [], autoIO = null;
   var AUTO_STEPS = (function() { var a = [], i; for (i = 0; i <= 100; i++) a.push(i / 100); return a; })();   /* IntersectionObserver 的門檻：0、0.01、0.02 … 1 */
   function autoPref() { return !REDUCE; }
   /* 點下去之後停多久（毫秒）：說明越長停越久（1.2 秒＋每個字 30 毫秒，讀得完），動畫（ms）放完還要再留 1.2 秒；最短 2.5 秒；最長 5.3 秒（加上手指的 0.7 秒＝6 秒）。最後一個選項後面沒有下一個了，不用等讀說明：動畫放完就結束 */
@@ -10444,7 +10521,7 @@
     }
     if (!hd || !targets().length) return;
     function noteEl() { if (opt.note) return opt.note; var n = stage.nextElementSibling; while (n && !n.classList.contains("note")) n = n.nextElementSibling; return n; }   /* 示範區下面「點了哪個、說明就換哪個」的那一格 */
-    var c = { stage: stage, idx: 0, timer: 0, running: false, arm: false, done: false, took: false, forced: false, seen: 0, hold: 0 }, grp = null;
+    var c = { stage: stage, idx: 0, timer: 0, running: false, arm: false, done: false, took: false, forced: false, seen: 0, hold: 0, loops: 0 }, grp = null;   /* loops：這一次停留已經放完幾遍 */
     /* 「自動示範中」的小標和「停止」只在示範的時候才放進示範區的標題列（不示範的時候整個不在畫面裡，焦點、讀屏都碰不到） */
     function show(v) {
       if (v && !grp) {
@@ -10473,7 +10550,13 @@
       if (!c.running) return;
       if (Date.now() < c.hold) { c.arm = false; tapDrop(stage); later(Math.max(150, Math.min(1000, c.hold - Date.now()))); return; }   /* 學員的手指還在示範區裡滑：等一下再換（我們的手指先收起來，等一下重來） */
       var ts = targets();
-      if (c.idx >= total()) { c.done = true; c.pause(); return; }
+      if (c.idx >= total()) {   /* 一遍放完：還沒滿 3 遍就停一下、從第一個選項重來；滿了才收起來 */
+        c.loops++;
+        if (c.loops >= AUTO_LOOPS) { c.done = true; c.pause(); return; }
+        c.idx = 0; c.arm = false; tapDrop(stage);
+        later(AUTO_LOOP_MS);
+        return;
+      }
       if (!c.arm) {
         c.arm = true;
         if (tapAt(stage, ts[c.idx])) { later(AUTO_TAP_MS); return; }   /* 手指滑過去、按下去要 0.7 秒；沒有畫手指（減少動態）就不用等，直接點 */
@@ -10500,7 +10583,7 @@
     c.restart = function() {
       var ts = targets();
       if (c.timer) { clearTimeout(c.timer); c.timer = 0; }
-      c.idx = 0; c.done = false; c.took = false; c.forced = true; c.running = true; c.arm = false; c.hold = 0;
+      c.idx = 0; c.done = false; c.took = false; c.forced = true; c.running = true; c.arm = false; c.hold = 0; c.loops = 0;
       tapDrop(stage);
       show(true);
       /* 每一種示範的「重播」鍵，按下去它自己就回到第一個選項、放了一遍（單一情況的聊天示範：就是放那一遍）。學員按的那一下就是第一個動作：不用手指再按一次（再按一次，動畫會從頭再來，看起來像卡了一下），停一下就換第二個。練習聊天室的重播鍵只是清空，要手指去點第一顆範例字 */
@@ -10532,7 +10615,8 @@
           if (!c) return;
           var vh = e.rootBounds ? e.rootBounds.height : (window.innerHeight || 0);
           c.seen = e.isIntersecting ? e.intersectionRect.height / Math.max(1, Math.min(e.boundingClientRect.height, vh)) : 0;
-          if (c.seen >= AUTO_ON_VIS) c.start(); else if (c.seen < AUTO_OFF_VIS) c.pause();
+          if (c.seen >= AUTO_ON_VIS) c.start();
+          else if (c.seen < AUTO_OFF_VIS) { c.pause(); if (c.done) { c.done = false; c.loops = 0; c.idx = 0; } }   /* 捲走＝這一次停留結束：放滿 3 遍的，下次捲回來可以再放（沒放完的，捲回來接著做） */
         });
       }, { rootMargin: "-56px 0px -72px 0px", threshold: AUTO_STEPS });   /* 上面那條、下面那排會蓋住一些：算進去。門檻切得很細（每 1%）：示範區比畫面高很多的時候，露出的比例最多只有一點點（例如 12%），門檻太稀就剛好跳過「六成畫面」那一刻 */
       AUTO_LIST.forEach(function(c) { autoIO.observe(c.stage); });
