@@ -50,7 +50,7 @@
   }
 
   /* ───────── 從 LINE 帶進來的資訊（網址 # 後面；讀完就從網址列拿掉）─────────
-     b＝官方帳號的 ID（@xxxx，給「在 LINE 試試看」開聊天室用）；c／n／l／f＝LINE 那邊挑的一支真藥的 CODE／中文名／位置／家族字。
+     b＝官方帳號的 ID（@xxxx，給「在 LINE 試試看」開聊天室用）；c／n／l／f＝LINE 那邊挑的一個真的品項藥品的 CODE／中文名／位置／家族字。
      都只用來組「回 LINE 聊天室」的連結和顯示一句話；不合格式的一律當沒有。 */
   var S = { b: "", c: "", n: "", l: "", f: "" };
   function clean(k, v) {
@@ -124,7 +124,7 @@
   function sc(k, hot) { return { w: "sc", k: k, hot: !!hot }; }   /* 第 21 批：同事手機的截圖（page＝LINE 聊天頁整頁、scan＝掃描畫面）；hot＝畫面上有手指要按的地方（掃描鈕） */
   function fr(o) { return { w: "fr", o: o || {} }; }   /* 第 21 批：掃到 QR 之後 LINE 跳出的「補藥神器」小視窗（綠色的「加入」）。o.hot：圈起「加入」 */
   /* 第 21 批：同事一加入，官方帳號自己送的歡迎文字（字照 07_操作.gs 的 _followWelcomeText_(false, true)；AI 提醒那句照 02 的 PHOTO_AI_WARN_SHORT）。放在課程資料前面，課程資料才拿得到 */
-  var FW = "👋 歡迎使用補藥神器！\n\n這裡可以查藥品放在哪裡：\n・打字：CODE、藥名（中文或英文前幾個字）、學名或位置（例如 K2）\n・拍照：藥盒、鋁箔、瓶身，或手寫的藥名\n・語音：按住麥克風，講藥名或 CODE\n\n⚠️ AI 可能讀錯，請核對 CODE 再拿藥。\n\n輸入框上面那排按鈕一直都在：\n・🌐 網頁：開網頁版\n・📖 教學：功能教學\n・📢 藥品通知：停止供貨、改包裝、缺貨\n・🛠 BUG：回報問題\n・👥 加入補藥神器：邀請同事一起用\n\n第一次用，先按下面卡片的「開始學習」。";   /* LINE 回的「加入補藥神器」兩則（照 07_操作.gs 的 _joinQrCard_、_joinStepsCard_）。k：qr＝「👥 邀請同事一起用」（QR）、steps＝「加入只要 3 步」（第 21 批起：左右滑的 4 張圖卡） */
+  var FW = "👋 歡迎使用補藥神器！\n\n這裡可以查藥品放在哪裡：\n・打字：CODE、藥名（中文或英文前幾個字）、學名或位置（例如 K2）\n・拍照：藥盒、鋁箔、瓶身，或手寫的藥名\n・語音：按住麥克風，講藥名或 CODE\n\n⚠️ AI 可能讀錯，請核對藥櫃標籤紙。\n\n輸入框上面那排按鈕一直都在：\n・🌐 網頁：開網頁版\n・📖 教學：功能教學\n・📢 藥品通知：停止供貨、改包裝、缺貨\n・🛠 BUG：回報問題\n・👥 加入補藥神器：邀請同事一起用\n\n第一次用，先按下面卡片的「開始學習」。";   /* LINE 回的「加入補藥神器」兩則（照 07_操作.gs 的 _joinQrCard_、_joinStepsCard_）。k：qr＝「👥 邀請同事一起用」（QR）、steps＝「加入只要 3 步」（第 21 批起：左右滑的 4 張圖卡） */
   var DEMO_SIX = "482915";   /* 編的 6 位數驗證碼（跟 cdEl 那張卡片是同一組） */
   var DEMO_CODE = "Kd7mPq4Xr";   /* 編的示範代號：9 個英數字（沒有 I O l o 0 1），真的代號是網頁每次向後端要的，這一組領不到任何東西 */
   /* 編出來的藥（b 商品名、z 中文名、g 學名、f 劑型、w 水劑、ind 適應症、feat 藥品特徵、loc 位置、ph 有沒有照片） */
@@ -8541,10 +8541,10 @@
   }
 
   var TM = "上午 9:41";   /* 示範聊天室裡每一則的時間（編的） */
-  var WARN = "⚠️ AI 可能讀錯，請核對 CODE 再拿藥";   /* 照片、手寫查藥：真的 LINE 回覆最前面那一句（見 02 的 PHOTO_AI_WARN） */
+  var WARN = "⚠️ AI 可能讀錯，請核對藥櫃標籤紙";   /* 照片、手寫查藥：真的 LINE 回覆最前面那一句（見 02 的 PHOTO_AI_WARN） */
   /* CODE 打錯、系統帶出「CODE 相近」的藥時，卡片前面先傳的那一句（字照 01_程式碼.gs 的 replyResults；「品項,」是半形逗號，跟真的一樣） */
-  function codeWarn(kw) { return "⚠️ 找不到 CODE「" + kw + "」\n\n下面列出的是「CODE 相近」的品項,\n不是你輸入的那一支藥。\n請務必核對卡片上的 CODE 再補藥 🙏"; }
-  var N1 = "改包裝通知，示範：這支藥換包裝了，瓶身標籤顏色不一樣";
+  function codeWarn(kw) { return "⚠️ 找不到 CODE「" + kw + "」\n\n下面列出的是「CODE 相近」的品項,\n不是你輸入的那一個品項藥品。\n請務必核對藥櫃標籤紙再補藥 🙏"; }
+  var N1 = "改包裝通知，示範：這品項藥品換包裝了，瓶身標籤顏色不一樣";
   var N2 = "停止供貨，示範：預計下個月恢復供貨，這段時間先找替代藥";
   /* 藥品家族（紫色框）：cats＝每一類的標題和裡面的藥 */
   var FAM1 = { cats: [["💊 同成分不同劑量", ["90114"]], ["🏷 同成分同劑量", ["90115"]]] };
@@ -8726,20 +8726,20 @@
   var CFGLINE = "window.BUYAO_X=\"AKfycbxDEMODEMODEMODEMODEMODEMODEMODEMODEMOdemo01\";";
   var CODEOFF = "⏸ 「驗證碼登入」已關閉（全院，立刻生效）：\n・網頁拿不到代號，LINE 打代號也不會發驗證碼（都會說「暫停了」）。\n・已經發出去、還沒用掉的驗證碼，網頁也兌換不了。\n・LINE 連結（🌐 補藥神器網頁）和已經登入的瀏覽器不受影響。\n\n打「驗證碼登入 開」恢復。";
   var PARTS = {
-    code: { n: "CODE", t: "卡片最上面的大數字。打它查得最準，不會抓到別支藥；紙條上有寫 CODE 就直接打，一個字都不用多打。" },
+    code: { n: "CODE", t: "卡片最上面的大數字。打它查得最準，不會抓到別的品項藥品；紙條上有寫 CODE 就直接打，一個字都不用多打。" },
     brand: { n: "商品名", t: "大數字下面第一行，是藥盒上印的英文名。打前面幾個字就查得到。" },
     zh: { n: "中文名", t: "商品名下面那一行（綠色）。想不起英文名的時候，打中文名一樣查得到。" },
     icon: { n: "圖示", t: "右上角的小圖示：藥丸＝錠劑類、水滴＝水劑類，一眼看出是吃的還是喝的。部分藥的圖示點一下會開院內的藥品網頁（有設定的才有）。" },
     gen: { n: "學名", t: "灰色小字是成分。同成分不同廠牌、不同劑量，打學名就找得到；想不起商品名的時候，用成分找最快。" },
     feat: { n: "藥品特徵", t: "藍色那一塊是外觀特徵（顏色、形狀、刻字）。拿藥前對一下，最不會拿錯。有填才會出現；水劑類的特徵會放在照片的上面。" },
-    ind: { n: "適應症", t: "灰底框裡左邊是適應症，也就是這支藥是治什麼的。有填才會出現。" },
+    ind: { n: "適應症", t: "灰底框裡左邊是適應症，也就是這品項藥品是治什麼的。有填才會出現。" },
     photo: { n: "藥品照片", t: "灰底框裡右邊的小圖是藥品照片，點一下看大圖。拿藥前對一下顏色、字樣；照片不對請按「🛠 BUG」。" },
-    loc: { n: "位置", t: "粉紅色的框是「去哪裡拿」。也可以直接打位置（例如「K2」），那一格的藥會整批列出來。一支藥放在好幾個地方的時候，這裡會變成幾顆按鍵（下一課最後一段）。" },
-    map: { n: "平面圖", t: "位置右邊的小圖是那一區的平面圖，紅框就是這支藥放的那一格。點一下會再傳一張大圖。有平面圖的位置才會出現；怎麼看，下一課有詳細說明。" },
+    loc: { n: "位置", t: "粉紅色的框是「去哪裡拿」。也可以直接打位置（例如「K2」），那一格的藥會整批列出來。一個品項藥品放在好幾個地方的時候，這裡會變成幾顆按鍵（下一課最後一段）。" },
+    map: { n: "平面圖", t: "位置右邊的小圖是那一區的平面圖，紅框就是這品項藥品放的那一格。點一下會再傳一張大圖。有平面圖的位置才會出現；怎麼看，下一課有詳細說明。" },
     fam: { n: "藥品家族", t: "紫色的框是「藥品家族」：院內同成分的其他藥（換劑量、換劑型、換廠牌）。平常收起來，一類一行；按「▸ 打開」會再傳一張卡片，家族全部攤開（第 8 課）。有同成分的藥才會出現。" }
   };
   var PLANP = {
-    hit: { n: "紅框", t: "紅框是這支藥放的那一格。看圖的時候，先找紅框；其他的方塊都只是幫你認路的地標。" },
+    hit: { n: "紅框", t: "紅框是這品項藥品放的那一格。看圖的時候，先找紅框；其他的方塊都只是幫你認路的地標。" },
     b: { n: "藍色方塊", t: "藍色方塊是棧板（圖上寫「棧」）：放在地上的一塊一塊。看紅框在哪一塊旁邊，就知道要往哪裡找。" },
     bar: { n: "灰色長條", t: "灰色長條是一整排的區域，上面寫 L 2、L 3 這種字，也是很好用的地標。**L 3** 是第三線（奇數線）、**L 2** 是第二線（偶數線）、**L 1** 是第一線（兒線）。" },
     door: { n: "大門", t: "圖上寫著「大門」和一個箭頭，指的就是**大門處或是出入口**在這張圖的哪一邊。下一段教你用它來對方向。" }
@@ -9382,7 +9382,7 @@
     b.appendChild(el("div", { class: "lk-ft", text: "都不是 → 直接打字查（CODE 最準）" }));
     return b;
   }
-  /* 超過 5 個品項的「總表」卡：一列一支藥（小照片、商品名、中文名＋CODE、右邊位置），按一列出完整卡片；「⚠️ AI 可能讀錯」寫在標題底下 */
+  /* 超過 5 個品項的「總表」卡：一列一個品項藥品（小照片、商品名、中文名＋CODE、右邊位置），按一列出完整卡片；「⚠️ AI 可能讀錯」寫在標題底下 */
   function tbEl(m) {
     var names = m.cs.map(function(c) { return DR[c].b; });
     var b = el("div", { class: "lb tb", role: "img", "aria-label": "總表卡：讀到 " + m.cs.length + " 個品項，標題底下寫「" + WARN + "」；有 " + names.join("、") + "；每一列右邊是位置；最下面寫「點一列 → 完整卡片」" });
@@ -9696,7 +9696,7 @@
     if (w === "ask") return el("div", { class: "lcw" }, [askEl(m.cs, m.shown, m.how)]);
     if (w === "tb") return el("div", { class: "lcw" }, [tbEl(m)]);
     if (w === "nf") return el("div", { class: "lcw" }, [nfEl(m.kw)]);
-    if (w === "pl") return el("div", { class: "pimg", role: "img", "aria-label": "大張的平面圖：紅框是這支藥放的那一格，圖的左邊寫著「大門」" }, [planEl(m.hit)]);
+    if (w === "pl") return el("div", { class: "pimg", role: "img", "aria-label": "大張的平面圖：紅框是這品項藥品放的那一格，圖的左邊寫著「大門」" }, [planEl(m.hit)]);
     if (w === "cd") return el("div", { class: "lcw" }, [cdEl()]);
     if (w === "br") return el("div", { class: "lcw" }, [brEl(m.o)]);
     if (w === "lp") return el("div", { class: "lcw" }, [lpEl(m.o)]);
@@ -9980,12 +9980,12 @@
   /* ───────── 互動練習：打字查藥（第 17 批）─────────
      「打字查藥」那一課最後一段「換你打打看」：自己在輸入框打字（或點範例字），送出後先看到「機器人查詢中…」→ 聊天室裡出現官方帳號回的卡片 → 下面深色的框一步一步講機器人是怎麼找到的。
      「找」照真的機器人（01_程式碼.gs 的 handleText → searchDrug → replyResults）的順序，在這一頁編的藥（DR）裡找：
-       是不是指令？→ 是不是一支藥的 CODE？→ 是不是位置？→ 商品名／中文名／學名有這幾個字？→ 位置的字？→ 空格、符號拿掉再比 → 容許打錯一兩個字 → 都沒有就查無。
+       是不是指令？→ 是不是一個品項藥品的 CODE？→ 是不是位置？→ 商品名／中文名／學名有這幾個字？→ 位置的字？→ 空格、符號拿掉再比 → 容許打錯一兩個字 → 都沒有就查無。
      只做這一課教的查法：指令（教學、公告、bug…）、加符號的整批查詢（第 8 課）、一次打好幾個 CODE 只在聊天室旁白、深色框說明，不示範結果；縮寫、中文跳字、「有相符的藥品嗎？」的猜名字都沒做。
      這一段（SIMSEARCH 標記之間）是純函式、沒有碰畫面，測試會單獨拿出來跑。打的字不存、不傳（頁面本來就不連網）。 */
   /*SIMSEARCH*/
   var SIM_MAX = 12, SIM_SQ_MIN = 3, SIM_LOC_RE = /^(水)?[A-Z]{1,2}[0-9]{1,3}$/;   /* 一次最多 12 張卡片（01 的 MAX_RESULTS）；打幾個字以上才「拿掉符號再比」（SQ_MIN）；長得像位置的字（LOC_CODE_RE） */
-  var SIM_O = { "90104": { spots: SPOTS, on: 0 } };   /* 這支藥放好幾個地方（看平面圖那一課），卡片上就有那幾顆位置按鍵 */
+  var SIM_O = { "90104": { spots: SPOTS, on: 0 } };   /* 這品項藥品放好幾個地方（看平面圖那一課），卡片上就有那幾顆位置按鍵 */
   var SIM_LOCS = { "K2": { spec: L_K2, n: 4 }, "B1": { spec: L_B1, n: 14, pages: 2 } };   /* K2、B1 用前面「彙整卡片」那一課的列表（K2 有 4 個品項、B1 有 14 個品項分 2 頁），兩邊看到的才一樣 */
   var SIM_SYM = "[^\\w\\s\\u4e00-\\u9fff\\u3040-\\u30ff\\uff10-\\uff19\\uff21-\\uff3a\\uff41-\\uff5a]|_";   /* 01 的 SYM_CLASS：不是字母、數字、空白、中日文的，就算「符號」 */
   var SIM_RE_AGG = new RegExp("^(?:" + SIM_SYM + ")+\\s*([\\s\\S]*)$");   /* 01 的 RE_AGG_SYM：開頭是符號＝整批查詢 */
@@ -10193,7 +10193,7 @@
     bestD = cand[0].d;
     tight = 0;
     while (tight < cand.length && cand[tight].d === bestD) tight++;
-    if (tight >= 3) use = cand.slice(0, tight);   /* 最接近的有 3 支以上並列，只留並列第一的（01 的 FUZZY_MIX_MIN） */
+    if (tight >= 3) use = cand.slice(0, tight);   /* 最接近的有 3 個品項藥品以上並列，只留並列第一的（01 的 FUZZY_MIX_MIN） */
     return { how: "fuzzy", all: use.map(function(x) { return x.c; }), kws: kws, codeLike: /^\d{4,6}$/.test(kws[0]) };
   }
   /* 一個位置的列表卡（K2、B1 用前面那一課編好的；其他位置照 DR 現場排） */
@@ -10258,7 +10258,7 @@
     return ms;
   }
   function simDesc(c, full) { var r = DR[c]; return r.z + "（" + (full ? "CODE " + c + "，位置 " + r.loc : c) + "）"; }
-  function simCols(codes, kw) {   /* 這幾支是在哪一欄找到的，例：商品名 2 支、學名 1 支 */
+  function simCols(codes, kw) {   /* 這幾個品項藥品是在哪一欄找到的，例：商品名 2 個品項藥品、學名 1 個品項藥品 */
     var n = { "商品名": 0, "中文名": 0, "學名": 0, "CODE": 0 }, out = [];
     codes.forEach(function(c) {
       var r = DR[c];
@@ -10267,7 +10267,7 @@
       else if (r.g.toUpperCase().indexOf(kw) >= 0) n["學名"]++;
       else n["CODE"]++;
     });
-    ["商品名", "中文名", "學名", "CODE"].forEach(function(k) { if (n[k]) out.push(k + " " + n[k] + " 支"); });
+    ["商品名", "中文名", "學名", "CODE"].forEach(function(k) { if (n[k]) out.push(k + " " + n[k] + " 個品項藥品"); });
     return out.join("、");
   }
   /* 深色框「背後發生的事」的內容：trail＝機器人一步一步看了什麼（ok 1＝就是這個、0＝不是、2＝換個寫法或放寬才找到），found＝找到什麼，reply＝回了哪一種卡片，tip＝提醒（字太少、查無才有） */
@@ -10291,38 +10291,38 @@
     if (kind === "multi") {
       t(1, "是好幾個 CODE 嗎？是，用空格或逗號隔開的 " + r.n + " 個 CODE");
       found = "每個 CODE 各查一次";
-      reply = "把找到的藥一起回。這個練習只示範查一支，所以這裡不回。";
+      reply = "把找到的藥一起回。這個練習只示範查一個品項藥品，所以這裡不回。";
       return done();
     }
     if (r.attempt && r.attempt !== r.q && kind !== "sq" && kind !== "fuzzy" && kind !== "fuzzyCode") t(2, "照原樣找不到，把空格、符號整理一下，換成" + qs + "再找");
     if (kind === "code") {
-      t(1, "是 CODE 嗎？是，" + qs + "剛好是一支藥的 CODE，直接找到");
-      found = "1 支：" + simDesc(r.codes[0], true);
+      t(1, "是 CODE 嗎？是，" + qs + "剛好是一個品項藥品的 CODE，直接找到");
+      found = "1 個品項藥品：" + simDesc(r.codes[0], true);
       reply = "1 張藥品卡片";
       return done();
     }
-    t(0, many ? "是 CODE 嗎？不是，空格隔開的是好幾個字一起找" : "是 CODE 嗎？不是，沒有一支藥的 CODE 是" + qs);
+    t(0, many ? "是 CODE 嗎？不是，空格隔開的是好幾個字一起找" : "是 CODE 嗎？不是，沒有一個品項藥品的 CODE 是" + qs);
     locLike = kws.length === 1 && SIM_LOC_RE.test(kws[0]);
     if (kind === "loc") {
       t(1, "是位置嗎？是，" + qs + "是位置（英文字母加數字），有藥放在這一格");
       if (list) {
-        found = "這一格有 " + n + " 支";
-        reply = "1 張列表卡：一列一支藥，按一列出那支藥的完整卡片" + (r.pages > 1 ? "；品項多會分頁，往左滑" : "");
+        found = "這一格有 " + n + " 個品項藥品";
+        reply = "1 張列表卡：一列一個品項藥品，按一列出那品項藥品的完整卡片" + (r.pages > 1 ? "；品項多會分頁，往左滑" : "");
       } else {
-        found = "這一格只有 1 支：" + simDesc(r.codes[0], true);
+        found = "這一格只有 1 個品項藥品：" + simDesc(r.codes[0], true);
         reply = "1 張藥品卡片";
       }
       return done();
     }
     if (locLike) t(0, "是位置嗎？長得像位置（英文字母加數字），但沒有藥放在" + qs);
     if (kind === "name") {
-      t(1, many ? "商品名、中文名、學名裡有這幾個字嗎？每個字都有的，找到 " + n + " 支" : "商品名、中文名、學名裡有" + qs + "嗎？有，找到 " + n + " 支");
+      t(1, many ? "商品名、中文名、學名裡有這幾個字嗎？每個字都有的，找到 " + n + " 個品項藥品" : "商品名、中文名、學名裡有" + qs + "嗎？有，找到 " + n + " 個品項藥品");
       if (n === 1) {
-        found = "1 支：" + simDesc(r.codes[0], true);
-        if (!many) found += "，是在「" + simCols(r.codes, kws[0]).replace(/ 1 支$/, "") + "」這一欄找到的";
+        found = "1 個品項藥品：" + simDesc(r.codes[0], true);
+        if (!many) found += "，是在「" + simCols(r.codes, kws[0]).replace(/ 1 個品項藥品$/, "") + "」這一欄找到的";
       } else {
         names = r.codes.slice(0, 5).map(function(c) { return simDesc(c, false); }).join("、") + (r.codes.length > 5 ? "…" : "");
-        found = "共 " + n + " 支" + (!many ? "（" + simCols(r.all, kws[0]) + "）" : "") + "：" + names;
+        found = "共 " + n + " 個品項藥品" + (!many ? "（" + simCols(r.all, kws[0]) + "）" : "") + "：" + names;
       }
       reply = n === 1 ? "1 張藥品卡片" : r.codes.length + " 張藥品卡片，排成一排，往左滑；名字一模一樣、開頭一樣的排前面" + (n > SIM_MAX ? "（最多 " + SIM_MAX + " 張）" : "");
       if (n > SIM_MAX) tip = "符合的藥太多了，這裡只回前 " + SIM_MAX + " 張。多打幾個字，結果會更少、更準。";
@@ -10330,30 +10330,30 @@
     }
     if (kind === "locText") {
       t(0, many ? "商品名、中文名、學名裡有這幾個字嗎？沒有" : "商品名、中文名、學名裡有" + qs + "嗎？沒有");
-      t(1, "位置的字裡有" + qs + "嗎？有，找到 " + n + " 支");
-      found = list ? "這一格有 " + n + " 支" : n + " 支：" + r.codes.slice(0, 5).map(function(c) { return simDesc(c, true); }).join("、");
-      reply = list ? "1 張列表卡：一列一支藥，按一列出那支藥的完整卡片" : r.codes.length === 1 ? "1 張藥品卡片" : r.codes.length + " 張藥品卡片，排成一排，往左滑";
+      t(1, "位置的字裡有" + qs + "嗎？有，找到 " + n + " 個品項藥品");
+      found = list ? "這一格有 " + n + " 個品項藥品" : n + " 個品項藥品：" + r.codes.slice(0, 5).map(function(c) { return simDesc(c, true); }).join("、");
+      reply = list ? "1 張列表卡：一列一個品項藥品，按一列出那品項藥品的完整卡片" : r.codes.length === 1 ? "1 張藥品卡片" : r.codes.length + " 張藥品卡片，排成一排，往左滑";
       return done();
     }
     t(0, many ? "商品名、中文名、學名、位置裡有這幾個字嗎？沒有，一模一樣的找不到" : "商品名、中文名、學名、位置裡有" + qs + "嗎？沒有，一模一樣的找不到");
     if (kind === "sq") {
-      t(2, "把空格、符號都拿掉再比：找到 " + n + " 支");
+      t(2, "把空格、符號都拿掉再比：找到 " + n + " 個品項藥品");
       names = r.codes.slice(0, 5).map(function(c) { return simDesc(c, n === 1); }).join("、") + (r.codes.length > 5 ? "…" : "");
-      found = n === 1 ? "1 支：" + names : "共 " + n + " 支：" + names;
+      found = n === 1 ? "1 個品項藥品：" + names : "共 " + n + " 個品項藥品：" + names;
       reply = n === 1 ? "1 張藥品卡片" : r.codes.length + " 張藥品卡片，排成一排，往左滑";
       return done();
     }
     t(0, "把空格、符號都拿掉再比：也沒有");
     if (kind === "fuzzy" || kind === "fuzzyCode") {
-      t(2, kind === "fuzzyCode" ? "放寬一點，找「CODE 相近」的：找到 " + n + " 支" : "放寬一點，容許錯一、兩個字：找到最接近的 " + n + " 支");
+      t(2, kind === "fuzzyCode" ? "放寬一點，找「CODE 相近」的：找到 " + n + " 個品項藥品" : "放寬一點，容許錯一、兩個字：找到最接近的 " + n + " 個品項藥品");
       names = r.codes.slice(0, 5).map(function(c) { return simDesc(c, r.codes.length === 1); }).join("、") + (r.codes.length > 5 ? "…" : "");
-      found = (kind === "fuzzyCode" ? "CODE 相近的 " : "最接近的 ") + n + " 支：" + names;
-      if (kind === "fuzzyCode") reply = "先傳一句「⚠️ 找不到 CODE」，再傳 " + r.codes.length + " 張藥品卡片。這不是你輸入的那一支，要核對卡片上的 CODE";
+      found = (kind === "fuzzyCode" ? "CODE 相近的 " : "最接近的 ") + n + " 個品項藥品：" + names;
+      if (kind === "fuzzyCode") reply = "先傳一句「⚠️ 找不到 CODE」，再傳 " + r.codes.length + " 張藥品卡片。這不是你輸入的那一個品項藥品，要核對藥櫃標籤紙";
       else reply = (r.codes.length === 1 ? "1 張藥品卡片，直接帶出來，不會先問你" : r.codes.length + " 張藥品卡片，往左滑") + "。不是你要的，就換個字再查";
       return done();
     }
     t(0, "放寬一點，容許錯一、兩個字：也找不到");
-    found = "0 支";
+    found = "0 個品項藥品";
     reply = "1 張「查無」卡：黃框寫「請翻閱『藥品位置查詢表』」，下面還有幾個小技巧";
     tip = "練習用的藥都是編的，打真的藥名一定查無；想查真的藥，回 LINE 打。";
     return done();
@@ -10659,9 +10659,9 @@
       return sec;
     }
     if (t.kind === "text") { text = t.text; cap = t.hint; }
-    else if (t.kind === "code" && S.c) { text = S.c; cap = "會回到 LINE 聊天室，已經幫你填好一支真的藥的 CODE「" + text + "」，按送出就行。"; }
-    else if (t.kind === "name" && S.n) { text = S.n; cap = "會回到 LINE 聊天室，已經幫你填好一支真的藥「" + text + "」，按送出就行。"; }
-    else if (t.kind === "typo" && S.n) { text = S.n; cap = "會回到 LINE 聊天室，已經幫你填好一支真的藥名「" + text + "」；先把其中一個字改成別的字，再按送出。"; }
+    else if (t.kind === "code" && S.c) { text = S.c; cap = "會回到 LINE 聊天室，已經幫你填好一個真的品項藥品的 CODE「" + text + "」，按送出就行。"; }
+    else if (t.kind === "name" && S.n) { text = S.n; cap = "會回到 LINE 聊天室，已經幫你填好一個真的品項藥品「" + text + "」，按送出就行。"; }
+    else if (t.kind === "typo" && S.n) { text = S.n; cap = "會回到 LINE 聊天室，已經幫你填好一個真的品項藥品的藥名「" + text + "」；先把其中一個字改成別的字，再按送出。"; }
     else if (t.kind === "loc" && S.l) { text = S.l; cap = "會回到 LINE 聊天室，已經幫你填好一個真的位置「" + text + "」，按送出就行。"; }
     else if (t.kind === "fam" && (S.f || S.n)) { text = "." + (S.f || S.n); cap = "會回到 LINE 聊天室，已經幫你填好「" + text + "」，按送出就行。"; }
     else cap = t.hint || "會回到 LINE 聊天室，照上面的說明做做看。";

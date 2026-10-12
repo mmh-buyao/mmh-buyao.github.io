@@ -271,7 +271,8 @@ var CodeIn = (function () {
      ④ ①～③ 要在代號出現後的 5 分鐘（CODE_MIN）內做完：畫面上倒數；倒數到 0 就自動換一組新的代號（舊的一起作廢），上面留一句說明。藥師和開發者一樣。
         網頁自己倒數，不會去問後端「LINE 領了沒」（沒有那種查詢）。沒人理的分頁（人不在、一直開著）連續最多自己換 2 次（AUTO_MAX）就停在「代號過期了」＋「重新取得代號」，
         免得一直用後端的額度；看不到的分頁（切去 LINE、螢幕關了）不換，人回來（看得到了）才換。
-     「後端代號」＝這個網頁要連的後端（部署 ID 的最後 6 個字）：要跟 LINE 卡片上的一樣才輸入，不一樣就不是補藥神器。 */
+     「後端代號」（這個網頁要連的後端，部署 ID 的最後 6 個字）不再顯示在代號登入畫面和 LINE 的驗證碼卡片上（2026-10-09 使用者要求隱藏）；
+     只留在 LINE「網頁」連結卡和「健檢」，網頁跳出「不同的後端」視窗時才拿來對。 */
   function canCode(){ return !!(X && XRE.test(X) && DKX && window.fetch && window.CodeIn && CodeIn.mount); }
   function strOf(){ for (var i=0;i<arguments.length;i++){ var a=arguments[i]; if (typeof a==="string" && a) return a.slice(0,300); } return ""; }   /* 後端回來的訊息：是字串才用（物件、數字不要變成「[object Object]」） */
   function devLabel(){
@@ -455,9 +456,8 @@ var CodeIn = (function () {
   }
   function codeForm(msg){
     LIVE=true; API="https://script.google.com/macros/s/"+X+"/exec";
-    /* 電腦（寬螢幕）：① 代號在左、② 驗證碼輸入在右，並排（筆電 1366×768 第一屏就看得到輸入格和登入鍵）；手機上下排。標題和「後端代號」同一列（放不下就換行） */
-    out.innerHTML='<div class="empty codebox"><div class="cdhead"><b>'+esc(msg||"🔐 登入補藥神器").replace(/\n/g,"<br>")+'</b>'
-      +'<span class="cdbk">後端代號 <b class="mono">'+esc(X.slice(-6))+'</b>　要跟 LINE 卡片上的一樣才輸入</span></div>'
+    /* 電腦（寬螢幕）：① 代號在左、② 驗證碼輸入在右，並排（筆電 1366×768 第一屏就看得到輸入格和登入鍵）；手機上下排。最上面只有標題一行（後端代號已隱藏，不顯示） */
+    out.innerHTML='<div class="empty codebox"><div class="cdhead"><b>'+esc(msg||"🔐 登入補藥神器").replace(/\n/g,"<br>")+'</b></div>'
       +'<div class="cdgrid"><div class="pairbx" id="pair"></div>'
       +'<div id="cdwrap" hidden><div class="pst2">② LINE 會回你 6 位數的<b>驗證碼</b>，打在這裡</div><div id="cdhost"></div><span class="bindm" id="cdm" role="status"></span></div></div>'
       +'<small>代號和驗證碼都只能在這個網頁用，換別的瀏覽器打沒用。<br>代號出現後 '+CODE_MIN+' 分鐘內要完成登入，超過了這裡會自己換一組新的代號；驗證碼只能用一次，不要傳給任何人。</small>'
@@ -959,7 +959,7 @@ var CodeIn = (function () {
         call("appPic",[T, r.code, b64, mime, "npic"],function(res){
           $("e_npicbtn").disabled=false;
           if (!res || res.err){ $("e_npicmsg").textContent="❌ "+(res&&res.err||"沒存成"); setHint("❌ "+(res&&res.err||"公告照片沒存成"), true); return; }
-          npicDel=false; $("e_npicmsg").textContent="✅ 公告照片換好了（雲端 公告照片／"+(res.name||"")+"）"+(v.nk?"":"　⚠️ 這支藥還沒掛公告，掛上才會顯示");
+          npicDel=false; $("e_npicmsg").textContent="✅ 公告照片換好了（雲端 公告照片／"+(res.name||"")+"）"+(v.nk?"":"　⚠️ 這品項藥品還沒掛公告，掛上才會顯示");
           if (res.url){ var th=String(res.url).replace(/([?&]sz=w)\d+/,"$1120"); $("e_npicph").innerHTML='<img class="pi" id="e_npicimg" src="'+esc(th)+'" alt="" data-rm="">'; v.npic=res.url; }
           if (res.row){ keepPh(r, res.row); FULL[res.row.code]=res.row; r=res.row; swapRow(res.row); }
           HOME=null; homeDrop();
@@ -1238,7 +1238,7 @@ var CodeIn = (function () {
   function noticeSeen(){ try{ return localStorage.getItem(NOTE_KEY)==="1"; }catch(e){ return false; } }
   function noticeFirst(){
     if (noticeSeen()) return;
-    note({h:"📷 拍照、錄音前請注意", p:"AI 可能讀錯，請核對 CODE 再拿藥。",
+    note({h:"📷 拍照、錄音前請注意", p:"AI 可能讀錯，請核對藥櫃標籤紙。",
           n:"這個網頁請只用 LINE 補藥神器給的東西進來：按鈕「🌐 補藥神器網頁」，或自己打網址、把畫面上的代號打給 LINE 補藥神器換驗證碼。不要點別人傳來的連結；驗證碼不要給別人，別人傳給你的代號也不要幫他打進 LINE。", x:"知道了"},
          function(){ try{ localStorage.setItem(NOTE_KEY,"1"); }catch(e){} });
   }
@@ -1250,7 +1250,7 @@ var CodeIn = (function () {
     var S=keyLoad(), RX=CFGX||(S?S.x:bxLoad());   /* cfg.js（開發者自己放的）優先於這台記的 */
     if (CFGX && S && S.x!==CFGX) S=null;   /* 記的鑰匙不是 cfg.js 那個後端 → 不拿它當原本的 */
     if (!RX || !HP.x || RX===HP.x || !XRE.test(HP.x) || (HP.lst && !(HP.dev||HP.app))){ cb(); return; }   /* 舊的清單校對連結（帶 lst、沒有鑰匙）不問：下面會直接說「連結換新了」 */
-    note({h:"⚠️ 這條連結要連到不同的後端", p:"這台原本連的後端，跟這條連結的不一樣。<b>拿 LINE 卡片上的「後端代號」來對</b>，哪一個一樣就選哪一個：", ids:"原本連的：…"+RX.slice(-6)+"\n這條連結：…"+HP.x.slice(-6),
+    note({h:"⚠️ 這條連結要連到不同的後端", p:"這台原本連的後端，跟這條連結的不一樣。<b>拿 LINE「🌐 補藥神器網頁」那張卡片上的「後端代號」來對</b>，哪一個一樣就選哪一個：", ids:"原本連的：…"+RX.slice(-6)+"\n這條連結：…"+HP.x.slice(-6),
           q:"兩個都對不上、或這條連結不是你自己從 LINE 按的，請直接關掉這個網頁。", go:"用原本連的", x:"用這條連結的", nofocus:true},
          function(v){
            if (v==="go"){
@@ -1262,7 +1262,7 @@ var CodeIn = (function () {
          });
   }
   /* 照片辨識完，搜尋框下面那行多一句提醒（只查到一支、直接出卡片時也看得到） */
-  function aiWarnAdd(){ var w=document.createElement("span"); w.className="aiw"; w.textContent="⚠️ AI 可能讀錯，請核對 CODE 再拿藥"; hint.appendChild(document.createElement("br")); hint.appendChild(w); }
+  function aiWarnAdd(){ var w=document.createElement("span"); w.className="aiw"; w.textContent="⚠️ AI 可能讀錯，請核對藥櫃標籤紙"; hint.appendChild(document.createElement("br")); hint.appendChild(w); }
 
   /* ══════════ 開場 ══════════
      v11.22.2 beta（乙-2、乙-3）：開頁只問後台一趟——首頁清單和「身分、版本、剩幾天」一起回來（appHome 的第二個參數 1）。
