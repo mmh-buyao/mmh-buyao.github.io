@@ -177,6 +177,7 @@ mark{background:#FFE58F;color:inherit;border-radius:3px;padding:0 1px}
 .pgs{font-size:12px;color:#8A6D00}
 .pgline{margin-top:6px;font-size:13px}
 .pgline.gap{margin-top:1.4em}   /* 備註有文字：文字和頁數小框中間空一行（LINE 也是） */
+.pgline.solo{margin:12px 0}   /* 第 28 批：只寫了頁數：只有頁數小框（沒有黃色的備註框） */
 .pgtag{display:inline-flex;align-items:center;flex-wrap:wrap;background:#DDF1EE;border:1px solid #8CCBC5;border-radius:8px;padding:5px 11px;color:#0B5F5B;font-size:13px}
 .pgtag b{color:#064B47;margin-left:.1em}
 
@@ -341,6 +342,11 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .art .rt-box .rt-ic{flex:none;line-height:1.5}
 .art .rt-box .rt-bb{flex:1;min-width:0}
 .art .rt-bl{margin:2px 0}
+/* 第 28 批：好幾行的標註：一行一列、中間一條線（跟編輯器裡看到的一樣）；圖示只在第一列 */
+.art .rt-box.rows{display:block;position:relative;padding:0 11px 0 36px}
+.art .rt-box.rows .rt-ic{position:absolute;left:11px;top:8px}
+.art .rt-box.rows .rt-bl{position:relative;margin:0;padding:8px 0}
+.art .rt-box.rows .rt-bl+.rt-bl::before{content:"";position:absolute;left:-36px;right:-11px;top:0;border-top:1px solid var(--bd)}
 .art .rt-quote{border-left:3px solid #B8C2CC;padding:1px 0 1px 11px;margin:8px 0;color:#4A5565}
 .art .rt-go{display:flex;gap:8px;align-items:baseline;background:#F1F7F6;border-radius:8px;padding:8px 11px;margin:8px 0;color:var(--accent);text-decoration:none;cursor:pointer}
 .art .rt-go b{flex:1;min-width:0}
@@ -480,6 +486,38 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 /* 第 27 批：圖片裡的字（從搜尋打開時，圖裡有要找的字的那張圖） */
 .art figure.ocrhit{outline:3px solid #FFD54A;outline-offset:4px;border-radius:8px}
 .ocrtag{display:inline-block;margin-top:6px;padding:2px 10px;border-radius:999px;background:#FFF4C2;color:#6B5200;font-size:12.5px;font-weight:700}
+/* 第 28 批：🕘 舊版本（最左上角）、自動存檔、存檔狀態 */
+.edtb .verb{font-weight:700}
+.asck{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink2);white-space:nowrap;cursor:pointer;user-select:none}
+.asck input{margin:0;width:15px;height:15px;accent-color:var(--accent)}
+.edtb .dirty.warn{color:#7A4300;background:#FFF4D6;border:1px solid #F0D78A;border-radius:6px;padding:1px 8px}
+.verdlg{max-width:580px;width:calc(100vw - 32px)}
+.verlist{max-height:55vh;overflow:auto;display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.verrow{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff}
+.vermeta{min-width:0;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.verrow .btn{flex:none}
+/* 第 28 批：每張圖下面「圖片裡的字」的狀態 */
+.ocrst{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12.5px;color:var(--ink3);line-height:1.45;overflow-wrap:anywhere}
+.ocrst.ok{color:#1B6B36}
+.ocrst.warn{color:#7A4300;background:#FFF6DB;border:1px solid #F0D78A;border-radius:8px;padding:3px 8px}
+.ocrst .ocrre{padding:1px 8px;font-size:12px;line-height:18px}
+/* 第 28 批：文字裡的圖（一行一張圖：縮圖＋圖說＋圖片裡的字） */
+.rl-img{display:flex;gap:10px;align-items:flex-start;border:1px solid #DCE3EA;border-radius:10px;padding:8px;margin:6px 0;background:#FAFBFC;white-space:normal;cursor:default}
+.rl-img.warn{background:#FFF6DB;border-color:#F0D78A;align-items:center}
+.rl-img.rl-lv1{margin-left:1.6em;padding-left:8px}.rl-img.rl-lv2{margin-left:3.2em;padding-left:8px}.rl-img.rl-lv3{margin-left:4.8em;padding-left:8px}
+.rl-imgsrc{flex:none;width:132px;max-width:38%;max-height:132px;object-fit:contain;border-radius:6px;background:#fff;border:1px solid var(--line)}
+.rl-imgside{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.rl-imgcap{padding:4px 8px;font-size:13px}
+.rl-imgbtns{display:flex;gap:6px;flex-wrap:wrap}
+.rl-imgmiss{flex:1;font-size:13px;color:#7A4300}
+.rl-img .rl-x{flex:none}
+.rl-img .ocrst{margin-top:0}
+/* 第 28 批：「⤴ 併到上一塊」 */
+.blk .bh .mrgb{color:var(--accent);border-color:#BFE3DF;background:#F1F7F6}
+/* 第 28 批：大標題旁的符號（編輯器的樣子） */
+.sympv{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#123B3A,#1D5F5B);color:#fff;border-radius:12px;padding:14px 18px;margin-top:6px}
+.sympv img{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+.sympv b{font-size:22px;letter-spacing:.04em}
 
 /* ───────── 目錄圖 第 3 版：標籤（圖示＋名稱）＋圓點，網頁、編輯器共用 ─────────
  * 一個地點 ＝ 一個「物品框」（.mspot，位置大小用佔整張圖的 %）。圓點在框的正中間，標籤在圓點的上／下／左／右。
@@ -855,8 +893,18 @@ body{min-height:100vh}
 .pg .btn.hbtn:hover{background:#fff}
 .pgh{display:flex;align-items:center;justify-content:center;gap:clamp(8px,2.2vw,18px);margin:22px 0 8px;text-align:center}
 .pgh h1{margin:0;min-width:0;font-size:clamp(28px,5.2vw,46px);font-weight:900;letter-spacing:.08em;line-height:1.2;color:#fff;overflow-wrap:anywhere;text-wrap:balance;text-shadow:3px 0 #13312F,-3px 0 #13312F,0 3px #13312F,0 -3px #13312F,2px 2px #13312F,-2px -2px #13312F,2px -2px #13312F,-2px 2px #13312F,0 6px 0 #0B1F1D,0 10px 20px rgba(0,0,0,.4)}
-.pgwave{flex:none;width:clamp(38px,7vw,66px);line-height:0}
-.pgwave svg{width:100%;height:auto;display:block}
+/* 第 28 批：大標題兩邊的波浪線拿掉；自己上傳的符號（例如藥劑部標誌）放在大標題左邊 */
+.pgsym{flex:none;width:clamp(40px,7vw,64px);height:clamp(40px,7vw,64px);object-fit:contain;filter:drop-shadow(0 3px 6px rgba(0,0,0,.35))}
+/* 第 28 批：章的頁面整章展開——上面的標題清單、每一篇的標題列 */
+.chtoc-h{font-weight:800;font-size:14.5px;margin-bottom:8px}
+.chtoc-l{display:flex;flex-wrap:wrap;gap:8px}
+.chtoc-b{border:2px solid var(--pink);background:#fff;color:var(--pink);font:inherit;font-weight:700;font-size:14px;border-radius:999px;padding:5px 13px;cursor:pointer}
+.chtoc-b:hover{background:var(--pacc);color:#fff;border-color:var(--pacc)}
+.chsec{scroll-margin-top:64px;margin-bottom:22px}
+.chsec-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:3px solid var(--pink);padding-bottom:8px;margin-bottom:14px}
+.chsec-t{margin:0;font-size:clamp(20px,3.4vw,26px);font-weight:900;color:var(--pink);min-width:0;overflow-wrap:anywhere}
+.chsec-o{font-size:13.5px;padding:5px 12px;background:#fff;color:var(--pink);border:2px solid var(--pink);cursor:pointer}
+.chsec-o:hover{background:var(--pacc);color:#fff;border-color:var(--pacc)}
 .pgsub{text-align:center;margin:0 auto 20px;max-width:36em}
 .pgsub>span,.pgchip{display:inline-block;background:rgba(12,16,18,.74);color:#fff;font:inherit;font-weight:700;font-size:14.5px;line-height:1.45;padding:6px 15px;border-radius:999px;border:0;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .pgchip{cursor:pointer;border:2px solid rgba(255,255,255,.55)}
