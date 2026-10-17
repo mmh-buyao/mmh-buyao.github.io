@@ -235,6 +235,11 @@ mark{background:#FFE58F;color:inherit;border-radius:3px;padding:0 1px}
 
 /* 編輯器：階梯式內容 */
 .ladtop{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.blk.brk{margin-top:20px;border-top:3px dashed var(--accent)}
+.blk .bh .brkb.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.ladni{margin:-2px 0 8px}
+.ladni.on{color:var(--accent);font-weight:600}
+.ladE.plain .lrow:not(.limg) .lmk{min-width:.4em}
 .ladpaste{border:1px dashed #C7CED7;border-radius:8px;padding:6px 10px;margin:6px 0;background:#FAFBFC}
 .ladpaste summary{cursor:pointer;font-weight:600;color:var(--ink2)}
 .lrows{margin:6px 0}
@@ -325,8 +330,12 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .rt-zsm{font-size:.86em}
 .rt-zlg{font-size:1.25em}
 .rt-zxl{font-size:1.7em}
-.art .rt-h{font-weight:700;line-height:1.35;margin:14px 0 5px}
+.art .rt-h{font-weight:700;line-height:1.35;margin:18px 0 6px}
+.art .rt-h1,.art .rt-h2{margin-top:24px}
 .art .rt-h:first-child{margin-top:4px}
+/* 第 27 批：太擠 → 一塊和一塊之間空開一點；一塊一開頭就是大標題的，跟一塊裡面的大標題一樣空 */
+.art>*+*{margin-top:14px}
+.art>*+.txtb>.rt-h1:first-child,.art>*+.txtb>.rt-h2:first-child{margin-top:24px}
 .art .rt-hr{border:0;border-top:1px solid #D5DAE1;margin:12px 0}
 .art .rt-box{display:flex;gap:9px;align-items:flex-start;border:1px solid;border-radius:8px;padding:9px 11px;margin:8px 0}
 .art .rt-box .rt-ic{flex:none;line-height:1.5}
@@ -336,6 +345,13 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .art .rt-go{display:flex;gap:8px;align-items:baseline;background:#F1F7F6;border-radius:8px;padding:8px 11px;margin:8px 0;color:var(--accent);text-decoration:none;cursor:pointer}
 .art .rt-go b{flex:1;min-width:0}
 .art .rt-go:hover{background:#E3F0EE}
+/* 第 27 批：互相連結（從別的標題連過來的）；連到整章的連結 */
+.backl{margin-top:16px;padding-top:10px;border-top:1px dashed #C9D3DD}
+.pcard .backl{margin-top:0;padding-top:0;border-top:0}
+.backl .bl-h{font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:2px}
+.backl .rt-go{display:flex;gap:8px;align-items:baseline;background:#F1F7F6;border-radius:8px;padding:8px 11px;margin:6px 0;color:var(--accent);text-decoration:none;cursor:pointer}
+.backl .rt-go b{flex:1;min-width:0}
+.backl .rt-go:hover{background:#E3F0EE}
 
 /* 編輯器：文字塊（像 Notion 的所見即所得）＋ 第二排「文字格式」按鍵 */
 .fmtbar{display:flex;flex-wrap:wrap;gap:5px 8px;align-items:center}
@@ -385,6 +401,16 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .rl-go .rl-x{order:2;margin-left:auto}
 .rl-go .rl-goic{order:0}
 .rl-go .rl-gosel{order:1}
+/* 第 27 批：標註、引用、分隔線、連結也能縮排（整個框往右移；以前它們自己的 padding 把縮排蓋掉了） */
+.rl-q.rl-lv1,.rl-box.rl-lv1,.rl-hr.rl-lv1,.rl-go.rl-lv1{margin-left:1.6em}
+.rl-q.rl-lv2,.rl-box.rl-lv2,.rl-hr.rl-lv2,.rl-go.rl-lv2{margin-left:3.2em}
+.rl-q.rl-lv3,.rl-box.rl-lv3,.rl-hr.rl-lv3,.rl-go.rl-lv3{margin-left:4.8em}
+/* 第 27 批：整塊縮排（每一塊的 ⇤ ⇥）：編輯器裡也往右移，看得出層次 */
+.blk[data-ind="1"] .bb2{padding-left:calc(8px + 1.6em)}
+.blk[data-ind="2"] .bb2{padding-left:calc(8px + 3.2em)}
+.blk[data-ind="3"] .bb2{padding-left:calc(8px + 4.8em)}
+.blk .bh .indn{font-weight:400;color:var(--ink3);white-space:nowrap}
+.blk .bh .indn.on{font-weight:700;color:var(--accent)}
 .rtraw{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;min-height:120px;line-height:1.55}
 @media (max-width:900px){.fmtbar{flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px}.fmtbar .fg{flex-wrap:nowrap}.fmtbar .vsep,.fmtbar .fbstat{flex:none}.edtb{flex-wrap:nowrap;overflow-x:auto}.edtb>*{flex:none}.edtb .sp{display:none}}
 
@@ -444,6 +470,16 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .mi.go:hover{filter:brightness(.97)}
 .mic{flex:none;font-weight:700}
 .pvempty{padding:22px 14px;text-align:center;color:var(--ink3);font-size:13.5px;line-height:1.6;background:#F6F8FA;border-radius:10px}
+/* 第 27 批：編輯器的「🔗 連結」一區 */
+.lkpanel{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#FAFBFC;display:flex;flex-direction:column;gap:8px}
+.lkrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
+.lkchips{display:flex;gap:6px;flex-wrap:wrap}
+.lkchip{border:1px solid #CFE5E2;background:#F1F7F6;color:var(--accent);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer}
+.lkchip:hover{background:#E3F0EE}
+.lkchip.bad{background:#FDECEA;border-color:#F3B8B3;color:var(--bad)}
+/* 第 27 批：圖片裡的字（從搜尋打開時，圖裡有要找的字的那張圖） */
+.art figure.ocrhit{outline:3px solid #FFD54A;outline-offset:4px;border-radius:8px}
+.ocrtag{display:inline-block;margin-top:6px;padding:2px 10px;border-radius:999px;background:#FFF4C2;color:#6B5200;font-size:12.5px;font-weight:700}
 
 /* ───────── 目錄圖 第 3 版：標籤（圖示＋名稱）＋圓點，網頁、編輯器共用 ─────────
  * 一個地點 ＝ 一個「物品框」（.mspot，位置大小用佔整張圖的 %）。圓點在框的正中間，標籤在圓點的上／下／左／右。
