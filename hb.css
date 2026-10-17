@@ -909,16 +909,25 @@ body{min-height:100vh}
 .mqpv{background:#F6F8FA;border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:6px;margin:6px 0 12px;min-width:0;overflow:hidden}
 .mqpv .mq{--mqh:30px;height:30px;border-radius:6px;border-bottom:0}
 .mqpvl{font-size:12.5px;color:var(--ink2);line-height:1.4}
-/* 平面目錄圖：圖本身變淡；物品框上疊一塊原本顏色的圖（外層管左右淡出、內層管上下淡出），平常半透明、滑到時全彩又亮一點 */
+/* 平面目錄圖：圖本身變淡；物品上疊一塊原本顏色的圖（照物品的形狀挖出來、邊緣淡出；遮罩是程式畫的），平常半透明、滑到時全彩又亮一點 */
 .catcam>img{transition:filter .3s}
 .catmap.dim .catcam>img{filter:saturate(.3) contrast(.9) brightness(1.05)}
 .catmap.foc .catcam>img{filter:brightness(.82)}
 .catmap.dim.foc .catcam>img{filter:saturate(.3) contrast(.9) brightness(.86)}
-.catcam .spc{position:absolute;display:block;pointer-events:none;opacity:0;transition:opacity .3s,filter .3s;
-  -webkit-mask-image:linear-gradient(90deg,transparent,#000 var(--fx),#000 calc(100% - var(--fx)),transparent);mask-image:linear-gradient(90deg,transparent,#000 var(--fx),#000 calc(100% - var(--fx)),transparent)}
-.catcam .spc>b{position:absolute;inset:0;background-repeat:no-repeat;
-  -webkit-mask-image:linear-gradient(180deg,transparent,#000 var(--fy),#000 calc(100% - var(--fy)),transparent);mask-image:linear-gradient(180deg,transparent,#000 var(--fy),#000 calc(100% - var(--fy)),transparent)}
+.catcam .spc{position:absolute;display:block;pointer-events:none;opacity:0;transition:opacity .3s,filter .3s;-webkit-mask-size:100% 100%;mask-size:100% 100%;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.catcam .spc>b{position:absolute;inset:0;background-repeat:no-repeat}
 .catmap.dim .catcam .spc{opacity:.45}
 .catmap.dim.foc .catcam .spc{opacity:.2}
 .catmap.foc .catcam .spc.on{opacity:1;filter:brightness(1.22) saturate(1.05)}
 @media (prefers-reduced-motion:reduce){.catcam>img,.catcam .spc{transition:none}}
+/* ───────── 第 26 批：編輯器的物品外框（自動找的形狀）、點選要亮的物品 ───────── */
+.mcv .mshp{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.mcv .mshp polygon{fill:rgba(46,204,113,.10);stroke:#27ae60;stroke-width:1.4;vector-effect:non-scaling-stroke;stroke-dasharray:4 3}
+.mcv .mshp polygon.on{fill:rgba(46,204,113,.24);stroke:#1e8449;stroke-width:2.6;stroke-dasharray:none}
+.mcv .mpick{position:absolute;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;border:3px solid #fff;background:#27ae60;box-shadow:0 0 0 2px #1e8449,0 2px 6px rgba(0,0,0,.35);pointer-events:none;box-sizing:border-box}
+.mcv.picking .catstage,.mcv.picking .mbx{cursor:copy}
+.mlit{margin-top:10px;padding:10px 12px;border:1px dashed #b7d7cf;border-radius:10px;background:#f6fbfa}
+.mpickrow{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.shpst{font-size:12.5px;margin-top:6px;color:#4c5a66;line-height:1.5}
+.shpst.ok{color:#1e8449;font-weight:600}
+.shpst.busy{color:#8a6d00}

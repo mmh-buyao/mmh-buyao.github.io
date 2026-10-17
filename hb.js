@@ -720,10 +720,19 @@ function _yzMapRect_(s) {   // 一定落在 0～100 之內的整數百分比（L
 function _yzMapPos_(p) { return p === "t" || p === "b" || p === "l" || p === "r" ? p : "t"; }   // 舊版的「中」（m）和看不懂的，都當成「上」
 function _yzMapSt_(v) { return v === "lock" || v === "new" ? v : ""; }
 function _yzMapStr_(v) { return String(v === null || v === undefined ? "" : v).replace(/\s+/g, " ").trim(); }
+// 第 26 批：網頁滑到時「亮起來的形狀」＝編輯器自動找的物品輪廓（[[x,y,…],…]，整張圖的 %）。選「整個框」、還沒算、框動過了：沒有（＝亮整個框）
+function _yzMapShape_(s, r) {
+  var sh = s && s.shape;
+  if (!sh || s.lit === "box" || !Array.isArray(sh.r) || !sh.r.length || sh.b !== [r.x, r.y, r.w, r.h].join(",")) return null;
+  var out = sh.r.filter(function (ring) { return Array.isArray(ring) && ring.length >= 6 && ring.every(function (v) { return typeof v === "number" && isFinite(v); }); });
+  return out.length ? out : null;
+}
 function _yzMapNorm_(s) {   // 把一個地點整理乾淨（不管能不能用）
   var r = _yzMapRect_(s);
   var o = { id: s.id, label: _yzMapStr_(s.label), to: s.to, x: r.x, y: r.y, w: r.w, h: r.h, pos: _yzMapPos_(s.pos), ico: _yzMapStr_(s.ico).replace(/\s/g, ""), desc: _yzMapStr_(s.desc), st: _yzMapSt_(s.st) };
   if (s.empty === true) o.empty = true;
+  var sh = _yzMapShape_(s, r);
+  if (sh) o.shape = sh;
   return o;
 }
 // 空的章自動上鎖：連到「還沒有任何標題的章」的地點，藥師看到的是「🔒 尚未開放」（點了說還在整理）；寫好第一個標題就自動打開。
@@ -2361,15 +2370,15 @@ function webCatalogMap(cat, hb, o) {
   var cam = h("div", { class: "catcam", "aria-hidden": "true" }, [h("img", { src: o.img || cat.img, alt: "", draggable: "false" })]);
   var hit = h("div", { class: "cathit" }), vis = {}, pat = {}, info = null, cur = null, leaveT = 0, lastPT = "";
   stage.appendChild(cam);
-  if (dim || fx) {   // 物品框上面那一塊「原本顏色」的圖（邊緣淡出：外面那層管左右、裡面那層管上下）
+  if (dim || fx) {   // 物品上面那一塊「原本顏色」的圖：照物品的形狀（沒有輪廓＝整個框）挖出來、邊緣淡出（遮罩是畫布畫的）
     var src = o.img || cat.img, A = (function () { var a = String(cat.ar || "20:13").split(":"); return (Number(a[0]) || 20) / (Number(a[1]) || 13); })();
     spots.forEach(function (s) {
       if (s.st === "lock") return;   // 還沒開放的：一直是淡的，不用疊
       var ey = 2.4, ex = ey / A, X = Math.max(0, s.x - ex), Y = Math.max(0, s.y - ey), Wp = Math.min(100, s.x + s.w + ex) - X, Hp = Math.min(100, s.y + s.h + ey) - Y;
       if (Wp <= 0 || Hp <= 0) return;
-      var fxp = Math.min(45, (2 * ex / Wp) * 100), fyp = Math.min(45, (2 * ey / Hp) * 100);
+      var mk = spotMask(s, X, Y, Wp, Hp, A); if (!mk) return;
       var bx = Wp < 100 ? (X / (100 - Wp)) * 100 : 0, by = Hp < 100 ? (Y / (100 - Hp)) * 100 : 0;
-      pat[s.id] = cam.appendChild(h("i", { class: "spc" + (s.st === "lock" ? " lock" : ""), "aria-hidden": "true", style: "left:" + X.toFixed(3) + "%;top:" + Y.toFixed(3) + "%;width:" + Wp.toFixed(3) + "%;height:" + Hp.toFixed(3) + "%;--fx:" + fxp.toFixed(2) + "%;--fy:" + fyp.toFixed(2) + "%" }, [
+      pat[s.id] = cam.appendChild(h("i", { class: "spc", "aria-hidden": "true", style: "left:" + X.toFixed(3) + "%;top:" + Y.toFixed(3) + "%;width:" + Wp.toFixed(3) + "%;height:" + Hp.toFixed(3) + "%;-webkit-mask-image:" + cssUrl(mk) + ";mask-image:" + cssUrl(mk) }, [
         h("b", { style: "background-image:" + cssUrl(src) + ";background-size:" + (10000 / Wp).toFixed(3) + "% " + (10000 / Hp).toFixed(3) + "%;background-position:" + bx.toFixed(3) + "% " + by.toFixed(3) + "%" })
       ]));
     });
@@ -2446,6 +2455,25 @@ function webCatalogMap(cat, hb, o) {
   stage.addEventListener("click", function (e) { if (!(e.target.closest && e.target.closest(".spot, .catinfo")) && cur) unpick(); });
   box.appendChild(stage);
   return box;
+}
+// 平面目錄圖的遮罩：這一塊（X、Y、Wp、Hp，整張圖的 %）裡，地點的形狀（物品輪廓；沒有＝圓角的框）塗白、邊緣模糊 → data: 網址
+// 跟 3D 一樣用「影子」的模糊（Safari 不支援 ctx.filter）。畫不出來（很舊的瀏覽器）＝null（那一塊就不疊）。
+function spotMask(s, X, Y, Wp, Hp, A) {
+  try {
+    var BASE = 1200, pw = Math.max(8, Math.round(Wp / 100 * BASE)), ph = Math.max(8, Math.round(Hp / 100 * BASE / A)), sx = pw / Wp, sy = ph / Hp;
+    var cv = document.createElement("canvas"); cv.width = pw; cv.height = ph;
+    var c = cv.getContext("2d"), blur = Math.max(2, 0.014 * BASE / A), off = pw + 60 + blur * 4;
+    c.fillStyle = "#fff"; c.shadowColor = "#fff"; c.shadowBlur = blur; c.shadowOffsetX = off;
+    c.beginPath();
+    if (Array.isArray(s.shape) && s.shape.length) {
+      s.shape.forEach(function (r) { for (var k = 0; k + 1 < r.length; k += 2) { var px = (r[k] - X) * sx - off, py = (r[k + 1] - Y) * sy; if (k) c.lineTo(px, py); else c.moveTo(px, py); } c.closePath(); });
+    } else {
+      var x = (s.x - X) * sx - off, y = (s.y - Y) * sy, w = s.w * sx, hh = s.h * sy, rr = Math.max(0, Math.min(w / 2, hh / 2, 2 * BASE / A / 100));
+      c.moveTo(x + rr, y); c.arcTo(x + w, y, x + w, y + hh, rr); c.arcTo(x + w, y + hh, x, y + hh, rr); c.arcTo(x, y + hh, x, y, rr); c.arcTo(x, y, x + w, y, rr); c.closePath();
+    }
+    c.fill();
+    return cv.toDataURL("image/png");
+  } catch (e) { return null; }
 }
 // 3D 環景目錄（YZPano，hb3d.js）：圖要用「原始檔」（hbCatImg 拿來的，放記憶體），Google 的圖片網址不一定讓網頁讀像素。
 // 不能 3D、拿不到原始檔、圖讀失敗 → 外面改用平面目錄（一樣能點）。一頁同時只留一個 3D（換頁、重畫前要 destroy）。
@@ -3478,6 +3506,404 @@ document.addEventListener("mousedown", function (e) { if (RTE.pop && !RTE.pop.el
 document.addEventListener("keydown", function (e) { if (e.key === "Escape") rteClosePop(); });
 document.addEventListener("selectionchange", function () { if (RTE.cur) rteBarSync(); });
 
+/* ════════ shape.js ════════ */
+/* ───────── 物品的形狀（第 26 批）：在「物品框」裡自動找出物品的輪廓 ─────────
+   做法：GrabCut（框外面＝背景；框裡面用「物品的顏色」和「背景的顏色」兩個模型，加上「相鄰的點盡量同一邊」，用圖割分成物品／背景，來回 4 次）。
+   只有開發者的編輯器會算（選到一個地點、移動框、點選要亮的物品、按「儲存」的時候）；算好的輪廓（幾個多邊形，用整張圖的 %）存在地點裡。
+   網頁首頁：平常有按鍵的物品留一半顏色、滑到時亮起來——都只照輪廓（物品本身），框裡的背景不亮。藥師的瀏覽器照著畫，不用算。
+   「點一下要亮的物品」（pick）：那一點附近一定算物品，最後只留那一樣（框裡的其他東西不亮）。
+   這個檔裡的函式除了 shFind（要畫布）以外都不碰畫面，測試可以直接跑。 */
+var SH_VER = "s1", SH_SIDE = 180, SH_ITER = 4, SH_K = 5, SH_GAMMA = 12, SH_PTS = 40, SH_RINGS = 4;
+// SH_GAMMA：「相鄰的點盡量同一邊」有多重要。縮小過的圖用 OpenCV 的 50 太重（整個框會變成背景）；12 試過藥盤、藥水瓶、法規書、處方夾都對。
+// 還是整個變背景的話，自動用一半再試一次。
+
+function shBox(s) { return [s.x, s.y, s.w, s.h].map(function (v) { return Math.round(Number(v) || 0); }).join(","); }
+function shKey(cat, s) { return SH_VER + "|" + ((cat && cat.fid) || "") + "|" + shBox(s) + "|" + (Array.isArray(s.pick) ? s.pick.join(",") : ""); }
+function shNeed(cat, s) { return !!(cat && cat.img && s && s.lit !== "box" && !(s.shape && s.shape.k === shKey(cat, s))); }
+
+// 固定的亂數（同一張圖、同一個框，每次算出來都一樣）
+function shRand(seed) { var r = (seed >>> 0) || 1; return function () { r = (Math.imul(r, 1664525) + 1013904223) >>> 0; return r / 4294967296; }; }
+
+/* ── k-means（給顏色模型一個好的起點）── */
+function shKmeans(Z, idx, K, iters, rnd) {
+  var n = idx.length, lab = new Uint8Array(n), C = new Float64Array(K * 3), d2 = new Float64Array(n), i, k, c;
+  if (!n) return lab;
+  var dist = function (p, kk) { var a = Z[p * 3] - C[kk * 3], b = Z[p * 3 + 1] - C[kk * 3 + 1], e = Z[p * 3 + 2] - C[kk * 3 + 2]; return a * a + b * b + e * e; };
+  var p0 = idx[Math.floor(rnd() * n)];
+  for (c = 0; c < 3; c++) C[c] = Z[p0 * 3 + c];
+  for (i = 0; i < n; i++) d2[i] = dist(idx[i], 0);
+  for (k = 1; k < K; k++) {   // k-means++：離已經選的中心越遠，越容易被選
+    var sum = 0; for (i = 0; i < n; i++) sum += d2[i];
+    var pick = Math.floor(rnd() * n);
+    if (sum > 0) { var t = rnd() * sum; for (i = 0; i < n; i++) { t -= d2[i]; if (t <= 0) { pick = i; break; } } }
+    for (c = 0; c < 3; c++) C[k * 3 + c] = Z[idx[pick] * 3 + c];
+    for (i = 0; i < n; i++) { var dd = dist(idx[i], k); if (dd < d2[i]) d2[i] = dd; }
+  }
+  var S = new Float64Array(K * 3), cnt = new Float64Array(K);
+  for (var it = 0; it < iters; it++) {
+    for (i = 0; i < n; i++) { var best = 0, bd = Infinity; for (k = 0; k < K; k++) { var v = dist(idx[i], k); if (v < bd) { bd = v; best = k; } } lab[i] = best; }
+    S.fill(0); cnt.fill(0);
+    for (i = 0; i < n; i++) { k = lab[i]; cnt[k]++; for (c = 0; c < 3; c++) S[k * 3 + c] += Z[idx[i] * 3 + c]; }
+    for (k = 0; k < K; k++) if (cnt[k]) for (c = 0; c < 3; c++) C[k * 3 + c] = S[k * 3 + c] / cnt[k];
+  }
+  return lab;
+}
+
+/* ── 顏色模型（5 個高斯混在一起；跟 OpenCV 的 GrabCut 一樣的算法）── */
+function shGmm() { var K = SH_K; return { coef: new Float64Array(K), mean: new Float64Array(K * 3), inv: new Float64Array(K * 9), det: new Float64Array(K), isd: new Float64Array(K), S: new Float64Array(K * 3), P: new Float64Array(K * 9), n: new Float64Array(K), tot: 0, best: 0 }; }
+function shGmmReset(m) { m.S.fill(0); m.P.fill(0); m.n.fill(0); m.tot = 0; }
+function shGmmAdd(m, k, r, g, b) {
+  var o = k * 3, q = k * 9, P = m.P;
+  m.S[o] += r; m.S[o + 1] += g; m.S[o + 2] += b;
+  P[q] += r * r; P[q + 1] += r * g; P[q + 2] += r * b; P[q + 4] += g * g; P[q + 5] += g * b; P[q + 8] += b * b;
+  m.n[k]++; m.tot++;
+}
+function shGmmEnd(m) {
+  for (var k = 0; k < SH_K; k++) {
+    var n = m.n[k];
+    if (!n) { m.coef[k] = 0; continue; }
+    m.coef[k] = n / m.tot;
+    var o = k * 3, q = k * 9, a = m.S[o] / n, b = m.S[o + 1] / n, e = m.S[o + 2] / n, P = m.P;
+    m.mean[o] = a; m.mean[o + 1] = b; m.mean[o + 2] = e;
+    var c0 = P[q] / n - a * a, c1 = P[q + 1] / n - a * b, c2 = P[q + 2] / n - a * e, c4 = P[q + 4] / n - b * b, c5 = P[q + 5] / n - b * e, c8 = P[q + 8] / n - e * e;
+    var det = c0 * (c4 * c8 - c5 * c5) - c1 * (c1 * c8 - c5 * c2) + c2 * (c1 * c5 - c4 * c2);
+    if (det <= 1e-9) { c0 += 0.01; c4 += 0.01; c8 += 0.01; det = c0 * (c4 * c8 - c5 * c5) - c1 * (c1 * c8 - c5 * c2) + c2 * (c1 * c5 - c4 * c2); }   // 顏色幾乎一樣（平的一片）：加一點點，免得除以 0
+    if (det <= 1e-12) det = 1e-12;
+    m.det[k] = det; m.isd[k] = 1 / Math.sqrt(det);
+    var I = m.inv;
+    I[q] = (c4 * c8 - c5 * c5) / det; I[q + 1] = (c2 * c5 - c1 * c8) / det; I[q + 2] = (c1 * c5 - c2 * c4) / det;
+    I[q + 3] = I[q + 1]; I[q + 4] = (c0 * c8 - c2 * c2) / det; I[q + 5] = (c1 * c2 - c0 * c5) / det;
+    I[q + 6] = I[q + 2]; I[q + 7] = I[q + 5]; I[q + 8] = (c0 * c4 - c1 * c1) / det;
+  }
+}
+function shGmmEval(m, r, g, b) {   // 這個顏色像不像（Σ 權重×密度，不含常數）；m.best＝最像的那一個高斯
+  var s = 0, best = 0, bp = -1, I = m.inv, M = m.mean, C = m.coef, D = m.isd;
+  for (var k = 0; k < SH_K; k++) {
+    if (C[k] <= 0) continue;
+    var o = k * 3, q = k * 9, d0 = r - M[o], d1 = g - M[o + 1], d2 = b - M[o + 2];
+    var p = Math.exp(-0.5 * (d0 * (d0 * I[q] + 2 * (d1 * I[q + 1] + d2 * I[q + 2])) + d1 * (d1 * I[q + 4] + 2 * d2 * I[q + 5]) + d2 * d2 * I[q + 8])) * D[k];
+    s += C[k] * p;
+    if (p > bp) { bp = p; best = k; }
+  }
+  m.best = best;
+  return s;
+}
+
+/* ── 圖割（最大流／最小割，Boykov–Kolmogorov 演算法）：每個點是一個節點；連到「物品」端、「背景」端的容量＋相鄰點之間的容量 ── */
+function shGraph(N, E) {   // E：最多幾條邊（每條邊兩個方向）
+  return { N: N, first: new Int32Array(N).fill(-1), trCap: new Float64Array(N), head: new Int32Array(E * 2), nxtA: new Int32Array(E * 2), rCap: new Float64Array(E * 2), nA: 0 };
+}
+function shEdge(G, i, j, cap, rev) {
+  var a = G.nA; G.nA += 2;
+  G.head[a] = j; G.nxtA[a] = G.first[i]; G.first[i] = a; G.rCap[a] = cap;
+  G.head[a + 1] = i; G.nxtA[a + 1] = G.first[j]; G.first[j] = a + 1; G.rCap[a + 1] = rev;
+}
+function shMaxflow(G) {   // 回傳：每個節點在不在「物品」那一邊（Uint8Array）
+  var N = G.N, first = G.first, head = G.head, nxtA = G.nxtA, rCap = G.rCap, trCap = G.trCap;
+  var NONE = -1, TERM = -2, ORPH = -3, INF_D = 1e9;
+  var parent = new Int32Array(N), nxt = new Int32Array(N).fill(-1), TS = new Int32Array(N), DIST = new Int32Array(N), sink = new Uint8Array(N);
+  var qF = -1, qL = -1, orph = [], oh = 0, TIME = 0, i, j, a, a0;
+  var setActive = function (v) { if (nxt[v] === -1) { if (qL >= 0) nxt[qL] = v; else qF = v; qL = v; nxt[v] = v; } };
+  var nextActive = function () {
+    for (;;) {
+      var v = qF; if (v < 0) return -1;
+      if (nxt[v] === v) { qF = qL = -1; } else qF = nxt[v];
+      nxt[v] = -1;
+      if (parent[v] !== NONE) return v;
+    }
+  };
+  var orphan = function (v) { parent[v] = ORPH; orph.push(v); };
+  for (i = 0; i < N; i++) {
+    if (trCap[i] > 0) { sink[i] = 0; parent[i] = TERM; setActive(i); DIST[i] = 1; }
+    else if (trCap[i] < 0) { sink[i] = 1; parent[i] = TERM; setActive(i); DIST[i] = 1; }
+    else parent[i] = NONE;
+  }
+  var augment = function (mid) {
+    var v, e, b = rCap[mid];
+    for (v = head[mid ^ 1]; ; v = head[e]) { e = parent[v]; if (e === TERM) break; if (b > rCap[e ^ 1]) b = rCap[e ^ 1]; }
+    if (b > trCap[v]) b = trCap[v];
+    for (v = head[mid]; ; v = head[e]) { e = parent[v]; if (e === TERM) break; if (b > rCap[e]) b = rCap[e]; }
+    if (b > -trCap[v]) b = -trCap[v];
+    rCap[mid ^ 1] += b; rCap[mid] -= b;
+    for (v = head[mid ^ 1]; ; v = head[e]) { e = parent[v]; if (e === TERM) break; rCap[e] += b; rCap[e ^ 1] -= b; if (rCap[e ^ 1] <= 0) { rCap[e ^ 1] = 0; orphan(v); } }
+    trCap[v] -= b; if (trCap[v] <= 0) { trCap[v] = 0; orphan(v); }
+    for (v = head[mid]; ; v = head[e]) { e = parent[v]; if (e === TERM) break; rCap[e ^ 1] += b; rCap[e] -= b; if (rCap[e] <= 0) { rCap[e] = 0; orphan(v); } }
+    trCap[v] += b; if (trCap[v] >= 0) { trCap[v] = 0; orphan(v); }
+  };
+  var adopt = function (v) {
+    var isS = sink[v], dmin = INF_D, amin = NONE, d, w, e, e0;
+    for (e0 = first[v]; e0 !== NONE; e0 = nxtA[e0]) {
+      if ((isS ? rCap[e0] : rCap[e0 ^ 1]) > 0) {
+        w = head[e0];
+        if (sink[w] === isS && (e = parent[w]) !== NONE) {
+          d = 0;
+          for (;;) {   // 這個鄰居是不是真的接回「物品」端（或「背景」端）
+            if (TS[w] === TIME) { d += DIST[w]; break; }
+            e = parent[w]; d++;
+            if (e === TERM) { TS[w] = TIME; DIST[w] = 1; break; }
+            if (e === ORPH) { d = INF_D; break; }
+            w = head[e];
+          }
+          if (d < INF_D) {
+            if (d < dmin) { amin = e0; dmin = d; }
+            for (w = head[e0]; TS[w] !== TIME; w = head[parent[w]]) { TS[w] = TIME; DIST[w] = d--; }
+          }
+        }
+      }
+    }
+    parent[v] = amin;
+    if (amin !== NONE) { TS[v] = TIME; DIST[v] = dmin + 1; return; }
+    for (e0 = first[v]; e0 !== NONE; e0 = nxtA[e0]) {   // 找不到新的爸爸：變成自由的點，鄰居重新長過來
+      w = head[e0];
+      if (sink[w] === isS && (e = parent[w]) !== NONE) {
+        if ((isS ? rCap[e0] : rCap[e0 ^ 1]) > 0) setActive(w);
+        if (e !== TERM && e !== ORPH && head[e] === v) orphan(w);
+      }
+    }
+  };
+  var cur = -1;
+  for (;;) {
+    i = -1;
+    if (cur >= 0) { nxt[cur] = -1; if (parent[cur] !== NONE) i = cur; cur = -1; }
+    if (i < 0) { i = nextActive(); if (i < 0) break; }
+    a = NONE;
+    if (!sink[i]) {
+      for (a0 = first[i]; a0 !== NONE; a0 = nxtA[a0]) if (rCap[a0] > 0) {
+        j = head[a0];
+        if (parent[j] === NONE) { sink[j] = 0; parent[j] = a0 ^ 1; TS[j] = TS[i]; DIST[j] = DIST[i] + 1; setActive(j); }
+        else if (sink[j]) { a = a0; break; }
+        else if (TS[j] <= TS[i] && DIST[j] > DIST[i]) { parent[j] = a0 ^ 1; TS[j] = TS[i]; DIST[j] = DIST[i] + 1; }
+      }
+    } else {
+      for (a0 = first[i]; a0 !== NONE; a0 = nxtA[a0]) if (rCap[a0 ^ 1] > 0) {
+        j = head[a0];
+        if (parent[j] === NONE) { sink[j] = 1; parent[j] = a0 ^ 1; TS[j] = TS[i]; DIST[j] = DIST[i] + 1; setActive(j); }
+        else if (!sink[j]) { a = a0 ^ 1; break; }
+        else if (TS[j] <= TS[i] && DIST[j] > DIST[i]) { parent[j] = a0 ^ 1; TS[j] = TS[i]; DIST[j] = DIST[i] + 1; }
+      }
+    }
+    TIME++;
+    if (a !== NONE) {
+      nxt[i] = i; cur = i;   // 這個點等一下再看一次（可能還有別條路）
+      augment(a);
+      while (oh < orph.length) adopt(orph[oh++]);
+      orph.length = 0; oh = 0;
+    }
+  }
+  var fg = new Uint8Array(N);
+  for (i = 0; i < N; i++) fg[i] = parent[i] !== NONE && !sink[i] ? 1 : 0;   // 從「物品」端走得到的＝物品
+  return fg;
+}
+
+/* ── GrabCut：px＝RGBA（W×H），框＝[X0,Y0,X1,Y1)（框外＝確定是背景），pk＝[x,y]（點選的地方，可以沒有），gamma＝相鄰的點有多黏 → 每個點是不是物品 ── */
+function shGrabCut(px, W, H, X0, Y0, X1, Y1, pk, gamma) {
+  var N = W * H, i, x, y, it;
+  gamma = gamma || SH_GAMMA;
+  var LAMBDA = 9 * gamma, Z = new Float64Array(N * 3);
+  for (i = 0; i < N; i++) { Z[i * 3] = px[i * 4]; Z[i * 3 + 1] = px[i * 4 + 1]; Z[i * 3 + 2] = px[i * 4 + 2]; }
+  var lab = new Uint8Array(N);   // 0 確定背景、1 確定物品、2 可能背景、3 可能物品（跟 OpenCV 一樣）
+  for (y = 0; y < H; y++) for (x = 0; x < W; x++) lab[y * W + x] = x >= X0 && x < X1 && y >= Y0 && y < Y1 ? 3 : 0;
+  if (pk) {   // 點選的地方：一小圈確定是物品
+    var rr = Math.max(1.5, Math.min(X1 - X0, Y1 - Y0) * 0.035);
+    for (y = Math.max(Y0, Math.floor(pk[1] - rr)); y <= Math.min(Y1 - 1, Math.ceil(pk[1] + rr)); y++)
+      for (x = Math.max(X0, Math.floor(pk[0] - rr)); x <= Math.min(X1 - 1, Math.ceil(pk[0] + rr)); x++)
+        if ((x - pk[0]) * (x - pk[0]) + (y - pk[1]) * (y - pk[1]) <= rr * rr) lab[y * W + x] = 1;
+  }
+  var bgIdx = [], fgIdx = [];
+  for (i = 0; i < N; i++) (lab[i] === 0 || lab[i] === 2 ? bgIdx : fgIdx).push(i);
+  if (bgIdx.length < 20 || fgIdx.length < 20) return null;   // 框太大（外面沒有背景可以參考）或太小
+  // 圖：每個點連到左、左上、上、右上（容量＝顏色越像越大）；只建一次
+  var d2 = function (p, q) { var a = Z[p * 3] - Z[q * 3], b = Z[p * 3 + 1] - Z[q * 3 + 1], c = Z[p * 3 + 2] - Z[q * 3 + 2]; return a * a + b * b + c * c; };
+  var sum = 0, cnt = 0;
+  for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+    i = y * W + x;
+    if (x > 0) { sum += d2(i, i - 1); cnt++; }
+    if (x > 0 && y > 0) { sum += d2(i, i - W - 1); cnt++; }
+    if (y > 0) { sum += d2(i, i - W); cnt++; }
+    if (x < W - 1 && y > 0) { sum += d2(i, i - W + 1); cnt++; }
+  }
+  var beta = sum > 1e-9 ? 1 / (2 * sum / cnt) : 0, gD = gamma / Math.SQRT2, G = shGraph(N, N * 4);
+  for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+    i = y * W + x;
+    if (x > 0) { var w1 = gamma * Math.exp(-beta * d2(i, i - 1)); shEdge(G, i, i - 1, w1, w1); }
+    if (x > 0 && y > 0) { var w2 = gD * Math.exp(-beta * d2(i, i - W - 1)); shEdge(G, i, i - W - 1, w2, w2); }
+    if (y > 0) { var w3 = gamma * Math.exp(-beta * d2(i, i - W)); shEdge(G, i, i - W, w3, w3); }
+    if (x < W - 1 && y > 0) { var w4 = gD * Math.exp(-beta * d2(i, i - W + 1)); shEdge(G, i, i - W + 1, w4, w4); }
+  }
+  var cap0 = new Float64Array(G.rCap.subarray(0, G.nA));
+  // 顏色模型的起點：物品、背景各分 5 群
+  var rnd = shRand(20261017), bg = shGmm(), fg = shGmm();
+  var lb = shKmeans(Z, bgIdx, SH_K, 6, rnd), lf = shKmeans(Z, fgIdx, SH_K, 6, rnd);
+  shGmmReset(bg); shGmmReset(fg);
+  for (i = 0; i < bgIdx.length; i++) { var pb = bgIdx[i]; shGmmAdd(bg, lb[i], Z[pb * 3], Z[pb * 3 + 1], Z[pb * 3 + 2]); }
+  for (i = 0; i < fgIdx.length; i++) { var pf = fgIdx[i]; shGmmAdd(fg, lf[i], Z[pf * 3], Z[pf * 3 + 1], Z[pf * 3 + 2]); }
+  shGmmEnd(bg); shGmmEnd(fg);
+  var pB = new Float64Array(N), pF = new Float64Array(N), bB = new Uint8Array(N), bF = new Uint8Array(N), BIG = 1e4;
+  var evalAll = function () { for (var k = 0; k < N; k++) { var r = Z[k * 3], g = Z[k * 3 + 1], b = Z[k * 3 + 2]; pB[k] = shGmmEval(bg, r, g, b); bB[k] = bg.best; pF[k] = shGmmEval(fg, r, g, b); bF[k] = fg.best; } };
+  var nlog = function (p) { return p > 1e-300 ? Math.min(BIG, -Math.log(p)) : BIG; };
+  evalAll();
+  for (it = 0; it < SH_ITER; it++) {
+    // ① 每個點歸到最像的高斯 → 重新學兩個顏色模型 ② 算新的「像不像」
+    shGmmReset(bg); shGmmReset(fg);
+    for (i = 0; i < N; i++) { var isB = lab[i] === 0 || lab[i] === 2; shGmmAdd(isB ? bg : fg, isB ? bB[i] : bF[i], Z[i * 3], Z[i * 3 + 1], Z[i * 3 + 2]); }
+    shGmmEnd(bg); shGmmEnd(fg);
+    evalAll();
+    // ③ 容量換新、切開
+    G.rCap.set(cap0);
+    for (i = 0; i < N; i++) {
+      var L = lab[i];
+      G.trCap[i] = L === 2 || L === 3 ? nlog(pB[i]) - nlog(pF[i]) : L === 0 ? -LAMBDA : LAMBDA;
+    }
+    var cut = shMaxflow(G);
+    for (i = 0; i < N; i++) if (lab[i] === 2 || lab[i] === 3) lab[i] = cut[i] ? 3 : 2;
+  }
+  var out = new Uint8Array(N);
+  for (i = 0; i < N; i++) out[i] = lab[i] === 1 || lab[i] === 3 ? 1 : 0;
+  return out;
+}
+
+/* ── 整理：去掉細小的點、補小縫、太小的塊不要；點選了就只留那一樣；補洞 ── */
+function shMorph(m, W, H, grow) {   // 3×3 擴張（grow）或侵蝕
+  var o = new Uint8Array(W * H), x, y, dx, dy;
+  for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+    var hit = grow ? 0 : 1;
+    for (dy = -1; dy <= 1 && hit === (grow ? 0 : 1); dy++) for (dx = -1; dx <= 1; dx++) {
+      var xx = x + dx, yy = y + dy, v = xx >= 0 && yy >= 0 && xx < W && yy < H ? m[yy * W + xx] : 0;
+      if (grow && v) { hit = 1; break; }
+      if (!grow && !v) { hit = 0; break; }
+    }
+    o[y * W + x] = hit;
+  }
+  return o;
+}
+function shComps(m, W, H) {   // 連在一起的塊（8 個方向）：{ id: Int32Array（0＝背景）, n, size: [] }
+  var id = new Int32Array(W * H), n = 0, size = [0], st = [], i, x, y;
+  for (i = 0; i < W * H; i++) if (m[i] && !id[i]) {
+    n++; size.push(0); id[i] = n; st.push(i);
+    while (st.length) {
+      var p = st.pop(); size[n]++; x = p % W; y = (p / W) | 0;
+      for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+        var xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+        var q = yy * W + xx; if (m[q] && !id[q]) { id[q] = n; st.push(q); }
+      }
+    }
+  }
+  return { id: id, n: n, size: size };
+}
+function shClean(m, W, H, X0, Y0, X1, Y1, pk) {
+  if (!m) return null;
+  var a = shMorph(shMorph(m, W, H, false), W, H, true);   // 打開：細小的點不要
+  a = shMorph(shMorph(a, W, H, true), W, H, false);        // 關起來：小縫補起來
+  var c = shComps(a, W, H), minA = Math.max(12, (X1 - X0) * (Y1 - Y0) * 0.02), keep = new Uint8Array(c.n + 1), i, k, x, y;
+  if (pk) {   // 點選的：只留那一塊（點的地方剛好不是物品：留最近的那一塊）
+    var px = Math.min(W - 1, Math.max(0, Math.round(pk[0]))), py = Math.min(H - 1, Math.max(0, Math.round(pk[1]))), hitId = c.id[py * W + px];
+    if (!hitId) { var bd = Infinity; for (i = 0; i < W * H; i++) if (c.id[i] && c.size[c.id[i]] >= 4) { x = i % W; y = (i / W) | 0; var d = (x - px) * (x - px) + (y - py) * (y - py); if (d < bd) { bd = d; hitId = c.id[i]; } } }
+    if (hitId) keep[hitId] = 1;
+  } else for (k = 1; k <= c.n; k++) keep[k] = c.size[k] >= minA ? 1 : 0;
+  var o = new Uint8Array(W * H), any = 0;
+  for (i = 0; i < W * H; i++) if (keep[c.id[i]] && c.id[i]) { o[i] = 1; any++; }
+  if (!any) return null;
+  // 補洞：從邊邊走不到的背景＝洞
+  var seen = new Uint8Array(W * H), st = [];
+  for (x = 0; x < W; x++) { st.push(x); st.push((H - 1) * W + x); }
+  for (y = 0; y < H; y++) { st.push(y * W); st.push(y * W + W - 1); }
+  while (st.length) {
+    var p = st.pop(); if (seen[p] || o[p]) continue; seen[p] = 1; x = p % W; y = (p / W) | 0;
+    if (x > 0) st.push(p - 1); if (x < W - 1) st.push(p + 1); if (y > 0) st.push(p - W); if (y < H - 1) st.push(p + W);
+  }
+  for (i = 0; i < W * H; i++) if (!o[i] && !seen[i]) o[i] = 1;
+  var nk = 0; for (k = 1; k <= c.n; k++) if (keep[k]) nk++;
+  return { m: o, n: nk };
+}
+
+/* ── 描外框：沿著物品和背景之間的格線走一圈（物品永遠在右手邊），再簡化成多邊形 ── */
+function shRings(m, W, H) {
+  var VW = W + 1, NV = VW * (H + 1), e1 = new Int32Array(NV).fill(-1), e2 = new Int32Array(NV).fill(-1), x, y, out = [];
+  var add = function (a, b) { if (e1[a] < 0) e1[a] = b; else e2[a] = b; };
+  var f = function (xx, yy) { return xx >= 0 && yy >= 0 && xx < W && yy < H && m[yy * W + xx] === 1; };
+  for (y = 0; y < H; y++) for (x = 0; x < W; x++) if (f(x, y)) {
+    if (!f(x, y - 1)) add(y * VW + x, y * VW + x + 1);
+    if (!f(x + 1, y)) add(y * VW + x + 1, (y + 1) * VW + x + 1);
+    if (!f(x, y + 1)) add((y + 1) * VW + x + 1, (y + 1) * VW + x);
+    if (!f(x - 1, y)) add((y + 1) * VW + x, y * VW + x);
+  }
+  for (var v0 = 0; v0 < NV; v0++) {
+    while (e1[v0] >= 0) {
+      var ring = [], v = v0, prev = -1, guard = 0;
+      do {
+        var nx;
+        if (e2[v] >= 0) {   // 兩條路（斜對角碰在一起的地方）：往右轉（緊貼著同一塊）
+          nx = e1[v];
+          if (prev >= 0) {
+            var dx = v % VW - prev % VW, dy = ((v / VW) | 0) - ((prev / VW) | 0), rx = -dy, ry = dx;
+            if (e2[v] % VW - v % VW === rx && ((e2[v] / VW) | 0) - ((v / VW) | 0) === ry) nx = e2[v];
+          }
+          if (nx === e1[v]) { e1[v] = e2[v]; e2[v] = -1; } else e2[v] = -1;
+        } else { nx = e1[v]; e1[v] = -1; }
+        ring.push(v % VW, (v / VW) | 0);
+        prev = v; v = nx;
+      } while (v !== v0 && v >= 0 && ++guard < 4e5);
+      if (ring.length >= 8) out.push(ring);
+    }
+  }
+  return out;
+}
+function shArea(r) { var s = 0, n = r.length / 2; for (var i = 0; i < n; i++) { var j = (i + 1) % n; s += r[i * 2] * r[j * 2 + 1] - r[j * 2] * r[i * 2 + 1]; } return Math.abs(s) / 2; }
+function shSimplify(r, eps) {   // 封閉多邊形的 Douglas–Peucker
+  var n = r.length / 2; if (n <= 4) return r.slice();
+  var far = 0, fd = -1, i;
+  for (i = 1; i < n; i++) { var dx = r[i * 2] - r[0], dy = r[i * 2 + 1] - r[1], d = dx * dx + dy * dy; if (d > fd) { fd = d; far = i; } }
+  var keep = new Uint8Array(n); keep[0] = keep[far] = 1;
+  var dp = function (a, b) {   // a→b（繞一圈的索引）
+    var len = (b - a + n) % n; if (len < 2) return;
+    var ax = r[a * 2], ay = r[a * 2 + 1], bx = r[b * 2], by = r[b * 2 + 1], vx = bx - ax, vy = by - ay, L = Math.sqrt(vx * vx + vy * vy) || 1, md = -1, mi = -1;
+    for (var t = 1; t < len; t++) { var k = (a + t) % n, d = Math.abs((r[k * 2] - ax) * vy - (r[k * 2 + 1] - ay) * vx) / L; if (d > md) { md = d; mi = k; } }
+    if (md > eps) { keep[mi] = 1; dp(a, mi); dp(mi, b); }
+  };
+  dp(0, far); dp(far, 0);
+  var o = []; for (i = 0; i < n; i++) if (keep[i]) o.push(r[i * 2], r[i * 2 + 1]);
+  return o;
+}
+function shPoly(rings, minArea) {   // 簡化到每圈最多 SH_PTS 個點；太小的圈不要；最多 SH_RINGS 圈（大的優先）
+  return rings.map(function (r) { return { r: r, a: shArea(r) }; }).filter(function (o) { return o.a >= minArea; }).sort(function (p, q) { return q.a - p.a; }).slice(0, SH_RINGS).map(function (o) {
+    var eps = 0.75, s = shSimplify(o.r, eps);
+    while (s.length / 2 > SH_PTS && eps < 50) { eps *= 1.4; s = shSimplify(o.r, eps); }
+    return s;
+  });
+}
+
+/* ── 整個流程（不碰畫面）：rgba＝工作區的像素（W×H），box＝框在工作區的位置，pk＝點選的地方，map＝工作區→整張圖 % 的換算 ── */
+function shSeg(rgba, W, H, box, pk, map) {
+  var area = Math.max(1, (box[2] - box[0]) * (box[3] - box[1])), fgOf = function (mm) { var n = 0; if (mm) for (var i = 0; i < mm.length; i++) n += mm[i]; return n / area; };
+  var m = shGrabCut(rgba, W, H, box[0], box[1], box[2], box[3], pk, SH_GAMMA);
+  if (m && fgOf(m) < 0.03) m = shGrabCut(rgba, W, H, box[0], box[1], box[2], box[3], pk, SH_GAMMA / 2);   // 整個變背景：放鬆一點再試
+  var c = shClean(m, W, H, box[0], box[1], box[2], box[3], pk);
+  if (!c) return { r: [], n: 0 };
+  var rings = shPoly(shRings(c.m, W, H), Math.max(6, (box[2] - box[0]) * (box[3] - box[1]) * 0.01));
+  var r = rings.map(function (ring) {
+    var o = [];
+    for (var i = 0; i < ring.length; i += 2) o.push(Math.round(Math.max(0, Math.min(100, map.x(ring[i]))) * 10) / 10, Math.round(Math.max(0, Math.min(100, map.y(ring[i + 1]))) * 10) / 10);
+    return o;
+  }).filter(function (o) { return o.length >= 6; });
+  return { r: r, n: c.n };
+}
+// 在瀏覽器裡：img＝目錄圖（已經載好的 Image），s＝地點（x、y、w、h 是 %；pick 是 [x%, y%]）→ { r: [[x,y,x,y,…],…]（整張圖的 %）, n: 找到幾樣 }
+function shFind(img, s) {
+  var IW = img.naturalWidth || img.width, IH = img.naturalHeight || img.height;
+  var bx0 = s.x / 100 * IW, by0 = s.y / 100 * IH, bx1 = (s.x + s.w) / 100 * IW, by1 = (s.y + s.h) / 100 * IH;
+  var mx = Math.max(8, (bx1 - bx0) * 0.25), my = Math.max(8, (by1 - by0) * 0.25);   // 框外面一圈：當背景的樣本
+  var rx0 = Math.max(0, Math.floor(bx0 - mx)), ry0 = Math.max(0, Math.floor(by0 - my)), rx1 = Math.min(IW, Math.ceil(bx1 + mx)), ry1 = Math.min(IH, Math.ceil(by1 + my));
+  var sc = Math.min(1, SH_SIDE / Math.max(rx1 - rx0, ry1 - ry0)), W = Math.max(8, Math.round((rx1 - rx0) * sc)), H = Math.max(8, Math.round((ry1 - ry0) * sc));
+  var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  var g = cv.getContext("2d", { willReadFrequently: true });
+  g.drawImage(img, rx0, ry0, rx1 - rx0, ry1 - ry0, 0, 0, W, H);
+  var px = g.getImageData(0, 0, W, H).data;
+  var kx = W / (rx1 - rx0), ky = H / (ry1 - ry0);
+  var box = [Math.max(0, Math.round((bx0 - rx0) * kx)), Math.max(0, Math.round((by0 - ry0) * ky)), Math.min(W, Math.round((bx1 - rx0) * kx)), Math.min(H, Math.round((by1 - ry0) * ky))];
+  var pk = Array.isArray(s.pick) ? [(s.pick[0] / 100 * IW - rx0) * kx, (s.pick[1] / 100 * IH - ry0) * ky] : null;
+  return shSeg(px, W, H, box, pk, { x: function (v) { return (rx0 + v / kx) / IW * 100; }, y: function (v) { return (ry0 + v / ky) / IH * 100; } });
+}
+
 /* ════════ edit.js ════════ */
 /* ═══════════════ edit.js：編輯（開發者）：最上面一排工具列、左邊章節／目錄圖、中間表單、預覽（浮動視窗）═══════════════
  * 圖片：放進來就在瀏覽器縮好、馬上上傳（檔名換成亂碼、原檔名不留）；上傳完才算放好。
@@ -3504,8 +3930,9 @@ function renumber() { ED.chapters.forEach(function (c, i) { c.no = String(i + 1)
 function markDirty() { ED.dirty = true; dirtyPaint(); }
 function dirtyPaint() {
   var d = $("#edDirty"); if (!d || !ED) return;
-  var nb = !ED.dirty && !ED.saving && !UPL && !ED.bgMsg ? edBgNeed() : 0;
-  d.textContent = ED.bgMsg ? ED.bgMsg : ED.saving ? "儲存中…" : UPL ? "⏳ 圖片上傳中（" + UPL + "）…" : ED.dirty ? "● 有還沒儲存的修改" : nb ? "● 有 " + nb + " 章的背景還沒做：按「儲存」就會做好" : "";
+  var idle = !ED.dirty && !ED.saving && !UPL && !ED.bgMsg, nb = idle ? edBgNeed() : 0, ns = idle ? edShapeNeed() : 0;
+  var todo = (nb ? nb + " 章的背景" : "") + (nb && ns ? "、" : "") + (ns ? ns + " 個物品的形狀" : "");
+  d.textContent = ED.bgMsg ? ED.bgMsg : ED.saving ? "儲存中…" : UPL ? "⏳ 圖片上傳中（" + UPL + "）…" : ED.dirty ? "● 有還沒儲存的修改" : todo ? "● 有 " + todo + "還沒做：按「儲存」就會做好" : "";
   var sb = $("#edSave"); if (sb) sb.disabled = !!(ED.saving || UPL);
 }
 function changed() { markDirty(); refreshPreview(); ED.warners.forEach(function (fn) { fn(); }); }
@@ -3689,6 +4116,41 @@ function edBgMake(onStep) {   // Promise：做了幾張
 }
 function edChI(c) { var ico = _yzChIcons_(edHb())[c.id]; return ico ? Object.assign({}, c, { ico: ico }) : c; }   // 預覽用：章＋目錄圖上的圖示
 
+/* ───────── 物品的形狀（第 26 批）：在框裡自動找物品的輪廓（shape.js），網頁滑到時只亮物品本身 ─────────
+   選到一個地點、移動框、點選要亮的物品時：只算那一個（看得到綠色外框）；按「儲存」時：還沒算的都算好。算過的記著（同一張圖、同一個框不重算）。 */
+var SHC = {}, ED_IMG = null;
+function edShapeNeed() { var cat = ED && ED.cat; if (!cat || !cat.img || !cat.fid) return 0; return cat.spots.filter(function (s) { return shNeed(cat, s); }).length; }
+function edCatImg() {   // 目錄圖（載好的 Image）：同一張圖只載一次
+  var fid = ED.cat.fid;
+  if (ED_IMG && ED_IMG.fid === fid) return ED_IMG.p;
+  var p = catSrcP().then(loadImg);
+  ED_IMG = { fid: fid, p: p };
+  p.catch(function () { if (ED_IMG && ED_IMG.p === p) ED_IMG = null; });
+  return p;
+}
+function edShapeOne(img, s) {   // 算一個（算過的就拿出來）→ 寫進這個地點
+  var cat = ED.cat, k = shKey(cat, s), r = SHC[k];
+  if (!r) { try { r = shFind(img, s); } catch (e) { r = { r: [], n: 0 }; } SHC[k] = r; }
+  s.shape = { k: k, b: shBox(s), r: r.r };
+  return r;
+}
+function edShapeMake(onStep) {   // 按「儲存」：要（重）算的都算好。Promise：算了幾個
+  var cat = ED.cat, todo = cat.spots.filter(function (s) { return shNeed(cat, s); });
+  if (!todo.length) return Promise.resolve(0);
+  return edCatImg().then(function (img) {
+    return new Promise(function (ok) {
+      var i = 0;
+      var next = function () {
+        if (i >= todo.length) { ok(todo.length); return; }
+        var s = todo[i++]; if (onStep) onStep(i, todo.length);
+        edShapeOne(img, s); markDirty();
+        setTimeout(next, 0);   // 讓畫面有機會更新進度
+      };
+      next();
+    });
+  });
+}
+
 /* ───────── 📢 跑馬燈（第 25 批）：開關、內容（一行一段）、速度 ───────── */
 function edMq() {   // 還沒設定過：照網頁現在的預設（藥戰手冊 →［這一頁］→ 內部資料，請勿外傳）
   if (!ED.cat.mq) ED.cat.mq = { on: true, items: mqDefault(), speed: "mid" };
@@ -3746,15 +4208,20 @@ function saveEd(force) {
   var nl = edLocalImgs();
   if (nl && !force) { modal({ title: "有 " + nl + " 張圖沒有放好", lines: ["那幾張圖沒有上傳成功，存的時候會被拿掉。要先重新放一次嗎？"], buttons: [{ label: "先不存", cls: "sm" }, { label: "照樣儲存", cls: "sm pri", fn: function () { saveEd(true); } }] }); return; }
   ED.saving = true; dirtyPaint();
-  var nbg = edBgTodo().length;   // 章元背景（目錄圖上每一章的位置）：目錄圖或框改了才重做
-  if (nbg) {
+  var bgStep = function () {
+    var nbg = edBgTodo().length;   // 章元背景（目錄圖上每一章的位置）：目錄圖或框改了才重做
+    if (!nbg) { saveSend(force); return; }
     ED.bgMsg = "做章元背景中（0／" + nbg + "）…"; dirtyPaint();
     edBgMake(function (i, n) { ED.bgMsg = "做章元背景中（" + i + "／" + n + "）…"; dirtyPaint(); }).then(function () { ED.bgMsg = ""; saveSend(force); }, function (e) {
       ED.bgMsg = ""; toast("⚠ 章元背景沒做好（" + e.message + "）：其他的照樣儲存，下次儲存會再試一次"); saveSend(force);
     });
-    return;
-  }
-  saveSend(force);
+  };
+  var nsh = edShapeNeed();   // 物品的形狀（滑到時只亮物品本身）：框或圖改了才重找
+  if (!nsh) { bgStep(); return; }
+  ED.bgMsg = "找物品的形狀（0／" + nsh + "）…"; dirtyPaint();
+  edShapeMake(function (i, n) { ED.bgMsg = "找物品的形狀（" + i + "／" + n + "）…"; dirtyPaint(); }).then(function () { ED.bgMsg = ""; bgStep(); }, function (e) {
+    ED.bgMsg = ""; toast("⚠ 物品的形狀沒找好（" + e.message + "）：先亮整個框，下次儲存會再試一次"); bgStep();
+  });
 }
 function saveSend(force) {
   if (!ED) return;
@@ -4695,7 +5162,7 @@ function renderMapForm(f) {
           cat.img = r.url; cat.fid = r.fid; cat.fname = r.fname; cat.info = info; cat.w = info.w; cat.h = info.h; cat.ar = _yzAR_(info.w, info.h); cat.parts = parts;
           if (!had) cat.on = true;   // 第一次放圖：順便打開「開啟目錄圖」（不想用再取消勾選）
           ED.catLocal = { fid: r.fid, url: uri };
-          syncOn(); markDirty(); drawCanvas(); changed(); renderTree();
+          syncOn(); markDirty(); drawCanvas(); changed(); renderTree(); queueShape(edSpot(ED.cur.id));
         });
       });
     },
@@ -4761,14 +5228,64 @@ function renderMapForm(f) {
     var stage = h("div", { class: "catstage", style: "aspect-ratio:" + arCss(cat.ar) }, [h("img", { src: cat.img, alt: "", draggable: "false" })]);
     cat.spots.forEach(function (s, i) { stage.appendChild(spotBox(s, i)); });
     cv.appendChild(stage);
-    markIssues();
+    markIssues(); shapeSvg();
   }
   function markIssues() {
     var chk = _yzMapCheck_(cat, edHb());
     $$(".mbx", cv).forEach(function (bx) { var lv = mapIssueLv(chk, bx.getAttribute("data-id")); bx.classList.toggle("bad", lv === "bad"); bx.classList.toggle("warn", lv === "warn"); });
     mapTreeBadges();
   }
-  function paintSel() { $$(".mbx", cv).forEach(function (bx) { bx.classList.toggle("sel", bx.getAttribute("data-id") === ED.cur.id); }); }
+  function paintSel() { $$(".mbx", cv).forEach(function (bx) { bx.classList.toggle("sel", bx.getAttribute("data-id") === ED.cur.id); }); shapeSvg(); }
+  // 物品的外框（綠色）：自動找到的形狀；選到的那個比較明顯。點選的位置：小十字
+  function shapeSvg() {
+    var st = arStage(); if (!st) return;
+    $$(".mshp, .mpick", st).forEach(function (x) { x.remove(); });
+    var ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("class", "mshp"); svg.setAttribute("viewBox", "0 0 100 100"); svg.setAttribute("preserveAspectRatio", "none"); svg.setAttribute("aria-hidden", "true");
+    cat.spots.forEach(function (s) {
+      if (s.lit === "box" || !s.shape || s.shape.k !== shKey(cat, s)) return;   // 還沒找、或框／圖換過（舊的不畫）
+      (s.shape.r || []).forEach(function (r) {
+        var pg = document.createElementNS(ns, "polygon"), pts = [];
+        for (var k = 0; k + 1 < r.length; k += 2) pts.push(r[k] + "," + r[k + 1]);
+        pg.setAttribute("points", pts.join(" ")); if (s.id === ED.cur.id) pg.setAttribute("class", "on");
+        svg.appendChild(pg);
+      });
+    });
+    st.insertBefore(svg, $(".mbx", st));
+    var sel = edSpot(ED.cur.id);
+    if (sel && sel.lit !== "box" && Array.isArray(sel.pick)) st.appendChild(h("i", { class: "mpick", style: "left:" + sel.pick[0] + "%;top:" + sel.pick[1] + "%", title: "只亮這一樣" }));
+  }
+  var shT = 0;
+  function shapeStat(s, how) {   // 這個地點設定裡的那一行狀態
+    var el = $("#shpStat", pn); if (!el || !s || ED.cur.id !== s.id) return;
+    var n = s.shape && s.shape.k === shKey(cat, s) ? (s.shape.r || []).length : -1;
+    el.className = "shpst" + (how === "busy" ? " busy" : n > 0 && s.lit !== "box" ? " ok" : "");
+    el.textContent = s.lit === "box" ? "滑到時亮整個框（框裡的背景也會亮）。" : how === "busy" ? "⏳ 找物品的形狀中…" : how === "noimg" ? "拿不到目錄圖的原始檔，按「儲存」時再找。" :
+      n > 0 ? "✅ 找到 " + n + " 樣物品（圖上綠色的外框）：滑到時只亮外框裡面" + (Array.isArray(s.pick) ? "（你點的那一樣）" : "") + "。" :
+      n === 0 ? "框裡找不到物品：滑到時亮整個框。可以把框調整一下，或點一下要亮的物品。" : "按「儲存」時會自動找。";
+  }
+  function queueShape(s, fast) {   // 選到、框動了、點選了：等一下（不要一邊拖一邊算）再找這一個
+    clearTimeout(shT);
+    if (!s) return;
+    if (!shNeed(cat, s)) { shapeStat(s); return; }
+    shapeStat(s, "busy");
+    shT = setTimeout(function () {
+      edCatImg().then(function (img) {
+        if (!edSpot(s.id) || !shNeed(cat, s)) { shapeStat(s); return; }
+        edShapeOne(img, s); markDirty(); shapeSvg(); shapeStat(s); refreshPreview();
+      }, function () { shapeStat(s, "noimg"); });
+    }, fast ? 40 : 450);
+  }
+  // 點選要亮的物品：在框裡點一下（這時候點圖不會拖框）
+  cv.addEventListener("pointerdown", function (e) {
+    var s = edSpot(ui.picking || ""); if (!s) return;
+    var stage = arStage(); if (!stage) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    var rc = stage.getBoundingClientRect(), x = (e.clientX - rc.left) / rc.width * 100, y = (e.clientY - rc.top) / rc.height * 100;
+    if (x < s.x || x > s.x + s.w || y < s.y || y > s.y + s.h) { toast("要點在這個地點的框裡面"); return; }
+    s.pick = [Math.round(x * 10) / 10, Math.round(y * 10) / 10]; ui.picking = null; cv.classList.remove("picking");
+    changed(); shapeSvg(); drawPanel(); queueShape(s, true);
+  }, true);
 
   // 很寬的圖：切好的左右兩張不見了（之前關掉過「切成左右兩張」）→ 用原始檔重新切、上傳
   function catPartsAgain() {
@@ -4806,7 +5323,7 @@ function renderMapForm(f) {
     }
     function up() {
       bx.removeEventListener("pointermove", mv); bx.removeEventListener("pointerup", up); bx.removeEventListener("pointercancel", up);
-      if (s.x !== st.x || s.y !== st.y || s.w !== st.w || s.h !== st.h) { changed(); markIssues(); renderTree(); }
+      if (s.x !== st.x || s.y !== st.y || s.w !== st.w || s.h !== st.h) { pickInBox(s); changed(); markIssues(); renderTree(); shapeSvg(); queueShape(s); }
     }
     bx.addEventListener("pointermove", mv); bx.addEventListener("pointerup", up); bx.addEventListener("pointercancel", up);
   });
@@ -4818,8 +5335,9 @@ function renderMapForm(f) {
     var step = e.altKey ? 5 : 1, st = { x: s.x, y: s.y, w: s.w, h: s.h };
     if (e.shiftKey) { s.w = Math.max(MIN, Math.min(100 - s.x, s.w + d[0] * step)); s.h = Math.max(MIN, Math.min(100 - s.y, s.h + d[1] * step)); }
     else { s.x = Math.max(0, Math.min(100 - s.w, s.x + d[0] * step)); s.y = Math.max(0, Math.min(100 - s.h, s.y + d[1] * step)); }
-    paintBox(bx, s); syncNums(); changed(); markIssues(); renderTree();
+    paintBox(bx, s); syncNums(); pickInBox(s); changed(); markIssues(); renderTree(); shapeSvg(); queueShape(s);
   });
+  function pickInBox(s) { if (Array.isArray(s.pick) && (s.pick[0] < s.x || s.pick[0] > s.x + s.w || s.pick[1] < s.y || s.pick[1] > s.y + s.h)) s.pick = null; }   // 框移走了，點選的位置不在框裡：不算數
   cv.addEventListener("dblclick", function (e) {
     if (e.target.closest && e.target.closest(".mbx")) return;
     var stage = arStage(); if (!stage) return;
@@ -4899,13 +5417,28 @@ function renderMapForm(f) {
           if (p[0] === "x") s.x = Math.max(0, Math.min(100 - MIN, v)); else if (p[0] === "y") s.y = Math.max(0, Math.min(100 - MIN, v));
           else if (p[0] === "w") s.w = Math.max(MIN, Math.min(100, v)); else s.h = Math.max(MIN, Math.min(100, v));
           var bx = $('.mbx[data-id="' + s.id + '"]', cv); if (bx) paintBox(bx, s);
-          syncNums(); changed(); markIssues();
+          syncNums(); pickInBox(s); changed(); markIssues(); shapeSvg(); queueShape(s);
         };
         inp.onchange = function () { inp.value = String(s[p[0]]); mapTreeBadges(); };
         wrap.appendChild(h("label", { class: "mnum" }, [h("span", {}, [p[1]]), inp]));
       });
       return wrap;
     })(), (function () { ui.nums.px = h("div", { class: "muted", style: "font-size:12px;margin-top:3px" }); return ui.nums.px; })()])]));
+    // 滑到時亮哪裡（第 26 批）
+    var litSeg = seg2([["", "自動找物品"], ["box", "整個框"]], s.lit === "box" ? "box" : "", function (v) { s.lit = v; if (v === "box") { s.shape = null; ui.picking = null; cv.classList.remove("picking"); } changed(); shapeSvg(); drawPanel(); queueShape(s, true); });
+    var pickRow = s.lit === "box" ? null : h("div", { class: "mpickrow" }, [
+      btn(ui.picking === s.id ? "取消點選" : "👆 點一下要亮的物品", function () {
+        ui.picking = ui.picking === s.id ? null : s.id; cv.classList.toggle("picking", !!ui.picking); drawPanel();
+        if (ui.picking) toast("在圖上這個地點的框裡，點一下要亮的那一樣");
+      }, "sm" + (ui.picking === s.id ? " pri" : "")),
+      Array.isArray(s.pick) ? btn("框裡的都亮（不指定）", function () { s.pick = null; changed(); shapeSvg(); drawPanel(); queueShape(s, true); }, "sm") : null
+    ]);
+    pn.appendChild(h("div", { class: "mlit" }, [
+      lbl("", "滑到這個地點時，圖上亮哪裡（網頁）"), litSeg,
+      h("div", { id: "shpStat", class: "shpst" }, [""]),
+      pickRow,
+      h("div", { class: "muted", style: "font-size:12px;margin-top:4px;line-height:1.5" }, [s.lit === "box" ? "整個框都亮（框裡的背景也亮）。" : "程式在框裡自動找出物品的形狀，只亮物品本身，框裡的背景不亮。框裡有好幾樣、只想亮一樣：按「👆 點一下要亮的物品」，再點圖上那一樣。找得不準：把框調整一下，或改成「整個框」。LINE 不受影響。"])
+    ]));
     pn.appendChild(h("div", { style: "display:flex;gap:6px;flex-wrap:wrap;margin-top:10px" }, [
       btn("複製這個地點", function () {
         var c = clone(s); c.id = "p" + Date.now() + cat.spots.length; c.x = Math.min(100 - c.w, c.x + 3); c.y = Math.min(100 - c.h, c.y + 3); c.label = (s.label || "") + "2";
@@ -4913,7 +5446,7 @@ function renderMapForm(f) {
       }),
       confirmBtn("刪除這個地點", function () { var k = cat.spots.indexOf(s); cat.spots.splice(k, 1); markDirty(); ED.cur = { kind: "map", id: "" }; renderEdit(); })
     ]));
-    syncNums();
+    syncNums(); shapeStat(s);
   }
   function drawChecks() {
     var r = _yzMapCheck_(cat, edHb()); ck.innerHTML = "";
@@ -4934,9 +5467,9 @@ function renderMapForm(f) {
     });
     ck.appendChild(box);
   }
-  ui.onPick = function () { paintSel(); drawPanel(); };
+  ui.onPick = function () { if (ui.picking && ui.picking !== ED.cur.id) { ui.picking = null; cv.classList.remove("picking"); } paintSel(); drawPanel(); queueShape(edSpot(ED.cur.id)); };
   ED.warners.push(drawChecks);
-  drawCanvas(); drawPanel(); drawChecks();
+  drawCanvas(); drawPanel(); drawChecks(); queueShape(edSpot(ED.cur.id));
 }
 
 /* ── 算「這張卡片多大」用的：圖片網址換成跟真的一樣長的 Drive 網址（預覽裡的圖是內嵌的，網址太長會誤判） ───────── */
