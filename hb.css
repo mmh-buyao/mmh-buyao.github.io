@@ -514,7 +514,7 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 
 /* 3D 環景目錄（網頁）的樣式。class 都用 y3d- 開頭，不會撞到別的。標籤的樣子照「圖二」：白底、綠框、一條線連到圓點、小手。 */
 .y3d{--ln:clamp(14px,2.3cqw,28px);position:relative;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;background:#1f1a15;border-radius:inherit;outline:none;touch-action:none;user-select:none;-webkit-user-select:none;container-type:inline-size;cursor:grab;-webkit-tap-highlight-color:transparent}
-.y3d-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;background:#2a241e}
+.y3d-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;overflow:clip;background:#2a241e}   /* clip：不能被捲動（鍵盤跳到邊邊的按鍵時，畫面才不會整個歪掉） */
 .y3d.drag{cursor:grabbing}
 .y3d:focus-visible{box-shadow:inset 0 0 0 3px rgba(11,122,117,.75)}
 .y3d-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -582,6 +582,14 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .y3d.err::after{content:"圖片載入失敗，請重新整理";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#fff;font-size:14px}
 @container (max-width:520px){.y3d-btn{width:34px;height:34px}.y3d-btns{gap:3px}.y3d-bar{justify-content:center;padding:6px}.y3d-hint{display:none}}
 @media (prefers-reduced-motion:reduce){.y3d-dot::after{animation:none;display:none}.y3d-info{transition:opacity .2s}.y3d-dust{display:none}}
+/* 滿版（首頁）：按鍵列浮在右下角、不佔一排；提示字由首頁自己放 */
+.y3d-float .y3d-bar{position:absolute;right:var(--y3d-br,14px);bottom:var(--y3d-bb,14px);z-index:7;padding:0;background:none;justify-content:flex-end}
+.y3d-float .y3d-hint{display:none}
+.y3d-float .y3d-btns{padding:5px;border-radius:14px;background:rgba(18,14,10,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.y3d-float .y3d-info{bottom:var(--y3d-ib,16px)}
+.y3d-float .y3d-info.top{top:var(--y3d-it,12px);bottom:auto}
+/* 這一章還沒有標題（只有開發者會看到；藥師那邊是🔒） */
+.y3d-tag.empty .y3d-pill{border-style:dashed}
 
 /* ═══════════════ 正式版（手冊網頁）才有的樣式：整頁、登入畫面、上面一排、看手冊的版面、浮水印、小視窗 ═══════════════ */
 html,body{background:var(--bg)}
@@ -699,3 +707,90 @@ body{min-height:100vh}
 #edc1 .chI .thi{width:38px;height:38px;border-radius:8px;flex:none}
 /* 管理頁的表格不要擠成兩行 */
 #pane-admin .tbl th,#pane-admin .st{white-space:nowrap}
+
+/* ═══════════════ 首頁：滿版調劑台（照參考網站：一打開整個畫面就是調劑台）═══════════════ */
+.hdr .hlogo{border:0;background:none;padding:0;font:inherit;font-weight:800;color:var(--accent);font-size:16px;cursor:pointer;white-space:nowrap}
+.hdr .hlogo:hover{text-decoration:underline}
+.app.home-on .hdr{display:none}
+.app.home-on .panes{padding:0;max-width:none}
+.home{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;background:#14110e;color:#fff;--mqh:34px}
+/* 最上面的跑馬燈（減少動態效果：停住） */
+.mq{flex:none;height:var(--mqh);background:#0b0b0b;color:#fff;overflow:hidden;display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.07)}
+.mq-track{display:flex;flex:none;white-space:nowrap;animation:hbMq 80s linear infinite;will-change:transform}
+.mq-g{display:flex;flex:none;align-items:center}
+.mq-g b{font-weight:800;font-size:14.5px;letter-spacing:.1em;padding:0 20px}
+.mq-ar{font-style:normal;font-weight:800;font-size:15px}
+@keyframes hbMq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+/* 調劑台（3D／平面）佔滿剩下的畫面 */
+.hstage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;overflow:clip;background:#1f1a15;--hsh:calc(100dvh - var(--mqh))}
+.hscene{position:absolute;inset:0}
+.hscene .panowrap.full{max-width:none;height:100%;margin:0}
+.hscene .panowrap.full .pano{height:100%;border-radius:0;box-shadow:none}
+.hscene.flat{display:flex;align-items:center;justify-content:center}
+.hscene.flat .catmap.full{margin:0;max-width:100%}
+.hscene .hload{position:absolute;inset:0;margin:0;border-radius:0}
+.home .y3d{--y3d-it:118px}
+/* 左上：標誌＋提示 */
+.hbrand{position:absolute;left:clamp(12px,2.4vw,30px);top:clamp(10px,2.2vw,24px);z-index:8;display:flex;flex-direction:column;align-items:flex-start;gap:10px;pointer-events:none;max-width:min(60%,520px)}
+.hlogo2{margin:0;font-size:clamp(28px,4vw,52px);font-weight:900;line-height:1.05;letter-spacing:.06em;color:#fff;transform:rotate(-4deg);transform-origin:left center;text-shadow:3px 0 #13312F,-3px 0 #13312F,0 3px #13312F,0 -3px #13312F,2px 2px #13312F,-2px -2px #13312F,2px -2px #13312F,-2px 2px #13312F,0 6px 0 #0B1F1D,0 9px 18px rgba(0,0,0,.45)}
+.hchip{background:rgba(12,16,18,.76);color:#fff;font-weight:700;font-size:clamp(12.5px,1.15vw,15px);line-height:1.35;padding:7px 14px;border-radius:999px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.sr{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+/* 右上：誰、閒置倒數、登出（開發者多編輯、管理） */
+.hme{position:absolute;right:clamp(10px,2vw,24px);top:clamp(10px,2vw,22px);z-index:8;display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:min(56%,640px)}
+.hwho{display:flex;align-items:center;gap:8px;background:rgba(12,16,18,.76);color:#fff;border-radius:999px;padding:5px 6px 5px 12px;font-size:12.5px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.hwho b{font-weight:700;white-space:nowrap}
+.hwho .idle{background:rgba(255,255,255,.15);color:#fff;border-radius:999px;padding:2px 9px;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hwho .idle.soon{background:#FFD25E;color:#4A3300;font-weight:700}
+.hwho .idle.short{display:none}
+.home .btn.hbtn{border-radius:999px;border:0;background:rgba(255,255,255,.94);color:#13312F;font-weight:700;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.home .btn.hbtn:hover{background:#fff}
+/* 左下：搜尋、章元、關鍵字（貼紙一樣的大按鈕） */
+.hdock{position:absolute;left:clamp(12px,2.2vw,26px);bottom:clamp(12px,2vw,22px);z-index:8;display:flex;gap:8px;flex-wrap:wrap}
+.home .btn.hfab{border-radius:999px;background:#fff;color:#13312F;border:2.5px solid #13312F;font-weight:800;font-size:14.5px;padding:8px 16px;box-shadow:0 3px 0 #13312F,0 6px 16px rgba(0,0,0,.3);transition:background .15s,color .15s}
+.home .btn.hfab:hover{background:#E4572E;color:#fff;border-color:#B9401C;box-shadow:0 3px 0 #8E2F13,0 6px 16px rgba(0,0,0,.3)}
+.home .btn.hfab:active{transform:translateY(2px);box-shadow:0 1px 0 #13312F}
+.home .btn:focus-visible{outline:3px solid #E4572E;outline-offset:2px}
+/* 🔍 搜尋（浮在圖上） */
+.hsearch{position:absolute;left:50%;top:clamp(70px,11vh,110px);transform:translateX(-50%);z-index:12;display:flex;gap:6px;align-items:center;width:min(640px,calc(100% - 24px));background:#fff;border-radius:14px;padding:8px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.hsearch .in{flex:1;min-width:0;font-size:16px}
+.hsearch .btn{color:var(--ink)}
+.hsearch .btn.pri{color:#fff}
+/* ☰ 章元（從左邊滑出來） */
+.hshade{position:absolute;inset:0;z-index:10;background:rgba(10,8,6,.45)}
+.hdrawer{position:absolute;left:0;top:0;bottom:0;z-index:11;width:min(340px,86%);background:#fff;color:var(--ink);overflow:auto;padding:10px 10px 18px;box-shadow:6px 0 24px rgba(0,0,0,.35);animation:hbDrawer .22s ease-out}
+@keyframes hbDrawer{from{transform:translateX(-100%)}to{transform:none}}
+.hdh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 4px 8px;font-size:15px}
+.hdrawer .chI.lock{opacity:.66}
+.hdrawer .chI.lock .thi{background:#EEF0F3;color:#6B7480}
+.hdrawer .chI.lock .t1{color:#6B7480}
+.hdrawer .chT{padding-left:12px;margin-top:6px}
+/* 看內容的時候：右下角浮著「🏠 首頁」 */
+.hhome{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:60;border:0;border-radius:999px;padding:11px 18px;background:#13312F;color:#fff;font:inherit;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 6px 18px rgba(16,30,28,.35)}
+.hhome:hover{background:#E4572E}
+.hhome:focus-visible{outline:3px solid #E4572E;outline-offset:3px}
+/* 開發者才看得到：這一章還沒有標題（藥師那邊是🔒） */
+.mspot.empty .sp-tag{border-style:dashed}
+/* 中間寬度：說明卡放到左下角那排按鈕的上面 */
+@media (max-width:1100px){.home .y3d{--y3d-ib:76px}}
+/* 手機 */
+@media (max-width:640px){
+  .home{--mqh:30px}
+  .mq-g b{font-size:13px;padding:0 12px}
+  .hbrand{gap:6px;max-width:58%}
+  .hchip{font-size:12px;padding:5px 10px}
+  .hme{max-width:44%;gap:4px}
+  .hwho{padding:4px 4px 4px 10px;font-size:12px;gap:6px}
+  .hwho b{max-width:8em;overflow:hidden;text-overflow:ellipsis}
+  .hwho .idle{display:none}
+  .hwho .idle.short{display:inline}
+  .home .btn.hbtn{padding:5px 10px;font-size:12.5px}
+  .home .y3d{--y3d-ib:116px;--y3d-it:96px;--y3d-br:10px;--y3d-bb:10px}
+  .hdock{left:10px;bottom:62px;gap:6px}
+  .hscene.flat~.hdock{bottom:12px}
+  .home .btn.hfab{font-size:13.5px;padding:7px 12px}
+  .hhome{padding:10px 15px;font-size:14px}
+}
+@media (prefers-reduced-motion:reduce){.mq-track{animation:none}.hdrawer{animation:none}}
+@media print{.home,.hhome{display:none!important}}
+/* 編輯器的目錄圖檢查：說明（不是問題） */
+.mi.info{background:#EAF3FF;color:#1F4E8A;border-color:#BFD7F5}

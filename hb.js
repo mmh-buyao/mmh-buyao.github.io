@@ -695,7 +695,25 @@ function _yzMapSt_(v) { return v === "lock" || v === "new" ? v : ""; }
 function _yzMapStr_(v) { return String(v === null || v === undefined ? "" : v).replace(/\s+/g, " ").trim(); }
 function _yzMapNorm_(s) {   // 把一個地點整理乾淨（不管能不能用）
   var r = _yzMapRect_(s);
-  return { id: s.id, label: _yzMapStr_(s.label), to: s.to, x: r.x, y: r.y, w: r.w, h: r.h, pos: _yzMapPos_(s.pos), ico: _yzMapStr_(s.ico).replace(/\s/g, ""), desc: _yzMapStr_(s.desc), st: _yzMapSt_(s.st) };
+  var o = { id: s.id, label: _yzMapStr_(s.label), to: s.to, x: r.x, y: r.y, w: r.w, h: r.h, pos: _yzMapPos_(s.pos), ico: _yzMapStr_(s.ico).replace(/\s/g, ""), desc: _yzMapStr_(s.desc), st: _yzMapSt_(s.st) };
+  if (s.empty === true) o.empty = true;
+  return o;
+}
+// 空的章自動上鎖：連到「還沒有任何標題的章」的地點，藥師看到的是「🔒 尚未開放」（點了說還在整理）；寫好第一個標題就自動打開。
+// 開發者（dev）不鎖，只多一個 empty（網頁上標籤框線變虛線，提醒這一章還是空的）。回傳一份新的 cat（原本的不動）。
+function _yzMapEmptyCh_(hb) {
+  var o = {};
+  ((hb && hb.chapters) || []).forEach(function (c) { if (!(((hb.titles || {})[c.id]) || []).length) o[c.id] = 1; });
+  return o;
+}
+function _yzMapLive_(cat, hb, dev) {
+  if (!cat || !hb) return cat;
+  var emp = _yzMapEmptyCh_(hb);
+  return Object.assign({}, cat, { spots: ((cat && cat.spots) || []).map(function (s) {
+    var m = /^c:(.+)$/.exec(String(s && s.to || ""));
+    if (!m || !emp[m[1]] || (s && s.st === "lock")) return s;
+    return Object.assign({}, s, dev ? { empty: true } : { st: "lock" });
+  }) });
 }
 function _yzMapSpots_(cat) {   // 能用的地點（連結看得懂或是「尚未開放」、位置大小是數字），整理成乾淨的一份
   var out = [];
@@ -838,7 +856,7 @@ function _yzMapPartCat_(cat, i) {   // 左（0）／右（1）那一張：圖換
   });
   return Object.assign({}, cat, { img: pt.img, fname: pt.fname, ar: _yzAR_(pt.w || 1, pt.h || 1), w: pt.w, h: pt.h, spots: spots, parts: null, split: false });
 }
-function _yzMapHome_(cat, hb) {   // 「📚 目錄」回的那一則：切好了＝兩張一排（左右滑）；不然照舊一張
+function _yzMapHome_(cat, hb) {   // 「🏠 首頁」（以前叫「📚 目錄」）回的那一則：切好了＝兩張一排（左右滑）；不然照舊一張
   if (!_yzMapSplitOn_(cat) || YZ_CFG.imgDirect === false) return _yzMapBubble_(cat, hb);
   return { type: "carousel", contents: [0, 1].map(function (i) { return _yzMapBubble_(_yzMapPartCat_(cat, i), hb, { part: i }); }) };
 }
@@ -846,7 +864,7 @@ function _yzMapHome_(cat, hb) {   // 「📚 目錄」回的那一則：切好�
 function _yzMapLockedBubble_(cat, pid) {
   var s = null; ((cat && cat.spots) || []).forEach(function (x) { if (x && String(x.id).replace(/[^A-Za-z0-9_\-]/g, "") === pid) s = x; });
   var nm = s ? _yzMapStr_(s.label) : "";
-  return _yzNoticeBubble_("🔒 這一章還沒開放", [(nm ? "「" + nm + "」" : "這一章") + "還在整理中。", "開放以後，這裡的標籤會變回彩色。", "先看看其他章：按「📚 目錄」。"], "warn");
+  return _yzNoticeBubble_("🔒 這一章還沒開放", [(nm ? "「" + nm + "」" : "這一章") + "還在整理中。", "開放以後，這裡的標籤會變回彩色。", "先看看其他章：按「🏠 首頁」。"], "warn");
 }
 // 哪些章在圖上點得到（有地點直接連到那一章，或連到那一章底下的某個標題）
 function _yzMapCovered_(cat, hb) {
@@ -888,7 +906,7 @@ function _yzMapCheck_(cat, hb) {
 function _yzMapCheck1_(cat, hb, o) {
   cat = cat || {}; o = o || { basic: true, geom: true };
   var d = _yzMapDims_(cat), px = d.px, ih = d.ih, sz = d.sz, tag = o.tag || "";
-  var out = { px: px, ih: ih, general: [], spots: {}, bad: 0, warn: 0, uncovered: [], bytes: 0, n: 0 };
+  var out = { px: px, ih: ih, general: [], spots: {}, bad: 0, warn: 0, info: 0, uncovered: [], bytes: 0, n: 0 };
   function G(lv, msg) { if (!o.basic) return; out.general.push({ lv: lv, msg: msg }); out[lv]++; }
   function S(id, lv, msg) { (out.spots[id] = out.spots[id] || []).push({ lv: lv, msg: tag + msg }); out[lv]++; }
   function SB(id, lv, msg) { if (o.basic) S(id, lv, msg); }
@@ -932,7 +950,10 @@ function _yzMapCheck1_(cat, hb, o) {
   if (!o.basic) return out;
   var cv = _yzMapCovered_(cat, hb || {});
   out.uncovered = cv.uncovered;
-  if (cv.uncovered.length && all.length) G("warn", "有 " + cv.uncovered.length + " 章在圖上沒有地方可以點：" + cv.uncovered.slice(0, 4).map(function (c) { return "第 " + c.no + " 章"; }).join("、") + (cv.uncovered.length > 4 ? "…" : "") + "。（LINE 的「📚 全部章元」按鈕和網頁下面的章元卡片，還是找得到它們。）");
+  if (cv.uncovered.length && all.length) G("warn", "有 " + cv.uncovered.length + " 章在圖上沒有地方可以點：" + cv.uncovered.slice(0, 4).map(function (c) { return "第 " + c.no + " 章"; }).join("、") + (cv.uncovered.length > 4 ? "…" : "") + "。（LINE 的「📚 全部章元」按鈕、網頁首頁的「☰ 章元」，還是找得到它們。）");
+  var emp = _yzMapEmptyCh_(hb || {}), lk = [];
+  all.slice(0, YZ_MAP_MAX).forEach(function (s0) { var m0 = /^c:(.+)$/.exec(String(s0.to || "")); if (m0 && emp[m0[1]] && s0.st !== "lock") lk.push(s0.label || m0[1]); });
+  if (lk.length) G("info", "有 " + lk.length + " 個地點連到「還沒有標題」的章（" + lk.slice(0, 4).join("、") + (lk.length > 4 ? "…" : "") + "）：藥師看到的是🔒，點了說「還在整理」；那一章寫好第一個標題，就自動打開。");
   if (cat.img && o.geom) {
     out.bytes = _yzBytes_(_yzMapBubble_(Object.assign({}, cat, { img: YZ_MAP_URL_SAMPLE }), hb || {}));
     if (out.bytes > YZ_BUBBLE_SAFE) G("bad", "這張目錄卡片約 " + Math.round(out.bytes / 100) / 10 + " KB，超過 LINE 的上限（我們抓 " + Math.round(YZ_BUBBLE_SAFE / 1000) + " KB）：減少地點，或關掉「圖下面加按鈕」。");
@@ -960,7 +981,7 @@ function _yzTitleListBubble_(ch, titles) {
     header: _yzHead_("📘 藥戰手冊　第 " + ch.no + " 章", ch.name, titles.length + " 個標題，點一個看內容"),
     body: { type: "box", layout: "vertical", paddingAll: "4px", contents: rows },
     footer: { type: "box", layout: "vertical", paddingAll: "8px", contents: [
-      { type: "button", style: "link", height: "sm", color: YZ_ACCENT, action: _yzPB_("yz=home", "📚 回目錄") },
+      { type: "button", style: "link", height: "sm", color: YZ_ACCENT, action: _yzPB_("yz=home", "🏠 回首頁") },
       _yzFoot_()
     ] }
   };
@@ -1541,7 +1562,7 @@ function _yzQuickBar_(mode, o) {
   o = o || {};
   var m = function (label, text) { return { label: label, text: text }; };
   if (mode === "yz") {
-    var a = [m("💊 補藥神器", "補藥神器"), m("📚 目錄", "目錄"), m("🔑 關鍵字", "關鍵字"), { label: "🌐 網頁", web: "yz" }];
+    var a = [m("💊 補藥神器", "補藥神器"), m("🏠 首頁", "首頁"), m("🔑 關鍵字", "關鍵字"), { label: "🌐 網頁", web: "yz" }];
     if (o.dev) a.push(m("🔧 開發者", "藥戰開發者"));
     return a;
   }
@@ -2067,9 +2088,9 @@ function enterMain(r) {
     if (p[0] !== "view" && !IS_DEV) return;
     tabs.appendChild(h("button", { class: "tab", type: "button", role: "tab", "data-t": p[0], "aria-selected": "false", onclick: function () { showTab(p[0]); } }, [p[1]]));
   });
-  var who = (ME.name || "") + (ME.emp ? "　" + ME.emp : "") + (IS_DEV ? "　（開發者）" : "");
+  var who = (ME.name || "") + (ME.emp ? "　" + ME.emp : "") + (IS_DEV && ME.name !== "開發者" ? "　（開發者）" : "");
   var hdr = h("header", { class: "hdr", id: "hdr" }, [h("div", { class: "hrow" }, [
-    h("span", { class: "hlogo" }, ["📘 藥戰手冊"]), IS_DEV ? tabs : null, h("span", { class: "sp" }),
+    h("button", { class: "hlogo", type: "button", title: "回首頁（手冊目錄）", onclick: function () { goHomeTab(); } }, ["📘 藥戰手冊"]), IS_DEV ? tabs : null, h("span", { class: "sp" }),
     h("span", { class: "who" }, [who]), h("span", { class: "idle", id: "idle" }, [""]),
     btn("登出", function () { logout("out"); }, "sm")
   ])]);
@@ -2090,6 +2111,7 @@ function showTab(name) {
   if (!MAIN) return;
   if ((name === "edit" || name === "admin") && !IS_DEV) name = "view";
   TAB = name;
+  if (name !== "view") homeClass(false);   // 首頁（滿版）只在「看手冊」；編輯、管理照舊有上面那一排
   $$(".tab").forEach(function (t) { t.setAttribute("aria-selected", t.getAttribute("data-t") === name ? "true" : "false"); });
   $$(".pane").forEach(function (p) { p.classList.toggle("on", p.id === "pane-" + name); });
   syncTabsH();
@@ -2126,8 +2148,9 @@ function idleTick() {
   if (!MAIN) return;
   var left = IDLE_MS - (Date.now() - LAST_ACT);
   if (left <= 0) { logout("idle"); return; }
-  var e = $("#idle");
-  if (e) { var s = Math.ceil(left / 1000); e.textContent = "閒置 " + Math.floor(s / 60) + ":" + ("0" + s % 60).slice(-2) + " 後自動登出"; e.classList.toggle("soon", s <= 60); }
+  var s = Math.ceil(left / 1000);
+  var mmss = Math.floor(s / 60) + ":" + ("0" + s % 60).slice(-2);
+  $$(".idle").forEach(function (e) { e.textContent = e.classList.contains("short") ? "⏱ " + mmss : "閒置 " + mmss + " 後自動登出"; e.classList.toggle("soon", s <= 60); });   // 上面那一排、首頁右上角（手機上用短的「⏱ 29:59」）
 }
 setInterval(idleTick, 1000);
 setInterval(function () { if (MAIN) paintWm(); }, 60000);
@@ -2433,9 +2456,11 @@ var MAP_ZOOM = 1.3;
 function webCatalogMap(cat, hb, o) {
   o = o || {};
   var spots = _yzMapSpots_(cat).slice(0, YZ_MAP_MAX), fx = cat.fx !== false && o.fx !== false;
+  // o.full：滿版（首頁）＝整張圖放進畫面裡（不裁掉），左右或上下留深色邊
   var touch = !!(window.matchMedia && window.matchMedia("(hover: none)").matches), still = reduceMotion();
   var box = h("div", { class: "catmap" + (fx ? " fx" : "") });
   if (o.width) box.style.maxWidth = o.width + "px";
+  if (o.full) { var arN = (function () { var a = String(cat.ar || "20:13").split(":"); return (Number(a[0]) || 20) / (Number(a[1]) || 13); })(); box.classList.add("full"); box.style.width = "min(100%, calc(var(--hsh, 80vh) * " + arN.toFixed(4) + "))"; }
   var stage = h("div", { class: "catstage", style: "aspect-ratio:" + arCss(cat.ar) });
   var cam = h("div", { class: "catcam", "aria-hidden": "true" }, [h("img", { src: o.img || cat.img, alt: "", draggable: "false" })]);
   var hit = h("div", { class: "cathit" }), vis = {}, info = null, cur = null, leaveT = 0, lastPT = "";
@@ -2450,13 +2475,13 @@ function webCatalogMap(cat, hb, o) {
       h("span", { class: "ci-go", "aria-hidden": "true", html: '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 5l7 7-7 7" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' })
     ]);
   }
-  function cls(s) { return "mspot pos-" + _yzMapPos_(s.pos) + (s.st ? " st-" + s.st : ""); }
+  function cls(s) { return "mspot pos-" + _yzMapPos_(s.pos) + (s.st ? " st-" + s.st : "") + (s.empty && s.st !== "lock" ? " empty" : ""); }
   function infoOf(s) { return _yzMapToInfo_(s.to, hb); }
   function title(s) { return s.label || infoOf(s).short || "打開"; }
   function fill(s) {
     if (!info) return;
     $(".ci-t", info).textContent = (s.st === "lock" ? "🔒 " : "") + title(s);
-    $(".ci-d", info).textContent = s.st === "lock" ? "還沒開放，開放後這裡的標籤會變回彩色。" : (s.desc || infoOf(s).name || "");
+    $(".ci-d", info).textContent = s.st === "lock" ? "還在整理，開放後這裡的標籤會變回彩色。" : s.empty ? "這一章還沒有標題：藥師看到的是🔒（寫好第一個標題就自動打開）" : (s.desc || infoOf(s).name || "");
     info.classList.toggle("lock", s.st === "lock");
   }
   function aim(s) {
@@ -2476,7 +2501,7 @@ function webCatalogMap(cat, hb, o) {
   function unpick() { cur = null; Object.keys(vis).forEach(function (id) { vis[id].classList.remove("on"); }); if (fx) { info.classList.remove("show"); cam.style.transform = ""; } }
   function leave() { clearTimeout(leaveT); leaveT = setTimeout(unpick, 150); }
   function go(s) {
-    if (s.st === "lock") { if (o.onLock) o.onLock(s); else toast("🔒 「" + title(s) + "」還沒開放"); return; }
+    if (s.st === "lock") { if (o.onLock) o.onLock(s); else toast("🔒 「" + title(s) + "」還在整理，開放以後就能看"); return; }
     if (o.onSpot) o.onSpot(s.to, s);
   }
   spots.forEach(function (s, i) {
@@ -2514,13 +2539,13 @@ function webCatalogPano(parent, cat, hb, o) {
   o = o || {};
   if (!panoOk(cat) || !o.img) return null;
   var spots = _yzMapSpots_(cat).slice(0, YZ_MAP_MAX).map(function (s) { var inf = _yzMapToInfo_(s.to, hb); return Object.assign({}, s, { sub: inf.ok ? inf.name : "" }); });
-  var wrap = h("div", { class: "panowrap" }), box = h("div", { class: "pano" });
+  var wrap = h("div", { class: "panowrap" + (o.float ? " full" : "") }), box = h("div", { class: "pano" });
   if (o.width) wrap.style.maxWidth = o.width + "px";
   wrap.appendChild(box); parent.appendChild(wrap);
   var api = YZPano.mount(box, {
-    img: o.img, ar: cat.ar, spots: spots, theta: cat.theta || 70, labels: cat.labels !== false, fx: cat.fx !== false, title: cat.title || "目錄",
+    img: o.img, ar: cat.ar, spots: spots, theta: cat.theta || 70, labels: cat.labels !== false, fx: cat.fx !== false, title: cat.title || "目錄", float: !!o.float, avoid: o.avoid,
     onOpen: function (s) { if (o.onSpot) o.onSpot(s.to, s); },
-    onLock: function (s) { if (o.onLock) o.onLock(s); else toast("🔒 「" + (s.label || "這裡") + "」還沒開放"); },
+    onLock: function (s) { if (o.onLock) o.onLock(s); else toast("🔒 「" + (s.label || "這裡") + "」還在整理，開放以後就能看"); },
     onError: function () { if (o.onError) o.onError(); }
   });
   if (!api) { wrap.remove(); return null; }
@@ -2571,11 +2596,16 @@ function webSearch(q) {
 }
 function kwPanelOpts() { return { onTitle: function (tid) { openTitle(tid); }, onSearch: webSearch }; }
 function goHome() { WV.cid = null; WV.tid = null; WV.view = ""; WV.side = false; drawWeb(); topOfView(); }
+function goHomeTab() { if (TAB !== "view") showTab("view"); goHome(); }   // 左上角的標誌、右下角的「🏠 首頁」
 
 function drawWeb() {
   var root = $("#pane-view"); if (!root || !HB) return;
   if (WV.pano) { try { WV.pano.destroy(); } catch (e) { /* 沒關係 */ } WV.pano = null; }
   root.innerHTML = "";
+  var atHome = !WV.cid && !WV.tid && !WV.view;
+  if (atHome && homeMapOn()) { drawHomeFull(root); return; }   // 首頁＝滿版調劑台
+  homeClass(false);
+  if (!atHome) root.appendChild(h("button", { class: "hhome", type: "button", onclick: goHome, title: "回首頁（手冊目錄）" }, ["🏠 首頁"]));
   var qin = h("input", { class: "in", type: "search", enterkeyhint: "search", placeholder: "🔎 搜尋手冊（關鍵字，或打「第14頁」）", value: WV.qv, "aria-label": "搜尋手冊" });
   root.appendChild(h("div", { class: "vbar" }, [
     h("button", { class: "btn sm sidebtn", type: "button", "aria-expanded": WV.side ? "true" : "false", onclick: function () { WV.side = !WV.side; drawWeb(); } }, ["☰ 章元"]),
@@ -2588,7 +2618,7 @@ function drawWeb() {
   // 左邊：章元
   side.appendChild(h("h4", {}, ["章元（" + HB.chapters.length + "）"]));
   side.appendChild(h("div", { class: "chI" + (!WV.cid && !WV.view ? " on" : ""), role: "button", tabindex: "0", onclick: goHome, onkeydown: function (e) { if (e.key === "Enter") goHome(); } }, [
-    h("div", { class: "th thi" }, ["📚"]), h("div", {}, [h("div", { class: "t2" }, ["手冊目錄"])])
+    h("div", { class: "th thi" }, ["🏠"]), h("div", {}, [h("div", { class: "t2" }, ["首頁（手冊目錄）"])])
   ]));
   HB.chapters.forEach(function (c) {
     var go = function () { openChapter(c.id); };
@@ -2625,7 +2655,7 @@ function drawWeb() {
       h("div", {}, [h("div", { class: "crumb2" }, ["第 " + c.no + " 章"]), h("h2", {}, [c.name]), c.intro ? h("div", { class: "muted" }, [c.intro]) : null])
     ]));
     var list = h("div", { class: "tlist" }), tts = titlesOf(c.id);
-    if (!tts.length) list.appendChild(h("div", { class: "muted" }, ["這一章還沒有內容。"]));
+    if (!tts.length) list.appendChild(h("div", { class: "muted" }, [IS_DEV ? "這一章還沒有標題（藥師在目錄圖上看到的是🔒）。到「✏️ 編輯」新增第一個標題，就會自動打開。" : "這一章還在整理，還沒有內容。"]));
     tts.forEach(function (tt) {
       var pg = _yzPageShort_(tt.page);
       list.appendChild(h("div", { class: "trow", role: "button", tabindex: "0", onclick: function () { openTitle(tt.id); }, onkeydown: function (e) { if (e.key === "Enter") openTitle(tt.id); } }, [h("span", {}, [tt.name]), h("span", { class: "trr" }, [pg ? h("span", { class: "pgs" }, [pg]) : null, h("span", { class: "chev" }, ["›"])])]));
@@ -2634,28 +2664,103 @@ function drawWeb() {
     if (YZ_CFG.footer) main.appendChild(h("div", { class: "foot", style: "text-align:left" }, [YZ_NOTICE]));
   } else drawHome(main);
 }
-function drawHome(main) {
+function drawHome(main) {   // 還沒有目錄圖（或「開啟目錄圖」關著）的首頁：章元卡片
   WV.cid = null; WV.tid = null;
-  var cat = HB.cat, hasMap = !!(cat && cat.on && cat.img);
-  main.appendChild(h("h2", { class: "h2" }, [hasMap ? "手冊目錄　" + (cat.title || "") : "手冊目錄"]));
-  main.appendChild(h("div", { class: "muted", style: "margin-bottom:12px" }, [hasMap ? (cat.hint || "點圖上的地方") + "；也可以用上面的搜尋、「🔑 關鍵字」，或往下看全部章元。" : "共 " + HB.chapters.length + " 章，點一章開始看；或用上面的搜尋、「🔑 關鍵字」。"]));
-  if (hasMap) {
-    var goTo = function (to) { var m = /^([ct]):(.+)$/.exec(to || ""); if (!m) return; if (m[1] === "c") openChapter(m[2]); else openTitle(m[2]); };
-    var host = h("div", { class: "cathost" }); main.appendChild(host);
-    var flat = function () { host.innerHTML = ""; host.appendChild(webCatalogMap(cat, HB, { width: cat.web || 760, onSpot: goTo })); };
-    if (panoOk(cat) && !WV.flat) {
-      var u = catBlob(cat, function () { if (MAIN && TAB === "view" && !WV.tid && !WV.cid && !WV.view) drawWeb(); });
-      if (u) {
-        var pw = webCatalogPano(host, cat, HB, { img: u, width: cat.web || 960, onSpot: goTo, onError: function () { WV.flat = true; if (WV.pano) { try { WV.pano.destroy(); } catch (e) { /* 沒關係 */ } WV.pano = null; } flat(); } });
-        if (pw) WV.pano = pw._api; else flat();
-      } else if (u === "") {
-        host.appendChild(h("div", { class: "panoload", style: "aspect-ratio:" + arCss(cat.ar) + ";max-width:" + (cat.web || 960) + "px;background-image:url(\"" + String(cat.img).replace(/["\\\\]/g, "") + "\")" }, [h("span", {}, ["3D 目錄載入中…"])]));
-      } else flat();
-    } else flat();
-    main.appendChild(h("h3", { class: "h3" }, ["全部章元（共 " + HB.chapters.length + " 章）"]));
-  }
+  main.appendChild(h("h2", { class: "h2" }, ["手冊目錄"]));
+  main.appendChild(h("div", { class: "muted", style: "margin-bottom:12px" }, ["共 " + HB.chapters.length + " 章，點一章開始看；或用上面的搜尋、「🔑 關鍵字」。"]));
   main.appendChild(h("div", { class: "grid10" }, HB.chapters.map(function (c) { return webChapterCard(c, titlesOf(c.id).length, { onclick: function () { openChapter(c.id); } }); })));
   if (YZ_CFG.footer) main.appendChild(h("div", { class: "foot", style: "text-align:left" }, [YZ_NOTICE]));
+}
+/* ───────── 首頁：滿版調劑台（照參考網站：一打開整個畫面就是調劑台）─────────
+   最上面一條跑馬燈；左上角「藥戰手冊」標誌＋提示；右上角名字、閒置倒數、登出（開發者多「編輯」「管理」）；
+   左下角 🔍 搜尋、☰ 章元、🔑 關鍵字；右下角是 3D 的按鍵。還沒有目錄圖（或「開啟目錄圖」關著）：照舊用章元卡片當首頁。 */
+function homeMapOn() { var c = HB && HB.cat; return !!(c && c.on && c.img); }
+function homeClass(on) { if (APP) APP.classList.toggle("home-on", !!on); }
+function homeLockToast(name) { toast("🔒 「" + (name || "這一章") + "」還在整理，開放以後就能看"); }
+function marquee(cat) {
+  var words = ["藥戰手冊", (cat && cat.title) || "藥師調劑台"];
+  if (YZ_CFG.footer) words.push(YZ_NOTICE.replace(/[。.]$/, ""));
+  var group = function () {
+    var g = h("span", { class: "mq-g" });
+    for (var i = 0; i < 6; i++) words.forEach(function (w) { g.appendChild(h("i", { class: "mq-ar" }, ["→"])); g.appendChild(h("b", {}, [w])); });
+    return g;
+  };
+  return h("div", { class: "mq", "aria-hidden": "true" }, [h("div", { class: "mq-track" }, [group(), group()])]);   // 兩組一樣的接在一起，往左跑一組的寬度＝接得起來
+}
+function drawHomeFull(root) {
+  WV.cid = null; WV.tid = null;
+  homeClass(true);
+  var cat = _yzMapLive_(HB.cat, HB, IS_DEV);
+  var goTo = function (to) { var m = /^([ct]):(.+)$/.exec(to || ""); if (!m) return; if (m[1] === "c") openChapter(m[2]); else openTitle(m[2]); };
+  var onLock = function (s) { homeLockToast(s && s.label); };
+  var home = h("section", { class: "home", "aria-label": "首頁（手冊目錄）" });
+  var stage = h("div", { class: "hstage" }), scene = h("div", { class: "hscene" });
+  home.appendChild(marquee(cat)); home.appendChild(stage); stage.appendChild(scene); root.appendChild(home);
+  var flat = function () {
+    if (WV.pano) { try { WV.pano.destroy(); } catch (e) { /* 沒關係 */ } WV.pano = null; }
+    scene.innerHTML = ""; scene.classList.add("flat");
+    scene.appendChild(webCatalogMap(cat, HB, { full: true, onSpot: goTo, onLock: onLock }));
+  };
+  if (panoOk(cat) && !WV.flat) {
+    var u = catBlob(cat, function () { if (MAIN && TAB === "view" && !WV.tid && !WV.cid && !WV.view) drawWeb(); });
+    if (u) {
+      var pw = webCatalogPano(scene, cat, HB, { img: u, float: true, onSpot: goTo, onLock: onLock, onError: function () { WV.flat = true; flat(); },
+        avoid: function () { return [$(".hbrand", stage), $(".hme", stage), $(".hdock", stage)]; } });   // 標籤避開蓋在圖上的標誌、名字、按鈕
+      if (pw) WV.pano = pw._api; else flat();
+    } else if (u === "") scene.appendChild(h("div", { class: "panoload hload", style: "background-image:url(\"" + String(cat.img).replace(/["\\]/g, "") + "\")" }, [h("span", {}, ["3D 目錄載入中…"])]));
+    else flat();
+  } else flat();
+  // 左上：標誌＋提示
+  stage.appendChild(h("div", { class: "hbrand" }, [
+    h("h1", { class: "hlogo2" }, [h("span", { class: "sr" }, ["手冊目錄　"]), "藥戰手冊"]),
+    h("div", { class: "hchip" }, [cat.hint || "拖曳轉動、點圖上的按鍵，進到那一章"])
+  ]));
+  // 右上：誰、閒置倒數、登出（開發者：編輯、管理）
+  var who = (ME.name || "") + (ME.emp ? "　" + ME.emp : "") + (IS_DEV && ME.name !== "開發者" ? "　（開發者）" : "");
+  stage.addEventListener("scroll", function () { if (stage.scrollLeft || stage.scrollTop) { stage.scrollLeft = 0; stage.scrollTop = 0; } });
+  stage.appendChild(h("div", { class: "hme" }, [
+    h("div", { class: "hwho" }, [who ? h("b", {}, [who]) : null, h("span", { class: "idle" }, [""]), h("span", { class: "idle short", "aria-hidden": "true" }, [""])]),
+    IS_DEV ? btn("✏️ 編輯", function () { showTab("edit"); }, "sm hbtn") : null,
+    IS_DEV ? btn("👥 管理", function () { showTab("admin"); }, "sm hbtn") : null,
+    btn("登出", function () { logout("out"); }, "sm hbtn")
+  ]));
+  // 左下：搜尋、章元、關鍵字
+  stage.appendChild(h("div", { class: "hdock" }, [
+    btn("🔍 搜尋", function () { homeSearch(stage); }, "hfab"),
+    btn("☰ 章元", function () { homeDrawer(stage); }, "hfab"),
+    btn("🔑 關鍵字", openKwList, "hfab")
+  ]));
+  idleTick();
+  if (WV.pano && WV.pano.refreshAvoid) WV.pano.refreshAvoid();
+}
+function homeSearch(stage) {
+  var old = $(".hsearch", stage); if (old) { old.remove(); return; }
+  var qin = h("input", { class: "in", type: "search", enterkeyhint: "search", placeholder: "搜尋手冊（關鍵字，或打「第14頁」）", "aria-label": "搜尋手冊" });
+  var box = h("form", { class: "hsearch", role: "search", onsubmit: function (e) { e.preventDefault(); var q = qin.value; box.remove(); webSearch(q); } }, [
+    qin, h("button", { class: "btn pri", type: "submit" }, ["搜尋"]), h("button", { class: "btn", type: "button", "aria-label": "關掉搜尋", onclick: function () { box.remove(); } }, ["✕"])
+  ]);
+  box.addEventListener("keydown", function (e) { if (e.key === "Escape") box.remove(); });
+  stage.appendChild(box);
+  try { qin.focus(); } catch (e) { /* 沒關係 */ }
+}
+function homeDrawer(stage) {
+  var close = function () { $$(".hdrawer, .hshade", stage).forEach(function (x) { x.remove(); }); };
+  if ($(".hdrawer", stage)) { close(); return; }
+  var list = h("nav", { class: "hdrawer", "aria-label": "章元" });
+  list.appendChild(h("div", { class: "hdh" }, [h("b", {}, ["章元（" + HB.chapters.length + "）"]), h("button", { class: "btn sm", type: "button", "aria-label": "關掉章元", onclick: close }, ["✕"])]));
+  HB.chapters.forEach(function (c) {
+    var n = titlesOf(c.id).length, lock = !n && !IS_DEV;
+    var go = function () { if (lock) { homeLockToast(c.name); return; } close(); openChapter(c.id); };
+    list.appendChild(h("div", { class: "chI" + (lock ? " lock" : ""), role: "button", tabindex: "0", "aria-label": "第 " + c.no + " 章　" + c.name + (lock ? "（還在整理）" : ""), onclick: go, onkeydown: function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } } }, [
+      c.img && !lock ? h("img", { class: "th", src: c.img, alt: "", loading: "lazy" }) : h("div", { class: "th thi" }, [lock ? "🔒" : c.no]),
+      h("div", {}, [h("div", { class: "t1" }, ["第 " + c.no + " 章　" + (lock ? "還在整理" : n ? n + " 個標題" : "還沒有標題（藥師看到🔒）")]), h("div", { class: "t2" }, [c.name])])
+    ]));
+  });
+  list.appendChild(h("div", { class: "chT", role: "button", tabindex: "0", onclick: function () { close(); openKwList(); }, onkeydown: function (e) { if (e.key === "Enter") { close(); openKwList(); } } }, ["🔑 全部關鍵字（" + HB.kws.length + "）"]));
+  list.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  stage.appendChild(h("div", { class: "hshade", onclick: close }));
+  stage.appendChild(list);
+  var f = $(".chI", list); if (f) try { f.focus(); } catch (e) { /* 沒關係 */ }
 }
 function drawSearchResults(main) {
   var r = _yzSearch_(HB, WV.q);
@@ -3512,7 +3617,10 @@ function dropZone(o) {
       busy = true; paint();
       var job = o.upload ? o.upload(uri, info) : uploadUri(uri, o.kind || "圖片").then(function (r) { o.set(r, info); });
       job.then(function () { busy = false; paint(); toast(o.done || "圖片放好了（已縮小、檔名換成亂碼）"); },
-        function (e) { busy = false; paint(); toast("❌ " + (e && e.message || "上傳失敗") + "：這張圖沒有放進去"); });
+        function (e) {   // 沒放進去：用小視窗講清楚（只跳一下的提示容易漏看）
+          busy = false; paint();
+          modal({ title: "❌ 這張圖沒有放進去", lines: [(e && e.message) || "上傳失敗", "請再放一次。一直失敗的話：截圖給開發者，或在 LINE 打「手冊圖片檢查」。"], buttons: [{ label: "知道了", cls: "sm pri" }] });
+        });
     });
   }
   file.onchange = function () { if (file.files[0]) take(file.files[0]); file.value = ""; };
@@ -3540,6 +3648,7 @@ function uploadUri(uri, kind) {
     UPL--; dirtyPaint();
     if (r && r.st === "lock") { logout("expired"); throw new Error("驗證過期了"); }
     if (!r || !r.ok || !r.url) throw new Error(r && r.err || "上傳失敗");
+    if (r.warn) modal({ title: "⚠ 圖片放好了，但是……", lines: [r.warn, "在 LINE 打「手冊圖片檢查」可以再檢查一次、自動修好。"], buttons: [{ label: "知道了", cls: "sm pri" }] });
     return r;
   }, function (e) { UPL--; dirtyPaint(); throw e; });
 }
@@ -4411,11 +4520,12 @@ function refreshPreview() {
   if (ED.cur.kind === "map") {
     var cat = ED.cat, cw = cat.web || 760;
     if (!cat.img || !cat.on) {
-      body.appendChild(h("div", { class: "pvempty" }, [!cat.img ? "還沒有目錄圖。" : "「開啟目錄圖」關掉了。", "這時候 LINE 的「📚 目錄」和網頁的「手冊目錄」，都會改回章元卡片。"]));
+      body.appendChild(h("div", { class: "pvempty" }, [!cat.img ? "還沒有目錄圖。" : "「開啟目錄圖」關掉了。", "這時候 LINE 的「🏠 首頁」和網頁的首頁，都會改回章元卡片。"]));
       return;
     }
+    var pcat = _yzMapLive_(cat, edHb(), false);   // 預覽＝藥師看到的樣子（還沒有標題的章是🔒）
     if (ED.view === "line") {
-      var lm = lineMap(cat, edHb(), {});
+      var lm = lineMap(pcat, edHb(), {});
       body.appendChild(h("div", { class: "pvwrap" }, [FlexView.render(lm.bubble, {})]));
       if (lm.split) {
         lm.each.forEach(function (by, k) { meter.appendChild(meterRow(k ? "右半張" : "左半張", by, YZ_BUBBLE_SAFE)); });
@@ -4425,11 +4535,11 @@ function refreshPreview() {
       meter.appendChild(hint("每個地點＝透明的「物品框」＋「標籤方塊」（圖示＋名稱＋圓點），兩個都點得到。是照 LINE 官方規格畫的；手機上實際長相要實機確認（待實機確認）。LINE 沒有「滑過」、也沒有 3D，滑過、說明卡、拖曳轉動只有網頁有（切到「網頁」看）。「圖片直接顯示」關掉時，圖不放，改成每個地點一個按鈕。"));
     } else if (panoOk(cat) && edCatSrc()) {
       var pvb = h("div", { class: "pvpano" }); body.appendChild(pvb);
-      var pw2 = webCatalogPano(pvb, cat, edHb(), { img: edCatSrc(), onSpot: function (to) { var i3 = _yzMapToInfo_(to, edHb()); toast("（預覽：這裡會跳到　" + (i3.ok ? i3.name : "（找不到）") + "）"); } });
+      var pw2 = webCatalogPano(pvb, pcat, edHb(), { img: edCatSrc(), onSpot: function (to) { var i3 = _yzMapToInfo_(to, edHb()); toast("（預覽：這裡會跳到　" + (i3.ok ? i3.name : "（找不到）") + "）"); } });
       if (pw2) PV.pano = pw2._api;
       meter.appendChild(hint("3D 環景：拖曳＝左右轉、上下看；滾輪（手機兩指）＝放大縮小；下面一排按鍵也可以。滑鼠移到按鍵或東西上：標籤變橘紅、畫面往那邊靠、出現說明卡；按說明卡（或再點一下）才進去。手機上：第一下＝選到（畫面轉過去），第二下＝進去。不支援 3D 的電腦，會自動改回平面的圖。"));
     } else {
-      var mb = h("div", { class: "pvweb", style: "width:" + (cw + 26) + "px;max-width:none" }, [webCatalogMap(cat, edHb(), { width: cw, onSpot: function (to) { var i2 = _yzMapToInfo_(to, edHb()); toast("（預覽：這裡會跳到　" + (i2.ok ? i2.name : "（找不到）") + "）"); } })]);
+      var mb = h("div", { class: "pvweb", style: "width:" + (cw + 26) + "px;max-width:none" }, [webCatalogMap(pcat, edHb(), { width: cw, onSpot: function (to) { var i2 = _yzMapToInfo_(to, edHb()); toast("（預覽：這裡會跳到　" + (i2.ok ? i2.name : "（找不到）") + "）"); } })]);
       var mz = Math.min(1, (pvw - 28) / (cw + 26)); if (mz < 1) mb.style.zoom = mz.toFixed(3);
       body.appendChild(h("div", { class: "pvwebwrap" }, [mb]));
       meter.appendChild(hint((cat.fx !== false ? "滑鼠移到標籤或東西上：標籤變橘紅、鏡頭靠近、底下出現說明卡；按說明卡（或再點一下）才進去。手機上：第一下＝選到，第二下＝進去。" : "動態效果關掉了：滑過只會讓標籤變色。") + (mz < 1 ? "（這裡縮小到 " + Math.round(mz * 100) + "% 顯示，實際寬度 " + cw + " px）" : "")));
@@ -4563,7 +4673,7 @@ function renderMapTree(c1) {
 function renderMapForm(f) {
   var cat = ED.cat, MIN = YZ_MAP_MIN_PCT, ui = { nums: null }; ED.mapUi = ui;
   f.appendChild(h("h3", { style: "font-size:16px" }, ["🖼 目錄圖", mkEl(25)]));
-  f.appendChild(hint("LINE 和網頁的「目錄」可以是一張實景圖（像你的「圖一」）：在圖上框出每一樣東西，每樣東西會有一個「標籤（圖示＋名稱）＋圓點」，點標籤或點東西，就進到那一章（或某一個標題）。網頁上是 3D 環景（可以拖曳轉動、縮放）；LINE 上圖很寬就切成左右兩張。"));
+  f.appendChild(hint("LINE 和網頁的「首頁」（目錄）可以是一張實景圖（像你的「圖一」）：在圖上框出每一樣東西，每樣東西會有一個「標籤（圖示＋名稱）＋圓點」，點標籤或點東西，就進到那一章（或某一個標題）。網頁的首頁是整個畫面的 3D 環景（可以拖曳轉動、縮放）；LINE 上圖很寬就切成左右兩張。還沒有標題的章，藥師看到的是🔒（寫好第一個標題就自動打開）。"));
 
   // ① 圖
   f.appendChild(lbl("", "目錄圖片（圖片檔名自動換成亂碼）"));
@@ -4596,7 +4706,7 @@ function renderMapForm(f) {
     c.onchange = function () { set(c.checked); c.checked = !!get(); drawCanvas(); changed(); };
     return h("label", { class: "mck" }, [c, h("span", {}, [h("b", {}, [label]), note ? h("span", { class: "muted mcn" }, ["　" + note]) : null])]);
   }
-  onBox = chkBox("開啟目錄圖", function () { return cat.on; }, function (v) { if (v && !cat.img) { toast("先放一張目錄圖"); cat.on = false; return; } cat.on = v; }, "關掉：LINE 的「📚 目錄」和網頁的「手冊目錄」改回章元卡片");
+  onBox = chkBox("開啟目錄圖", function () { return cat.on; }, function (v) { if (v && !cat.img) { toast("先放一張目錄圖"); cat.on = false; return; } cat.on = v; }, "關掉：LINE 的「🏠 首頁」和網頁的首頁改回章元卡片");
   f.appendChild(h("div", { class: "mset" }, [
     onBox,
     chkBox("圖上顯示標籤（圖示＋名稱＋圓點）", function () { return cat.labels !== false; }, function (v) { cat.labels = v; }, "圖裡面已經有字的話，可以關掉（物品還是點得到）"),
@@ -4801,9 +4911,15 @@ function renderMapForm(f) {
   function drawChecks() {
     var r = _yzMapCheck_(cat, edHb()); ck.innerHTML = "";
     ck.appendChild(h("div", { class: "lbl" }, ["檢查（用「" + (cat.size || "giga") + "」卡片、圖寬約 " + r.px + " px 算）"]));
-    if (!r.bad && !r.warn) { ck.appendChild(h("div", { class: "mok" }, ["✅ 沒有問題：每個地點都點得到、連得到，標籤放得下，章元都有地方點。"])); return; }
+    var infos = r.general.filter(function (g) { return g.lv === "info"; });
+    var oneMi = function (g) { return h("div", { class: "mi " + g.lv }, [h("span", { class: "mic" }, [g.lv === "bad" ? "✖" : g.lv === "info" ? "ℹ️" : "⚠"]), h("span", {}, [g.msg])]); };
+    if (!r.bad && !r.warn) {
+      ck.appendChild(h("div", { class: "mok" }, ["✅ 沒有問題：每個地點都點得到、連得到，標籤放得下，章元都有地方點。"]));
+      if (infos.length) ck.appendChild(h("div", { class: "mlist" }, infos.map(oneMi)));
+      return;
+    }
     var box = h("div", { class: "mlist" });
-    r.general.forEach(function (g) { box.appendChild(h("div", { class: "mi " + g.lv }, [h("span", { class: "mic" }, [g.lv === "bad" ? "✖" : "⚠"]), h("span", {}, [g.msg])])); });
+    r.general.forEach(function (g) { box.appendChild(oneMi(g)); });
     cat.spots.forEach(function (s, i) {
       (r.spots[s.id] || []).forEach(function (x) {
         box.appendChild(h("div", { class: "mi " + x.lv + " go", onclick: function () { mapPick(s.id); } }, [h("span", { class: "mic" }, [x.lv === "bad" ? "✖" : "⚠"]), h("span", {}, [h("b", {}, ["第 " + (i + 1) + " 個「" + (s.label || "沒有名稱") + "」："]), x.msg])]));
@@ -4986,6 +5102,7 @@ function drawSettings() {
   }
   function row(k, title, desc) { box.appendChild(settingRow(title, desc, tog(c[k] !== false, function (v, el) { var p = {}; p[k] = v; if (k === "empReview" && !v) { modal({ title: "關掉「員工代號＋核可」？", lines: ["關掉以後，只要有補藥神器的人（登入過補藥神器網頁、或在 LINE 用補藥神器）都看得到藥戰手冊。保密會大幅降低。"], buttons: [{ label: "不要", cls: "sm" }, { label: "關掉", cls: "sm bad", fn: function () { save(p, el); } }] }); return; } save(p, el); }, title))); }
   row("empReview", "需要員工代號＋開發者核可", "關掉＝有補藥神器的人都看得到（不建議）");
+  row("showAll", "所有藥師都看得到「📘 藥戰手冊」按鍵", "LINE 下面那排每個人都有這顆；還沒核可的人按了是「申請」（填員工代號），內容一樣要核可＋驗證才看得到。關掉＝只有可以看的人才有這顆");
   var idle = h("input", { class: "in", type: "number", min: "5", max: "240", value: String(c.idle || 30), style: "width:80px", "aria-label": "閒置幾分鐘自動退出" });
   idle.onchange = function () { var v = Math.max(5, Math.min(240, parseInt(idle.value, 10) || 30)); idle.value = String(v); save({ idle: v }, idle); };
   box.appendChild(settingRow("閒置自動退出（分鐘）", "LINE 和網頁都用這個時間：LINE 下次一按就回補藥神器；網頁自動登出、要再驗證（5～240）", h("div", { class: "sw2" }, [idle, h("span", { class: "muted" }, ["分鐘"])])));
