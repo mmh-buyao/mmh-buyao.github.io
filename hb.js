@@ -16,6 +16,7 @@
  *               [tbl=表格的代號] 一張表格（第 29 批：表格也能「併到上一塊」；表格的內容放在這一塊的 tbls 裡）
  *   行內（可疊）：[b]粗體[/b]　[i]斜體[/i]　[u]底線[/u]　[s]刪除線[/s]　[c=red]顏色[/c]　[z=lg]大小[/z]　[m=yellow]螢光筆[/m]（第 30 批）
  *   公式（第 31 批）：[fx]1/6[/fx]　裡面照 Word 的打法（1/6＝上下排的分數、m^2、C_max、√(…)）；整個公式算一個字，不能從中間切開
+ *   反灰可複製（第 32 批）：[cp]要給藥師複製的字[/cp]　灰底的一條，旁邊一顆「📋 複製」（網頁、LINE 都是按了就複製好）；裡面是一般的字（不放格式），一樣不能從中間切開
  *   縮排：開頭的全形空格（一格＝一層，最多 3 層）
  *   字本身有「[b]」這種長得像標記的字，寫成「[[b]」（兩個左括號）；其他情況不用管。
  *   標記只管「這一行」，不會跨行。 */
@@ -54,22 +55,24 @@ var YZ_RT_MARKS = {
 };
 var YZ_RT_ORDER = ["m", "b", "i", "u", "s", "c", "z"];   // 寫出標記時的固定順序（疊起來才會剛好蓋住；螢光筆包在最外面）
 var YZ_RT_MAXLV = 3;                                 // 最多縮排 3 層
+var YZ_CP_MAX = 500;                                 // 第 32 批：反灰可複製一段最多幾個字（LINE 的「複製」最多 1000 字）
+function _yzCpClean_(s) { return String(s === null || s === undefined ? "" : s).replace(/\[\/cp\]/gi, "").replace(/[ \t]*[\r\n]+[ \t]*/g, " ").replace(/\t/g, " ").replace(/^\s+|\s+$/g, "").slice(0, YZ_CP_MAX); }   // 換行＝一個空白（路徑裡本來的空白不動）
 // 項目符號／編號／核對清單的記號（跟以前的「文字」一樣：行首打 1. (1) ① • - 就會自動排整齊）
 var YZ_RT_ITEM = /^((?:\d{1,2}[.、)）](?!\d)|\(\d{1,2}\)|（\d{1,2}）|[①-⑩]|[•・●☐☑]|-(?=\s)))\s*/;
 
 // ── 小工具 ──
 function _yzRtRunsText_(runs) { var s = ""; for (var i = 0; i < (runs || []).length; i++) s += runs[i].t; return s; }
-function _yzRtAttrKey_(r) { var k = ""; for (var i = 0; i < YZ_RT_ORDER.length; i++) k += (r[YZ_RT_ORDER[i]] ? YZ_RT_ORDER[i] + "=" + r[YZ_RT_ORDER[i]] + ";" : ""); return k + (r.fx ? "fx;" : ""); }
+function _yzRtAttrKey_(r) { var k = ""; for (var i = 0; i < YZ_RT_ORDER.length; i++) k += (r[YZ_RT_ORDER[i]] ? YZ_RT_ORDER[i] + "=" + r[YZ_RT_ORDER[i]] + ";" : ""); return k + (r.fx ? "fx;" : "") + (r.cp ? "cp;" : ""); }
 function _yzRtMerge_(runs) {   // 相鄰、格式一樣的合併；空字串丟掉
   var out = [];
   (runs || []).forEach(function (r) {
     if (!r || !r.t) return;
     var last = out[out.length - 1];
-    if (last && !last.fx && !r.fx && _yzRtAttrKey_(last) === _yzRtAttrKey_(r)) last.t += r.t; else out.push(_yzRtCopy_(r));   // 公式：一個一個分開（不跟旁邊的合併）
+    if (last && !last.fx && !r.fx && !last.cp && !r.cp && _yzRtAttrKey_(last) === _yzRtAttrKey_(r)) last.t += r.t; else out.push(_yzRtCopy_(r));   // 公式、反灰可複製：一個一個分開（不跟旁邊的合併）
   });
   return out;
 }
-function _yzRtCopy_(r) { var o = { t: r.t }; for (var i = 0; i < YZ_RT_ORDER.length; i++) if (r[YZ_RT_ORDER[i]]) o[YZ_RT_ORDER[i]] = r[YZ_RT_ORDER[i]]; if (r.fx) o.fx = 1; return o; }
+function _yzRtCopy_(r) { var o = { t: r.t }; for (var i = 0; i < YZ_RT_ORDER.length; i++) if (r[YZ_RT_ORDER[i]]) o[YZ_RT_ORDER[i]] = r[YZ_RT_ORDER[i]]; if (r.fx) o.fx = 1; if (r.cp) o.cp = 1; return o; }
 function _yzRtCut_(runs, n) {   // 去掉前 n 個字（算出「記號」之後，剩下的才是內文）
   var out = [];
   (runs || []).forEach(function (r) {
@@ -100,6 +103,10 @@ function _yzRtInline_(s) {
       if (s.substr(i, 4) === "[fx]") {   // 第 31 批：公式（到 [/fx] 為止整段原封不動；沒有結尾＝當成字）
         var fe = s.indexOf("[/fx]", i + 4);
         if (fe > i + 4) { flush(); var fr = { t: s.slice(i + 4, fe), fx: 1 }; for (var fk in cur) fr[fk] = cur[fk]; runs.push(fr); i = fe + 5; continue; }
+      }
+      if (s.substr(i, 4) === "[cp]") {   // 第 32 批：反灰可複製（到 [/cp] 為止整段原封不動；沒有結尾＝當成字）
+        var ce = s.indexOf("[/cp]", i + 4), ct = ce > i + 4 ? _yzCpClean_(s.slice(i + 4, ce)) : "";
+        if (ct) { flush(); var cr = { t: ct, cp: 1 }; for (var ck in cur) cr[ck] = cur[ck]; runs.push(cr); i = ce + 5; continue; }
       }
       var m = /^\[(\/?)(b|i|u|s|c|z|m)(?:=([a-z0-9]+))?\]/.exec(s.substr(i, 16));
       if (m) {
@@ -147,7 +154,7 @@ function _yzRtParse_(text) {   // 一段字 → 一行一行（編輯器載入�
 
 // ── 一行的資料 → 字 ──
 function _yzRtEsc_(s) {   // 字本身長得像標記的，左括號寫成兩個；結尾的「[」也寫成兩個（後面可能接標記）
-  return String(s).replace(/\[(?=\[|$|\/?(?:b|i|u|s|fx)\]|\/(?:c|z|m)\]|(?:c|z|m)=[a-z0-9]+\]|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?\])/g, "[[");
+  return String(s).replace(/\[(?=\[|$|\/?(?:b|i|u|s|fx|cp)\]|\/(?:c|z|m)\]|(?:c|z|m)=[a-z0-9]+\]|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?\])/g, "[[");
 }
 function _yzRtSerRuns_(runs) {
   var out = "", stack = [], x;
@@ -158,7 +165,7 @@ function _yzRtSerRuns_(runs) {
     for (x = stack.length - 1; x >= j; x--) out += "[/" + stack[x].charAt(0) + "]";
     stack = stack.slice(0, j);
     for (x = j; x < want.length; x++) { out += "[" + want[x] + "]"; stack.push(want[x]); }
-    out += r.fx ? "[fx]" + _yzFxClean_(r.t) + "[/fx]" : _yzRtEsc_(r.t);   // 公式：原封不動放在 [fx]…[/fx] 裡
+    out += r.fx ? "[fx]" + _yzFxClean_(r.t) + "[/fx]" : r.cp ? "[cp]" + _yzCpClean_(r.t) + "[/cp]" : _yzRtEsc_(r.t);   // 公式、反灰可複製：原封不動放在 [fx]…[/fx]、[cp]…[/cp] 裡
   });
   for (x = stack.length - 1; x >= 0; x--) out += "[/" + stack[x].charAt(0) + "]";
   return out;
@@ -188,7 +195,7 @@ function _yzRtPlainLines_(text) {
 }
 function _yzRtPlain_(text) { return _yzRtPlainLines_(text).join("\n"); }
 // 這段字有沒有用到格式標記（LINE 裡改字時，要提醒「請保留標記」）
-function _yzRtHas_(text) { return /\[(?:\/?(?:b|i|u|s|fx)|\/(?:c|z|m)|(?:c|z|m)=[a-z0-9]+|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?)\]/.test(String(text === null || text === undefined ? "" : text)); }
+function _yzRtHas_(text) { return /\[(?:\/?(?:b|i|u|s|fx|cp)|\/(?:c|z|m)|(?:c|z|m)=[a-z0-9]+|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?)\]/.test(String(text === null || text === undefined ? "" : text)); }
 // 第 30 批：這一行是不是「整行都畫了同一色螢光筆」（空白不算）→ 那個顏色；不是 → ""（LINE 整行的才能畫成底色）
 function _yzRtBand_(runs) {
   var m = "", any = false;
@@ -524,6 +531,29 @@ function _yzMarkBand_(node, m) {
   if (c.flex !== undefined) { w.flex = c.flex; delete c.flex; }
   return w;
 }
+// 第 32 批：反灰可複製（[cp]…[/cp]）：LINE 一段字裡不能放按鍵 → 那一行下面接「灰底的字＋📋 複製」（按了就複製好，最多 1000 字）。
+//   整行只有反灰的字：不重複寫那一行，只放灰條。藥師的 LINE 太舊（或電腦版）按了沒反應：請改用網頁（一樣按「📋 複製」）。
+var YZ_CP_BG = "#EEF1F5", YZ_CP_BD = "#C5CED8", YZ_CP_INK = "#1F2937";
+function _yzCpRow_(text, size) {
+  return { type: "box", layout: "horizontal", spacing: "sm", alignItems: "center", contents: [
+    { type: "box", layout: "vertical", flex: 1, backgroundColor: YZ_CP_BG, borderColor: YZ_CP_BD, borderWidth: "1px", cornerRadius: "6px", paddingTop: "5px", paddingBottom: "5px", paddingStart: "8px", paddingEnd: "8px", contents: [{ type: "text", text: text, size: size || "sm", color: YZ_CP_INK, wrap: true }] },
+    { type: "button", style: "primary", color: YZ_ACCENT, height: "sm", flex: 0, action: { type: "clipboard", label: "📋 複製", clipboardText: String(text).slice(0, 1000) } }
+  ] };
+}
+function _yzCpOnly_(runs) {   // 這一行是不是只有反灰可複製的字（空白不算）
+  var any = false;
+  for (var i = 0; i < (runs || []).length; i++) { var r = runs[i]; if (r.cp) { any = true; continue; } if (String(r.t || "").replace(/\s/g, "")) return false; }
+  return any;
+}
+function _yzCpWrap_(node, runs, size) {   // node＝這一行原本畫出來的樣子（可能是 null）→ 後面接灰條；沒有反灰的字就原樣
+  var cps = (runs || []).filter(function (r) { return r.cp && r.t; });
+  if (!cps.length) return node;
+  var rows = cps.map(function (r) { return _yzCpRow_(r.t, size); }), only = _yzCpOnly_(runs) || !node;
+  var c = node ? Object.assign({}, node) : null, w = { type: "box", layout: "vertical", spacing: "xs", contents: only ? rows : [c].concat(rows) };
+  if (c && c.margin) { w.margin = c.margin; delete c.margin; }
+  if (c && c.flex !== undefined) { w.flex = c.flex; delete c.flex; }
+  return w;
+}
 // 縮排（第 27 批：任何內容都能縮排）：把一個元件包進「左邊留 px」的方塊裡；它前面的間距（margin）搬到外面那一層，才算得到
 function _yzIndent_(node, px) {
   if (!node || !px) return node;
@@ -574,7 +604,7 @@ function _yzTextLines_(text, o) {
     }
     if (L.k === "box") {
       var T = YZ_RT_TONES[L.tone] || YZ_RT_TONES.info, kids = [];
-      for (j = i; j < ls.length && ls[j].k === "box" && ls[j].tone === L.tone && (ls[j].lv || 0) === (L.lv || 0); j++) { var bb = _yzRtBand_(ls[j].runs), bn = _yzMarkBand_(_yzRtTextNode_(ls[j].runs, { size: size, color: T.ink, band: !!bb }), bb); if (bn) kids.push(bn); }   // 第 30 批：整行螢光＝底色
+      for (j = i; j < ls.length && ls[j].k === "box" && ls[j].tone === L.tone && (ls[j].lv || 0) === (L.lv || 0); j++) { var bb = _yzRtBand_(ls[j].runs), bn = _yzCpWrap_(_yzMarkBand_(_yzRtTextNode_(ls[j].runs, { size: size, color: T.ink, band: !!bb }), bb), ls[j].runs, size); if (bn) kids.push(bn); }   // 第 30 批：整行螢光＝底色
       if (kids.length === 1) out.push(_yzIndent_({
         type: "box", layout: "horizontal", spacing: "sm", backgroundColor: T.bg, borderColor: T.bd, borderWidth: "1px", cornerRadius: "8px", paddingAll: "9px",
         contents: [{ type: "text", text: T.icon, size: size, flex: 0 }, { type: "box", layout: "vertical", flex: 1, spacing: "xs", contents: kids }]
@@ -594,7 +624,7 @@ function _yzTextLines_(text, o) {
     }
     if (L.k === "quote") {
       var qk = [];
-      for (j = i; j < ls.length && ls[j].k === "quote" && (ls[j].lv || 0) === (L.lv || 0); j++) { var qb = _yzRtBand_(ls[j].runs), qn = _yzMarkBand_(_yzRtTextNode_(ls[j].runs, { size: size, color: "#4A5565", band: !!qb }), qb); if (qn) qk.push(qn); }
+      for (j = i; j < ls.length && ls[j].k === "quote" && (ls[j].lv || 0) === (L.lv || 0); j++) { var qb = _yzRtBand_(ls[j].runs), qn = _yzCpWrap_(_yzMarkBand_(_yzRtTextNode_(ls[j].runs, { size: size, color: "#4A5565", band: !!qb }), qb), ls[j].runs, size); if (qn) qk.push(qn); }
       // 左邊那條線：外框塗灰色、只留 3px，裡面的白底蓋掉其餘的（比「單邊框線」可靠，LINE 沒有單邊框線）
       if (qk.length) out.push(_yzIndent_({ type: "box", layout: "horizontal", backgroundColor: "#B8C2CC", paddingStart: "3px", contents: [{ type: "box", layout: "vertical", backgroundColor: "#FFFFFF", paddingStart: "10px", spacing: "xs", contents: qk }] }, pad));
       i = j; first = false; continue;
@@ -606,7 +636,7 @@ function _yzTextLines_(text, o) {
     }
     var band = _yzRtBand_(L.runs);   // 第 30 批：整行畫了同一色螢光筆
     if (L.k === "item") {
-      var body = _yzMarkBand_(_yzRtTextNode_(L.runs, { size: size, color: color, flex: 1, band: !!band }), band);
+      var body = _yzCpWrap_(_yzMarkBand_(_yzRtTextNode_(L.runs, { size: size, color: color, flex: 1, band: !!band }), band), L.runs, size);   // 第 32 批：反灰可複製
       if (body) { var irow = { type: "box", layout: "horizontal", spacing: "sm", contents: [{ type: "text", text: L.mark, size: size, color: o.markColor || "#4A5565", flex: 0 }, body] }; if (pad) irow.paddingStart = pad + "px"; out.push(irow); }   // 沒縮排就不放 paddingStart（不留 undefined）
       i++; first = false; continue;
     }
@@ -614,6 +644,7 @@ function _yzTextLines_(text, o) {
       var H = YZ_RT_HEAD["h" + L.h];
       node = _yzMarkBand_(_yzRtTextNode_(L.runs, { size: H.line, color: H.color, weight: "bold", margin: first ? undefined : (L.h <= 2 ? "xxl" : "xl"), band: !!band }), band);   // 第 27 批：標題前面空大一點（太擠）
     } else node = _yzMarkBand_(_yzRtTextNode_(L.runs, { size: size, color: color, band: !!band }), band);
+    node = _yzCpWrap_(node, L.runs, size);   // 第 32 批：反灰可複製（灰條＋📋 複製）
     if (node) {
       out.push(_yzIndent_(node, pad));   // 第 27 批：標題也能縮排（以前標題不縮）
       first = false;
@@ -1055,6 +1086,7 @@ var YZ_MAP_TAP = 44;         // 標籤方塊至少這麼高（px）：手指好�
 var YZ_MAP_ICO = 14;         // 圖示寬（px，估計）
 var YZ_MAP_PILL_MAX = 96;    // 標籤寬超過這個（px）就提醒（太寬會擠到旁邊的標籤）
 var YZ_MAP_PILL_MAX_HALF = 124;   // 切成左右兩張時（一張只放一半的地點，比較不擠）的標準
+var YZ_MAP_PILL_SEP = 6;     // 第 32 批：LINE 上兩個標籤至少隔幾 px；再近（或疊在一起）就自動換一個方向（網頁不變）
 var YZ_MAP_WARN_BYTES = 20e3;   // 目錄卡片超過這個大小就提醒（上限抓 27 KB）
 var YZ_MAP_LOCK_INK = "#6B7480", YZ_MAP_LOCK_DOT = "#8A94A0", YZ_MAP_NEW = "#E5484D";
 var YZ_MAP_URL_SAMPLE = "https://drive.google.com/thumbnail?id=1AbCdEfGhIjKlMnOpQrStUvWxYz00000&sz=w1000";   // 算大小用：跟真的圖片網址一樣長
@@ -1140,6 +1172,29 @@ function _yzMapGeom_(s, cat) {
   }
   return { px: d.px, ih: d.ih, ax: ax, ay: ay, pos: pos, show: show, pw: pw, pill: pill, dot: { x0: ax - D / 2, y0: ay - D / 2, x1: ax + D / 2, y1: ay + D / 2 } };
 }
+// 第 32 批：LINE 上標籤太擠（疊在一起、或隔不到 YZ_MAP_PILL_SEP px，例如「錠劑」和「疑義處方」）→ 照順序一個一個放，
+//   太擠的那一個換到不擠、也不會超出圖的方向（下、上、右、左）；怎麼換都擠就照原本的。換過的多一個 auto（原本的方向），只影響 LINE 卡片（網頁照原本的方向）。
+function _yzMapNear_(a, b, sep) { return a.x0 < b.x1 + sep && b.x0 < a.x1 + sep && a.y0 < b.y1 + sep && b.y0 < a.y1 + sep; }
+function _yzMapIn_(p, d) {   // 超出圖的標籤，LINE 上會整個推回圖裡面（_yzMapTag_）：照推回來的位置算
+  var dx = p.x0 < 0 ? -p.x0 : p.x1 > d.px ? d.px - p.x1 : 0, dy = p.y0 < 0 ? -p.y0 : p.y1 > d.ih ? d.ih - p.y1 : 0;
+  return { x0: p.x0 + dx, x1: p.x1 + dx, y0: p.y0 + dy, y1: p.y1 + dy };
+}
+function _yzMapAuto_(spots, cat) {
+  if (!cat || cat.labels === false) return spots;
+  var d = _yzMapDims_(cat), placed = [], dots = spots.map(function (s) { return _yzMapGeom_(s, cat).dot; });
+  return spots.map(function (s, i) {
+    var own = _yzMapPos_(s.pos), g0 = _yzMapGeom_(s, cat), p0 = g0.pill ? _yzMapIn_(g0.pill, d) : null;
+    var clash = function (p) { return placed.some(function (q) { return _yzMapNear_(p, q, YZ_MAP_PILL_SEP); }) || dots.some(function (dd, j) { return j !== i && _yzMapBox_(p, dd) > 0; }); };
+    if (!p0 || !clash(p0)) { if (p0) placed.push(p0); return s; }
+    var tries = ["b", "t", "r", "l"].filter(function (p) { return p !== own; });
+    for (var k = 0; k < tries.length; k++) {
+      var t2 = Object.assign({}, s, { pos: tries[k], auto: own }), p2 = _yzMapGeom_(t2, cat).pill;
+      if (p2.x0 >= 0 && p2.y0 >= 0 && p2.x1 <= d.px && p2.y1 <= d.ih && !clash(p2)) { placed.push(p2); return t2; }
+    }
+    placed.push(p0);
+    return s;
+  });
+}
 function _yzMapAct_(s, hb) {   // 點了要做什麼：一般＝進到那一章；「尚未開放」＝只回一句「還在整理」
   var info = _yzMapToInfo_(s.to, hb), name = (s.label || (info.ok ? info.short : "") || "打開").slice(0, 20);
   if (s.st === "lock") return _yzPB_("yz=lock&p=" + (String(s.id).replace(/[^A-Za-z0-9_\-]/g, "") || "x"), name);
@@ -1212,7 +1267,7 @@ function _yzMapBubble_(cat, hb, o) {
   if (direct) {
     var cs = [{ type: "image", url: cat.img, size: "full", aspectMode: "cover", aspectRatio: cat.ar || _yzAR_(cat.w || 1000, cat.h || 650) }];
     spots.forEach(function (s) { cs.push(_yzMapHit_(s, hb)); });                                              // 先放物品框（在下面）
-    if (cat.labels !== false) spots.forEach(function (s) { cs.push(_yzMapTag_(s, cat, hb)); });               // 再放標籤（在上面）
+    if (cat.labels !== false) _yzMapAuto_(spots, cat).forEach(function (s) { cs.push(_yzMapTag_(s, cat, hb)); });   // 再放標籤（在上面）；第 32 批：太擠的自動換方向
     b.hero = { type: "box", layout: "vertical", paddingAll: "0px", contents: cs };
     if (cat.btns) foot = foot.concat(_yzMapButtons_(spots, hb));
   } else {
@@ -1313,8 +1368,12 @@ function _yzMapCheck1_(cat, hb, o) {
   if (!all.length) G("warn", "圖上還沒有任何地點。按「＋新增地點」，或在圖上快點兩下。");
   if (all.length > YZ_MAP_MAX) G("warn", "地點有 " + all.length + " 個，超過 " + YZ_MAP_MAX + " 個：多出來的不會放到 LINE 卡片上。");
   var items = [], labelsOn = cat.labels !== false;
+  var lay = {};   // 第 32 批：LINE 上太擠自動換方向 → 檢查照換過的算（不會再說「疊在一起」）；換了的多一句說明
+  if (o.geom) _yzMapAuto_(all.slice(0, YZ_MAP_MAX).map(_yzMapNorm_), cat).forEach(function (s) { if (s.auto) lay[s.id] = s; });
   all.slice(0, YZ_MAP_MAX).forEach(function (s0) {
-    var id = s0.id, n = _yzMapNorm_(s0), info = _yzMapToInfo_(s0.to, hb), wpx = n.w / 100 * px, hpx = n.h / 100 * ih, g = _yzMapGeom_(n, cat), nm = n.label || info.short || "（沒有名稱）";
+    var id = s0.id, n = _yzMapNorm_(s0), info = _yzMapToInfo_(s0.to, hb), wpx = n.w / 100 * px, hpx = n.h / 100 * ih, nm = n.label || info.short || "（沒有名稱）";
+    if (lay[n.id]) { n = Object.assign({}, n, { pos: lay[n.id].pos }); S(id, "info", "LINE 上跟旁邊的標籤太近：標籤自動放到" + ({ t: "上面", b: "下面", l: "左邊", r: "右邊" })[n.pos] + "（網頁照原本的方向）。"); }
+    var g = _yzMapGeom_(n, cat);
     if (!info.ok && n.st !== "lock") SB(id, "bad", "連到的章或標題找不到（可能被刪掉了），請重新選一個。");
     if (Number(s0.x) < 0 || Number(s0.y) < 0 || Number(s0.x) + Number(s0.w) > 100 || Number(s0.y) + Number(s0.h) > 100) SB(id, "warn", "物品框超出圖片邊界：超出的部分 LINE 不會顯示。");
     var mn = Math.min(wpx, hpx);
@@ -3041,10 +3100,41 @@ function fxEl(src) {   // 一個公式（念螢幕的軟體念一行的寫法：
   var lin = _yzFxLinear_(src);
   return h("span", { class: "fx", role: "math", "aria-label": lin, title: lin, style: FXS.fx }, [fxNode(_yzFxParse_(src))]);
 }
+// 第 32 批：反灰可複製（[cp]…[/cp]）：灰底的一條（字可以選）＋旁邊「📋 複製」（按了就複製好，直接去貼上）。樣式直接寫在元件上（hb.css 舊的也一樣）
+var CPS = {
+  w: "display:inline-flex;align-items:center;flex-wrap:wrap;gap:.35em;max-width:100%;vertical-align:middle;margin:.12em .2em",
+  t: "background:#EEF1F5;border:1px solid #C5CED8;border-radius:6px;padding:.1em .5em;color:#1F2937;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,'Noto Sans TC',monospace;font-size:.94em;line-height:1.5;overflow-wrap:anywhere;-webkit-user-select:all;user-select:all;font-weight:400;font-style:normal;text-decoration:none",
+  b: "display:inline-flex;align-items:center;gap:.2em;border:1px solid #0E7C76;background:#0E7C76;color:#fff;border-radius:999px;padding:.12em .7em;font-size:.84em;font-weight:700;line-height:1.4;cursor:pointer;white-space:nowrap;font-family:inherit"
+};
+function copyText(text) {   // 複製到剪貼簿：Promise（true＝好了）。新的瀏覽器用 clipboard；不行就用舊的方法（選起來、copy）
+  return new Promise(function (ok) {
+    var old = function () {
+      var ta = h("textarea", { "aria-hidden": "true", style: "position:fixed;left:-9999px;top:0;opacity:0" }); ta.value = text; document.body.appendChild(ta);
+      var done = false; try { ta.select(); done = document.execCommand("copy"); } catch (e) { done = false; }
+      ta.remove(); ok(!!done);
+    };
+    try { if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext !== false) { navigator.clipboard.writeText(text).then(function () { ok(true); }, old); return; } } catch (e) { /* 換舊的方法 */ }
+    old();
+  });
+}
+function cpEl(text, hl) {
+  var short = text.length > 36 ? text.slice(0, 36) + "…" : text;
+  var b = h("button", { type: "button", class: "ycp-b", style: CPS.b, title: "複製：" + text, "aria-label": "複製「" + short + "」" }, ["📋 複製"]);
+  b.onclick = function (e) {
+    e.preventDefault(); e.stopPropagation();
+    copyText(text).then(function (ok) {
+      if (!ok) { toast("❌ 沒有複製成功：請把灰底的字選起來，按 Ctrl+C（手機：長按）"); return; }
+      toast("📋 已複製「" + short + "」：直接去貼上就好");
+      b.textContent = "✅ 已複製"; clearTimeout(b._t); b._t = setTimeout(function () { if (b.isConnected) b.textContent = "📋 複製"; }, 1800);
+    });
+  };
+  return h("span", { class: "ycp", style: CPS.w }, [h("span", { class: "ycp-t", style: CPS.t }, hlNodes(text, hl)), b]);
+}
 // 一行字裡一小段一小段（各有自己的格式）→ 網頁上的 span。搜尋的字照樣用 <mark> 標出來
 function rtKids(runs, hl) {
   var out = [];
   (runs || []).forEach(function (r) {
+    if (r.cp) { out.push(cpEl(r.t, hl)); return; }   // 第 32 批：反灰可複製（自己的樣子，外面的粗體、顏色不套）
     var kids = r.fx ? [fxEl(r.t)] : hlNodes(r.t, hl);   // 第 31 批：公式
     if (!(r.b || r.i || r.u || r.s || r.c || r.z || r.m)) { out = out.concat(kids); return; }
     var mk = r.m && YZ_RT_MARKS[r.m];   // 第 30 批：螢光筆（底色）
@@ -4142,7 +4232,7 @@ function rteCreate(o) {
   var inst = {};
   var body = h("div", { class: "rtbody", contenteditable: "true", spellcheck: "false", autocapitalize: "off", autocorrect: "off", role: "textbox", "aria-multiline": "true", "aria-label": "文字內容（選取文字後，按最上面第二排的按鍵）" });
   var rawTa = h("textarea", { class: "ta rtraw", spellcheck: "false", "aria-label": "原始標記" });
-  var rawNote = h("div", { class: "hint rtrawnote" }, ["標記模式：這就是「LINE 裡改字」時看到的樣子。[b]…[/b] 粗體、[c=red]…[/c] 紅字、[m=yellow]…[/m] 黃色螢光筆、[fx]1/6[/fx] 公式、[h2] 標題。改完再按一次「</> 標記」回到一般模式。"]);
+  var rawNote = h("div", { class: "hint rtrawnote" }, ["標記模式：這就是「LINE 裡改字」時看到的樣子。[b]…[/b] 粗體、[c=red]…[/c] 紅字、[m=yellow]…[/m] 黃色螢光筆、[fx]1/6[/fx] 公式、[cp]…[/cp] 反灰可複製、[h2] 標題。改完再按一次「</> 標記」回到一般模式。"]);
   rawTa.hidden = true; rawNote.hidden = true;
   var el = h("div", { class: "rte" }, [body, rawNote, rawTa]);
   var lines = _yzRtParse_(o.value || "");
@@ -4151,11 +4241,14 @@ function rteCreate(o) {
 
   // ───────── 資料 → 畫面 ─────────
   function runNode(r) {
-    if (!(r.b || r.i || r.u || r.s || r.c || r.z || r.m || r.fx)) return document.createTextNode(r.t);
-    var sp = h("span", { class: "rt" + (r.b ? " rt-b" : "") + (r.i ? " rt-i" : "") + (r.u ? " rt-u" : "") + (r.s ? " rt-s" : "") + (r.z ? " rt-z" + r.z : "") + (r.m && YZ_RT_MARKS[r.m] ? " rt-m" : "") + (r.fx ? " rt-fx" : "") });
+    if (!(r.b || r.i || r.u || r.s || r.c || r.z || r.m || r.fx || r.cp)) return document.createTextNode(r.t);
+    var sp = h("span", { class: "rt" + (r.b ? " rt-b" : "") + (r.i ? " rt-i" : "") + (r.u ? " rt-u" : "") + (r.s ? " rt-s" : "") + (r.z ? " rt-z" + r.z : "") + (r.m && YZ_RT_MARKS[r.m] ? " rt-m" : "") + (r.fx ? " rt-fx" : "") + (r.cp ? " rt-cp" : "") });
     if (r.fx) {   // 第 31 批：公式＝一整塊（裡面不能打字；點一下打開「∑ 公式」改）。data-fx＝公式原本的寫法（1/6）
       sp.setAttribute("contenteditable", "false"); sp.setAttribute("data-fx", r.t); sp.setAttribute("title", "公式（點一下修改）：" + r.t);
       sp.appendChild(fxEl(r.t));
+    } else if (r.cp) {   // 第 32 批：反灰可複製＝一整塊（灰底；點一下改字或拿掉）。data-cp＝那段字
+      sp.setAttribute("contenteditable", "false"); sp.setAttribute("data-cp", r.t); sp.setAttribute("title", "反灰可複製（藥師按旁邊的「📋 複製」就複製好）：" + r.t + "\n點一下可以改字或拿掉");
+      sp.appendChild(h("span", { class: "rt-cpt" }, [r.t])); sp.appendChild(h("span", { class: "rt-cpb", "aria-hidden": "true" }, ["📋"]));
     } else sp.textContent = r.t;
     if (r.b) sp.setAttribute("data-b", "1");
     if (r.i) sp.setAttribute("data-i", "1");
@@ -4262,10 +4355,15 @@ function rteCreate(o) {
 
   // ───────── 畫面 → 資料 ─────────
   function isFx(n) { return !!n && n.nodeType === 1 && n.hasAttribute("data-fx"); }
+  function isCp(n) { return !!n && n.nodeType === 1 && n.hasAttribute("data-cp"); }   // 第 32 批：反灰可複製
+  function isAtom(n) { return isFx(n) || isCp(n); }   // 一整塊的（公式、反灰可複製）：游標只能在它前面或後面
+  function atomOf(n) { while (n && n !== body) { if (isAtom(n)) return n; n = n.parentNode; } return null; }
   function fxOf(n) { while (n && n !== body) { if (isFx(n)) return n; n = n.parentNode; } return null; }   // 在哪個公式裡面（沒有＝null）
+  function cpOf(n) { while (n && n !== body) { if (isCp(n)) return n; n = n.parentNode; } return null; }
   function textLen(n) {
     if (n.nodeType === 3) return n.nodeValue.length;
     if (isFx(n)) return n.getAttribute("data-fx").length;   // 第 31 批：公式＝原本寫法的字數（跟存起來的一樣）
+    if (isCp(n)) return n.getAttribute("data-cp").length;   // 第 32 批：反灰可複製＝那段字的字數
     if (n.nodeName === "BR" || (n.nodeType === 1 && n.getAttribute("contenteditable") === "false")) return 0;
     var s = 0; for (var c = n.firstChild; c; c = c.nextSibling) s += textLen(c);
     return s;
@@ -4285,6 +4383,7 @@ function rteCreate(o) {
       if (n.hasAttribute("data-z") && YZ_RT_SIZES[n.getAttribute("data-z")]) a.z = n.getAttribute("data-z");
       if (n.hasAttribute("data-m") && YZ_RT_MARKS[n.getAttribute("data-m")]) a.m = n.getAttribute("data-m");
       if (isFx(n)) { var fr = { t: _yzFxClean_(n.getAttribute("data-fx")), fx: 1 }; for (var k3 in a) fr[k3] = a[k3]; if (fr.t) runs.push(fr); return; }   // 第 31 批：公式（裡面畫出來的分數不算字）
+      if (isCp(n)) { var cr = { t: _yzCpClean_(n.getAttribute("data-cp")), cp: 1 }; for (var k4 in a) cr[k4] = a[k4]; if (cr.t) runs.push(cr); return; }   // 第 32 批：反灰可複製（裡面的 📋 不算字）
       for (var c = n.firstChild; c; c = c.nextSibling) walk(c, a);
     })(root, {});
     return _yzRtMerge_(runs);
@@ -4318,7 +4417,7 @@ function rteCreate(o) {
       var all = lns[i].getElementsByTagName("*");
       for (j = 0; j < all.length; j++) {
         var e = all[j]; if (e.nodeName === "BR") continue;
-        if (fxOf(e.parentNode)) continue;   // 第 31 批：公式裡面（畫分數用的標籤）不算
+        if (atomOf(e.parentNode)) continue;   // 第 31 批：公式裡面（畫分數用的標籤）不算；第 32 批：反灰可複製裡面也是
         if (e.nodeName === "SPAN" && e.classList.contains("rt")) continue;
         return true;
       }
@@ -4335,8 +4434,8 @@ function rteCreate(o) {
   // ───────── 游標位置（第幾行、第幾個字） ─────────
   function lineIndexOf(node) { var n = node; while (n && n.parentNode !== body) n = n.parentNode; return n ? Array.prototype.indexOf.call(body.childNodes, n) : -1; }
   function domPos(node, off, end) {
-    var fo = fxOf(node);
-    if (fo) { node = fo.parentNode; off = Array.prototype.indexOf.call(node.childNodes, fo) + (end ? 1 : 0); }   // 第 31 批：在公式裡面＝公式前面／後面（公式是一整塊）
+    var fo = atomOf(node);
+    if (fo) { node = fo.parentNode; off = Array.prototype.indexOf.call(node.childNodes, fo) + (end ? 1 : 0); }   // 第 31 批：在公式裡面＝公式前面／後面（公式是一整塊）；第 32 批：反灰可複製也是
     if (node === body) { var last = body.childNodes.length - 1, li0 = Math.max(0, Math.min(off, last)); return { li: li0, o: off > last ? textLen(body.childNodes[li0]) : 0 }; }
     var li = lineIndexOf(node); if (li < 0) return null;
     var lineNode = body.childNodes[li], count = 0, found = false;
@@ -4347,7 +4446,7 @@ function rteCreate(o) {
         found = true; return;
       }
       if (n.nodeType === 3) { count += n.nodeValue.length; return; }
-      if (isFx(n)) { count += textLen(n); return; }
+      if (isAtom(n)) { count += textLen(n); return; }
       if (n.nodeName === "BR" || (n.nodeType === 1 && n.getAttribute("contenteditable") === "false")) return;
       for (var c = n.firstChild; c; c = c.nextSibling) { walk(c); if (found) return; }
     })(lineNode);
@@ -4361,7 +4460,7 @@ function rteCreate(o) {
       if (res) return;
       if (n.nodeType === 3) { if (rest <= n.nodeValue.length) { res = { node: n, offset: rest }; return; } rest -= n.nodeValue.length; lastP = { node: n, offset: n.nodeValue.length }; return; }
       if (n.nodeName === "BR") return;
-      if (isFx(n)) {   // 第 31 批：公式是一整塊：游標只能在它前面或後面
+      if (isAtom(n)) {   // 第 31 批：公式是一整塊：游標只能在它前面或後面（第 32 批：反灰可複製也是）
         var fl = textLen(n), pi = Array.prototype.indexOf.call(n.parentNode.childNodes, n);
         if (rest <= 0) { res = { node: n.parentNode, offset: pi }; return; }
         if (rest < fl) { res = { node: n.parentNode, offset: pi + 1 }; return; }
@@ -4651,6 +4750,56 @@ function rteCreate(o) {
     }
     rteFxDialog(init, !!at, function (src) { fxPut(src, at, s); }, at ? function () { fxPut("", at, s); } : null);
   }
+  // ── 第 32 批：反灰可複製 ──
+  // 選了一行裡的字 → 直接變成灰底的一條（不用再打）；改一個舊的（at＝{li, o, n, src}）：text 空的＝拿掉（字留著，變回一般的字）
+  function cpPut(text, at, sel) {
+    text = _yzCpClean_(text);
+    if (sel) { focusBody(); try { setSel(sel.a, sel.b); } catch (e) { /* 位置對不上就算了 */ } lastSel = sel; }
+    var lost = false;
+    run(function (ls, s) {
+      if (at) {
+        var L = ls[at.li], len = L && !rteIsBlock(L) ? rteLen(L) : 0, old = len ? _yzRtSlice_(L.runs, at.o, at.o + at.n) : [];
+        if (old.length !== 1 || !old[0].cp || old[0].t !== at.src) { lost = true; return s; }   // 畫面重畫過、位置對不上：不要改錯地方
+        var nr = _yzRtCopy_(old[0]);
+        if (text) nr.t = text; else { delete nr.cp; nr.t = at.src; }   // 拿掉：字留著，變回一般的字
+        L.runs = _yzRtMerge_(_yzRtSlice_(L.runs, 0, at.o).concat([nr], _yzRtSlice_(L.runs, at.o + at.n, len)));
+        return caret(at.li, at.o + nr.t.length);
+      }
+      if (!text) return s;
+      if (s.a.li !== s.b.li) s = { a: s.b, b: s.b };   // 選了好幾行：不換掉，放在選取的最後面
+      var pos = deleteSel(ls, s), L2 = ls[pos.li];
+      if (rteIsBlock(L2)) { ls.splice(pos.li + 1, 0, rteNewLine()); pos = { li: pos.li + 1, o: 0 }; L2 = ls[pos.li]; }
+      var len2 = rteLen(L2), pv = pos.o > 0 ? _yzRtSlice_(L2.runs, pos.o - 1, pos.o)[0] : null, r = pv ? _yzRtCopy_(pv) : {};
+      delete r.fx; r.t = text; r.cp = 1;
+      L2.runs = _yzRtMerge_(_yzRtSlice_(L2.runs, 0, pos.o).concat([r], _yzRtSlice_(L2.runs, pos.o, len2)));
+      return caret(pos.li, pos.o + text.length);
+    });
+    if (lost) toast("畫面剛剛更新過，請再點一次那一條");
+    return !lost;
+  }
+  // 「⧉ 反灰可複製」：chip＝點到的那一條（改它）；選了字＝直接變成反灰可複製；沒選＝打開小視窗打字
+  function cmdCp(chip) {
+    if (rawMode) return;
+    var at = null, init = "", s = null, ls = readLines();
+    if (chip && body.contains(chip)) {
+      var cp0 = domPos(chip.parentNode, Array.prototype.indexOf.call(chip.parentNode.childNodes, chip));
+      if (!cp0) return;
+      init = chip.getAttribute("data-cp") || "";
+      at = { li: cp0.li, o: cp0.o, n: init.length, src: init };
+    } else {
+      s = getSel() || lastSel;
+      if (s && !isCollapsed(s) && s.a.li === s.b.li && ls[s.a.li] && !rteIsBlock(ls[s.a.li])) {
+        var pc = _yzRtSlice_(ls[s.a.li].runs, s.a.o, s.b.o);
+        if (pc.length === 1 && pc[0].cp) { init = pc[0].t; at = { li: s.a.li, o: s.a.o, n: init.length, src: init }; }   // 選到的剛好是一條：改它
+        else {
+          var txt = _yzCpClean_(rteTxt(pc).replace(/\s+/g, " "));
+          if (txt && !pc.some(function (r) { return r.fx; })) { if (cpPut(txt, null, s)) toast("⧉ 好了：藥師按旁邊的「📋 複製」就複製好（點一下這一條可以改字或拿掉）"); return; }
+          init = txt;
+        }
+      } else if (s && !isCollapsed(s) && s.a.li !== s.b.li) { toast("一次一行：請只選一行裡的字"); return; }
+    }
+    rteCpDialog(init, !!at, function (v) { cpPut(v, at, s); }, at ? function () { cpPut("", at, s); } : null);
+  }
   function cmdText(str, mode) {   // 在游標處放字（表情符號、貼上）。mode："markup"＝當成格式文字讀（從 LINE 或這個編輯器複製來的）；其他＝一般字，一行一行放
     str = String(str === null || str === undefined ? "" : str).replace(/\r\n?/g, "\n").replace(/ /g, " ");
     var P = mode === "markup" ? _yzRtParse_(str) : str.split("\n").map(function (x) { return { k: "p", lv: 0, runs: x ? [{ t: x }] : [] }; });
@@ -4688,7 +4837,7 @@ function rteCreate(o) {
 
   // ───────── 現在的狀態（給格式列用） ─────────
   function state() {
-    var ls = readLines(), s = getSel() || lastSel, st = { ok: !!s, kind: null, tone: null, list: null, b: 0, i: 0, u: 0, s: 0, c: null, z: null, m: null };
+    var ls = readLines(), s = getSel() || lastSel, st = { ok: !!s, kind: null, tone: null, list: null, b: 0, i: 0, u: 0, s: 0, c: null, z: null, m: null, cp: 0 };
     if (!s) return st;
     var first = ls[Math.min(s.a.li, ls.length - 1)];
     if (first) { st.kind = first.k; st.tone = first.tone || null; var it = rteIsBlock(first) || first.k !== "p" ? null : _yzRtItem_(rteTxt(first.runs)); st.list = it ? rteMarkClass(it.mark) : null; }
@@ -4708,6 +4857,7 @@ function rteCreate(o) {
       st.z = pieces.every(function (r) { return (r.z || null) === z0; }) ? (z0 || "") : null;
       var m0 = pieces[0].m || null;
       st.m = pieces.every(function (r) { return (r.m || null) === m0; }) ? (m0 || "") : null;
+      st.cp = !isCollapsed(s) && pieces.length === 1 && pieces[0].cp ? 1 : 0;   // 第 32 批：選到的剛好是一段反灰可複製
     }
     return st;
   }
@@ -4830,11 +4980,11 @@ function rteCreate(o) {
     else toast("剪貼簿裡沒有文字");
   });
   var fxDown = null;   // 第 31 批：按下去的時候在哪個公式上（放開前畫面如果動了一下，放開時就不在公式上，瀏覽器不會把「點一下」送給公式）
-  body.addEventListener("pointerdown", function (e) { var fo = fxOf(e.target); fxDown = fo ? { el: fo, x: e.clientX, y: e.clientY } : null; });
-  body.addEventListener("click", function (e) {   // 點一下公式＝打開「∑ 公式」改它
-    var fo = fxOf(e.target), d = fxDown; fxDown = null;
-    if (!fo && d && d.el.isConnected && Math.abs(e.clientX - d.x) < 8 && Math.abs(e.clientY - d.y) < 8) fo = d.el;   // 滑鼠沒動：就是點那個公式
-    if (fo && !rawMode) { e.preventDefault(); RTE.cur = inst; cmdFx(fo); }
+  body.addEventListener("pointerdown", function (e) { var fo = atomOf(e.target); fxDown = fo ? { el: fo, x: e.clientX, y: e.clientY } : null; });
+  body.addEventListener("click", function (e) {   // 點一下公式＝打開「∑ 公式」改它；第 32 批：點一下反灰可複製＝改字或拿掉
+    var fo = atomOf(e.target), d = fxDown; fxDown = null;
+    if (!fo && d && d.el.isConnected && Math.abs(e.clientX - d.x) < 8 && Math.abs(e.clientY - d.y) < 8) fo = d.el;   // 滑鼠沒動：就是點那一塊
+    if (fo && !rawMode) { e.preventDefault(); RTE.cur = inst; if (isCp(fo)) cmdCp(fo); else cmdFx(fo); }
   });
   body.addEventListener("dragstart", function (e) { e.preventDefault(); });
   body.addEventListener("drop", function (e) {   // 把圖拖進來：放一張圖（其他東西不收）
@@ -4889,7 +5039,7 @@ function rteCreate(o) {
 
   render(); histInit();
   inst.el = el; inst.body = body;
-  inst.cmd = { inline: cmdInline, clear: cmdClear, kind: cmdKind, list: cmdList, line: cmdInsertLine, indent: cmdIndent, text: cmdText, undo: undo, redo: redo, raw: function () { setRaw(!rawMode); }, img: cmdImg, mark: cmdMark, fx: function () { cmdFx(null); }, copy: cmdCopy, paste: cmdPaste };
+  inst.cmd = { inline: cmdInline, clear: cmdClear, kind: cmdKind, list: cmdList, line: cmdInsertLine, indent: cmdIndent, text: cmdText, undo: undo, redo: redo, raw: function () { setRaw(!rawMode); }, img: cmdImg, mark: cmdMark, fx: function () { cmdFx(null); }, cp: function () { cmdCp(null); }, copy: cmdCopy, paste: cmdPaste };
   inst.refresh = function () { lines = readLines(); render(); };   // 圖片裡的字辨識好了之類（畫面重畫，內容不變）
   inst.state = state; inst.value = function () { return rawMode ? rawTa.value.replace(/\n+$/, "") : value(); }; inst.isRaw = function () { return rawMode; };
   inst.splitAtCaret = function () { if (rawMode) setRaw(false); return splitAtCaret(); };
@@ -4913,6 +5063,43 @@ var RTE_FX_KEYS = [
 ];
 var RTE_FX_SYM = ["×", "÷", "±", "≤", "≥", "≈", "≠", "→", "·", "°", "µ", "Δ"];
 var RTE_FX_EX = [["分數", "1/6"], ["每平方公尺", "mg/m^2"], ["下標", "C_max"], ["CrCl", "((140-年齡)×體重)/(72×Scr)"], ["BSA", "√((身高×體重)/3600)"]];
+// 第 32 批：「⧉ 反灰可複製」的小視窗：打字（或改字）→ 下面看到藥師看到的樣子；改一條舊的：可以「拿掉」（字留著，變回一般的字）
+function rteCpDialog(init, editing, onDone, onRemove) {
+  var bx = h("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-label": "反灰可複製" }), shut = false;
+  var close = function () { if (shut) return; shut = true; bx.remove(); };
+  var inp = h("input", { class: "in cpin", type: "text", maxlength: String(YZ_CP_MAX), placeholder: "例如：檔案放在哪裡的路徑、要給藥師貼上的字", "aria-label": "要給藥師複製的字", autocomplete: "off", autocapitalize: "off", spellcheck: "false" });
+  inp.value = init || "";
+  var pv = h("div", { class: "cppv", "aria-live": "polite" });
+  var okB = btn(editing ? "改好了" : "放進去", function () {
+    var v = _yzCpClean_(inp.value);
+    if (!v) { toast("先打要給藥師複製的字"); inp.focus(); return; }
+    close(); onDone(v);
+  }, "sm pri cpok");
+  function paint() {
+    var v = _yzCpClean_(inp.value);
+    pv.innerHTML = ""; okB.disabled = !v;
+    if (!v) { pv.appendChild(h("span", { class: "muted" }, ["在上面打字，這裡就是藥師在網頁上看到的樣子"])); return; }
+    pv.appendChild(cpEl(v));
+  }
+  var btns = [];
+  if (onRemove) btns.push(btn("拿掉（變回一般的字）", function () { close(); onRemove(); }, "sm bad cpdel"));
+  btns.push(h("span", { class: "fxsp" }), btn("取消", close, "sm"), okB);
+  bx.appendChild(h("div", { class: "dlg cpdlg" }, [
+    h("h3", {}, [editing ? "⧉ 改反灰可複製" : "⧉ 反灰可複製"]),
+    h("p", { class: "dlg-p" }, ["藥師看到一條灰底的字，旁邊有「📋 複製」：按一下就複製好，直接去貼上（網頁、LINE 都一樣）。適合放檔案的路徑、範本的位置、常常要打的字。"]),
+    inp, pv,
+    h("div", { class: "hint" }, ["一條最多 " + YZ_CP_MAX + " 個字，只放一般的字（不放粗體、顏色）。LINE 太舊（或電腦版）按了沒反應的話：請藥師改用網頁（一樣按「📋 複製」）。"]),
+    h("div", { class: "dlg-b" }, btns)
+  ]));
+  inp.addEventListener("input", paint);
+  inp.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); okB.click(); } });
+  bx.onkeydown = function (e) { if (e.key === "Escape") close(); };
+  bx.addEventListener("mousedown", function (e) { if (e.target === bx) close(); });   // 點外面＝取消
+  document.body.appendChild(bx);
+  paint();
+  try { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } catch (e) { /* 沒關係 */ }
+  return close;
+}
 function rteFxDialog(init, editing, onDone, onRemove) {
   var bx = h("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-label": "數學公式" }), shut = false;
   var close = function () { if (shut) return; shut = true; bx.remove(); };
@@ -4975,6 +5162,7 @@ var RTE_BAR = [
     { id: "mark", h: '<span class="fbM">🖍</span><i class="fbmbar"></i><span class="fbcar">▾</span>', tip: "螢光筆（黃、綠、藍、粉、橘、紫）：先選取要畫的字。Ctrl+Shift+H＝用上一次的顏色畫／再按一次拿掉", pop: "mark" },
     { id: "size", h: "Aa ▾", tip: "文字大小（小・普通・大・特大）：先選取要改的字", pop: "size" },
     { id: "fx", h: "∑ 公式", tip: "數學公式（像 Word 一樣打）：1/6＝上下排的分數、m^2＝次方、C_max＝下標、√(…)＝根號。放好的公式點一下可以修改", a: ["fx"] },
+    { id: "cp", h: "⧉ 反灰可複製", tip: "反灰可複製：選起來的字（例如檔案的路徑）變成灰底的一條，旁邊有「📋 複製」，藥師按一下就複製好、直接去貼上（網頁、LINE 都有）。放好的點一下可以改字或拿掉", a: ["cp"] },
     { id: "clear", h: "清除格式", tip: "把選到的字的粗體、顏色、大小…全部拿掉", a: ["clear"] }
   ] },
   { g: "整行", items: [
@@ -5090,6 +5278,7 @@ function rteBarSync() {
       else if (id === "ul" || id === "ol" || id === "todo") on = st.list === id;
       else if (id === "p") on = st.kind === "p" && !st.list;
       else if (id === "mark") on = !!st.m;   // 第 30 批：選到的字整段都是同一色螢光＝亮
+      else if (id === "cp") on = !!st.cp;   // 第 32 批：選到的剛好是一條反灰可複製
     }
     if (id === "raw") { dis = !c; on = raw; }
     if (id === "undo" || id === "redo") { var hh = c ? c.hasHist() : { undo: false, redo: false }; dis = !c || raw || !hh[id]; }
@@ -5099,22 +5288,22 @@ function rteBarSync() {
   var cb = B.color && B.color.querySelector(".fbcbar"); if (cb) cb.style.background = YZ_RT_COLORS[(st && st.c) || RTE.lastColor] || "#999";
   var mb = B.mark && B.mark.querySelector(".fbmbar"); if (mb) mb.style.background = (YZ_RT_MARKS[(st && st.m) || RTE.lastMark] || YZ_RT_MARKS.yellow).bg;   // 第 30 批：下面那條＝現在／上一次的螢光色
   var stat = document.getElementById("fbstat");
-  if (stat) stat.textContent = c ? (raw ? "標記模式" : "小提示：選字再按上面的鍵｜點一下公式可以修改｜Ctrl+Z 復原") : "← 先點一下要改的那一段文字，格式鍵才會亮";   // 第 31 批：這一行一直都在（以前點進文字框，這行字不見，下面整個往上跳一下，點的位置就偏了）
+  if (stat) stat.textContent = c ? (raw ? "標記模式" : "小提示：選字再按上面的鍵｜點一下公式、反灰可複製可以修改｜Ctrl+Z 復原") : "← 先點一下要改的那一段文字，格式鍵才會亮";   // 第 31 批：這一行一直都在（以前點進文字框，這行字不見，下面整個往上跳一下，點的位置就偏了）
 }
 document.addEventListener("mousedown", function (e) { if (RTE.pop && !RTE.pop.el.contains(e.target) && !RTE.pop.anchor.contains(e.target)) rteClosePop(); });
 document.addEventListener("keydown", function (e) { if (e.key === "Escape") rteClosePop(); });
 document.addEventListener("selectionchange", function () { if (RTE.cur) rteBarSync(); });
 
 /* ════════ shapelib.js ════════ */
-/* ═══════════════ shapelib.js：圖一（目錄圖）的物品圖庫（第 27 批；第 28 批：覆核＝條碼掃描器＋電腦、冰箱改到水藥調劑；第 29 批：行政事宜＝整個文件資料櫃；第 30 批：加上新的圖一——行政事宜＝整個文件資料櫃、水藥調劑＝只亮冰箱；第 32 批：加上有「問卷」夾板的圖一，覆核＝電腦＋兩盒處方、行政事宜＝文件資料櫃＋辦公桌、水藥＝藥品櫃＋窄藥架＋冰箱）═══════════════
+/* ═══════════════ shapelib.js：圖一（目錄圖）的物品圖庫（第 27 批；第 28 批：覆核＝條碼掃描器＋電腦、冰箱改到水藥調劑；第 29 批：行政事宜＝整個文件資料櫃；第 30 批：加上新的圖一——行政事宜＝整個文件資料櫃、水藥調劑＝只亮冰箱；第 32 批：加上有「問卷」夾板的圖一，覆核＝電腦＋兩盒處方、行政事宜＝文件資料櫃＋辦公桌、水藥＝藥品櫃（左邊兩座）＋窄藥架＋冰箱）═══════════════
  * 用比較準的方法（SAM，物品分割的模型）在開發的電腦上先把圖一裡每個按鍵該亮的物品切好，這裡只存外框的點（整張圖的 %）。
  * 編輯器按「儲存」時：目錄圖是這裡的其中一張（比對 fp＝圖的指紋：縮成 17×8 格、左右比亮暗的 128 個 0/1，看不出圖的內容）→ 直接用這裡的物品；
  * 換了別張圖 → 照舊在框裡自動找（shFind）。ids＝預設的地點（yzSetup 建的 p1…p10；第 32 批多 p11＝問卷）優先用哪一個物品。
  * bx＝這張圖的預設按鍵位置（x、y、w、h、標籤在哪一邊）：按鍵還在「別張圖的預設位置」（沒動過）→ 換成這張圖的；動過的不動。
  * add＝這張圖多的按鍵（還沒有就自動加，例如問卷）；pr＝探針（某一塊的平均顏色：兩張圖很像、指紋差沒幾個時，挑顏色最接近的那一筆）。不用手動改這個檔。 */
 var SH_LIB = [{"fp":"6ea8eaaab6c5bd4ddc9c78d33bcb38eb","ar":2.3325,"objs":[{"id":"book","nm":"法規書（整本）","r":[[30.8,84.2,29.3,82.6,28.7,82.1,28.3,82.1,27.5,81.2,27.0,80.4,26.0,80.0,25.3,79.5,25.0,78.8,23.9,78.0,23.0,76.7,22.0,76.0,21.0,74.9,20.6,74.7,19.3,73.3,18.3,73.0,15.7,74.3,15.2,74.8,14.3,75.3,13.7,75.9,11.6,77.0,11.2,77.5,8.8,79.0,8.5,79.4,7.9,79.5,6.7,80.4,6.5,80.9,6.1,84.2,6.1,87.1,6.5,88.7,7.9,90.7,8.5,91.2,8.8,92.0,9.9,93.3,10.3,94.2,10.9,94.8,11.9,96.5,12.3,96.8,14.0,99.9,18.0,99.9,18.0,96.5,18.2,96.0,20.1,94.0,20.5,93.9,22.2,92.1,23.6,91.1,25.1,89.5,29.8,85.6,30.8,84.5]],"ids":["p8"],"c":1},{"id":"binder","nm":"規則本（整本）","r":[[71.9,94.2,71.9,97.8,72.0,98.4,72.5,99.1,72.9,99.4,73.3,99.4,73.6,99.6,73.6,99.9,96.0,99.9,96.2,99.4,96.2,98.4,95.8,95.9,95.5,94.3,95.4,93.3,95.1,92.6,94.8,89.8,94.5,88.9,94.2,86.7,93.8,85.1,93.4,82.1,93.2,81.1,92.7,78.7,92.6,78.3,91.1,77.6,90.1,77.6,89.3,77.2,88.4,77.1,88.1,76.9,85.3,76.4,84.9,76.1,84.5,76.1,84.2,75.9,82.9,75.6,82.6,75.4,81.5,75.3,81.1,75.0,80.7,75.2,80.4,74.9,79.9,74.9,79.5,74.7,78.3,74.5,78.0,74.2,77.1,73.9,76.6,73.9,76.2,74.2,75.9,75.0,75.7,76.1,75.4,76.7,73.4,86.0,73.2,86.8,73.0,88.2,72.5,89.8,72.0,92.7]],"ids":["p10"],"c":1},{"id":"clip","nm":"處方夾板","r":[[55.2,88.8,55.3,89.5,55.7,90.1,56.1,90.1,57.5,91.0,58.0,91.0,60.5,92.6,61.4,92.8,61.9,93.4,63.6,94.2,64.2,94.2,64.5,94.5,65.7,94.9,66.0,95.2,68.3,96.7,68.6,96.3,68.9,95.1,68.9,94.4,70.0,88.9,70.2,87.2,70.7,85.3,71.1,82.8,71.7,80.1,71.8,78.4,71.6,78.0,70.5,77.3,69.0,76.9,68.4,77.1,68.3,76.9,68.2,76.2,67.6,76.1,67.4,76.4,66.9,75.9,65.3,75.5,65.1,75.3,64.5,75.4,64.2,75.2,63.8,75.2,63.6,75.5,63.1,75.5,62.2,74.8,61.5,74.8,60.4,77.1,59.4,79.5,58.7,80.6,57.9,82.5,57.8,82.9,57.6,83.2,55.6,87.7]],"ids":["p9"],"c":1},{"id":"tray","nm":"藥盤","r":[[36.0,68.8,36.6,69.5,37.1,70.9,37.5,71.3,38.1,70.9,39.6,71.1,40.1,71.5,40.9,71.6,41.5,72.1,42.5,72.4,43.1,72.8,44.3,72.8,44.8,73.3,45.8,73.4,47.2,74.2,47.9,75.2,48.9,75.4,49.4,76.2,49.7,76.2,50.1,76.9,50.5,77.0,51.0,76.6,51.7,74.8,53.6,71.9,54.8,71.0,55.3,70.4,56.2,68.3,56.4,67.1,56.5,66.1,55.9,65.7,54.9,65.4,53.4,65.4,52.8,64.8,50.7,64.3,50.0,63.8,48.7,63.8,48.2,63.2,48.2,62.6,47.9,62.4,47.1,62.5,46.7,63.1,45.3,63.1,44.4,62.6,43.2,62.4,41.8,63.5,40.8,63.8,40.5,64.7,39.5,65.5,38.9,65.7,37.8,66.6,37.0,67.0,36.1,68.0]],"ids":["p7"],"c":1},{"id":"liquid","nm":"藥水瓶、量杯和冰箱","r":[[7.6,19.9,7.4,20.3,7.4,23.8,7.3,23.9,7.4,26.3,7.4,29.2,7.4,29.4,7.4,36.3,7.4,36.4,7.4,42.5,7.3,42.6,7.4,46.8,7.5,47.7,8.1,47.9,8.7,47.6,9.0,47.3,9.3,47.3,9.5,47.5,9.8,46.9,10.0,46.2,10.0,42.1,10.0,40.3,9.9,39.8,9.9,34.8,9.8,33.4,9.8,29.0,9.8,28.9,10.0,23.1,9.8,21.0,9.7,20.5,9.6,20.3,9.1,20.5,8.8,20.2],[8.6,62.0,8.4,61.8,8.1,61.8,8.0,61.6,7.9,61.6,7.9,61.8,7.3,61.9,7.2,62.0,7.0,62.0,6.8,62.2,6.7,62.5,6.7,64.6,6.6,65.0,6.5,65.3,6.3,66.0,6.3,67.7,6.2,68.0,6.0,67.7,5.8,67.8,5.2,68.0,5.2,68.1,5.0,68.1,4.8,68.5,4.8,68.7,4.8,68.8,4.8,70.9,4.7,71.0,4.7,71.7,4.8,71.9,4.8,73.6,4.9,74.1,5.1,74.3,6.0,74.3,6.2,74.1,6.3,73.9,6.3,73.7,6.4,73.4,6.5,73.6,6.8,73.7,7.4,73.2,7.6,73.2,7.7,73.1,8.0,73.0,8.3,72.7,8.6,72.6,8.9,72.2,9.0,71.7,9.0,65.7,8.8,64.1,8.8,62.5],[17.7,64.2,17.4,64.9,17.4,67.2,17.3,67.7,17.3,70.6,17.2,70.8,17.2,72.7,17.3,73.0,17.4,73.1,17.8,73.0,18.7,72.4,18.8,71.9,18.8,69.1,18.9,68.8,19.0,68.6,19.6,68.6,19.8,69.1,19.8,73.2,19.8,73.4,20.5,74.2,20.7,74.3,21.0,74.2,21.2,73.6,21.2,67.8,21.0,66.9,20.8,66.3,20.8,65.2,20.6,65.0,20.6,65.2,20.0,65.3,19.7,66.0,19.5,65.7,19.3,65.4,19.1,65.7,19.0,65.5,18.9,64.7,18.5,64.1,18.2,64.1,18.2,64.2,17.8,64.1],[14.4,65.0,14.2,64.7,14.2,64.8,13.6,64.8,13.5,64.9,13.0,64.8,12.8,65.0,12.6,64.9,12.4,65.3,11.4,65.3,11.1,65.5,11.1,65.7,11.1,67.7,11.0,67.8,11.0,69.1,11.1,69.7,11.1,70.6,11.3,70.9,11.4,70.9,11.5,71.0,11.5,70.9,11.8,70.9,11.9,70.8,12.1,70.8,12.1,70.6,12.4,70.6,12.6,70.4,12.7,69.8,12.9,69.4,13.1,69.7,13.5,69.8,13.6,69.7,13.8,69.7,14.2,69.3,14.3,68.9,14.4,68.3],[22.4,69.1,22.4,69.3,22.3,69.4,22.3,71.0,22.3,71.1,22.3,72.6,22.3,72.7,22.3,73.1,22.4,73.2,22.5,73.8,22.7,74.5,22.8,74.7,23.0,74.7,23.1,74.8,23.3,74.8,23.3,74.7,23.6,74.7,23.6,74.5,24.7,74.8,25.0,74.5,25.1,74.2,25.1,73.9,25.2,73.8,25.2,69.4,25.0,69.2,24.7,69.2,24.6,69.3,24.4,69.3,24.4,69.4,23.5,69.5,23.3,69.3,22.8,69.3,22.5,68.9]],"ids":["p6"],"c":8},{"id":"consult","nm":"藥師和病人（左邊窗口）","r":[[46.1,22.4,45.8,22.0,45.1,21.9,44.7,22.5,44.6,23.0,44.5,26.2,44.7,26.9,44.2,27.6,43.3,30.0,43.2,29.8,42.4,27.8,41.6,27.2,41.3,26.4,40.8,26.1,40.5,26.6,40.5,28.6,40.0,30.5,39.7,30.7,39.5,30.6,39.1,28.7,38.9,28.5,38.7,28.6,38.4,30.2,38.3,32.0,38.3,33.3,39.0,34.7,39.0,36.2,38.6,38.1,38.7,39.2,38.9,39.5,40.8,39.6,41.7,40.3,42.5,40.3,42.7,40.1,42.7,39.2,42.3,34.2,42.3,33.6,42.4,33.3,42.7,33.1,43.1,33.4,43.7,33.4,43.9,33.0,44.0,32.0,44.2,31.7,45.0,32.3,45.5,31.4,46.8,31.5,47.3,31.2,47.4,30.8,47.3,29.5,46.8,27.4,46.4,23.6]],"ids":["p2"],"c":2},{"id":"dispense","nm":"藥師和病人（中間窗口）","r":[[58.8,26.2,58.6,26.4,58.3,27.2,58.0,27.8,57.4,28.3,57.2,28.9,57.0,30.1,57.0,34.6,57.1,35.6,57.5,35.9,57.7,36.4,57.7,37.4,57.5,38.2,57.4,39.7,57.4,40.3,57.2,41.2,57.2,42.0,57.4,42.3,57.6,42.3,57.7,42.4,59.2,42.5,59.2,42.6,59.6,42.6,59.6,42.8,60.4,42.8,60.5,42.9,60.9,42.9,60.9,43.0,61.6,43.0,61.7,42.8,61.8,42.1,61.7,41.5,61.6,39.3,61.3,37.4,61.3,36.7,61.2,36.1,61.2,35.6,61.5,35.1,62.0,35.6,62.2,35.6,62.7,35.2,62.9,34.8,63.1,34.0,63.1,32.9,63.0,32.6,62.4,31.9,61.8,30.5,61.6,29.0,61.4,28.5,60.3,27.5,59.9,26.6,59.5,26.2],[64.5,20.7,64.2,21.4,64.2,21.9,64.2,23.3,64.5,24.0,64.5,24.2,64.3,24.8,64.3,25.9,64.2,26.2,63.8,26.2,63.2,27.3,62.8,28.7,62.8,29.7,63.0,30.0,63.2,30.0,63.3,29.8,64.1,30.0,64.2,30.1,64.4,30.1,64.6,30.5,65.0,30.5,65.3,29.8,65.5,29.8,65.8,30.2,66.9,30.2,67.1,30.6,67.2,32.3,67.4,32.5,67.5,32.4,67.6,31.5,67.6,30.9,67.7,30.6,67.7,29.1,67.5,27.5,67.4,27.3,66.9,26.8,66.7,26.3,66.4,26.1,66.2,26.1,66.0,25.7,65.8,24.5,65.8,23.8,66.0,23.0,66.1,22.2,65.9,21.3,65.4,20.3,65.0,20.3]],"ids":["p3"],"c":2},{"id":"er","nm":"藥師和病人（右邊窗口）","r":[[91.7,21.2,90.8,20.5,90.0,21.6,89.8,22.4,90.0,23.9,89.8,25.9,88.7,27.2,88.3,28.9,87.4,28.7,86.6,27.5,86.1,27.6,86.1,30.8,85.8,33.0,85.5,33.5,84.8,32.4,84.3,29.5,83.8,29.4,83.5,29.8,83.2,31.5,83.0,35.6,83.5,37.1,84.2,38.1,83.9,42.5,85.8,43.2,86.5,43.0,87.3,41.9,88.7,41.2,88.4,37.9,88.4,34.2,88.8,33.9,89.3,34.3,89.8,33.9,90.1,33.0,90.0,31.5,88.9,30.1,89.0,29.5,90.0,29.0,91.1,29.4,91.2,30.1,90.9,30.8,91.1,32.9,91.3,33.3,91.7,33.0,92.3,31.3,94.0,31.2,94.1,30.2,93.7,27.8,93.1,26.9,92.5,25.0,92.1,24.4,92.0,22.2]],"ids":["p4"],"c":2},{"id":"review","nm":"條碼掃描器和電腦","r":[[79.5,42.6,73.6,42.1,70.7,41.4,69.3,41.7,68.9,47.5,68.8,53.0,68.2,53.3,67.1,53.3,66.2,54.8,65.7,56.4,65.7,57.5,65.9,58.6,66.9,59.2,67.3,59.9,67.6,63.7,67.6,64.9,66.9,65.5,66.5,66.6,66.4,67.8,66.6,68.2,69.5,69.1,70.6,67.6,70.7,67.1,70.6,65.9,69.6,64.9,69.5,61.6,69.1,59.8,69.4,59.0,69.8,60.2,71.1,59.9,71.7,60.8,71.9,60.5,72.7,60.8,72.8,61.3,72.7,64.2,74.0,64.7,74.2,64.2,74.3,61.9,74.8,60.2,76.0,59.1,76.2,58.0,76.6,57.4,78.0,56.2,78.9,55.9,79.3,54.9,79.5,52.6,79.7,44.5,79.7,43.1]],"ids":["p5"],"c":2},{"id":"cabinet","nm":"文件資料櫃（整個櫃子，不含冰箱）","r":[[15.6,15.0,11.1,13.3,10.7,12.8,8.4,12.4,6.5,11.7,5.8,11.9,5.1,13.0,5.2,14.6,5.2,22.7,5.0,25.0,5.2,26.7,5.1,28.7,5.2,29.5,5.1,31.5,5.3,33.6,5.1,36.1,5.3,36.7,5.4,40.2,5.2,44.9,5.5,51.4,5.8,51.4,5.7,50.4,5.9,50.1,6.5,49.8,7.2,48.1,7.0,46.2,7.2,36.2,7.0,23.8,7.2,19.7,7.6,19.2,9.1,19.9,9.6,19.7,9.8,20.0,10.1,20.8,10.2,23.0,10.0,28.7,10.3,45.1,12.2,45.2,12.6,43.6,13.3,43.4,13.3,40.6,13.0,40.0,12.7,40.0,12.5,39.1,12.6,38.2,13.1,38.2,13.4,37.6,13.2,34.2,14.2,33.0,15.3,33.1,15.7,32.3,15.7,22.4,15.6,21.0,15.7,16.6]],"ids":["p1"],"c":1},{"id":"files","nm":"文件夾（最上面那一層）","r":[[9.6,14.9,9.7,16.1,9.6,16.7,9.6,19.1,9.7,19.6,10.1,20.3,10.2,21.4,10.3,21.7,11.5,21.7,11.6,21.8,11.9,21.8,12.2,21.4,12.5,21.9,12.8,21.9,12.9,22.0,15.2,22.0,15.2,22.2,15.5,22.0,15.5,21.8,15.5,15.7,15.4,15.5,15.0,15.5,14.9,15.3,14.5,15.2,14.5,15.1,14.3,15.1,14.2,15.0,14.2,15.1,13.8,15.1,13.7,15.0,13.6,15.0,13.4,14.7,13.3,14.9,12.3,14.9,12.2,15.1,11.9,14.5,10.4,14.5,10.4,14.6,9.9,14.5]],"c":1},{"id":"beaker","nm":"量杯","r":[[22.4,69.1,22.4,69.3,22.3,69.4,22.3,71.0,22.3,71.1,22.3,72.6,22.3,72.7,22.3,73.1,22.4,73.2,22.5,73.8,22.7,74.5,22.8,74.7,23.0,74.7,23.1,74.8,23.3,74.8,23.3,74.7,23.6,74.7,23.6,74.5,24.7,74.8,25.0,74.5,25.1,74.2,25.1,73.9,25.2,73.8,25.2,69.4,25.0,69.2,24.7,69.2,24.6,69.3,24.4,69.3,24.4,69.4,23.5,69.5,23.3,69.3,22.8,69.3,22.5,68.9]],"c":1},{"id":"bottles","nm":"藥水瓶","r":[[8.6,62.0,8.4,61.8,8.1,61.8,8.0,61.6,7.9,61.6,7.9,61.8,7.3,61.9,7.2,62.0,7.0,62.0,6.8,62.2,6.7,62.5,6.7,64.6,6.6,65.0,6.5,65.3,6.3,66.0,6.3,67.7,6.2,68.0,6.0,67.7,5.8,67.8,5.2,68.0,5.2,68.1,5.0,68.1,4.8,68.5,4.8,68.7,4.8,68.8,4.8,70.9,4.7,71.0,4.7,71.7,4.8,71.9,4.8,73.6,4.9,74.1,5.1,74.3,6.0,74.3,6.2,74.1,6.3,73.9,6.3,73.7,6.4,73.4,6.5,73.6,6.8,73.7,7.4,73.2,7.6,73.2,7.7,73.1,8.0,73.0,8.3,72.7,8.6,72.6,8.9,72.2,9.0,71.7,9.0,65.7,8.8,64.1,8.8,62.5],[17.7,64.2,17.4,64.9,17.4,67.2,17.3,67.7,17.3,70.6,17.2,70.8,17.2,72.7,17.3,73.0,17.4,73.1,17.8,73.0,18.7,72.4,18.8,71.9,18.8,69.1,18.9,68.8,19.0,68.6,19.6,68.6,19.8,69.1,19.8,73.2,19.8,73.4,20.5,74.2,20.7,74.3,21.0,74.2,21.2,73.6,21.2,67.8,21.0,66.9,20.8,66.3,20.8,65.2,20.6,65.0,20.6,65.2,20.0,65.3,19.7,66.0,19.5,65.7,19.3,65.4,19.1,65.7,19.0,65.5,18.9,64.7,18.5,64.1,18.2,64.1,18.2,64.2,17.8,64.1],[14.4,65.0,14.2,64.7,14.2,64.8,13.6,64.8,13.5,64.9,13.0,64.8,12.8,65.0,12.6,64.9,12.4,65.3,11.4,65.3,11.1,65.5,11.1,65.7,11.1,67.7,11.0,67.8,11.0,69.1,11.1,69.7,11.1,70.6,11.3,70.9,11.4,70.9,11.5,71.0,11.5,70.9,11.8,70.9,11.9,70.8,12.1,70.8,12.1,70.6,12.4,70.6,12.6,70.4,12.7,69.8,12.9,69.4,13.1,69.7,13.5,69.8,13.6,69.7,13.8,69.7,14.2,69.3,14.3,68.9,14.4,68.3]],"c":6},{"id":"fridge","nm":"冰箱","r":[[7.6,19.9,7.4,20.3,7.4,23.8,7.3,23.9,7.4,26.3,7.4,29.2,7.4,29.4,7.4,36.3,7.4,36.4,7.4,42.5,7.3,42.6,7.4,46.8,7.5,47.7,8.1,47.9,8.7,47.6,9.0,47.3,9.3,47.3,9.5,47.5,9.8,46.9,10.0,46.2,10.0,42.1,10.0,40.3,9.9,39.8,9.9,34.8,9.8,33.4,9.8,29.0,9.8,28.9,10.0,23.1,9.8,21.0,9.7,20.5,9.6,20.3,9.1,20.5,8.8,20.2]],"c":1},{"id":"folders","nm":"資料夾","r":[[12.3,15.2,12.2,15.5,12.2,16.1,12.1,16.7,12.1,17.4,12.1,17.5,12.1,18.0,12.1,18.1,12.1,19.4,12.1,19.5,12.1,20.0,12.2,20.1,12.2,21.3,12.3,21.6,12.5,21.8,12.8,21.8,12.8,21.9,14.4,21.9,14.4,22.0,15.4,21.9,15.5,21.8,15.5,21.6,15.5,18.1,15.5,18.0,15.5,17.4,15.5,17.3,15.5,16.1,15.5,15.8,15.4,15.7,14.7,15.6,14.7,15.5,14.4,15.5,14.3,15.3,13.8,15.3,13.6,15.1,13.0,15.1,13.0,15.0,12.4,15.0]],"c":1},{"id":"monitor","nm":"電腦螢幕","r":[[69.6,42.8,69.3,44.0,69.2,46.2,69.0,47.9,68.9,49.8,69.0,50.4,69.0,52.7,69.1,53.2,69.3,53.6,69.8,54.9,70.0,57.6,70.1,57.7,70.5,57.6,70.9,58.0,72.1,58.3,72.4,58.2,73.2,58.6,73.5,59.0,74.2,59.0,74.8,59.3,74.9,59.2,75.7,59.2,76.0,59.0,76.2,58.0,76.7,57.1,77.4,56.8,78.0,56.2,78.7,56.0,79.1,55.2,79.1,54.1,79.2,53.5,79.5,52.7,79.5,51.5,79.6,50.5,79.6,43.4,79.5,42.9,79.1,42.6,78.2,42.5,77.8,43.0,76.4,42.4,75.9,42.4,75.5,42.8,74.7,42.3,73.6,42.5,73.2,42.0,72.0,42.3,71.7,42.0,70.8,41.9,70.5,41.7,70.0,41.9]],"c":1},{"id":"printer","nm":"印表機","r":[[53.3,48.4,52.9,48.0,52.3,47.9,52.3,47.7,50.2,47.5,49.5,47.9,49.2,48.4,48.9,48.7,48.6,49.3,48.4,50.5,48.1,51.4,48.0,52.4,48.0,53.7,48.0,53.8,48.0,56.5,47.9,56.6,47.9,57.7,47.8,58.6,47.8,59.9,47.7,60.0,47.7,61.0,47.8,61.4,48.2,61.8,49.1,61.8,49.8,62.1,50.2,62.1,50.4,62.4,51.0,62.4,51.1,62.2,51.2,61.5,51.2,58.8,51.3,58.6,51.6,58.0,52.0,57.5,52.5,57.2,53.1,56.8,53.3,56.0,53.4,55.7,53.4,54.4,53.3,54.3,53.3,53.6,53.4,53.5,53.4,48.6]],"c":1},{"id":"pillbottle","nm":"藥罐","r":[[55.2,71.0,55.1,71.1,54.9,71.6,54.9,76.9,55.0,77.0,55.0,77.5,55.1,77.8,55.4,78.0,55.4,78.1,56.2,78.1,56.2,78.0,56.3,78.0,56.5,77.7,56.5,77.5,56.6,77.3,56.6,76.0,56.6,75.9,56.6,75.0,56.7,74.9,56.7,71.9,56.6,71.7,56.6,71.5,56.5,71.3,56.1,70.9,55.4,70.9,55.4,71.0]],"c":1}],"bx":{"p1":[5,12,11,17,"t"],"p2":[37,9,12,22,"t"],"p3":[55,9,14,21,"t"],"p4":[81,8,14,21,"t"],"p5":[60,46,10,16,"t"],"p6":[10,57,11,15,"t"],"p7":[36,63,16,13,"b"],"p8":[6,75,13,16,"t"],"p9":[57,76,14,16,"l"],"p10":[81,74,15,14,"t"]}},
-{"fp":"3768d56adbccfe551cd84ce66c66785d","ar":2.2399,"bx":{"p1":[17,12,6,29,"r"],"p2":[43,19,8,17,"t"],"p3":[59,19,10,20,"t"],"p4":[82,20,11,20,"t"],"p5":[66,37,13,23,"t"],"p6":[14,18,4,25,"b"],"p7":[42,53,18,13,"b"],"p8":[20,61,19,23,"t"],"p9":[58,63,14,17,"l"],"p10":[71,64,18,26,"t"]},"objs":[{"id":"book","nm":"法規書（整本）","r":[[20.2,70.0,20.2,71.6,20.4,72.7,20.7,73.4,21.9,74.8,23.6,77.3,24.1,77.8,26.5,81.1,28.7,84.0,29.5,83.8,30.7,82.6,31.0,82.5,32.8,80.4,33.0,80.4,33.8,79.6,34.1,79.5,35.4,77.9,35.9,77.7,37.9,75.8,38.0,75.4,38.0,74.8,37.9,74.0,37.7,71.4,37.9,71.0,38.3,70.6,38.3,70.3,38.1,70.0,37.2,69.5,36.4,68.5,35.7,68.1,34.5,66.7,33.1,65.6,32.6,64.8,31.4,63.8,29.6,61.9,26.7,62.3,26.4,62.6,26.3,63.2,26.1,63.6,25.3,63.7,24.7,64.6,23.7,65.0,23.2,65.8,22.8,65.8,22.3,66.3,21.6,66.6,20.8,67.4,20.4,68.6]],"ids":["p8"],"c":1},{"id":"binder","nm":"規則本（整本）","r":[[71.1,77.6,71.1,80.4,71.2,81.3,71.6,82.0,72.8,82.3,73.8,83.1,75.0,83.4,76.0,84.0,76.7,84.1,77.4,84.7,78.4,85.1,79.2,85.7,80.1,85.9,80.7,86.4,81.7,86.8,82.6,87.4,83.5,87.6,83.7,87.8,85.0,88.5,85.6,88.7,86.1,89.1,87.5,89.9,88.0,90.0,88.2,89.6,88.2,88.1,88.1,87.2,88.1,86.0,88.0,84.7,88.4,83.7,88.3,80.9,88.2,80.3,88.2,79.5,88.0,77.0,88.0,74.1,87.6,68.7,87.5,68.3,87.3,68.0,86.5,67.9,86.3,67.7,85.7,67.7,83.7,66.7,81.6,66.2,80.9,65.6,80.2,65.8,79.5,65.3,79.1,65.3,78.8,65.0,76.9,64.6,76.4,64.2,74.7,64.0,74.5,64.3,74.2,65.2,74.0,66.2,72.7,70.6,71.8,74.5,71.4,75.5]],"ids":["p10"],"c":1},{"id":"clip","nm":"處方夾板","r":[[58.6,73.7,58.7,74.2,60.3,75.3,60.6,75.3,62.0,76.3,62.6,76.4,63.3,77.0,63.8,77.1,65.2,77.9,66.5,78.9,67.0,79.0,68.0,79.7,68.4,79.7,68.7,79.0,69.5,75.2,69.7,74.6,69.8,73.7,71.3,67.3,71.3,66.3,70.9,66.0,69.3,65.5,68.6,64.8,67.3,64.6,67.0,64.1,66.4,64.1,66.1,63.8,65.8,63.8,65.4,63.5,64.7,63.6,63.5,63.5,62.1,66.6,61.9,66.7,61.1,68.3,60.5,69.8,59.5,71.6,58.8,73.2]],"ids":["p9"],"c":1},{"id":"tray","nm":"藥盤","r":[[59.3,57.3,58.8,56.7,58.1,56.7,57.3,55.8,55.7,55.7,55.2,55.4,54.7,55.4,54.1,54.5,53.5,54.7,52.1,54.4,51.4,53.6,50.9,53.6,50.3,54.1,48.0,53.7,47.1,53.9,46.8,54.7,46.6,54.9,46.1,55.1,45.5,55.7,45.0,55.8,43.5,56.8,42.8,57.8,42.3,58.2,42.1,58.7,42.1,59.1,42.6,59.5,42.8,60.1,42.8,60.6,43.0,61.0,44.4,61.0,45.3,61.3,45.7,61.3,46.4,61.8,48.2,62.5,48.7,63.1,49.7,63.2,50.3,63.7,51.4,63.8,52.1,64.3,52.7,64.4,53.6,65.5,54.1,65.5,54.3,65.3,54.7,64.3,55.3,63.4,56.3,62.3,56.6,61.7,57.3,61.0,58.2,60.3,58.7,58.4,59.3,57.5]],"ids":["p7"],"c":1},{"id":"liquid","nm":"藥品櫃＋窄藥架＋冰箱（水藥）","r":[[3.6,12.1,3.2,21.4,3.4,25.2,3.1,26.4,3.4,30.3,3.2,34.6,3.4,35.4,3.2,41.4,3.5,42.2,3.2,44.2,3.2,47.5,3.5,48.3,3.5,49.5,5.1,49.4,6.1,48.4,6.4,47.4,7.3,46.3,7.9,46.4,8.7,45.6,10.3,45.9,12.0,45.6,12.7,45.0,13.3,43.3,14.2,43.1,17.0,41.2,17.2,37.1,17.0,22.7,17.1,20.0,16.9,18.7,16.2,18.3,14.7,18.4,14.4,17.3,13.9,17.2,13.2,19.1,12.9,19.1,12.7,18.1,12.8,15.9,12.8,13.5,12.6,13.1,12.4,13.4,11.1,13.1,10.6,13.5,8.3,13.1,7.6,12.4,4.8,12.3,4.4,13.0,4.0,12.1],[6.8,8.7,6.8,9.5,6.7,9.7,6.7,10.0,6.8,10.1,6.8,10.5,6.9,10.6,7.0,10.4,7.4,10.4,7.5,10.6,7.9,10.0,8.2,10.0,8.4,10.3,8.5,10.1,9.1,10.1,9.2,9.9,9.2,9.1,9.1,8.9,8.8,9.3,8.7,9.3,8.4,8.8,8.2,9.2,8.0,9.3,7.7,8.8,7.1,8.8,6.9,8.6]],"ids":["p6"],"c":3},{"id":"consult","nm":"藥師和病人（左邊窗口）","r":[[49.9,19.9,49.4,19.7,48.7,20.8,48.6,22.0,48.6,24.1,47.8,26.4,47.6,26.3,47.2,25.1,46.2,24.0,45.9,24.0,45.8,24.2,45.6,26.1,45.2,27.2,45.0,27.2,44.6,26.6,44.6,25.9,44.4,25.4,44.3,25.3,44.1,25.7,43.8,26.7,43.8,29.6,43.9,30.0,44.3,30.3,44.5,30.9,44.1,33.9,44.0,34.7,44.1,35.1,44.8,35.3,45.9,35.3,46.1,35.6,47.4,35.6,47.5,35.3,47.5,34.5,47.3,31.7,47.1,31.0,47.2,30.2,47.4,29.8,47.9,30.0,48.1,29.7,48.5,28.5,48.8,28.9,49.0,28.9,49.3,28.2,49.7,27.8,50.6,28.0,50.9,27.6,51.0,27.1,50.9,25.2,50.4,23.4,50.4,22.3,50.2,21.0]],"ids":["p2"],"c":2},{"id":"dispense","nm":"藥師和病人（中間窗口）","r":[[61.0,19.3,60.7,19.7,60.5,20.2,60.1,22.0,60.1,23.4,60.3,24.0,60.3,24.9,60.0,25.4,59.5,25.9,59.2,26.5,59.1,29.4,59.1,31.1,59.8,32.6,59.8,32.9,59.5,34.7,59.3,37.2,59.6,37.6,60.4,37.6,61.2,37.9,62.2,37.9,63.0,38.2,63.1,38.1,63.1,36.6,62.8,34.0,62.7,31.9,62.8,31.6,63.2,31.7,63.7,31.6,64.1,30.4,64.2,29.5,64.6,29.0,64.7,28.4,64.4,27.9,64.2,27.9,64.0,28.3,64.0,29.0,63.9,29.2,63.7,29.2,63.3,28.6,63.3,28.2,63.0,27.4,62.8,26.4,61.9,25.7,61.6,25.1,61.7,24.6,62.2,23.4,62.4,22.4,62.4,21.0,62.4,20.6,62.0,19.7,61.5,19.3],[65.1,19.6,65.0,19.8,65.0,20.9,65.1,21.5,65.1,23.0,64.9,23.5,64.6,23.7,64.1,24.6,63.9,25.9,63.8,26.8,64.1,27.1,64.5,27.1,64.5,27.2,65.1,27.1,65.3,27.4,65.3,27.8,65.4,27.9,65.7,27.9,65.8,27.8,65.9,27.3,66.1,27.1,66.4,27.1,66.6,27.3,67.2,27.4,67.4,27.8,67.7,28.8,67.8,28.9,68.0,28.9,68.1,28.6,68.1,28.0,68.1,27.9,68.1,27.3,68.0,27.2,68.0,26.7,68.0,26.6,68.0,26.0,67.9,25.9,67.9,25.5,67.9,25.4,67.8,24.8,67.7,24.5,67.4,24.2,67.1,23.7,66.8,23.4,66.5,22.3,66.5,21.7,66.5,21.6,66.5,21.1,66.6,21.0,66.6,19.9,66.4,19.5,66.0,19.1,65.4,19.1]],"ids":["p3"],"c":2},{"id":"er","nm":"藥師和病人（右邊窗口）","r":[[90.0,20.4,89.3,20.2,88.7,20.8,88.5,22.1,88.7,23.2,88.5,24.6,87.4,25.5,87.1,27.4,86.3,27.3,85.7,26.5,85.3,26.7,85.1,30.1,84.7,31.1,84.4,31.1,84.1,30.7,83.6,27.9,83.2,27.8,82.7,28.4,82.5,32.7,82.7,33.9,83.4,34.5,83.5,35.1,83.2,38.7,83.3,39.5,84.4,39.7,86.3,38.8,86.8,39.0,87.5,38.8,86.9,32.1,87.3,31.7,87.9,32.3,88.3,31.9,88.4,30.1,88.2,29.5,87.7,29.2,87.4,28.4,87.4,28.0,88.0,27.7,88.5,28.0,89.3,27.7,89.6,28.3,89.5,32.2,89.7,32.8,90.5,32.7,90.6,30.3,90.8,29.5,91.2,29.1,92.1,29.2,92.0,26.7,91.7,26.0,90.2,24.1,90.3,22.2,90.0,21.5]],"ids":["p4"],"c":2},{"id":"review","nm":"電腦和兩盒處方（覆核）","r":[[66.6,49.5,66.8,51.1,67.9,52.4,68.1,54.9,68.1,56.1,67.3,57.0,67.2,58.4,67.4,58.7,69.4,59.4,70.1,58.4,69.4,52.3,69.5,51.1,70.1,51.9,70.8,51.9,71.3,53.0,72.5,52.9,72.5,55.0,72.0,55.6,73.8,56.9,73.7,57.6,73.1,58.1,72.8,59.5,73.2,61.5,73.2,63.8,73.6,64.6,74.1,64.7,74.7,63.6,84.8,66.7,88.0,62.4,88.1,56.7,86.8,55.8,86.9,54.5,87.2,54.1,87.1,52.0,83.9,50.7,82.8,51.2,81.7,50.2,80.7,51.4,80.9,53.0,80.8,55.6,80.4,56.4,80.2,56.1,80.3,53.9,80.1,52.4,79.5,52.1,78.2,50.4,78.7,40.8,78.7,39.5,78.3,39.0,69.7,37.7,69.3,38.9,68.8,45.0,68.9,46.9,67.2,48.3]],"ids":["p5"],"c":4},{"id":"cabinet","nm":"文件資料櫃＋辦公桌（行政事宜）","r":[[22.4,13.5,21.2,13.5,20.8,13.7,20.4,13.4,20.1,13.7,19.8,13.1,19.3,13.1,18.8,12.8,17.9,12.8,17.4,13.1,17.3,13.6,17.2,17.2,17.4,17.8,17.3,21.4,17.4,22.2,17.3,28.2,17.3,30.4,17.2,31.9,17.3,33.2,17.2,38.7,17.3,38.8,17.3,40.7,17.4,40.9,17.9,40.9,18.4,40.7,19.0,40.1,20.1,40.0,20.8,39.3,21.2,39.3,21.5,38.9,21.5,37.9,21.1,36.9,21.1,36.0,21.3,35.7,21.4,35.0,21.4,32.8,21.0,30.2,21.2,29.8,21.5,29.7,22.2,29.7,22.4,29.4,22.5,28.6,22.5,27.9,22.5,14.3,22.5,13.6],[22.8,31.4,22.8,32.1,23.1,32.7,23.2,33.2,23.3,33.3,23.7,32.7,23.9,32.9,23.9,33.7,23.8,33.8,23.8,34.8,23.9,35.0,23.8,38.7,23.9,38.8,23.9,40.1,23.9,40.3,24.3,40.9,24.8,41.1,25.2,41.4,25.6,41.4,25.8,41.6,26.1,41.4,26.1,40.6,26.3,40.1,26.9,40.2,27.3,40.0,28.1,40.0,28.4,39.7,28.3,39.1,28.4,38.7,28.4,37.2,28.3,36.6,28.3,35.8,28.5,35.6,28.8,35.6,29.1,35.1,29.5,35.2,29.6,35.1,29.9,35.1,30.1,34.8,30.2,33.5,30.3,33.2,30.3,32.3,30.2,32.0,29.9,32.1,29.2,32.0,29.1,31.9,28.1,31.9,28.1,32.0,27.8,32.0,26.9,31.4,26.6,31.4,26.5,31.5,25.5,31.5,24.8,31.0,24.7,31.1,23.1,31.0],[26.0,24.0,25.1,24.0,25.0,24.1,24.3,24.1,24.2,24.0,23.9,24.0,23.6,24.3,23.5,26.5,23.4,26.6,23.4,27.2,23.3,27.6,23.3,27.8,23.1,28.3,23.1,28.5,23.2,28.6,23.3,28.8,23.7,29.4,23.7,29.6,23.6,29.8,23.6,30.1,23.7,30.2,23.8,30.1,24.0,30.1,24.3,30.4,24.7,30.4,24.9,30.2,25.1,29.7,25.5,29.5,25.5,29.2,25.3,28.9,25.4,27.4,25.6,27.0,25.8,27.0,25.8,27.1,26.0,26.8,26.0,26.6,26.1,26.5,26.1,25.4,26.1,25.3,26.1,24.1]],"ids":["p1"],"c":3},{"id":"narrow","nm":"窄藥架（冰箱旁邊）","r":[[14.3,17.2,13.9,17.2,13.6,17.7,13.5,18.4,13.3,18.7,12.9,20.3,13.0,20.8,12.9,25.5,13.0,25.9,12.8,27.1,12.8,27.8,12.9,27.9,12.9,34.5,12.9,34.6,12.9,37.8,12.8,37.9,12.8,39.4,12.9,39.5,12.8,42.2,12.9,42.4,12.9,43.7,13.1,43.8,13.3,43.3,14.4,43.0,14.6,42.7,14.7,42.4,14.7,42.0,14.7,40.6,14.6,40.5,14.7,37.0,14.6,36.9,14.6,34.5,14.5,34.4,14.5,31.4,14.7,30.5,14.7,28.6,14.6,28.5,14.7,28.2,14.7,26.5,14.6,26.4,14.6,22.8,14.5,22.7,14.5,20.0,14.6,19.6,14.4,19.0,14.5,17.8,14.4,17.3]],"c":1},{"id":"shelves","nm":"藥品櫃（左邊兩座）","r":[[0.0,11.3,0.0,51.4,1.7,50.4,3.1,50.1,3.5,49.5,3.8,49.6,4.3,49.4,5.1,49.4,5.7,48.6,6.1,48.4,6.4,47.4,6.8,47.1,7.5,46.2,7.9,46.4,8.7,45.6,10.1,45.7,10.3,45.9,10.8,45.7,11.2,45.9,12.0,45.6,12.7,45.0,12.9,44.0,12.9,38.9,13.0,38.2,13.1,36.2,12.9,28.6,13.1,27.3,13.1,25.2,12.9,24.3,13.1,21.7,12.9,19.1,12.7,18.1,12.8,16.5,12.7,13.2,11.3,13.4,11.1,13.1,10.8,13.5,9.4,13.1,8.6,13.2,8.0,13.0,7.6,12.4,6.3,12.5,5.7,12.3,4.8,12.3,4.4,13.0,3.9,11.9,3.4,12.2,2.6,11.5,2.1,11.8,1.7,11.1,0.6,11.5],[6.8,8.7,6.8,9.5,6.7,9.7,6.7,10.0,6.8,10.1,6.8,10.5,6.9,10.6,7.0,10.4,7.4,10.4,7.5,10.6,7.9,10.0,8.2,10.0,8.4,10.3,8.5,10.1,9.1,10.1,9.2,9.9,9.2,9.1,9.1,8.9,8.8,9.3,8.7,9.3,8.4,8.8,8.2,9.2,8.0,9.3,7.7,8.8,7.1,8.8,6.9,8.6]],"c":2},{"id":"bottles","nm":"藥水瓶（水槽上）","r":[[23.8,52.1,23.6,51.9,23.2,51.9,22.8,52.4,22.7,53.0,22.8,56.1,22.6,56.3,22.1,56.3,21.6,56.6,21.5,56.4,21.3,55.8,21.3,53.5,20.7,52.4,20.5,52.5,20.4,53.0,19.8,54.3,19.5,53.8,19.1,53.6,18.8,53.6,18.4,53.9,18.2,54.5,18.1,56.4,17.8,57.3,17.8,58.1,17.6,58.4,17.0,58.4,16.6,59.1,16.6,62.8,16.6,63.0,16.9,63.4,17.4,63.5,17.7,63.1,18.0,62.6,18.6,62.8,18.8,62.5,19.6,62.2,20.1,61.3,20.4,61.6,21.2,61.3,21.6,60.6,21.7,60.7,22.0,60.4,22.4,60.4,22.8,59.8,23.0,60.0,23.4,60.0,24.0,59.5,24.1,59.2,24.1,57.8,24.1,57.3,24.1,55.1,24.0,53.6],[29.5,54.8,29.2,54.5,28.2,54.5,28.1,54.7,28.1,54.9,28.1,55.5,27.9,55.7,27.7,55.6,27.6,55.5,27.3,55.5,27.3,55.6,26.9,55.7,26.7,56.0,26.6,56.6,26.7,57.4,26.6,57.5,26.6,58.1,26.6,58.2,26.6,61.7,26.6,61.8,26.8,61.9,26.9,61.8,27.1,61.8,27.1,61.7,27.3,61.7,27.4,61.6,27.6,61.6,27.7,61.5,27.9,61.3,28.0,61.1,28.0,59.5,28.0,59.4,28.0,58.8,28.2,58.6,28.4,58.9,28.7,59.4,28.7,59.7,28.7,59.8,28.7,61.3,28.7,61.6,28.8,61.7,29.5,61.7,29.7,61.5,29.7,58.0,29.5,57.2]],"c":7},{"id":"beaker","nm":"量杯","r":[[30.6,53.2,30.5,53.5,30.5,54.4,30.5,54.5,30.5,55.1,30.6,55.3,30.6,59.2,30.6,59.3,30.6,60.0,30.6,60.1,30.6,62.5,30.8,63.0,31.2,63.5,31.5,63.6,32.3,64.4,32.7,64.6,32.8,64.4,33.0,63.5,33.0,62.5,32.9,62.4,32.9,57.6,33.0,57.5,33.0,55.8,32.9,55.7,32.9,55.4,33.0,55.3,33.0,54.2,33.0,54.1,33.0,53.7,32.9,53.2,32.8,53.1,32.3,53.0,32.2,52.9,31.4,52.9,31.4,53.0,31.1,53.0,31.1,53.1]],"c":1},{"id":"monitor","nm":"電腦螢幕","r":[[69.4,38.2,69.3,38.9,69.1,43.6,68.8,45.0,68.8,46.5,68.9,46.9,69.7,47.7,70.0,48.6,70.0,50.5,69.8,51.0,69.8,51.7,70.1,51.9,70.3,51.8,70.8,51.9,71.0,52.1,71.3,53.0,71.8,52.6,72.2,52.6,72.5,53.0,72.5,55.0,72.0,55.4,72.0,55.6,72.1,55.7,72.3,55.6,73.0,56.4,73.7,56.7,73.9,56.4,73.9,54.3,74.3,53.3,75.0,52.7,75.3,52.0,76.0,51.1,76.4,51.0,76.9,50.4,78.2,50.1,78.4,49.8,78.4,47.1,78.5,46.1,78.5,43.2,78.7,40.8,78.7,39.7,78.6,39.4,78.3,39.0,75.2,38.7,74.6,38.4,73.6,38.4,71.3,37.8,69.7,37.7]],"c":1},{"id":"scanner","nm":"條碼掃描器","r":[[68.5,47.1,68.2,47.5,67.8,47.6,67.0,48.6,66.6,49.5,66.6,50.4,66.8,51.1,67.0,51.6,67.4,52.0,67.6,52.0,67.9,52.4,67.9,53.5,68.0,53.6,68.0,53.8,68.1,54.3,68.1,54.8,68.1,54.9,68.1,55.8,68.1,56.1,67.9,56.3,67.8,56.3,67.3,57.0,67.3,57.3,67.2,57.8,67.2,58.4,67.4,58.7,67.7,58.7,67.7,58.8,68.1,58.9,68.2,59.1,68.7,59.1,68.7,59.2,69.0,59.2,69.0,59.3,69.4,59.4,69.7,59.1,69.8,58.7,70.1,58.4,70.1,57.6,70.0,57.2,70.0,56.8,69.7,56.1,69.7,54.7,69.6,54.5,69.6,53.7,69.6,53.6,69.6,53.1,69.4,52.3,69.5,51.2,69.8,50.4,69.9,49.3,69.8,49.2,69.8,48.6,69.6,47.9,68.9,47.1]],"c":1},{"id":"printer","nm":"印表機","r":[[55.9,42.4,55.7,42.4,55.7,42.2,54.9,42.2,54.8,42.1,53.9,42.0,53.9,41.9,53.2,41.9,52.4,42.6,51.6,44.3,51.5,44.7,51.5,45.1,51.5,45.2,51.4,45.8,51.4,45.9,51.4,47.0,51.5,47.1,51.5,49.3,51.4,49.4,51.4,51.0,51.5,51.1,51.4,53.0,51.5,53.1,51.8,53.5,52.1,53.5,52.2,53.6,53.5,53.7,53.5,53.8,53.9,53.8,54.0,53.9,54.1,53.9,54.3,53.6,54.3,52.7,54.3,52.6,54.3,51.0,54.4,50.7,54.6,50.4,54.8,50.1,55.0,50.1,55.0,50.0,55.5,50.0,55.5,50.1,55.7,50.0,55.9,49.6,56.0,48.7,56.0,45.6,56.1,45.5,56.2,44.6,56.3,43.9,56.3,43.1,56.2,42.6]],"c":1},{"id":"pillbottle","nm":"藥罐","r":[[58.3,60.5,58.1,60.9,57.9,61.0,57.7,61.7,57.7,62.4,57.8,62.5,57.8,65.8,57.8,66.0,58.0,66.2,58.8,66.2,59.0,65.9,59.1,61.2,59.0,61.0,58.8,60.7,58.6,60.7,58.4,60.5]],"c":1},{"id":"desk","nm":"辦公桌（行政事宜旁邊）","r":[[22.8,31.4,22.8,32.1,23.1,32.7,23.2,33.2,23.3,33.3,23.7,32.7,23.9,32.9,23.9,33.7,23.8,33.8,23.8,34.8,23.9,35.0,23.8,38.7,23.9,38.8,23.9,40.1,23.9,40.3,24.3,40.9,24.8,41.1,25.2,41.4,25.6,41.4,25.8,41.6,26.1,41.4,26.1,40.6,26.3,40.1,26.9,40.2,27.3,40.0,28.1,40.0,28.4,39.7,28.3,39.1,28.4,38.7,28.4,37.2,28.3,36.6,28.3,35.8,28.5,35.6,28.8,35.6,29.1,35.1,29.5,35.2,29.6,35.1,29.9,35.1,30.1,34.8,30.2,33.5,30.3,33.2,30.3,32.3,30.2,32.0,29.9,32.1,29.2,32.0,29.1,31.9,28.1,31.9,28.1,32.0,27.8,32.0,26.9,31.4,26.6,31.4,26.5,31.5,25.5,31.5,24.8,31.0,24.7,31.1,23.1,31.0],[26.0,24.0,25.1,24.0,25.0,24.1,24.3,24.1,24.2,24.0,23.9,24.0,23.6,24.3,23.5,26.5,23.4,26.6,23.4,27.2,23.3,27.6,23.3,27.8,23.1,28.3,23.1,28.5,23.2,28.6,23.3,28.8,23.7,29.4,23.7,29.6,23.6,29.8,23.6,30.1,23.7,30.2,23.8,30.1,24.0,30.1,24.3,30.4,24.7,30.4,24.9,30.2,25.1,29.7,25.5,29.5,25.5,29.2,25.3,28.9,25.4,27.4,25.6,27.0,25.8,27.0,25.8,27.1,26.0,26.8,26.0,26.6,26.1,26.5,26.1,25.4,26.1,25.3,26.1,24.1]],"c":2},{"id":"rxbox","nm":"兩盒處方","r":[[88.1,56.7,87.3,55.8,86.9,56.1,86.8,55.8,86.9,54.5,87.2,54.1,87.2,53.7,87.0,53.2,87.2,52.3,86.6,51.7,84.9,51.3,83.9,50.7,82.8,51.2,82.2,50.4,81.7,50.2,80.7,51.4,80.7,52.1,80.9,53.0,80.8,55.6,80.4,56.4,80.1,55.8,80.3,53.9,80.0,52.3,79.8,52.0,79.5,52.1,78.5,50.6,77.0,50.5,76.6,51.2,75.9,51.6,75.2,53.2,74.5,53.5,74.2,53.8,73.9,54.8,73.9,56.8,73.7,57.6,73.1,58.1,73.1,58.8,72.8,59.5,72.8,60.4,73.1,61.0,73.3,64.2,73.6,64.6,74.1,64.7,74.7,63.6,75.9,63.7,77.9,64.6,79.0,64.4,79.4,64.9,81.1,65.3,83.8,66.6,84.8,66.7,88.0,62.6,88.1,61.9]],"c":2}],"pr":[[40,84,46,96,207,187,171]]},
-{"fp":"3768d56ad9ccfe551cd84ce66c6e7c4d","ar":2.2399,"bx":{"p1":[17,12,6,29,"r"],"p2":[43,19,8,17,"t"],"p3":[59,19,10,20,"t"],"p4":[82,20,11,20,"t"],"p5":[66,37,13,23,"t"],"p6":[14,18,4,25,"b"],"p7":[42,53,18,13,"b"],"p8":[20,61,19,23,"t"],"p9":[58,63,14,17,"l"],"p10":[71,64,18,26,"t"],"p11":[31,76,18,24,"t"]},"objs":[{"id":"book","nm":"法規書（整本）","r":[[20.2,69.9,20.2,71.5,20.5,72.7,20.7,73.3,22.0,74.7,23.5,77.1,24.1,77.6,26.5,81.0,27.8,82.5,28.7,83.9,29.4,83.8,30.6,82.5,31.0,82.3,31.5,81.6,32.1,81.1,32.6,80.5,33.9,79.5,35.5,77.7,36.7,76.8,37.8,75.7,38.1,75.1,38.1,74.7,37.8,73.3,37.7,71.2,38.3,70.6,38.2,70.0,37.7,69.5,35.9,68.1,34.5,66.6,34.1,66.5,33.6,65.8,33.0,65.4,32.7,64.8,31.4,63.8,31.0,63.1,29.5,61.7,28.8,61.9,28.2,61.9,27.9,61.7,26.7,62.1,25.8,63.1,25.1,63.4,24.6,64.3,23.6,64.9,23.2,65.5,22.8,65.6,22.3,66.2,21.6,66.5,20.8,67.3,20.5,68.3],[36.2,62.9,36.1,63.0,36.1,63.2,36.0,63.7,36.0,64.7,36.0,64.9,36.1,65.0,36.4,65.0,36.5,64.8,36.5,64.6,36.6,64.4,36.6,63.2,36.4,63.0]],"ids":["p8"],"c":1},{"id":"binder","nm":"規則本（整本）","r":[[71.1,77.4,71.1,80.3,71.2,81.0,71.4,81.5,71.8,81.9,73.3,82.3,74.5,83.2,75.2,83.3,75.8,83.8,77.0,84.1,77.7,84.7,78.5,85.0,80.0,85.8,80.3,85.8,80.9,86.3,84.3,87.8,84.9,88.3,85.8,88.5,86.0,88.9,86.8,89.4,87.2,89.4,87.6,89.7,88.0,89.7,88.1,89.5,88.2,87.9,88.0,85.7,88.0,84.6,88.4,83.3,88.3,80.9,88.0,76.8,88.0,74.0,87.7,71.1,87.6,68.5,87.3,67.9,87.0,67.9,86.2,67.4,85.2,67.3,83.8,66.6,83.3,66.6,82.2,66.1,81.6,66.1,80.9,65.5,80.5,65.5,80.2,65.8,79.6,65.2,77.5,64.7,76.3,64.1,74.7,63.8,74.3,64.8,73.9,66.2,73.3,68.5,73.1,69.3,72.4,71.7,72.1,73.3,71.4,75.4]],"ids":["p10"],"c":1},{"id":"clip","nm":"處方夾板","r":[[58.6,73.7,58.6,74.0,58.8,74.3,59.4,74.6,60.3,75.3,60.9,75.4,61.3,75.8,61.5,75.8,62.0,76.3,62.6,76.4,63.4,77.1,64.0,77.2,65.0,77.9,65.7,78.2,66.6,78.9,67.1,79.0,67.8,79.6,68.4,79.7,68.6,79.5,69.4,75.7,69.7,74.8,69.8,74.1,69.9,73.5,70.1,73.0,70.1,72.6,70.3,71.8,70.8,69.7,71.3,67.4,71.4,66.3,71.2,66.0,70.6,65.9,70.6,65.8,70.2,65.8,69.5,65.3,69.2,65.3,68.5,64.6,68.2,64.6,67.8,64.2,67.4,64.2,66.9,63.7,66.8,63.8,66.4,63.8,66.4,63.7,65.7,63.6,65.5,63.4,63.5,63.2,62.4,65.8,62.2,65.9,62.0,66.5,61.9,66.6,61.1,68.1,60.4,69.8,60.1,70.2,58.7,73.2]],"ids":["p9"],"c":1},{"id":"tray","nm":"藥盤","r":[[59.1,57.2,58.9,56.7,58.0,56.6,57.3,55.8,55.8,55.7,55.2,55.4,54.8,55.4,54.1,54.4,53.4,54.5,51.9,54.2,51.4,53.6,51.0,53.5,50.2,53.9,49.7,53.9,49.4,53.7,47.8,53.6,47.4,53.8,47.0,53.8,46.7,54.4,46.3,54.9,45.8,55.1,45.2,55.7,44.7,55.8,43.7,56.6,42.7,57.8,42.1,58.0,42.0,58.2,42.0,58.6,42.1,59.1,42.5,59.4,42.7,59.9,42.8,60.6,42.9,60.9,44.8,61.0,45.2,61.2,46.0,61.3,46.4,61.7,48.2,62.4,48.6,63.0,49.9,63.1,50.2,63.5,51.1,63.6,52.2,64.3,52.9,64.4,53.6,65.4,54.2,65.4,55.0,63.6,55.5,63.1,56.8,61.3,58.2,60.1,58.3,59.9,58.3,59.1,58.7,58.1,59.1,57.4]],"ids":["p7"],"c":1},{"id":"liquid","nm":"藥品櫃＋窄藥架＋冰箱（水藥）","r":[[3.5,11.9,3.5,18.0,3.2,21.1,3.4,25.1,3.1,26.1,3.4,31.3,3.2,34.7,3.4,35.4,3.2,41.4,3.6,42.4,3.2,44.2,3.2,47.5,3.5,48.3,3.4,49.4,5.2,49.3,6.0,48.3,6.4,47.1,7.3,46.1,8.0,46.3,8.8,45.5,10.0,45.8,11.9,45.6,12.7,45.0,13.3,43.2,16.7,41.5,17.0,40.9,17.1,19.9,16.9,18.9,16.2,18.4,14.7,18.4,14.4,19.2,14.3,19.0,14.4,17.8,14.2,17.3,14.0,19.2,12.9,19.6,12.6,18.1,12.8,16.5,12.8,13.7,12.6,13.2,11.6,13.2,11.2,12.8,10.7,13.4,10.4,13.0,9.9,13.2,9.2,12.5,8.6,13.0,8.3,12.4,6.9,12.1,6.4,12.4,4.8,12.3,4.4,13.1,4.1,12.1],[6.6,8.2,6.6,9.4,6.6,9.5,6.5,10.1,6.7,11.1,6.9,11.3,7.1,11.0,7.3,11.0,7.5,11.2,7.6,11.2,8.0,10.6,8.4,11.0,8.7,10.5,9.0,10.5,9.5,11.1,9.5,11.9,9.6,12.1,9.9,11.7,10.2,12.1,10.3,12.1,10.5,11.7,10.7,11.6,10.8,11.7,11.0,12.3,11.1,12.5,11.5,12.2,11.7,11.7,11.7,10.9,11.5,10.3,11.6,8.8,11.5,8.7,11.5,8.5,11.2,8.1,11.0,8.1,10.8,8.4,10.3,8.4,10.0,8.0,9.8,8.0,9.7,8.1,9.5,8.1,9.3,8.5,8.9,8.8,8.6,8.7,8.5,8.4,8.4,8.1,8.2,8.1,7.9,8.5,7.7,8.5,7.7,8.6,7.2,8.6,6.8,8.0]],"ids":["p6"],"c":3},{"id":"consult","nm":"藥師和病人（左邊窗口）","r":[[49.9,20.0,49.4,19.8,49.0,20.3,48.7,20.8,48.5,22.2,48.6,24.1,48.1,25.2,47.9,26.0,47.7,26.4,47.4,25.7,47.3,25.2,46.2,24.0,45.8,24.1,45.6,26.1,45.5,26.6,45.1,27.2,44.7,26.7,44.5,25.4,44.3,25.3,44.1,25.7,43.9,26.4,43.8,29.6,44.0,30.1,44.3,30.4,44.5,31.0,44.1,34.1,44.1,34.8,44.2,35.1,46.0,35.3,46.3,35.6,47.5,35.4,47.5,35.3,47.5,33.7,47.3,31.7,47.1,31.1,47.1,30.8,47.3,30.1,47.4,29.8,47.9,30.0,48.4,29.1,48.6,29.2,49.1,29.1,49.3,27.9,49.7,27.2,49.9,27.2,50.2,27.6,50.6,27.3,50.9,26.8,50.9,25.5,50.4,23.3,50.3,21.4]],"ids":["p2"],"c":2},{"id":"dispense","nm":"藥師和病人（中間窗口）","r":[[61.1,19.3,60.8,19.6,60.6,20.0,60.1,22.0,60.1,23.4,60.3,24.0,60.3,24.8,60.0,25.4,59.4,26.0,59.2,26.5,59.1,30.9,59.1,31.3,59.4,31.9,59.6,32.0,59.8,32.6,59.5,34.8,59.3,37.1,59.6,37.6,60.4,37.6,61.5,37.9,63.0,38.1,63.1,37.7,63.1,37.1,63.0,36.2,62.9,35.0,62.7,32.7,62.7,31.7,62.8,31.5,63.3,31.7,63.6,31.7,63.8,31.5,64.0,31.0,64.1,30.3,64.1,29.6,63.9,29.2,63.7,29.2,63.5,29.0,63.2,28.0,63.0,27.4,62.8,26.6,62.7,26.3,61.9,25.7,61.6,25.1,61.7,24.6,62.1,23.6,62.4,22.2,62.4,21.0,62.4,20.6,61.9,19.7,61.6,19.5],[65.3,19.3,65.1,19.8,65.0,20.2,65.0,21.0,65.1,22.0,65.1,23.2,64.8,23.7,64.6,24.0,64.1,24.7,63.9,25.7,63.8,26.8,64.0,27.1,64.2,27.1,64.3,27.2,65.0,27.1,65.6,28.0,65.8,27.9,66.0,27.2,66.3,27.1,66.6,27.4,66.9,27.4,67.2,27.7,67.4,28.2,67.5,28.5,67.7,28.9,68.1,28.6,68.1,28.5,68.1,27.2,68.0,27.1,68.0,25.8,67.8,24.7,67.2,24.1,66.9,23.5,66.5,22.2,66.5,21.5,66.6,21.0,66.6,19.9,66.5,19.7,66.2,19.2,66.0,19.2,65.9,19.1,65.6,19.1]],"ids":["p3"],"c":2},{"id":"er","nm":"藥師和病人（右邊窗口）","r":[[90.0,20.5,89.5,20.2,88.7,20.8,88.5,21.5,88.5,24.6,87.5,25.5,87.1,27.4,86.2,27.3,85.7,26.5,85.3,26.7,85.1,30.1,84.8,31.1,84.3,31.1,83.9,30.2,83.5,28.0,83.2,27.9,82.8,28.4,82.5,32.7,82.8,34.1,83.4,34.5,83.5,35.0,83.2,38.7,83.3,39.4,84.7,39.6,85.3,39.1,87.5,38.8,87.5,38.1,87.1,34.7,86.9,32.0,87.3,31.7,87.9,32.5,88.3,31.9,88.5,32.1,88.8,31.9,88.9,31.3,88.9,30.4,88.4,30.4,88.1,29.4,87.5,28.9,87.9,27.9,88.2,27.8,88.6,28.4,89.1,27.6,89.5,27.9,89.6,28.5,89.5,32.5,89.7,32.8,90.5,32.6,90.6,30.5,90.8,29.5,92.1,29.1,92.1,27.6,91.8,26.1,90.3,24.2,90.4,22.7]],"ids":["p4"],"c":2},{"id":"review","nm":"電腦和兩盒處方（覆核）","r":[[66.6,49.8,67.0,51.4,67.8,52.3,68.1,55.8,67.2,57.3,67.2,58.2,67.4,58.6,69.4,59.3,70.0,58.2,69.5,51.4,70.9,51.9,71.3,53.0,71.8,52.5,72.5,52.7,72.3,55.5,73.9,56.7,73.7,57.6,73.1,58.2,73.1,59.1,72.8,59.8,73.2,60.9,73.3,64.1,74.1,64.6,74.6,63.6,76.3,63.7,84.8,66.6,88.0,62.3,88.1,56.6,86.8,55.7,87.1,52.1,86.6,51.6,84.0,50.7,82.8,51.2,81.6,50.2,80.8,51.6,80.8,55.6,80.3,56.6,80.1,56.0,80.0,52.4,79.4,52.5,78.6,50.8,77.7,50.4,78.4,49.5,78.7,39.9,78.3,39.0,69.7,37.7,69.3,39.0,68.9,46.9,67.2,48.2]],"ids":["p5"],"c":4},{"id":"cabinet","nm":"文件資料櫃＋辦公桌（行政事宜）","r":[[22.3,13.6,21.2,13.5,20.8,13.7,20.6,13.4,20.6,12.8,20.5,12.6,20.3,12.8,20.2,13.1,20.1,13.4,19.7,12.9,19.2,13.0,19.0,12.8,17.9,12.6,17.4,12.9,17.3,13.5,17.1,15.8,17.1,17.1,17.3,17.9,17.4,19.6,17.3,19.9,17.4,23.9,17.3,24.0,17.3,27.7,17.3,27.8,17.2,38.5,17.3,38.7,17.3,40.6,17.4,40.8,18.1,40.6,19.0,40.0,19.3,40.0,19.8,39.6,20.5,39.5,20.8,39.1,21.3,39.3,21.4,39.0,21.4,38.1,21.0,37.0,21.0,36.2,21.3,35.4,21.4,34.6,21.3,32.3,21.2,31.6,20.7,31.1,20.7,30.7,20.9,30.1,21.2,29.8,22.3,29.7,22.4,29.6,22.5,28.9,22.5,24.5,22.4,24.3,22.5,23.7,22.4,22.6,22.5,14.2,22.4,13.8],[23.7,24.1,23.4,27.0,22.9,28.2,22.9,28.9,23.4,29.1,23.5,29.4,23.5,30.2,24.0,30.2,24.4,30.5,24.5,30.9,24.3,31.1,23.7,30.8,22.8,31.3,22.7,32.0,23.2,32.8,23.5,32.6,23.9,32.8,23.8,33.7,23.8,38.7,24.0,40.7,25.9,41.6,26.1,41.4,26.2,40.5,26.4,40.1,26.8,40.2,27.4,39.9,28.9,39.7,28.7,39.1,28.4,38.8,28.2,36.2,28.4,35.7,29.1,35.1,29.5,35.3,30.0,35.1,30.4,32.9,30.3,32.0,27.8,32.0,26.9,31.3,25.4,31.4,24.8,31.0,24.8,30.5,25.4,30.5,26.2,29.5,26.2,28.5,26.1,27.8,25.8,27.8,25.6,28.4,25.4,28.2,25.5,27.3,25.9,27.4,26.1,27.1,26.2,26.4,26.2,24.1,25.6,23.7,24.9,24.0,24.3,23.7]],"ids":["p1"],"c":3},{"id":"quiz","nm":"問卷夾板","r":[[31.4,91.8,31.4,92.4,31.6,92.7,32.6,93.3,33.1,93.8,33.6,93.9,34.6,94.7,35.0,94.9,35.6,95.5,36.2,95.7,36.9,96.3,37.5,96.5,38.5,97.4,39.1,97.6,41.1,99.2,41.6,99.4,42.2,99.4,42.5,99.2,42.7,98.7,43.4,95.9,43.9,94.6,44.2,93.3,44.5,92.7,45.0,90.5,45.7,88.5,45.7,87.9,46.1,86.3,46.8,84.1,47.0,83.2,47.4,81.9,47.5,80.9,47.1,80.4,46.8,80.3,46.4,79.7,45.6,79.6,45.1,78.9,44.6,78.8,44.4,78.4,43.8,78.3,43.0,77.4,42.2,77.4,41.2,77.1,40.5,77.1,40.1,77.3,39.4,77.0,38.5,76.8,38.2,77.2,36.9,79.8,35.0,84.1,32.6,89.0],[48.3,84.5,48.1,84.4,47.7,84.7,47.6,85.0,47.3,85.9,47.0,86.3,47.0,86.5,46.8,87.4,46.7,87.7,46.2,88.8,46.0,89.6,45.3,91.3,45.2,92.1,45.0,92.8,44.9,93.3,44.6,94.2,44.6,94.6,44.6,94.7,44.6,95.2,44.8,95.5,45.2,95.0,45.4,94.4,45.6,93.8,45.9,93.3,46.0,92.7,46.3,92.1,46.4,91.6,46.7,90.9,46.8,90.3,47.5,88.9,47.5,88.5,47.7,87.9,47.8,87.4,48.1,86.6,48.3,85.9,48.3,85.6,48.3,85.4]],"ids":["p11"],"c":2},{"id":"narrow","nm":"窄藥架（冰箱旁邊）","r":[[14.2,17.3,14.1,17.4,14.0,17.7,14.1,19.0,14.0,19.2,13.5,19.6,13.2,19.6,13.1,19.7,12.9,20.3,12.9,20.8,13.0,20.9,13.0,22.9,12.9,23.0,12.9,24.3,12.9,24.5,12.9,26.4,12.8,27.2,12.8,27.8,12.9,27.9,12.9,30.1,12.8,30.2,12.9,32.5,12.8,32.6,12.8,33.1,12.9,33.2,12.9,35.6,12.9,35.7,12.8,41.8,12.8,41.9,12.9,43.6,13.1,43.7,13.3,43.2,13.7,43.1,13.8,43.0,14.3,43.0,14.7,42.5,14.6,39.1,14.7,39.0,14.7,37.6,14.6,36.8,14.6,33.1,14.5,32.9,14.5,31.5,14.7,30.7,14.7,26.4,14.6,26.3,14.6,22.6,14.5,22.4,14.5,20.2,14.6,19.7,14.3,19.0,14.3,18.7,14.4,18.1,14.4,17.8]],"c":1},{"id":"shelves","nm":"藥品櫃（左邊兩座）","r":[[0.0,11.5,0.0,51.3,0.3,51.3,1.8,50.2,2.9,50.2,3.5,49.5,5.2,49.3,5.6,48.6,6.0,48.3,6.4,47.1,7.3,46.1,8.0,46.3,8.8,45.5,10.0,45.8,11.2,45.8,12.7,45.0,12.8,44.3,12.9,42.5,12.8,38.9,13.1,35.1,12.9,28.3,13.1,26.5,12.9,24.1,13.1,22.7,12.9,19.8,12.6,18.1,12.8,16.5,12.7,13.4,11.6,13.2,11.2,12.8,10.7,13.4,10.4,13.0,9.9,13.2,9.2,12.5,8.8,13.0,8.6,13.0,8.3,12.4,8.0,12.5,7.7,12.2,6.9,12.1,6.4,12.4,4.8,12.3,4.4,13.1,4.1,12.1,3.9,11.8,3.3,12.2,2.7,11.6,2.1,11.9,1.7,11.5],[6.6,8.2,6.6,9.4,6.6,9.5,6.5,10.1,6.7,11.1,6.9,11.3,7.1,11.0,7.3,11.0,7.5,11.2,7.6,11.2,8.0,10.6,8.4,11.0,8.7,10.5,9.0,10.5,9.5,11.1,9.5,11.9,9.6,12.1,9.9,11.7,10.2,12.1,10.3,12.1,10.5,11.7,10.7,11.6,10.8,11.7,11.0,12.3,11.1,12.5,11.5,12.2,11.7,11.7,11.7,10.9,11.5,10.3,11.6,8.8,11.5,8.7,11.5,8.5,11.2,8.1,11.0,8.1,10.8,8.4,10.3,8.4,10.0,8.0,9.8,8.0,9.7,8.1,9.5,8.1,9.3,8.5,8.9,8.8,8.6,8.7,8.5,8.4,8.4,8.1,8.2,8.1,7.9,8.5,7.7,8.5,7.7,8.6,7.2,8.6,6.8,8.0]],"c":2},{"id":"bottles","nm":"藥水瓶（水槽上）","r":[[23.8,52.3,23.5,52.0,22.8,52.6,22.8,56.1,21.6,56.4,21.4,56.1,21.3,53.7,21.2,53.1,21.0,52.5,20.6,52.1,20.5,52.3,20.0,53.8,20.0,57.3,19.9,57.5,19.7,57.3,19.7,54.5,19.6,54.1,19.3,53.7,18.8,53.7,18.5,53.9,18.5,54.2,18.9,54.9,18.9,55.5,18.7,55.8,18.2,55.8,17.8,57.2,17.8,58.0,17.0,58.2,16.7,58.6,16.6,58.9,16.5,61.0,16.6,63.0,17.0,63.4,17.5,63.2,17.8,62.8,17.9,62.1,18.1,61.8,18.6,62.3,19.2,62.2,19.7,61.7,19.8,60.9,20.0,60.4,20.1,60.6,20.2,61.3,20.6,61.5,21.2,61.2,21.6,60.6,22.4,60.4,22.9,59.5,23.1,59.8,23.4,59.8,24.0,59.4,24.1,58.5,24.1,55.7,24.0,53.3],[29.5,54.5,29.2,54.3,28.3,54.3,28.1,54.5,28.0,54.8,28.0,55.4,27.9,55.6,27.6,55.5,27.5,55.4,27.4,55.4,27.3,55.5,27.1,55.5,26.7,56.0,26.7,56.2,26.7,57.6,26.6,58.2,26.6,61.6,26.6,61.7,26.8,61.8,26.9,61.7,27.1,61.7,27.1,61.6,27.9,61.2,28.0,61.0,28.0,59.5,28.0,59.4,28.0,58.9,28.2,58.7,28.3,58.9,28.6,59.1,28.7,59.5,28.7,61.5,28.8,61.6,29.5,61.6,29.6,61.5,29.6,61.2,29.7,61.1,29.7,60.5,29.6,60.4,29.6,58.8,29.7,58.7,29.7,58.2,29.6,58.1,29.6,57.5,29.5,57.2,29.5,56.3,29.5,56.2,29.5,54.7]],"c":7},{"id":"beaker","nm":"量杯","r":[[30.7,53.1,30.5,53.5,30.5,54.3,30.5,54.4,30.5,55.0,30.6,55.1,30.6,61.1,30.5,61.2,30.5,62.2,30.6,62.3,30.6,62.5,30.7,62.8,30.9,62.9,31.5,63.6,31.6,63.6,32.2,64.3,32.3,64.3,32.4,64.6,32.8,64.6,32.9,64.4,32.9,64.2,32.9,63.6,33.0,63.5,33.0,59.3,32.9,59.2,32.9,58.2,33.0,58.1,33.0,54.4,33.0,54.3,33.0,53.7,32.9,53.2,32.7,53.0,32.1,52.9,32.1,52.7,31.4,52.7,31.4,52.9,31.1,52.9,31.1,53.0]],"c":1},{"id":"monitor","nm":"電腦螢幕","r":[[69.5,38.1,69.3,39.0,69.1,43.6,68.8,45.1,68.8,46.5,68.9,46.9,69.7,47.7,70.0,48.6,70.0,50.5,69.7,51.1,69.7,51.4,70.1,51.9,70.3,51.8,70.9,51.9,71.2,52.4,71.2,52.9,71.3,53.0,71.8,52.5,72.2,52.5,72.6,53.0,72.5,54.9,72.3,55.3,72.3,55.5,72.9,56.2,73.1,56.2,73.6,56.6,73.9,56.2,73.9,54.3,74.4,53.1,74.9,52.6,76.0,51.0,76.5,50.8,77.0,50.2,77.5,50.2,77.8,49.9,78.2,50.0,78.4,49.8,78.4,49.5,78.4,47.3,78.5,45.9,78.5,43.3,78.7,40.7,78.7,39.9,78.6,39.4,78.3,39.0,75.3,38.7,74.7,38.4,73.6,38.4,73.1,38.2,71.9,38.1,71.3,37.8,69.7,37.7]],"c":1},{"id":"scanner","nm":"條碼掃描器","r":[[67.8,47.5,67.1,48.4,66.8,49.0,66.6,49.8,66.6,50.5,66.8,51.0,67.0,51.4,67.8,52.3,67.9,53.6,68.1,54.1,68.1,55.3,68.2,55.4,68.1,55.8,68.0,56.2,67.6,56.4,67.3,57.0,67.2,58.2,67.4,58.6,67.6,58.6,68.2,58.9,68.6,58.9,69.2,59.3,69.6,59.2,69.8,58.9,69.8,58.6,70.0,58.2,69.8,57.0,69.6,53.1,69.4,52.1,69.5,51.1,69.7,50.5,69.8,50.0,69.8,48.7,69.8,48.3,69.6,47.9,68.9,47.1,68.6,47.1,68.2,47.5]],"c":1},{"id":"printer","nm":"印表機","r":[[56.0,42.5,55.7,42.4,55.7,42.2,54.9,42.2,54.8,42.1,54.0,42.0,53.9,41.9,53.2,41.9,53.1,42.0,52.9,42.1,52.6,42.5,52.4,42.7,51.6,44.4,51.5,44.9,51.5,45.5,51.4,45.8,51.4,46.3,51.4,46.4,51.4,46.9,51.5,47.0,51.5,47.6,51.5,47.7,51.5,49.6,51.5,49.8,51.5,50.6,51.5,50.7,51.5,51.2,51.6,51.3,51.6,51.6,51.5,51.7,51.5,53.0,51.8,53.3,52.6,53.5,52.7,53.6,53.6,53.6,53.7,53.7,54.1,53.7,54.2,53.6,54.2,53.3,54.3,53.2,54.3,52.5,54.3,52.4,54.3,50.8,54.6,50.4,55.2,49.8,55.5,49.9,55.6,50.0,55.7,49.9,56.0,48.8,56.0,48.6,56.0,48.4,56.0,47.7,56.0,47.6,56.0,45.2,56.3,43.7,56.3,42.8]],"c":1},{"id":"pillbottle","nm":"藥罐","r":[[58.4,60.4,58.1,60.7,58.0,60.7,57.8,61.0,57.8,61.2,57.8,64.8,57.7,64.9,57.7,65.4,57.8,65.5,57.8,65.8,58.0,66.1,58.5,66.2,58.6,66.1,58.9,66.1,59.0,65.9,59.0,65.4,59.1,65.3,59.1,65.0,59.0,64.9,59.0,64.1,59.1,64.0,59.1,63.4,59.1,63.2,59.1,62.3,59.1,62.2,59.1,61.1,59.0,60.9,58.8,60.6,58.6,60.6]],"c":1},{"id":"desk","nm":"辦公桌（行政事宜旁邊）","r":[[23.7,24.1,23.4,27.0,22.9,28.2,22.9,28.9,23.4,29.1,23.5,29.4,23.5,30.2,24.0,30.2,24.4,30.5,24.5,30.9,24.3,31.1,23.7,30.8,22.8,31.3,22.7,32.0,23.2,32.8,23.5,32.6,23.9,32.8,23.8,33.7,23.8,38.7,24.0,40.7,25.9,41.6,26.1,41.4,26.2,40.5,26.4,40.1,26.8,40.2,27.4,39.9,28.9,39.7,28.7,39.1,28.4,38.8,28.2,36.2,28.4,35.7,29.1,35.1,29.5,35.3,30.0,35.1,30.4,32.9,30.3,32.0,27.8,32.0,26.9,31.3,25.4,31.4,24.8,31.0,24.8,30.5,25.4,30.5,26.2,29.5,26.2,28.5,26.1,27.8,25.8,27.8,25.6,28.4,25.4,28.2,25.5,27.3,25.9,27.4,26.1,27.1,26.2,26.4,26.2,24.1,25.6,23.7,24.9,24.0,24.3,23.7]],"c":2},{"id":"rxbox","nm":"兩盒處方","r":[[88.1,56.6,87.3,55.7,87.0,56.0,86.8,55.7,87.1,54.2,86.9,53.0,87.1,52.1,86.6,51.6,84.8,51.2,84.0,50.7,82.8,51.2,81.9,50.2,81.6,50.2,80.8,51.3,80.7,51.9,80.9,53.0,80.8,55.6,80.6,56.4,80.3,56.6,80.1,56.0,80.1,53.5,80.0,52.4,79.4,52.5,78.9,51.9,78.4,50.6,77.0,50.5,76.5,51.2,76.0,51.4,75.3,52.9,74.5,53.3,74.1,54.1,73.9,54.9,73.9,57.0,73.1,58.2,73.1,59.1,72.8,60.0,73.2,60.9,73.3,64.1,73.6,64.4,74.1,64.6,74.6,63.6,76.3,63.7,78.2,64.6,78.9,64.3,79.4,64.8,84.8,66.6,88.0,62.5]],"c":2}],"add":{"p11":{"label":"問卷","to":"q:all","ico":"📋","desc":"問卷、考試"}},"pr":[[40,84,46,96,213,213,217]]}];
+{"fp":"3768d56adbccfe551cd84ce66c66785d","ar":2.2399,"bx":{"p1":[17,12,6,29,"r"],"p2":[43,19,8,17,"t"],"p3":[59,19,10,20,"t"],"p4":[82,20,11,20,"t"],"p5":[66,37,13,23,"t"],"p6":[14,18,4,25,"b"],"p7":[42,53,18,13,"b"],"p8":[20,61,19,23,"t"],"p9":[58,63,14,17,"l"],"p10":[71,64,18,26,"t"]},"objs":[{"id":"book","nm":"法規書（整本）","r":[[20.2,70.0,20.2,71.6,20.4,72.7,20.7,73.4,21.9,74.8,23.6,77.3,24.1,77.8,26.5,81.1,28.7,84.0,29.5,83.8,30.7,82.6,31.0,82.5,32.8,80.4,33.0,80.4,33.8,79.6,34.1,79.5,35.4,77.9,35.9,77.7,37.9,75.8,38.0,75.4,38.0,74.8,37.9,74.0,37.7,71.4,37.9,71.0,38.3,70.6,38.3,70.3,38.1,70.0,37.2,69.5,36.4,68.5,35.7,68.1,34.5,66.7,33.1,65.6,32.6,64.8,31.4,63.8,29.6,61.9,26.7,62.3,26.4,62.6,26.3,63.2,26.1,63.6,25.3,63.7,24.7,64.6,23.7,65.0,23.2,65.8,22.8,65.8,22.3,66.3,21.6,66.6,20.8,67.4,20.4,68.6]],"ids":["p8"],"c":1},{"id":"binder","nm":"規則本（整本）","r":[[71.1,77.6,71.1,80.4,71.2,81.3,71.6,82.0,72.8,82.3,73.8,83.1,75.0,83.4,76.0,84.0,76.7,84.1,77.4,84.7,78.4,85.1,79.2,85.7,80.1,85.9,80.7,86.4,81.7,86.8,82.6,87.4,83.5,87.6,83.7,87.8,85.0,88.5,85.6,88.7,86.1,89.1,87.5,89.9,88.0,90.0,88.2,89.6,88.2,88.1,88.1,87.2,88.1,86.0,88.0,84.7,88.4,83.7,88.3,80.9,88.2,80.3,88.2,79.5,88.0,77.0,88.0,74.1,87.6,68.7,87.5,68.3,87.3,68.0,86.5,67.9,86.3,67.7,85.7,67.7,83.7,66.7,81.6,66.2,80.9,65.6,80.2,65.8,79.5,65.3,79.1,65.3,78.8,65.0,76.9,64.6,76.4,64.2,74.7,64.0,74.5,64.3,74.2,65.2,74.0,66.2,72.7,70.6,71.8,74.5,71.4,75.5]],"ids":["p10"],"c":1},{"id":"clip","nm":"處方夾板","r":[[58.6,73.7,58.7,74.2,60.3,75.3,60.6,75.3,62.0,76.3,62.6,76.4,63.3,77.0,63.8,77.1,65.2,77.9,66.5,78.9,67.0,79.0,68.0,79.7,68.4,79.7,68.7,79.0,69.5,75.2,69.7,74.6,69.8,73.7,71.3,67.3,71.3,66.3,70.9,66.0,69.3,65.5,68.6,64.8,67.3,64.6,67.0,64.1,66.4,64.1,66.1,63.8,65.8,63.8,65.4,63.5,64.7,63.6,63.5,63.5,62.1,66.6,61.9,66.7,61.1,68.3,60.5,69.8,59.5,71.6,58.8,73.2]],"ids":["p9"],"c":1},{"id":"tray","nm":"藥盤","r":[[59.3,57.3,58.8,56.7,58.1,56.7,57.3,55.8,55.7,55.7,55.2,55.4,54.7,55.4,54.1,54.5,53.5,54.7,52.1,54.4,51.4,53.6,50.9,53.6,50.3,54.1,48.0,53.7,47.1,53.9,46.8,54.7,46.6,54.9,46.1,55.1,45.5,55.7,45.0,55.8,43.5,56.8,42.8,57.8,42.3,58.2,42.1,58.7,42.1,59.1,42.6,59.5,42.8,60.1,42.8,60.6,43.0,61.0,44.4,61.0,45.3,61.3,45.7,61.3,46.4,61.8,48.2,62.5,48.7,63.1,49.7,63.2,50.3,63.7,51.4,63.8,52.1,64.3,52.7,64.4,53.6,65.5,54.1,65.5,54.3,65.3,54.7,64.3,55.3,63.4,56.3,62.3,56.6,61.7,57.3,61.0,58.2,60.3,58.7,58.4,59.3,57.5]],"ids":["p7"],"c":1},{"id":"liquid","nm":"藥品櫃＋窄藥架＋冰箱（水藥）","r":[[0.0,11.3,0.0,51.4,1.7,50.4,3.1,50.1,3.5,49.5,5.1,49.4,6.1,48.4,6.4,47.4,7.5,46.2,7.9,46.4,8.7,45.6,10.3,45.9,12.0,45.6,12.7,45.0,13.3,43.3,14.2,43.1,17.0,41.2,17.2,37.1,17.0,22.7,17.1,20.0,16.9,18.7,16.2,18.3,14.7,18.4,14.4,17.3,13.9,17.2,13.2,19.1,12.9,19.1,12.7,18.1,12.8,15.9,12.8,13.5,12.6,13.1,12.4,13.4,11.1,13.1,10.6,13.5,8.3,13.1,7.6,12.4,4.8,12.3,4.4,13.0,3.9,11.9,3.4,12.2,2.6,11.5,2.1,11.8,1.7,11.1],[6.8,8.7,6.8,9.5,6.7,9.7,6.7,10.0,6.8,10.1,6.8,10.5,6.9,10.6,7.0,10.4,7.4,10.4,7.5,10.6,7.9,10.0,8.2,10.0,8.4,10.3,8.5,10.1,9.1,10.1,9.2,9.9,9.2,9.1,9.1,8.9,8.8,9.3,8.7,9.3,8.4,8.8,8.2,9.2,8.0,9.3,7.7,8.8,7.1,8.8,6.9,8.6]],"ids":["p6"],"c":4},{"id":"consult","nm":"藥師和病人（左邊窗口）","r":[[49.9,19.9,49.4,19.7,48.7,20.8,48.6,22.0,48.6,24.1,47.8,26.4,47.6,26.3,47.2,25.1,46.2,24.0,45.9,24.0,45.8,24.2,45.6,26.1,45.2,27.2,45.0,27.2,44.6,26.6,44.6,25.9,44.4,25.4,44.3,25.3,44.1,25.7,43.8,26.7,43.8,29.6,43.9,30.0,44.3,30.3,44.5,30.9,44.1,33.9,44.0,34.7,44.1,35.1,44.8,35.3,45.9,35.3,46.1,35.6,47.4,35.6,47.5,35.3,47.5,34.5,47.3,31.7,47.1,31.0,47.2,30.2,47.4,29.8,47.9,30.0,48.1,29.7,48.5,28.5,48.8,28.9,49.0,28.9,49.3,28.2,49.7,27.8,50.6,28.0,50.9,27.6,51.0,27.1,50.9,25.2,50.4,23.4,50.4,22.3,50.2,21.0]],"ids":["p2"],"c":2},{"id":"dispense","nm":"藥師和病人（中間窗口）","r":[[61.0,19.3,60.7,19.7,60.5,20.2,60.1,22.0,60.1,23.4,60.3,24.0,60.3,24.9,60.0,25.4,59.5,25.9,59.2,26.5,59.1,29.4,59.1,31.1,59.8,32.6,59.8,32.9,59.5,34.7,59.3,37.2,59.6,37.6,60.4,37.6,61.2,37.9,62.2,37.9,63.0,38.2,63.1,38.1,63.1,36.6,62.8,34.0,62.7,31.9,62.8,31.6,63.2,31.7,63.7,31.6,64.1,30.4,64.2,29.5,64.6,29.0,64.7,28.4,64.4,27.9,64.2,27.9,64.0,28.3,64.0,29.0,63.9,29.2,63.7,29.2,63.3,28.6,63.3,28.2,63.0,27.4,62.8,26.4,61.9,25.7,61.6,25.1,61.7,24.6,62.2,23.4,62.4,22.4,62.4,21.0,62.4,20.6,62.0,19.7,61.5,19.3],[65.1,19.6,65.0,19.8,65.0,20.9,65.1,21.5,65.1,23.0,64.9,23.5,64.6,23.7,64.1,24.6,63.9,25.9,63.8,26.8,64.1,27.1,64.5,27.1,64.5,27.2,65.1,27.1,65.3,27.4,65.3,27.8,65.4,27.9,65.7,27.9,65.8,27.8,65.9,27.3,66.1,27.1,66.4,27.1,66.6,27.3,67.2,27.4,67.4,27.8,67.7,28.8,67.8,28.9,68.0,28.9,68.1,28.6,68.1,28.0,68.1,27.9,68.1,27.3,68.0,27.2,68.0,26.7,68.0,26.6,68.0,26.0,67.9,25.9,67.9,25.5,67.9,25.4,67.8,24.8,67.7,24.5,67.4,24.2,67.1,23.7,66.8,23.4,66.5,22.3,66.5,21.7,66.5,21.6,66.5,21.1,66.6,21.0,66.6,19.9,66.4,19.5,66.0,19.1,65.4,19.1]],"ids":["p3"],"c":2},{"id":"er","nm":"藥師和病人（右邊窗口）","r":[[90.0,20.4,89.3,20.2,88.7,20.8,88.5,22.1,88.7,23.2,88.5,24.6,87.4,25.5,87.1,27.4,86.3,27.3,85.7,26.5,85.3,26.7,85.1,30.1,84.7,31.1,84.4,31.1,84.1,30.7,83.6,27.9,83.2,27.8,82.7,28.4,82.5,32.7,82.7,33.9,83.4,34.5,83.5,35.1,83.2,38.7,83.3,39.5,84.4,39.7,86.3,38.8,86.8,39.0,87.5,38.8,86.9,32.1,87.3,31.7,87.9,32.3,88.3,31.9,88.4,30.1,88.2,29.5,87.7,29.2,87.4,28.4,87.4,28.0,88.0,27.7,88.5,28.0,89.3,27.7,89.6,28.3,89.5,32.2,89.7,32.8,90.5,32.7,90.6,30.3,90.8,29.5,91.2,29.1,92.1,29.2,92.0,26.7,91.7,26.0,90.2,24.1,90.3,22.2,90.0,21.5]],"ids":["p4"],"c":2},{"id":"review","nm":"電腦和兩盒處方（覆核）","r":[[66.6,49.5,66.8,51.1,67.9,52.4,68.1,54.9,68.1,56.1,67.3,57.0,67.2,58.4,67.4,58.7,69.4,59.4,70.1,58.4,69.4,52.3,69.5,51.1,70.1,51.9,70.8,51.9,71.3,53.0,72.5,52.9,72.5,55.0,72.0,55.6,73.8,56.9,73.7,57.6,73.1,58.1,72.8,59.5,73.2,61.5,73.2,63.8,73.6,64.6,74.1,64.7,74.7,63.6,84.8,66.7,88.0,62.4,88.1,56.7,86.8,55.8,86.9,54.5,87.2,54.1,87.1,52.0,83.9,50.7,82.8,51.2,81.7,50.2,80.7,51.4,80.9,53.0,80.8,55.6,80.4,56.4,80.2,56.1,80.3,53.9,80.1,52.4,79.5,52.1,78.2,50.4,78.7,40.8,78.7,39.5,78.3,39.0,69.7,37.7,69.3,38.9,68.8,45.0,68.9,46.9,67.2,48.3]],"ids":["p5"],"c":4},{"id":"cabinet","nm":"文件資料櫃＋辦公桌（行政事宜）","r":[[22.4,13.5,21.2,13.5,20.8,13.7,20.4,13.4,20.1,13.7,19.8,13.1,19.3,13.1,18.8,12.8,17.9,12.8,17.4,13.1,17.3,13.6,17.2,17.2,17.4,17.8,17.3,21.4,17.4,22.2,17.3,28.2,17.3,30.4,17.2,31.9,17.3,33.2,17.2,38.7,17.3,38.8,17.3,40.7,17.4,40.9,17.9,40.9,18.4,40.7,19.0,40.1,20.1,40.0,20.8,39.3,21.2,39.3,21.5,38.9,21.5,37.9,21.1,36.9,21.1,36.0,21.3,35.7,21.4,35.0,21.4,32.8,21.0,30.2,21.2,29.8,21.5,29.7,22.2,29.7,22.4,29.4,22.5,28.6,22.5,27.9,22.5,14.3,22.5,13.6],[22.8,31.4,22.8,32.1,23.1,32.7,23.2,33.2,23.3,33.3,23.7,32.7,23.9,32.9,23.9,33.7,23.8,33.8,23.8,34.8,23.9,35.0,23.8,38.7,23.9,38.8,23.9,40.1,23.9,40.3,24.3,40.9,24.8,41.1,25.2,41.4,25.6,41.4,25.8,41.6,26.1,41.4,26.1,40.6,26.3,40.1,26.9,40.2,27.3,40.0,28.1,40.0,28.4,39.7,28.3,39.1,28.4,38.7,28.4,37.2,28.3,36.6,28.3,35.8,28.5,35.6,28.8,35.6,29.1,35.1,29.5,35.2,29.6,35.1,29.9,35.1,30.1,34.8,30.2,33.5,30.3,33.2,30.3,32.3,30.2,32.0,29.9,32.1,29.2,32.0,29.1,31.9,28.1,31.9,28.1,32.0,27.8,32.0,26.9,31.4,26.6,31.4,26.5,31.5,25.5,31.5,24.8,31.0,24.7,31.1,23.1,31.0],[26.0,24.0,25.1,24.0,25.0,24.1,24.3,24.1,24.2,24.0,23.9,24.0,23.6,24.3,23.5,26.5,23.4,26.6,23.4,27.2,23.3,27.6,23.3,27.8,23.1,28.3,23.1,28.5,23.2,28.6,23.3,28.8,23.7,29.4,23.7,29.6,23.6,29.8,23.6,30.1,23.7,30.2,23.8,30.1,24.0,30.1,24.3,30.4,24.7,30.4,24.9,30.2,25.1,29.7,25.5,29.5,25.5,29.2,25.3,28.9,25.4,27.4,25.6,27.0,25.8,27.0,25.8,27.1,26.0,26.8,26.0,26.6,26.1,26.5,26.1,25.4,26.1,25.3,26.1,24.1]],"ids":["p1"],"c":3},{"id":"narrow","nm":"窄藥架（冰箱旁邊）","r":[[14.3,17.2,13.9,17.2,13.6,17.7,13.5,18.4,13.3,18.7,12.9,20.3,13.0,20.8,12.9,25.5,13.0,25.9,12.8,27.1,12.8,27.8,12.9,27.9,12.9,34.5,12.9,34.6,12.9,37.8,12.8,37.9,12.8,39.4,12.9,39.5,12.8,42.2,12.9,42.4,12.9,43.7,13.1,43.8,13.3,43.3,14.4,43.0,14.6,42.7,14.7,42.4,14.7,42.0,14.7,40.6,14.6,40.5,14.7,37.0,14.6,36.9,14.6,34.5,14.5,34.4,14.5,31.4,14.7,30.5,14.7,28.6,14.6,28.5,14.7,28.2,14.7,26.5,14.6,26.4,14.6,22.8,14.5,22.7,14.5,20.0,14.6,19.6,14.4,19.0,14.5,17.8,14.4,17.3]],"c":1},{"id":"shelves","nm":"藥品櫃（左邊兩座）","r":[[0.0,11.3,0.0,51.4,1.7,50.4,3.1,50.1,3.5,49.5,3.8,49.6,4.3,49.4,5.1,49.4,5.7,48.6,6.1,48.4,6.4,47.4,6.8,47.1,7.5,46.2,7.9,46.4,8.7,45.6,10.1,45.7,10.3,45.9,10.8,45.7,11.2,45.9,12.0,45.6,12.7,45.0,12.9,44.0,12.9,38.9,13.0,38.2,13.1,36.2,12.9,28.6,13.1,27.3,13.1,25.2,12.9,24.3,13.1,21.7,12.9,19.1,12.7,18.1,12.8,16.5,12.7,13.2,11.3,13.4,11.1,13.1,10.8,13.5,9.4,13.1,8.6,13.2,8.0,13.0,7.6,12.4,6.3,12.5,5.7,12.3,4.8,12.3,4.4,13.0,3.9,11.9,3.4,12.2,2.6,11.5,2.1,11.8,1.7,11.1,0.6,11.5],[6.8,8.7,6.8,9.5,6.7,9.7,6.7,10.0,6.8,10.1,6.8,10.5,6.9,10.6,7.0,10.4,7.4,10.4,7.5,10.6,7.9,10.0,8.2,10.0,8.4,10.3,8.5,10.1,9.1,10.1,9.2,9.9,9.2,9.1,9.1,8.9,8.8,9.3,8.7,9.3,8.4,8.8,8.2,9.2,8.0,9.3,7.7,8.8,7.1,8.8,6.9,8.6]],"c":2},{"id":"bottles","nm":"藥水瓶（水槽上）","r":[[23.8,52.1,23.6,51.9,23.2,51.9,22.8,52.4,22.7,53.0,22.8,56.1,22.6,56.3,22.1,56.3,21.6,56.6,21.5,56.4,21.3,55.8,21.3,53.5,20.7,52.4,20.5,52.5,20.4,53.0,19.8,54.3,19.5,53.8,19.1,53.6,18.8,53.6,18.4,53.9,18.2,54.5,18.1,56.4,17.8,57.3,17.8,58.1,17.6,58.4,17.0,58.4,16.6,59.1,16.6,62.8,16.6,63.0,16.9,63.4,17.4,63.5,17.7,63.1,18.0,62.6,18.6,62.8,18.8,62.5,19.6,62.2,20.1,61.3,20.4,61.6,21.2,61.3,21.6,60.6,21.7,60.7,22.0,60.4,22.4,60.4,22.8,59.8,23.0,60.0,23.4,60.0,24.0,59.5,24.1,59.2,24.1,57.8,24.1,57.3,24.1,55.1,24.0,53.6],[29.5,54.8,29.2,54.5,28.2,54.5,28.1,54.7,28.1,54.9,28.1,55.5,27.9,55.7,27.7,55.6,27.6,55.5,27.3,55.5,27.3,55.6,26.9,55.7,26.7,56.0,26.6,56.6,26.7,57.4,26.6,57.5,26.6,58.1,26.6,58.2,26.6,61.7,26.6,61.8,26.8,61.9,26.9,61.8,27.1,61.8,27.1,61.7,27.3,61.7,27.4,61.6,27.6,61.6,27.7,61.5,27.9,61.3,28.0,61.1,28.0,59.5,28.0,59.4,28.0,58.8,28.2,58.6,28.4,58.9,28.7,59.4,28.7,59.7,28.7,59.8,28.7,61.3,28.7,61.6,28.8,61.7,29.5,61.7,29.7,61.5,29.7,58.0,29.5,57.2]],"c":7},{"id":"beaker","nm":"量杯","r":[[30.6,53.2,30.5,53.5,30.5,54.4,30.5,54.5,30.5,55.1,30.6,55.3,30.6,59.2,30.6,59.3,30.6,60.0,30.6,60.1,30.6,62.5,30.8,63.0,31.2,63.5,31.5,63.6,32.3,64.4,32.7,64.6,32.8,64.4,33.0,63.5,33.0,62.5,32.9,62.4,32.9,57.6,33.0,57.5,33.0,55.8,32.9,55.7,32.9,55.4,33.0,55.3,33.0,54.2,33.0,54.1,33.0,53.7,32.9,53.2,32.8,53.1,32.3,53.0,32.2,52.9,31.4,52.9,31.4,53.0,31.1,53.0,31.1,53.1]],"c":1},{"id":"monitor","nm":"電腦螢幕","r":[[69.4,38.2,69.3,38.9,69.1,43.6,68.8,45.0,68.8,46.5,68.9,46.9,69.7,47.7,70.0,48.6,70.0,50.5,69.8,51.0,69.8,51.7,70.1,51.9,70.3,51.8,70.8,51.9,71.0,52.1,71.3,53.0,71.8,52.6,72.2,52.6,72.5,53.0,72.5,55.0,72.0,55.4,72.0,55.6,72.1,55.7,72.3,55.6,73.0,56.4,73.7,56.7,73.9,56.4,73.9,54.3,74.3,53.3,75.0,52.7,75.3,52.0,76.0,51.1,76.4,51.0,76.9,50.4,78.2,50.1,78.4,49.8,78.4,47.1,78.5,46.1,78.5,43.2,78.7,40.8,78.7,39.7,78.6,39.4,78.3,39.0,75.2,38.7,74.6,38.4,73.6,38.4,71.3,37.8,69.7,37.7]],"c":1},{"id":"scanner","nm":"條碼掃描器","r":[[68.5,47.1,68.2,47.5,67.8,47.6,67.0,48.6,66.6,49.5,66.6,50.4,66.8,51.1,67.0,51.6,67.4,52.0,67.6,52.0,67.9,52.4,67.9,53.5,68.0,53.6,68.0,53.8,68.1,54.3,68.1,54.8,68.1,54.9,68.1,55.8,68.1,56.1,67.9,56.3,67.8,56.3,67.3,57.0,67.3,57.3,67.2,57.8,67.2,58.4,67.4,58.7,67.7,58.7,67.7,58.8,68.1,58.9,68.2,59.1,68.7,59.1,68.7,59.2,69.0,59.2,69.0,59.3,69.4,59.4,69.7,59.1,69.8,58.7,70.1,58.4,70.1,57.6,70.0,57.2,70.0,56.8,69.7,56.1,69.7,54.7,69.6,54.5,69.6,53.7,69.6,53.6,69.6,53.1,69.4,52.3,69.5,51.2,69.8,50.4,69.9,49.3,69.8,49.2,69.8,48.6,69.6,47.9,68.9,47.1]],"c":1},{"id":"printer","nm":"印表機","r":[[55.9,42.4,55.7,42.4,55.7,42.2,54.9,42.2,54.8,42.1,53.9,42.0,53.9,41.9,53.2,41.9,52.4,42.6,51.6,44.3,51.5,44.7,51.5,45.1,51.5,45.2,51.4,45.8,51.4,45.9,51.4,47.0,51.5,47.1,51.5,49.3,51.4,49.4,51.4,51.0,51.5,51.1,51.4,53.0,51.5,53.1,51.8,53.5,52.1,53.5,52.2,53.6,53.5,53.7,53.5,53.8,53.9,53.8,54.0,53.9,54.1,53.9,54.3,53.6,54.3,52.7,54.3,52.6,54.3,51.0,54.4,50.7,54.6,50.4,54.8,50.1,55.0,50.1,55.0,50.0,55.5,50.0,55.5,50.1,55.7,50.0,55.9,49.6,56.0,48.7,56.0,45.6,56.1,45.5,56.2,44.6,56.3,43.9,56.3,43.1,56.2,42.6]],"c":1},{"id":"pillbottle","nm":"藥罐","r":[[58.3,60.5,58.1,60.9,57.9,61.0,57.7,61.7,57.7,62.4,57.8,62.5,57.8,65.8,57.8,66.0,58.0,66.2,58.8,66.2,59.0,65.9,59.1,61.2,59.0,61.0,58.8,60.7,58.6,60.7,58.4,60.5]],"c":1},{"id":"desk","nm":"辦公桌（行政事宜旁邊）","r":[[22.8,31.4,22.8,32.1,23.1,32.7,23.2,33.2,23.3,33.3,23.7,32.7,23.9,32.9,23.9,33.7,23.8,33.8,23.8,34.8,23.9,35.0,23.8,38.7,23.9,38.8,23.9,40.1,23.9,40.3,24.3,40.9,24.8,41.1,25.2,41.4,25.6,41.4,25.8,41.6,26.1,41.4,26.1,40.6,26.3,40.1,26.9,40.2,27.3,40.0,28.1,40.0,28.4,39.7,28.3,39.1,28.4,38.7,28.4,37.2,28.3,36.6,28.3,35.8,28.5,35.6,28.8,35.6,29.1,35.1,29.5,35.2,29.6,35.1,29.9,35.1,30.1,34.8,30.2,33.5,30.3,33.2,30.3,32.3,30.2,32.0,29.9,32.1,29.2,32.0,29.1,31.9,28.1,31.9,28.1,32.0,27.8,32.0,26.9,31.4,26.6,31.4,26.5,31.5,25.5,31.5,24.8,31.0,24.7,31.1,23.1,31.0],[26.0,24.0,25.1,24.0,25.0,24.1,24.3,24.1,24.2,24.0,23.9,24.0,23.6,24.3,23.5,26.5,23.4,26.6,23.4,27.2,23.3,27.6,23.3,27.8,23.1,28.3,23.1,28.5,23.2,28.6,23.3,28.8,23.7,29.4,23.7,29.6,23.6,29.8,23.6,30.1,23.7,30.2,23.8,30.1,24.0,30.1,24.3,30.4,24.7,30.4,24.9,30.2,25.1,29.7,25.5,29.5,25.5,29.2,25.3,28.9,25.4,27.4,25.6,27.0,25.8,27.0,25.8,27.1,26.0,26.8,26.0,26.6,26.1,26.5,26.1,25.4,26.1,25.3,26.1,24.1]],"c":2},{"id":"rxbox","nm":"兩盒處方","r":[[88.1,56.7,87.3,55.8,86.9,56.1,86.8,55.8,86.9,54.5,87.2,54.1,87.2,53.7,87.0,53.2,87.2,52.3,86.6,51.7,84.9,51.3,83.9,50.7,82.8,51.2,82.2,50.4,81.7,50.2,80.7,51.4,80.7,52.1,80.9,53.0,80.8,55.6,80.4,56.4,80.1,55.8,80.3,53.9,80.0,52.3,79.8,52.0,79.5,52.1,78.5,50.6,77.0,50.5,76.6,51.2,75.9,51.6,75.2,53.2,74.5,53.5,74.2,53.8,73.9,54.8,73.9,56.8,73.7,57.6,73.1,58.1,73.1,58.8,72.8,59.5,72.8,60.4,73.1,61.0,73.3,64.2,73.6,64.6,74.1,64.7,74.7,63.6,75.9,63.7,77.9,64.6,79.0,64.4,79.4,64.9,81.1,65.3,83.8,66.6,84.8,66.7,88.0,62.6,88.1,61.9]],"c":2}],"pr":[[40,84,46,96,207,187,171]]},
+{"fp":"3768d56ad9ccfe551cd84ce66c6e7c4d","ar":2.2399,"bx":{"p1":[17,12,6,29,"r"],"p2":[43,19,8,17,"t"],"p3":[59,19,10,20,"t"],"p4":[82,20,11,20,"t"],"p5":[66,37,13,23,"t"],"p6":[14,18,4,25,"b"],"p7":[42,53,18,13,"b"],"p8":[20,61,19,23,"t"],"p9":[58,63,14,17,"l"],"p10":[71,64,18,26,"t"],"p11":[31,76,18,24,"t"]},"objs":[{"id":"book","nm":"法規書（整本）","r":[[20.2,69.9,20.2,71.5,20.5,72.7,20.7,73.3,22.0,74.7,23.5,77.1,24.1,77.6,26.5,81.0,27.8,82.5,28.7,83.9,29.4,83.8,30.6,82.5,31.0,82.3,31.5,81.6,32.1,81.1,32.6,80.5,33.9,79.5,35.5,77.7,36.7,76.8,37.8,75.7,38.1,75.1,38.1,74.7,37.8,73.3,37.7,71.2,38.3,70.6,38.2,70.0,37.7,69.5,35.9,68.1,34.5,66.6,34.1,66.5,33.6,65.8,33.0,65.4,32.7,64.8,31.4,63.8,31.0,63.1,29.5,61.7,28.8,61.9,28.2,61.9,27.9,61.7,26.7,62.1,25.8,63.1,25.1,63.4,24.6,64.3,23.6,64.9,23.2,65.5,22.8,65.6,22.3,66.2,21.6,66.5,20.8,67.3,20.5,68.3],[36.2,62.9,36.1,63.0,36.1,63.2,36.0,63.7,36.0,64.7,36.0,64.9,36.1,65.0,36.4,65.0,36.5,64.8,36.5,64.6,36.6,64.4,36.6,63.2,36.4,63.0]],"ids":["p8"],"c":1},{"id":"binder","nm":"規則本（整本）","r":[[71.1,77.4,71.1,80.3,71.2,81.0,71.4,81.5,71.8,81.9,73.3,82.3,74.5,83.2,75.2,83.3,75.8,83.8,77.0,84.1,77.7,84.7,78.5,85.0,80.0,85.8,80.3,85.8,80.9,86.3,84.3,87.8,84.9,88.3,85.8,88.5,86.0,88.9,86.8,89.4,87.2,89.4,87.6,89.7,88.0,89.7,88.1,89.5,88.2,87.9,88.0,85.7,88.0,84.6,88.4,83.3,88.3,80.9,88.0,76.8,88.0,74.0,87.7,71.1,87.6,68.5,87.3,67.9,87.0,67.9,86.2,67.4,85.2,67.3,83.8,66.6,83.3,66.6,82.2,66.1,81.6,66.1,80.9,65.5,80.5,65.5,80.2,65.8,79.6,65.2,77.5,64.7,76.3,64.1,74.7,63.8,74.3,64.8,73.9,66.2,73.3,68.5,73.1,69.3,72.4,71.7,72.1,73.3,71.4,75.4]],"ids":["p10"],"c":1},{"id":"clip","nm":"處方夾板","r":[[58.6,73.7,58.6,74.0,58.8,74.3,59.4,74.6,60.3,75.3,60.9,75.4,61.3,75.8,61.5,75.8,62.0,76.3,62.6,76.4,63.4,77.1,64.0,77.2,65.0,77.9,65.7,78.2,66.6,78.9,67.1,79.0,67.8,79.6,68.4,79.7,68.6,79.5,69.4,75.7,69.7,74.8,69.8,74.1,69.9,73.5,70.1,73.0,70.1,72.6,70.3,71.8,70.8,69.7,71.3,67.4,71.4,66.3,71.2,66.0,70.6,65.9,70.6,65.8,70.2,65.8,69.5,65.3,69.2,65.3,68.5,64.6,68.2,64.6,67.8,64.2,67.4,64.2,66.9,63.7,66.8,63.8,66.4,63.8,66.4,63.7,65.7,63.6,65.5,63.4,63.5,63.2,62.4,65.8,62.2,65.9,62.0,66.5,61.9,66.6,61.1,68.1,60.4,69.8,60.1,70.2,58.7,73.2]],"ids":["p9"],"c":1},{"id":"tray","nm":"藥盤","r":[[59.1,57.2,58.9,56.7,58.0,56.6,57.3,55.8,55.8,55.7,55.2,55.4,54.8,55.4,54.1,54.4,53.4,54.5,51.9,54.2,51.4,53.6,51.0,53.5,50.2,53.9,49.7,53.9,49.4,53.7,47.8,53.6,47.4,53.8,47.0,53.8,46.7,54.4,46.3,54.9,45.8,55.1,45.2,55.7,44.7,55.8,43.7,56.6,42.7,57.8,42.1,58.0,42.0,58.2,42.0,58.6,42.1,59.1,42.5,59.4,42.7,59.9,42.8,60.6,42.9,60.9,44.8,61.0,45.2,61.2,46.0,61.3,46.4,61.7,48.2,62.4,48.6,63.0,49.9,63.1,50.2,63.5,51.1,63.6,52.2,64.3,52.9,64.4,53.6,65.4,54.2,65.4,55.0,63.6,55.5,63.1,56.8,61.3,58.2,60.1,58.3,59.9,58.3,59.1,58.7,58.1,59.1,57.4]],"ids":["p7"],"c":1},{"id":"liquid","nm":"藥品櫃＋窄藥架＋冰箱（水藥）","r":[[0.0,11.5,0.0,51.3,1.8,50.2,2.9,50.2,3.5,49.5,5.2,49.3,6.0,48.3,6.4,47.1,7.3,46.1,8.0,46.3,8.8,45.5,10.0,45.8,11.9,45.6,12.7,45.0,12.8,44.2,13.3,43.2,14.3,43.0,15.9,41.6,16.7,41.5,17.0,40.9,17.2,39.7,17.0,22.6,17.1,19.9,16.9,18.9,16.2,18.4,14.7,18.4,14.4,19.2,14.3,19.0,14.4,17.8,14.2,17.3,14.0,17.7,14.1,19.0,14.0,19.2,12.9,19.6,12.6,18.1,12.8,16.5,12.8,13.7,12.6,13.2,11.6,13.2,11.2,12.8,10.7,13.4,10.4,13.0,9.9,13.2,9.2,12.5,8.6,13.0,8.3,12.4,6.9,12.1,6.4,12.4,4.8,12.3,4.4,13.1,3.9,11.8,3.3,12.2,2.7,11.6,2.1,11.9,1.7,11.5],[6.6,8.2,6.6,9.4,6.6,9.5,6.5,10.1,6.7,11.1,6.9,11.3,7.1,11.0,7.3,11.0,7.5,11.2,7.6,11.2,8.0,10.6,8.4,11.0,8.7,10.5,9.0,10.5,9.5,11.1,9.5,11.9,9.6,12.1,9.9,11.7,10.2,12.1,10.3,12.1,10.5,11.7,10.7,11.6,10.8,11.7,11.0,12.3,11.1,12.5,11.5,12.2,11.7,11.7,11.7,10.9,11.5,10.3,11.6,8.8,11.5,8.7,11.5,8.5,11.2,8.1,11.0,8.1,10.8,8.4,10.3,8.4,10.0,8.0,9.8,8.0,9.7,8.1,9.5,8.1,9.3,8.5,8.9,8.8,8.6,8.7,8.5,8.4,8.4,8.1,8.2,8.1,7.9,8.5,7.7,8.5,7.7,8.6,7.2,8.6,6.8,8.0]],"ids":["p6"],"c":4},{"id":"consult","nm":"藥師和病人（左邊窗口）","r":[[49.9,20.0,49.4,19.8,49.0,20.3,48.7,20.8,48.5,22.2,48.6,24.1,48.1,25.2,47.9,26.0,47.7,26.4,47.4,25.7,47.3,25.2,46.2,24.0,45.8,24.1,45.6,26.1,45.5,26.6,45.1,27.2,44.7,26.7,44.5,25.4,44.3,25.3,44.1,25.7,43.9,26.4,43.8,29.6,44.0,30.1,44.3,30.4,44.5,31.0,44.1,34.1,44.1,34.8,44.2,35.1,46.0,35.3,46.3,35.6,47.5,35.4,47.5,35.3,47.5,33.7,47.3,31.7,47.1,31.1,47.1,30.8,47.3,30.1,47.4,29.8,47.9,30.0,48.4,29.1,48.6,29.2,49.1,29.1,49.3,27.9,49.7,27.2,49.9,27.2,50.2,27.6,50.6,27.3,50.9,26.8,50.9,25.5,50.4,23.3,50.3,21.4]],"ids":["p2"],"c":2},{"id":"dispense","nm":"藥師和病人（中間窗口）","r":[[61.1,19.3,60.8,19.6,60.6,20.0,60.1,22.0,60.1,23.4,60.3,24.0,60.3,24.8,60.0,25.4,59.4,26.0,59.2,26.5,59.1,30.9,59.1,31.3,59.4,31.9,59.6,32.0,59.8,32.6,59.5,34.8,59.3,37.1,59.6,37.6,60.4,37.6,61.5,37.9,63.0,38.1,63.1,37.7,63.1,37.1,63.0,36.2,62.9,35.0,62.7,32.7,62.7,31.7,62.8,31.5,63.3,31.7,63.6,31.7,63.8,31.5,64.0,31.0,64.1,30.3,64.1,29.6,63.9,29.2,63.7,29.2,63.5,29.0,63.2,28.0,63.0,27.4,62.8,26.6,62.7,26.3,61.9,25.7,61.6,25.1,61.7,24.6,62.1,23.6,62.4,22.2,62.4,21.0,62.4,20.6,61.9,19.7,61.6,19.5],[65.3,19.3,65.1,19.8,65.0,20.2,65.0,21.0,65.1,22.0,65.1,23.2,64.8,23.7,64.6,24.0,64.1,24.7,63.9,25.7,63.8,26.8,64.0,27.1,64.2,27.1,64.3,27.2,65.0,27.1,65.6,28.0,65.8,27.9,66.0,27.2,66.3,27.1,66.6,27.4,66.9,27.4,67.2,27.7,67.4,28.2,67.5,28.5,67.7,28.9,68.1,28.6,68.1,28.5,68.1,27.2,68.0,27.1,68.0,25.8,67.8,24.7,67.2,24.1,66.9,23.5,66.5,22.2,66.5,21.5,66.6,21.0,66.6,19.9,66.5,19.7,66.2,19.2,66.0,19.2,65.9,19.1,65.6,19.1]],"ids":["p3"],"c":2},{"id":"er","nm":"藥師和病人（右邊窗口）","r":[[90.0,20.5,89.5,20.2,88.7,20.8,88.5,21.5,88.5,24.6,87.5,25.5,87.1,27.4,86.2,27.3,85.7,26.5,85.3,26.7,85.1,30.1,84.8,31.1,84.3,31.1,83.9,30.2,83.5,28.0,83.2,27.9,82.8,28.4,82.5,32.7,82.8,34.1,83.4,34.5,83.5,35.0,83.2,38.7,83.3,39.4,84.7,39.6,85.3,39.1,87.5,38.8,87.5,38.1,87.1,34.7,86.9,32.0,87.3,31.7,87.9,32.5,88.3,31.9,88.5,32.1,88.8,31.9,88.9,31.3,88.9,30.4,88.4,30.4,88.1,29.4,87.5,28.9,87.9,27.9,88.2,27.8,88.6,28.4,89.1,27.6,89.5,27.9,89.6,28.5,89.5,32.5,89.7,32.8,90.5,32.6,90.6,30.5,90.8,29.5,92.1,29.1,92.1,27.6,91.8,26.1,90.3,24.2,90.4,22.7]],"ids":["p4"],"c":2},{"id":"review","nm":"電腦和兩盒處方（覆核）","r":[[66.6,49.8,67.0,51.4,67.8,52.3,68.1,55.8,67.2,57.3,67.2,58.2,67.4,58.6,69.4,59.3,70.0,58.2,69.5,51.4,70.9,51.9,71.3,53.0,71.8,52.5,72.5,52.7,72.3,55.5,73.9,56.7,73.7,57.6,73.1,58.2,73.1,59.1,72.8,59.8,73.2,60.9,73.3,64.1,74.1,64.6,74.6,63.6,76.3,63.7,84.8,66.6,88.0,62.3,88.1,56.6,86.8,55.7,87.1,52.1,86.6,51.6,84.0,50.7,82.8,51.2,81.6,50.2,80.8,51.6,80.8,55.6,80.3,56.6,80.1,56.0,80.0,52.4,79.4,52.5,78.6,50.8,77.7,50.4,78.4,49.5,78.7,39.9,78.3,39.0,69.7,37.7,69.3,39.0,68.9,46.9,67.2,48.2]],"ids":["p5"],"c":4},{"id":"cabinet","nm":"文件資料櫃＋辦公桌（行政事宜）","r":[[22.3,13.6,21.2,13.5,20.8,13.7,20.6,13.4,20.6,12.8,20.5,12.6,20.3,12.8,20.2,13.1,20.1,13.4,19.7,12.9,19.2,13.0,19.0,12.8,17.9,12.6,17.4,12.9,17.3,13.5,17.1,15.8,17.1,17.1,17.3,17.9,17.4,19.6,17.3,19.9,17.4,23.9,17.3,24.0,17.3,27.7,17.3,27.8,17.2,38.5,17.3,38.7,17.3,40.6,17.4,40.8,18.1,40.6,19.0,40.0,19.3,40.0,19.8,39.6,20.5,39.5,20.8,39.1,21.3,39.3,21.4,39.0,21.4,38.1,21.0,37.0,21.0,36.2,21.3,35.4,21.4,34.6,21.3,32.3,21.2,31.6,20.7,31.1,20.7,30.7,20.9,30.1,21.2,29.8,22.3,29.7,22.4,29.6,22.5,28.9,22.5,24.5,22.4,24.3,22.5,23.7,22.4,22.6,22.5,14.2,22.4,13.8],[23.7,24.1,23.4,27.0,22.9,28.2,22.9,28.9,23.4,29.1,23.5,29.4,23.5,30.2,24.0,30.2,24.4,30.5,24.5,30.9,24.3,31.1,23.7,30.8,22.8,31.3,22.7,32.0,23.2,32.8,23.5,32.6,23.9,32.8,23.8,33.7,23.8,38.7,24.0,40.7,25.9,41.6,26.1,41.4,26.2,40.5,26.4,40.1,26.8,40.2,27.4,39.9,28.9,39.7,28.7,39.1,28.4,38.8,28.2,36.2,28.4,35.7,29.1,35.1,29.5,35.3,30.0,35.1,30.4,32.9,30.3,32.0,27.8,32.0,26.9,31.3,25.4,31.4,24.8,31.0,24.8,30.5,25.4,30.5,26.2,29.5,26.2,28.5,26.1,27.8,25.8,27.8,25.6,28.4,25.4,28.2,25.5,27.3,25.9,27.4,26.1,27.1,26.2,26.4,26.2,24.1,25.6,23.7,24.9,24.0,24.3,23.7]],"ids":["p1"],"c":3},{"id":"quiz","nm":"問卷夾板","r":[[31.4,91.8,31.4,92.4,31.6,92.7,32.6,93.3,33.1,93.8,33.6,93.9,34.6,94.7,35.0,94.9,35.6,95.5,36.2,95.7,36.9,96.3,37.5,96.5,38.5,97.4,39.1,97.6,41.1,99.2,41.6,99.4,42.2,99.4,42.5,99.2,42.7,98.7,43.4,95.9,43.9,94.6,44.2,93.3,44.5,92.7,45.0,90.5,45.7,88.5,45.7,87.9,46.1,86.3,46.8,84.1,47.0,83.2,47.4,81.9,47.5,80.9,47.1,80.4,46.8,80.3,46.4,79.7,45.6,79.6,45.1,78.9,44.6,78.8,44.4,78.4,43.8,78.3,43.0,77.4,42.2,77.4,41.2,77.1,40.5,77.1,40.1,77.3,39.4,77.0,38.5,76.8,38.2,77.2,36.9,79.8,35.0,84.1,32.6,89.0],[48.3,84.5,48.1,84.4,47.7,84.7,47.6,85.0,47.3,85.9,47.0,86.3,47.0,86.5,46.8,87.4,46.7,87.7,46.2,88.8,46.0,89.6,45.3,91.3,45.2,92.1,45.0,92.8,44.9,93.3,44.6,94.2,44.6,94.6,44.6,94.7,44.6,95.2,44.8,95.5,45.2,95.0,45.4,94.4,45.6,93.8,45.9,93.3,46.0,92.7,46.3,92.1,46.4,91.6,46.7,90.9,46.8,90.3,47.5,88.9,47.5,88.5,47.7,87.9,47.8,87.4,48.1,86.6,48.3,85.9,48.3,85.6,48.3,85.4]],"ids":["p11"],"c":2},{"id":"narrow","nm":"窄藥架（冰箱旁邊）","r":[[14.2,17.3,14.1,17.4,14.0,17.7,14.1,19.0,14.0,19.2,13.5,19.6,13.2,19.6,13.1,19.7,12.9,20.3,12.9,20.8,13.0,20.9,13.0,22.9,12.9,23.0,12.9,24.3,12.9,24.5,12.9,26.4,12.8,27.2,12.8,27.8,12.9,27.9,12.9,30.1,12.8,30.2,12.9,32.5,12.8,32.6,12.8,33.1,12.9,33.2,12.9,35.6,12.9,35.7,12.8,41.8,12.8,41.9,12.9,43.6,13.1,43.7,13.3,43.2,13.7,43.1,13.8,43.0,14.3,43.0,14.7,42.5,14.6,39.1,14.7,39.0,14.7,37.6,14.6,36.8,14.6,33.1,14.5,32.9,14.5,31.5,14.7,30.7,14.7,26.4,14.6,26.3,14.6,22.6,14.5,22.4,14.5,20.2,14.6,19.7,14.3,19.0,14.3,18.7,14.4,18.1,14.4,17.8]],"c":1},{"id":"shelves","nm":"藥品櫃（左邊兩座）","r":[[0.0,11.5,0.0,51.3,0.3,51.3,1.8,50.2,2.9,50.2,3.5,49.5,5.2,49.3,5.6,48.6,6.0,48.3,6.4,47.1,7.3,46.1,8.0,46.3,8.8,45.5,10.0,45.8,11.2,45.8,12.7,45.0,12.8,44.3,12.9,42.5,12.8,38.9,13.1,35.1,12.9,28.3,13.1,26.5,12.9,24.1,13.1,22.7,12.9,19.8,12.6,18.1,12.8,16.5,12.7,13.4,11.6,13.2,11.2,12.8,10.7,13.4,10.4,13.0,9.9,13.2,9.2,12.5,8.8,13.0,8.6,13.0,8.3,12.4,8.0,12.5,7.7,12.2,6.9,12.1,6.4,12.4,4.8,12.3,4.4,13.1,4.1,12.1,3.9,11.8,3.3,12.2,2.7,11.6,2.1,11.9,1.7,11.5],[6.6,8.2,6.6,9.4,6.6,9.5,6.5,10.1,6.7,11.1,6.9,11.3,7.1,11.0,7.3,11.0,7.5,11.2,7.6,11.2,8.0,10.6,8.4,11.0,8.7,10.5,9.0,10.5,9.5,11.1,9.5,11.9,9.6,12.1,9.9,11.7,10.2,12.1,10.3,12.1,10.5,11.7,10.7,11.6,10.8,11.7,11.0,12.3,11.1,12.5,11.5,12.2,11.7,11.7,11.7,10.9,11.5,10.3,11.6,8.8,11.5,8.7,11.5,8.5,11.2,8.1,11.0,8.1,10.8,8.4,10.3,8.4,10.0,8.0,9.8,8.0,9.7,8.1,9.5,8.1,9.3,8.5,8.9,8.8,8.6,8.7,8.5,8.4,8.4,8.1,8.2,8.1,7.9,8.5,7.7,8.5,7.7,8.6,7.2,8.6,6.8,8.0]],"c":2},{"id":"bottles","nm":"藥水瓶（水槽上）","r":[[23.8,52.3,23.5,52.0,22.8,52.6,22.8,56.1,21.6,56.4,21.4,56.1,21.3,53.7,21.2,53.1,21.0,52.5,20.6,52.1,20.5,52.3,20.0,53.8,20.0,57.3,19.9,57.5,19.7,57.3,19.7,54.5,19.6,54.1,19.3,53.7,18.8,53.7,18.5,53.9,18.5,54.2,18.9,54.9,18.9,55.5,18.7,55.8,18.2,55.8,17.8,57.2,17.8,58.0,17.0,58.2,16.7,58.6,16.6,58.9,16.5,61.0,16.6,63.0,17.0,63.4,17.5,63.2,17.8,62.8,17.9,62.1,18.1,61.8,18.6,62.3,19.2,62.2,19.7,61.7,19.8,60.9,20.0,60.4,20.1,60.6,20.2,61.3,20.6,61.5,21.2,61.2,21.6,60.6,22.4,60.4,22.9,59.5,23.1,59.8,23.4,59.8,24.0,59.4,24.1,58.5,24.1,55.7,24.0,53.3],[29.5,54.5,29.2,54.3,28.3,54.3,28.1,54.5,28.0,54.8,28.0,55.4,27.9,55.6,27.6,55.5,27.5,55.4,27.4,55.4,27.3,55.5,27.1,55.5,26.7,56.0,26.7,56.2,26.7,57.6,26.6,58.2,26.6,61.6,26.6,61.7,26.8,61.8,26.9,61.7,27.1,61.7,27.1,61.6,27.9,61.2,28.0,61.0,28.0,59.5,28.0,59.4,28.0,58.9,28.2,58.7,28.3,58.9,28.6,59.1,28.7,59.5,28.7,61.5,28.8,61.6,29.5,61.6,29.6,61.5,29.6,61.2,29.7,61.1,29.7,60.5,29.6,60.4,29.6,58.8,29.7,58.7,29.7,58.2,29.6,58.1,29.6,57.5,29.5,57.2,29.5,56.3,29.5,56.2,29.5,54.7]],"c":7},{"id":"beaker","nm":"量杯","r":[[30.7,53.1,30.5,53.5,30.5,54.3,30.5,54.4,30.5,55.0,30.6,55.1,30.6,61.1,30.5,61.2,30.5,62.2,30.6,62.3,30.6,62.5,30.7,62.8,30.9,62.9,31.5,63.6,31.6,63.6,32.2,64.3,32.3,64.3,32.4,64.6,32.8,64.6,32.9,64.4,32.9,64.2,32.9,63.6,33.0,63.5,33.0,59.3,32.9,59.2,32.9,58.2,33.0,58.1,33.0,54.4,33.0,54.3,33.0,53.7,32.9,53.2,32.7,53.0,32.1,52.9,32.1,52.7,31.4,52.7,31.4,52.9,31.1,52.9,31.1,53.0]],"c":1},{"id":"monitor","nm":"電腦螢幕","r":[[69.5,38.1,69.3,39.0,69.1,43.6,68.8,45.1,68.8,46.5,68.9,46.9,69.7,47.7,70.0,48.6,70.0,50.5,69.7,51.1,69.7,51.4,70.1,51.9,70.3,51.8,70.9,51.9,71.2,52.4,71.2,52.9,71.3,53.0,71.8,52.5,72.2,52.5,72.6,53.0,72.5,54.9,72.3,55.3,72.3,55.5,72.9,56.2,73.1,56.2,73.6,56.6,73.9,56.2,73.9,54.3,74.4,53.1,74.9,52.6,76.0,51.0,76.5,50.8,77.0,50.2,77.5,50.2,77.8,49.9,78.2,50.0,78.4,49.8,78.4,49.5,78.4,47.3,78.5,45.9,78.5,43.3,78.7,40.7,78.7,39.9,78.6,39.4,78.3,39.0,75.3,38.7,74.7,38.4,73.6,38.4,73.1,38.2,71.9,38.1,71.3,37.8,69.7,37.7]],"c":1},{"id":"scanner","nm":"條碼掃描器","r":[[67.8,47.5,67.1,48.4,66.8,49.0,66.6,49.8,66.6,50.5,66.8,51.0,67.0,51.4,67.8,52.3,67.9,53.6,68.1,54.1,68.1,55.3,68.2,55.4,68.1,55.8,68.0,56.2,67.6,56.4,67.3,57.0,67.2,58.2,67.4,58.6,67.6,58.6,68.2,58.9,68.6,58.9,69.2,59.3,69.6,59.2,69.8,58.9,69.8,58.6,70.0,58.2,69.8,57.0,69.6,53.1,69.4,52.1,69.5,51.1,69.7,50.5,69.8,50.0,69.8,48.7,69.8,48.3,69.6,47.9,68.9,47.1,68.6,47.1,68.2,47.5]],"c":1},{"id":"printer","nm":"印表機","r":[[56.0,42.5,55.7,42.4,55.7,42.2,54.9,42.2,54.8,42.1,54.0,42.0,53.9,41.9,53.2,41.9,53.1,42.0,52.9,42.1,52.6,42.5,52.4,42.7,51.6,44.4,51.5,44.9,51.5,45.5,51.4,45.8,51.4,46.3,51.4,46.4,51.4,46.9,51.5,47.0,51.5,47.6,51.5,47.7,51.5,49.6,51.5,49.8,51.5,50.6,51.5,50.7,51.5,51.2,51.6,51.3,51.6,51.6,51.5,51.7,51.5,53.0,51.8,53.3,52.6,53.5,52.7,53.6,53.6,53.6,53.7,53.7,54.1,53.7,54.2,53.6,54.2,53.3,54.3,53.2,54.3,52.5,54.3,52.4,54.3,50.8,54.6,50.4,55.2,49.8,55.5,49.9,55.6,50.0,55.7,49.9,56.0,48.8,56.0,48.6,56.0,48.4,56.0,47.7,56.0,47.6,56.0,45.2,56.3,43.7,56.3,42.8]],"c":1},{"id":"pillbottle","nm":"藥罐","r":[[58.4,60.4,58.1,60.7,58.0,60.7,57.8,61.0,57.8,61.2,57.8,64.8,57.7,64.9,57.7,65.4,57.8,65.5,57.8,65.8,58.0,66.1,58.5,66.2,58.6,66.1,58.9,66.1,59.0,65.9,59.0,65.4,59.1,65.3,59.1,65.0,59.0,64.9,59.0,64.1,59.1,64.0,59.1,63.4,59.1,63.2,59.1,62.3,59.1,62.2,59.1,61.1,59.0,60.9,58.8,60.6,58.6,60.6]],"c":1},{"id":"desk","nm":"辦公桌（行政事宜旁邊）","r":[[23.7,24.1,23.4,27.0,22.9,28.2,22.9,28.9,23.4,29.1,23.5,29.4,23.5,30.2,24.0,30.2,24.4,30.5,24.5,30.9,24.3,31.1,23.7,30.8,22.8,31.3,22.7,32.0,23.2,32.8,23.5,32.6,23.9,32.8,23.8,33.7,23.8,38.7,24.0,40.7,25.9,41.6,26.1,41.4,26.2,40.5,26.4,40.1,26.8,40.2,27.4,39.9,28.9,39.7,28.7,39.1,28.4,38.8,28.2,36.2,28.4,35.7,29.1,35.1,29.5,35.3,30.0,35.1,30.4,32.9,30.3,32.0,27.8,32.0,26.9,31.3,25.4,31.4,24.8,31.0,24.8,30.5,25.4,30.5,26.2,29.5,26.2,28.5,26.1,27.8,25.8,27.8,25.6,28.4,25.4,28.2,25.5,27.3,25.9,27.4,26.1,27.1,26.2,26.4,26.2,24.1,25.6,23.7,24.9,24.0,24.3,23.7]],"c":2},{"id":"rxbox","nm":"兩盒處方","r":[[88.1,56.6,87.3,55.7,87.0,56.0,86.8,55.7,87.1,54.2,86.9,53.0,87.1,52.1,86.6,51.6,84.8,51.2,84.0,50.7,82.8,51.2,81.9,50.2,81.6,50.2,80.8,51.3,80.7,51.9,80.9,53.0,80.8,55.6,80.6,56.4,80.3,56.6,80.1,56.0,80.1,53.5,80.0,52.4,79.4,52.5,78.9,51.9,78.4,50.6,77.0,50.5,76.5,51.2,76.0,51.4,75.3,52.9,74.5,53.3,74.1,54.1,73.9,54.9,73.9,57.0,73.1,58.2,73.1,59.1,72.8,60.0,73.2,60.9,73.3,64.1,73.6,64.4,74.1,64.6,74.6,63.6,76.3,63.7,78.2,64.6,78.9,64.3,79.4,64.8,84.8,66.6,88.0,62.5]],"c":2}],"add":{"p11":{"label":"問卷","to":"q:all","ico":"📋","desc":"問卷、考試"}},"pr":[[40,84,46,96,213,213,217]]}];
 
 /* ════════ shape.js ════════ */
 /* ───────── 物品的形狀（第 26 批）：在「物品框」裡自動找出物品的輪廓 ─────────
@@ -5124,9 +5313,10 @@ var SH_LIB = [{"fp":"6ea8eaaab6c5bd4ddc9c78d33bcb38eb","ar":2.3325,"objs":[{"id"
    「點一下要亮的物品」（pick）：那一點附近一定算物品，最後只留那一樣（框裡的其他東西不亮）。
    這個檔裡的函式除了 shFind、shFp（要畫布）以外都不碰畫面，測試可以直接跑。
    第 27 批：目錄圖是「圖一」（物品圖庫 shapelib.js 裡有的那一張）→ 直接用圖庫裡切好的整個物品（整本書、整個藥盤…，不用設定）；別張圖才用上面的方法在框裡找。 */
-var SH_VER = "s6", SH_SIDE = 180, SH_ITER = 4, SH_K = 5, SH_GAMMA = 12, SH_PTS = 40, SH_RINGS = 4;
+var SH_VER = "s7", SH_SIDE = 180, SH_ITER = 4, SH_K = 5, SH_GAMMA = 12, SH_PTS = 40, SH_RINGS = 4;
 // SH_VER：第 28 批改成 s3（圖庫的「覆核」多了電腦）、第 29 批 s4（行政事宜＝整個文件資料櫃）、第 30 批 s5（圖庫多了新的圖一）、
-//   第 32 批 s6（有問卷夾板的圖一；覆核＋兩盒處方、行政事宜＋辦公桌、水藥＝藥品櫃＋窄藥架＋冰箱）→ 存過的形狀都會重找一次（圖一用圖庫，很快；打開編輯器、自動存檔開著就自動做）。
+//   第 32 批 s6（有問卷夾板的圖一；覆核＋兩盒處方、行政事宜＋辦公桌、水藥＝藥品櫃＋窄藥架＋冰箱）、s7（水藥：左邊兩座藥品櫃都亮）
+//   → 存過的形狀都會重找一次（圖一用圖庫，很快；打開編輯器、自動存檔開著就自動做）。
 // SH_GAMMA：「相鄰的點盡量同一邊」有多重要。縮小過的圖用 OpenCV 的 50 太重（整個框會變成背景）；12 試過藥盤、藥水瓶、法規書、處方夾都對。
 // 還是整個變背景的話，自動用一半再試一次。
 
@@ -7831,10 +8021,10 @@ function mapTreeBadges() {
     var id = el.getAttribute("data-id"), lv = mapIssueLv(chk, id), b = $(".spw", el);
     if (!lv) { if (b) b.remove(); return; }
     if (!b) { b = h("span", { class: "spw" }); el.appendChild(b); }
-    b.className = "spw " + lv; b.title = (chk.spots[id] || []).map(function (x) { return x.msg; }).join("\n"); b.textContent = lv === "bad" ? "✖" : "⚠";
+    b.className = "spw " + lv; b.title = (chk.spots[id] || []).filter(function (x) { return x.lv !== "info"; }).map(function (x) { return x.msg; }).join("\n"); b.textContent = lv === "bad" ? "✖" : "⚠";
   });
 }
-function mapIssueLv(chk, id) { var a = chk.spots[id] || []; return a.some(function (x) { return x.lv === "bad"; }) ? "bad" : a.length ? "warn" : ""; }
+function mapIssueLv(chk, id) { var a = chk.spots[id] || []; return a.some(function (x) { return x.lv === "bad"; }) ? "bad" : a.some(function (x) { return x.lv === "warn"; }) ? "warn" : ""; }   // 第 32 批：「說明」（info，例如 LINE 上自動換方向）不算問題
 
 /* ── 左邊：地點清單 ── */
 function renderMapTree(c1) {
@@ -8168,16 +8358,18 @@ function renderMapForm(f) {
     ck.appendChild(h("div", { class: "lbl" }, ["檢查（用「" + (cat.size || "giga") + "」卡片、圖寬約 " + r.px + " px 算）"]));
     var infos = r.general.filter(function (g) { return g.lv === "info"; });
     var oneMi = function (g) { return h("div", { class: "mi " + g.lv }, [h("span", { class: "mic" }, [g.lv === "bad" ? "✖" : g.lv === "info" ? "ℹ️" : "⚠"]), h("span", {}, [g.msg])]); };
+    var spotInfos = [];   // 第 32 批：每個地點的「說明」（例如 LINE 上太擠、標籤自動換方向）
+    cat.spots.forEach(function (s, i) { (r.spots[s.id] || []).forEach(function (x) { if (x.lv === "info") spotInfos.push({ lv: "info", msg: "第 " + (i + 1) + " 個「" + (s.label || "沒有名稱") + "」：" + x.msg }); }); });
     if (!r.bad && !r.warn) {
       ck.appendChild(h("div", { class: "mok" }, ["✅ 沒有問題：每個地點都點得到、連得到，標籤放得下，章元都有地方點。"]));
-      if (infos.length) ck.appendChild(h("div", { class: "mlist" }, infos.map(oneMi)));
+      if (infos.length || spotInfos.length) ck.appendChild(h("div", { class: "mlist" }, infos.concat(spotInfos).map(oneMi)));
       return;
     }
     var box = h("div", { class: "mlist" });
     r.general.forEach(function (g) { box.appendChild(oneMi(g)); });
     cat.spots.forEach(function (s, i) {
       (r.spots[s.id] || []).forEach(function (x) {
-        box.appendChild(h("div", { class: "mi " + x.lv + " go", onclick: function () { mapPick(s.id); } }, [h("span", { class: "mic" }, [x.lv === "bad" ? "✖" : "⚠"]), h("span", {}, [h("b", {}, ["第 " + (i + 1) + " 個「" + (s.label || "沒有名稱") + "」："]), x.msg])]));
+        box.appendChild(h("div", { class: "mi " + x.lv + " go", onclick: function () { mapPick(s.id); } }, [h("span", { class: "mic" }, [x.lv === "bad" ? "✖" : x.lv === "info" ? "ℹ️" : "⚠"]), h("span", {}, [h("b", {}, ["第 " + (i + 1) + " 個「" + (s.label || "沒有名稱") + "」："]), x.msg])]));
       });
     });
     ck.appendChild(box);

@@ -1358,3 +1358,13 @@ body{min-height:100vh}
 .bh .btn.cpb{white-space:nowrap}
 .fmtbar .fb-copy,.fmtbar .fb-paste{white-space:nowrap}
 .modal .dlg-p select.in{margin-top:6px}
+
+/* ───────── 第 32 批：反灰可複製（[cp]…[/cp]）：網頁的灰條＋「📋 複製」（樣式也直接寫在元件上）、編輯器裡的那一條、小視窗 ───────── */
+.ycp-b:hover{filter:brightness(1.1)}
+.ycp-b:focus-visible{outline:2px solid #0B5F5A;outline-offset:2px}
+.rte .rt-cp{background:#EEF1F5;border:1px solid #C5CED8;border-radius:5px;padding:1px 6px;margin:0 2px;cursor:pointer;-webkit-box-decoration-break:clone;box-decoration-break:clone;font-family:var(--mono);font-size:.94em;overflow-wrap:anywhere}
+.rte .rt-cp:hover{outline:1px dashed var(--accent);background:#E3E9EF}
+.rte .rt-cp .rt-cpb{margin-left:4px;font-family:system-ui,sans-serif;font-size:.8em;opacity:.75}
+.modal .dlg.cpdlg{max-width:560px;text-align:left}
+.cpdlg .cpin{font-size:16px;width:100%;font-family:var(--mono)}
+.cpdlg .cppv{min-height:56px;display:flex;align-items:center;justify-content:center;background:#FAFBFC;border:1px solid var(--line);border-radius:10px;margin:10px 0;padding:10px;overflow-x:auto}
