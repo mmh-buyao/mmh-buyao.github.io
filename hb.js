@@ -14,7 +14,7 @@
  *   開頭（可有）：[h1]～[h4] 標題　[hr] 分隔線　[q] 引用　[box=info|warn|bad|ok] 標註　[go=標題代號] 連結到標題
  *               [img=圖的代號] 一張圖（第 28 批：文字和圖片放在同一塊；圖的網址、圖說放在這一塊的 pics 裡）
  *               [tbl=表格的代號] 一張表格（第 29 批：表格也能「併到上一塊」；表格的內容放在這一塊的 tbls 裡）
- *   行內（可疊）：[b]粗體[/b]　[i]斜體[/i]　[u]底線[/u]　[s]刪除線[/s]　[c=red]顏色[/c]　[z=lg]大小[/z]
+ *   行內（可疊）：[b]粗體[/b]　[i]斜體[/i]　[u]底線[/u]　[s]刪除線[/s]　[c=red]顏色[/c]　[z=lg]大小[/z]　[m=yellow]螢光筆[/m]（第 30 批）
  *   縮排：開頭的全形空格（一格＝一層，最多 3 層）
  *   字本身有「[b]」這種長得像標記的字，寫成「[[b]」（兩個左括號）；其他情況不用管。
  *   標記只管「這一行」，不會跨行。 */
@@ -33,7 +33,7 @@ var YZ_RT_HEAD = {
   h3: { label: "標題 3", line: "md", em: 1.1, color: "#0B7A75" },
   h4: { label: "標題 4", line: "sm", em: 1, color: "#4A5565" }
 };
-// 標註（整行底色的提示框；LINE 做不到「字的螢光筆底色」，用這個代替）
+// 標註（整行底色的提示框，有圖示和框線；一段字的底色用第 30 批的螢光筆）
 var YZ_RT_TONE_ORDER = ["info", "warn", "bad", "ok"];
 var YZ_RT_TONES = {
   info: { icon: "💡", bg: "#EAF3FB", bd: "#BBD7EE", ink: "#1B3A57", label: "提示", color: "藍" },
@@ -41,7 +41,17 @@ var YZ_RT_TONES = {
   bad: { icon: "⛔", bg: "#FDECEC", bd: "#F2B8B8", ink: "#7A1F1F", label: "警告", color: "紅" },
   ok: { icon: "✅", bg: "#E8F5EC", bd: "#B5DDC2", ink: "#1F5130", label: "完成", color: "綠" }
 };
-var YZ_RT_ORDER = ["b", "i", "u", "s", "c", "z"];   // 寫出標記時的固定順序（疊起來才會剛好蓋住）
+// 第 30 批：螢光筆（字的底色，6 色）。bg＝網頁、編輯器的底色；ink＝LINE 只畫一行裡的一部分時，改用的同色系字色（LINE 不能幫一段字加底色）
+var YZ_RT_MARK_ORDER = ["yellow", "green", "blue", "pink", "orange", "purple"];
+var YZ_RT_MARKS = {
+  yellow: { label: "黃", bg: "#FFF176", ink: "#7A5C00" },
+  green: { label: "綠", bg: "#B9F6CA", ink: "#1E6B2E" },
+  blue: { label: "藍", bg: "#B3E5FC", ink: "#0F5A99" },
+  pink: { label: "粉", bg: "#FFCCE5", ink: "#A12A63" },
+  orange: { label: "橘", bg: "#FFD7A8", ink: "#9A4A00" },
+  purple: { label: "紫", bg: "#E1D2FF", ink: "#5B2FA6" }
+};
+var YZ_RT_ORDER = ["m", "b", "i", "u", "s", "c", "z"];   // 寫出標記時的固定順序（疊起來才會剛好蓋住；螢光筆包在最外面）
 var YZ_RT_MAXLV = 3;                                 // 最多縮排 3 層
 // 項目符號／編號／核對清單的記號（跟以前的「文字」一樣：行首打 1. (1) ① • - 就會自動排整齊）
 var YZ_RT_ITEM = /^((?:\d{1,2}[.、)）](?!\d)|\(\d{1,2}\)|（\d{1,2}）|[①-⑩]|[•・●☐☑]|-(?=\s)))\s*/;
@@ -86,12 +96,13 @@ function _yzRtInline_(s) {
     var ch = s.charAt(i);
     if (ch === "[") {
       if (s.charAt(i + 1) === "[") { buf += "["; i += 2; continue; }   // 「[[」＝一個真的「[」
-      var m = /^\[(\/?)(b|i|u|s|c|z)(?:=([a-z0-9]+))?\]/.exec(s.substr(i, 16));
+      var m = /^\[(\/?)(b|i|u|s|c|z|m)(?:=([a-z0-9]+))?\]/.exec(s.substr(i, 16));
       if (m) {
         var close = m[1] === "/", key = m[2], val = m[3], ok = false;
         if (close) { if (!val) { flush(); delete cur[key]; ok = true; } }
         else if (key === "c") { if (val && YZ_RT_COLORS[val]) { flush(); cur.c = val; ok = true; } }
         else if (key === "z") { if (val && YZ_RT_SIZES[val]) { flush(); cur.z = val; ok = true; } }
+        else if (key === "m") { if (val && YZ_RT_MARKS[val]) { flush(); cur.m = val; ok = true; } }
         else if (!val) { flush(); cur[key] = 1; ok = true; }
         if (ok) { i += m[0].length; continue; }
       }
@@ -101,7 +112,7 @@ function _yzRtInline_(s) {
   flush();
   return _yzRtMerge_(runs);
 }
-// 一行 → { k:"p|h1..h4|hr|q|box|go", lv:縮排層數, tone, go, runs:[{t, b,i,u,s,c,z}] }
+// 一行 → { k:"p|h1..h4|hr|q|box|go|img|tbl", lv:縮排層數, tone, go, img, tbl, runs:[{t, b,i,u,s,c,z,m}] }
 // plain＝true：這段字不含標記（備註用），整行就是一段字
 function _yzRtParseLine_(ln, plain) {
   ln = String(ln === null || ln === undefined ? "" : ln).replace(/\r/g, "");
@@ -131,13 +142,13 @@ function _yzRtParse_(text) {   // 一段字 → 一行一行（編輯器載入�
 
 // ── 一行的資料 → 字 ──
 function _yzRtEsc_(s) {   // 字本身長得像標記的，左括號寫成兩個；結尾的「[」也寫成兩個（後面可能接標記）
-  return String(s).replace(/\[(?=\[|$|\/?(?:b|i|u|s)\]|\/(?:c|z)\]|(?:c|z)=[a-z0-9]+\]|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?\])/g, "[[");
+  return String(s).replace(/\[(?=\[|$|\/?(?:b|i|u|s)\]|\/(?:c|z|m)\]|(?:c|z|m)=[a-z0-9]+\]|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?\])/g, "[[");
 }
 function _yzRtSerRuns_(runs) {
   var out = "", stack = [], x;
   (runs || []).forEach(function (r) {
     var want = [];
-    YZ_RT_ORDER.forEach(function (k) { if (r[k]) want.push(k === "c" || k === "z" ? k + "=" + r[k] : k); });
+    YZ_RT_ORDER.forEach(function (k) { if (r[k]) want.push(k === "c" || k === "z" || k === "m" ? k + "=" + r[k] : k); });
     var j = 0; while (j < stack.length && j < want.length && stack[j] === want[j]) j++;
     for (x = stack.length - 1; x >= j; x--) out += "[/" + stack[x].charAt(0) + "]";
     stack = stack.slice(0, j);
@@ -172,7 +183,17 @@ function _yzRtPlainLines_(text) {
 }
 function _yzRtPlain_(text) { return _yzRtPlainLines_(text).join("\n"); }
 // 這段字有沒有用到格式標記（LINE 裡改字時，要提醒「請保留標記」）
-function _yzRtHas_(text) { return /\[(?:\/?(?:b|i|u|s)|\/(?:c|z)|(?:c|z)=[a-z0-9]+|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?)\]/.test(String(text === null || text === undefined ? "" : text)); }
+function _yzRtHas_(text) { return /\[(?:\/?(?:b|i|u|s)|\/(?:c|z|m)|(?:c|z|m)=[a-z0-9]+|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?)\]/.test(String(text === null || text === undefined ? "" : text)); }
+// 第 30 批：這一行是不是「整行都畫了同一色螢光筆」（空白不算）→ 那個顏色；不是 → ""（LINE 整行的才能畫成底色）
+function _yzRtBand_(runs) {
+  var m = "", any = false;
+  for (var i = 0; i < (runs || []).length; i++) {
+    var r = runs[i]; if (!String(r.t || "").replace(/\s/g, "")) continue;
+    if (!r.m || !YZ_RT_MARKS[r.m] || (m && r.m !== m)) return "";
+    m = r.m; any = true;
+  }
+  return any ? m : "";
+}
 // 這段字裡有哪些圖（[img=代號] 那幾行，照順序、不重複）
 function _yzImgIds_(text) {
   var out = [];
@@ -284,10 +305,11 @@ function _yzT_(text, o) {
 // 一段文字 → 一行一行的「種類」：寫在 rt.js 的 _yzParseLines_（網頁和 LINE 共用，兩邊排出來才會一樣）。
 
 // 一行字（含格式）→ LINE 的一個 text。沒有格式就是一般的 text；有格式就拆成一小段一小段（span），每段都寫明字級和顏色，不靠「繼承」。
+// base.band：這一行整行畫了同一色螢光筆（外面會包一層底色）→ 螢光筆不用再改字色
 function _yzRtTextNode_(runs, base) {
   base = base || {};
   var simple = true, i;
-  for (i = 0; i < (runs || []).length; i++) { var r0 = runs[i]; if (r0.b || r0.i || r0.u || r0.s || r0.c || r0.z) { simple = false; break; } }
+  for (i = 0; i < (runs || []).length; i++) { var r0 = runs[i]; if (r0.b || r0.i || r0.u || r0.s || r0.c || r0.z || (r0.m && !base.band)) { simple = false; break; } }
   var node = { type: "text", wrap: true, size: base.size || "sm", color: base.color || "#1F1F1F" };
   if (base.weight) node.weight = base.weight;
   if (base.style) node.style = base.style;
@@ -298,7 +320,9 @@ function _yzRtTextNode_(runs, base) {
     var sp = { type: "span", text: r.t };
     sp.size = r.z ? YZ_RT_SIZES[r.z].line : node.size;
     sp.color = r.c ? YZ_RT_COLORS[r.c] : node.color;
-    if (r.b || base.weight === "bold") sp.weight = "bold";
+    var mk = !base.band && r.m && YZ_RT_MARKS[r.m];   // 第 30 批：只畫一部分的螢光筆：LINE 不能加底色 → 同色系的粗體字
+    if (mk && !r.c) sp.color = mk.ink;
+    if (r.b || mk || base.weight === "bold") sp.weight = "bold";
     if (r.i || base.style === "italic") sp.style = "italic";
     if (r.s) sp.decoration = "line-through"; else if (r.u) sp.decoration = "underline";   // LINE 一段字只能選一種：兩個都有時留刪除線
     return sp;
@@ -306,6 +330,14 @@ function _yzRtTextNode_(runs, base) {
   return node;
 }
 
+// 第 30 批：整行畫了同一色螢光筆 → 包一層那個顏色的底色（LINE 只能幫「一整塊」加底色）；它前面的間距（margin）搬到外面
+function _yzMarkBand_(node, m) {
+  if (!node || !m || !YZ_RT_MARKS[m]) return node;
+  var c = Object.assign({}, node), w = { type: "box", layout: "vertical", backgroundColor: YZ_RT_MARKS[m].bg, cornerRadius: "4px", paddingStart: "6px", paddingEnd: "6px", paddingTop: "2px", paddingBottom: "2px", contents: [c] };
+  if (c.margin) { w.margin = c.margin; delete c.margin; }
+  if (c.flex !== undefined) { w.flex = c.flex; delete c.flex; }
+  return w;
+}
 // 縮排（第 27 批：任何內容都能縮排）：把一個元件包進「左邊留 px」的方塊裡；它前面的間距（margin）搬到外面那一層，才算得到
 function _yzIndent_(node, px) {
   if (!node || !px) return node;
@@ -356,7 +388,7 @@ function _yzTextLines_(text, o) {
     }
     if (L.k === "box") {
       var T = YZ_RT_TONES[L.tone] || YZ_RT_TONES.info, kids = [];
-      for (j = i; j < ls.length && ls[j].k === "box" && ls[j].tone === L.tone && (ls[j].lv || 0) === (L.lv || 0); j++) { var bn = _yzRtTextNode_(ls[j].runs, { size: size, color: T.ink }); if (bn) kids.push(bn); }
+      for (j = i; j < ls.length && ls[j].k === "box" && ls[j].tone === L.tone && (ls[j].lv || 0) === (L.lv || 0); j++) { var bb = _yzRtBand_(ls[j].runs), bn = _yzMarkBand_(_yzRtTextNode_(ls[j].runs, { size: size, color: T.ink, band: !!bb }), bb); if (bn) kids.push(bn); }   // 第 30 批：整行螢光＝底色
       if (kids.length === 1) out.push(_yzIndent_({
         type: "box", layout: "horizontal", spacing: "sm", backgroundColor: T.bg, borderColor: T.bd, borderWidth: "1px", cornerRadius: "8px", paddingAll: "9px",
         contents: [{ type: "text", text: T.icon, size: size, flex: 0 }, { type: "box", layout: "vertical", flex: 1, spacing: "xs", contents: kids }]
@@ -376,20 +408,21 @@ function _yzTextLines_(text, o) {
     }
     if (L.k === "quote") {
       var qk = [];
-      for (j = i; j < ls.length && ls[j].k === "quote" && (ls[j].lv || 0) === (L.lv || 0); j++) { var qn = _yzRtTextNode_(ls[j].runs, { size: size, color: "#4A5565" }); if (qn) qk.push(qn); }
+      for (j = i; j < ls.length && ls[j].k === "quote" && (ls[j].lv || 0) === (L.lv || 0); j++) { var qb = _yzRtBand_(ls[j].runs), qn = _yzMarkBand_(_yzRtTextNode_(ls[j].runs, { size: size, color: "#4A5565", band: !!qb }), qb); if (qn) qk.push(qn); }
       // 左邊那條線：外框塗灰色、只留 3px，裡面的白底蓋掉其餘的（比「單邊框線」可靠，LINE 沒有單邊框線）
       if (qk.length) out.push(_yzIndent_({ type: "box", layout: "horizontal", backgroundColor: "#B8C2CC", paddingStart: "3px", contents: [{ type: "box", layout: "vertical", backgroundColor: "#FFFFFF", paddingStart: "10px", spacing: "xs", contents: qk }] }, pad));
       i = j; first = false; continue;
     }
+    var band = _yzRtBand_(L.runs);   // 第 30 批：整行畫了同一色螢光筆
     if (L.k === "item") {
-      var body = _yzRtTextNode_(L.runs, { size: size, color: color, flex: 1 });
-      if (body) out.push({ type: "box", layout: "horizontal", spacing: "sm", paddingStart: pad ? pad + "px" : undefined, contents: [{ type: "text", text: L.mark, size: size, color: o.markColor || "#4A5565", flex: 0 }, body] });
+      var body = _yzMarkBand_(_yzRtTextNode_(L.runs, { size: size, color: color, flex: 1, band: !!band }), band);
+      if (body) { var irow = { type: "box", layout: "horizontal", spacing: "sm", contents: [{ type: "text", text: L.mark, size: size, color: o.markColor || "#4A5565", flex: 0 }, body] }; if (pad) irow.paddingStart = pad + "px"; out.push(irow); }   // 沒縮排就不放 paddingStart（不留 undefined）
       i++; first = false; continue;
     }
     if (L.k === "head") {
       var H = YZ_RT_HEAD["h" + L.h];
-      node = _yzRtTextNode_(L.runs, { size: H.line, color: H.color, weight: "bold", margin: first ? undefined : (L.h <= 2 ? "xxl" : "xl") });   // 第 27 批：標題前面空大一點（太擠）
-    } else node = _yzRtTextNode_(L.runs, { size: size, color: color });
+      node = _yzMarkBand_(_yzRtTextNode_(L.runs, { size: H.line, color: H.color, weight: "bold", margin: first ? undefined : (L.h <= 2 ? "xxl" : "xl"), band: !!band }), band);   // 第 27 批：標題前面空大一點（太擠）
+    } else node = _yzMarkBand_(_yzRtTextNode_(L.runs, { size: size, color: color, band: !!band }), band);
     if (node) {
       out.push(_yzIndent_(node, pad));   // 第 27 批：標題也能縮排（以前標題不縮）
       first = false;
@@ -2499,10 +2532,12 @@ function rtKids(runs, hl) {
   var out = [];
   (runs || []).forEach(function (r) {
     var kids = hlNodes(r.t, hl);
-    if (!(r.b || r.i || r.u || r.s || r.c || r.z)) { out = out.concat(kids); return; }
-    var cls = "rt" + (r.b ? " rt-b" : "") + (r.i ? " rt-i" : "") + (r.u ? " rt-u" : "") + (r.s ? " rt-s" : "") + (r.z && YZ_RT_SIZES[r.z] ? " rt-z" + r.z : "");
+    if (!(r.b || r.i || r.u || r.s || r.c || r.z || r.m)) { out = out.concat(kids); return; }
+    var mk = r.m && YZ_RT_MARKS[r.m];   // 第 30 批：螢光筆（底色）
+    var cls = "rt" + (r.b ? " rt-b" : "") + (r.i ? " rt-i" : "") + (r.u ? " rt-u" : "") + (r.s ? " rt-s" : "") + (r.z && YZ_RT_SIZES[r.z] ? " rt-z" + r.z : "") + (mk ? " rt-m" : "");
     var sp = h("span", { class: cls }, kids);
     if (r.c && YZ_RT_COLORS[r.c]) sp.style.color = YZ_RT_COLORS[r.c];
+    if (mk) { sp.style.backgroundColor = mk.bg; sp.setAttribute("data-m", r.m); }
     out.push(sp);
   });
   return out;
@@ -2807,7 +2842,7 @@ function webCatalogMap(cat, hb, o) {
       if (Wp <= 0 || Hp <= 0) return;
       var mk = spotMask(s, X, Y, Wp, Hp, A); if (!mk) return;
       var bx = Wp < 100 ? (X / (100 - Wp)) * 100 : 0, by = Hp < 100 ? (Y / (100 - Hp)) * 100 : 0;
-      pat[s.id] = cam.appendChild(h("i", { class: "spc", "aria-hidden": "true", style: "left:" + X.toFixed(3) + "%;top:" + Y.toFixed(3) + "%;width:" + Wp.toFixed(3) + "%;height:" + Hp.toFixed(3) + "%;-webkit-mask-image:" + cssUrl(mk) + ";mask-image:" + cssUrl(mk) }, [
+      pat[s.id] = cam.appendChild(h("i", { class: "spc", "data-id": s.id, "aria-hidden": "true", style: "left:" + X.toFixed(3) + "%;top:" + Y.toFixed(3) + "%;width:" + Wp.toFixed(3) + "%;height:" + Hp.toFixed(3) + "%;-webkit-mask-image:" + cssUrl(mk) + ";mask-image:" + cssUrl(mk) }, [
         h("b", { style: "background-image:" + cssUrl(src) + ";background-size:" + (10000 / Wp).toFixed(3) + "% " + (10000 / Hp).toFixed(3) + "%;background-position:" + bx.toFixed(3) + "% " + by.toFixed(3) + "%" })
       ]));
     });
@@ -3243,7 +3278,7 @@ function drawSearchResults(col) {
  * 資料的單位是「一行」：{k:種類, lv:縮排, tone:標註顏色, go:連結的標題, img:圖的代號, runs:[{t:字, b,i,u,s,c,z}]}。
  * 第 28 批：一行也可以是一張圖（[img=代號]）：文字和圖片放在同一塊；圖的網址、圖說放在這一塊的 pics（o.pics() 拿得到），上傳交給編輯器（o.imgUp）。
  * 第 29 批：一行也可以是一張表格（[tbl=代號]，表格「併到上一塊」來的）：內容放在這一塊的 tbls（o.tbls()），按「✏️ 編輯表格」交給編輯器（o.tblEdit）。 */
-var RTE = { cur: null, pop: null, bar: null, lastColor: "red" };
+var RTE = { cur: null, pop: null, bar: null, lastColor: "red", lastMark: "yellow" };   // lastMark：上一次用的螢光筆顏色（第 30 批）
 var RTE_EMOJI = ["⚠️", "❗", "❓", "✅", "❌", "➡️", "⬆️", "⬇️", "📌", "📖", "📞", "⏰", "🔒", "💊", "💉", "🌡️", "❄️", "🔥", "⭐", "🔴", "🟡", "🟢", "🔵", "👍"];
 
 function rteTxt(runs) { return _yzRtRunsText_(runs); }
@@ -3284,7 +3319,7 @@ function rteCreate(o) {
   var inst = {};
   var body = h("div", { class: "rtbody", contenteditable: "true", spellcheck: "false", autocapitalize: "off", autocorrect: "off", role: "textbox", "aria-multiline": "true", "aria-label": "文字內容（選取文字後，按最上面第二排的按鍵）" });
   var rawTa = h("textarea", { class: "ta rtraw", spellcheck: "false", "aria-label": "原始標記" });
-  var rawNote = h("div", { class: "hint rtrawnote" }, ["標記模式：這就是「LINE 裡改字」時看到的樣子。[b]…[/b] 粗體、[c=red]…[/c] 紅字、[h2] 標題。改完再按一次「</> 標記」回到一般模式。"]);
+  var rawNote = h("div", { class: "hint rtrawnote" }, ["標記模式：這就是「LINE 裡改字」時看到的樣子。[b]…[/b] 粗體、[c=red]…[/c] 紅字、[m=yellow]…[/m] 黃色螢光筆、[h2] 標題。改完再按一次「</> 標記」回到一般模式。"]);
   rawTa.hidden = true; rawNote.hidden = true;
   var el = h("div", { class: "rte" }, [body, rawNote, rawTa]);
   var lines = _yzRtParse_(o.value || "");
@@ -3293,8 +3328,8 @@ function rteCreate(o) {
 
   // ───────── 資料 → 畫面 ─────────
   function runNode(r) {
-    if (!(r.b || r.i || r.u || r.s || r.c || r.z)) return document.createTextNode(r.t);
-    var sp = h("span", { class: "rt" + (r.b ? " rt-b" : "") + (r.i ? " rt-i" : "") + (r.u ? " rt-u" : "") + (r.s ? " rt-s" : "") + (r.z ? " rt-z" + r.z : "") });
+    if (!(r.b || r.i || r.u || r.s || r.c || r.z || r.m)) return document.createTextNode(r.t);
+    var sp = h("span", { class: "rt" + (r.b ? " rt-b" : "") + (r.i ? " rt-i" : "") + (r.u ? " rt-u" : "") + (r.s ? " rt-s" : "") + (r.z ? " rt-z" + r.z : "") + (r.m && YZ_RT_MARKS[r.m] ? " rt-m" : "") });
     sp.textContent = r.t;
     if (r.b) sp.setAttribute("data-b", "1");
     if (r.i) sp.setAttribute("data-i", "1");
@@ -3302,6 +3337,7 @@ function rteCreate(o) {
     if (r.s) sp.setAttribute("data-s", "1");
     if (r.c && YZ_RT_COLORS[r.c]) { sp.setAttribute("data-c", r.c); sp.style.color = YZ_RT_COLORS[r.c]; }
     if (r.z && YZ_RT_SIZES[r.z]) sp.setAttribute("data-z", r.z);
+    if (r.m && YZ_RT_MARKS[r.m]) { sp.setAttribute("data-m", r.m); sp.style.backgroundColor = YZ_RT_MARKS[r.m].bg; }   // 第 30 批：螢光筆
     return sp;
   }
   function removeLine(d) {
@@ -3418,6 +3454,7 @@ function rteCreate(o) {
       if (n.hasAttribute("data-s") || nn === "S" || nn === "STRIKE" || nn === "DEL") a.s = 1;
       if (n.hasAttribute("data-c") && YZ_RT_COLORS[n.getAttribute("data-c")]) a.c = n.getAttribute("data-c");
       if (n.hasAttribute("data-z") && YZ_RT_SIZES[n.getAttribute("data-z")]) a.z = n.getAttribute("data-z");
+      if (n.hasAttribute("data-m") && YZ_RT_MARKS[n.getAttribute("data-m")]) a.m = n.getAttribute("data-m");
       for (var c = n.firstChild; c; c = c.nextSibling) walk(c, a);
     })(root, {});
     return _yzRtMerge_(runs);
@@ -3624,7 +3661,7 @@ function rteCreate(o) {
       }
       if (!cov.length) return s;
       var on;
-      if (key === "c" || key === "z") on = val || 0;
+      if (key === "c" || key === "z" || key === "m") on = val || 0;
       else on = cov.every(function (c) { return _yzRtSlice_(c.L.runs, c.a, c.b).every(function (r) { return !!r[key]; }); }) ? 0 : 1;
       cov.forEach(function (c) {
         var len2 = rteLen(c.L);
@@ -3633,6 +3670,12 @@ function rteCreate(o) {
       });
       return s;
     });
+  }
+  function cmdMark(color) {   // 螢光筆：color 沒給＝用上一次的顏色；選到的字整段已經是這個顏色＝拿掉（再按一次取消）
+    var c = color || RTE.lastMark || "yellow", st0 = state();
+    if (!color && st0.m === c) cmdInline("m", null); else cmdInline("m", c);
+    if (color) RTE.lastMark = color;
+    rteBarSync();
   }
   function cmdClear() {
     run(function (ls, s) {
@@ -3757,7 +3800,7 @@ function rteCreate(o) {
 
   // ───────── 現在的狀態（給格式列用） ─────────
   function state() {
-    var ls = readLines(), s = getSel() || lastSel, st = { ok: !!s, kind: null, tone: null, list: null, b: 0, i: 0, u: 0, s: 0, c: null, z: null };
+    var ls = readLines(), s = getSel() || lastSel, st = { ok: !!s, kind: null, tone: null, list: null, b: 0, i: 0, u: 0, s: 0, c: null, z: null, m: null };
     if (!s) return st;
     var first = ls[Math.min(s.a.li, ls.length - 1)];
     if (first) { st.kind = first.k; st.tone = first.tone || null; var it = rteIsBlock(first) || first.k !== "p" ? null : _yzRtItem_(rteTxt(first.runs)); st.list = it ? rteMarkClass(it.mark) : null; }
@@ -3775,6 +3818,8 @@ function rteCreate(o) {
       var c0 = pieces[0].c || null, z0 = pieces[0].z || null;
       st.c = pieces.every(function (r) { return (r.c || null) === c0; }) ? (c0 || "") : null;
       st.z = pieces.every(function (r) { return (r.z || null) === z0; }) ? (z0 || "") : null;
+      var m0 = pieces[0].m || null;
+      st.m = pieces.every(function (r) { return (r.m || null) === m0; }) ? (m0 || "") : null;
     }
     return st;
   }
@@ -3884,6 +3929,7 @@ function rteCreate(o) {
       if (k === "i") { e.preventDefault(); cmdInline("i"); return; }
       if (k === "u") { e.preventDefault(); cmdInline("u"); return; }
       if (k === "x" && e.shiftKey) { e.preventDefault(); cmdInline("s"); return; }
+      if (k === "h" && e.shiftKey) { e.preventDefault(); cmdMark(); return; }   // 第 30 批：螢光筆（上一次的顏色；整段都是這個顏色＝拿掉）
       if (k === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
       if (k === "y") { e.preventDefault(); redo(); return; }
       return;
@@ -3921,7 +3967,7 @@ function rteCreate(o) {
 
   render(); histInit();
   inst.el = el; inst.body = body;
-  inst.cmd = { inline: cmdInline, clear: cmdClear, kind: cmdKind, list: cmdList, line: cmdInsertLine, indent: cmdIndent, text: cmdText, undo: undo, redo: redo, raw: function () { setRaw(!rawMode); }, img: cmdImg };
+  inst.cmd = { inline: cmdInline, clear: cmdClear, kind: cmdKind, list: cmdList, line: cmdInsertLine, indent: cmdIndent, text: cmdText, undo: undo, redo: redo, raw: function () { setRaw(!rawMode); }, img: cmdImg, mark: cmdMark };
   inst.refresh = function () { lines = readLines(); render(); };   // 圖片裡的字辨識好了之類（畫面重畫，內容不變）
   inst.state = state; inst.value = function () { return rawMode ? rawTa.value.replace(/\n+$/, "") : value(); }; inst.isRaw = function () { return rawMode; };
   inst.splitAtCaret = function () { if (rawMode) setRaw(false); return splitAtCaret(); };
@@ -3942,6 +3988,7 @@ var RTE_BAR = [
     { id: "u", h: "<u>U</u>", tip: "底線（Ctrl+U）：先選取要改的字", a: ["inline", "u"] },
     { id: "s", h: "<s>S</s>", tip: "刪除線（Ctrl+Shift+X）：先選取要改的字", a: ["inline", "s"] },
     { id: "color", h: '<span class="fbA">A</span><i class="fbcbar"></i><span class="fbcar">▾</span>', tip: "文字顏色：先選取要改的字", pop: "color" },
+    { id: "mark", h: '<span class="fbM">🖍</span><i class="fbmbar"></i><span class="fbcar">▾</span>', tip: "螢光筆（黃、綠、藍、粉、橘、紫）：先選取要畫的字。Ctrl+Shift+H＝用上一次的顏色畫／再按一次拿掉", pop: "mark" },
     { id: "size", h: "Aa ▾", tip: "文字大小（小・普通・大・特大）：先選取要改的字", pop: "size" },
     { id: "clear", h: "清除格式", tip: "把選到的字的粗體、顏色、大小…全部拿掉", a: ["clear"] }
   ] },
@@ -3997,6 +4044,15 @@ function rteOpenPop(anchor, kind) {
     grid.appendChild(h("button", { type: "button", class: "rtsw-b", title: "拿掉顏色，變回預設的黑色", "data-c": "", onclick: function () { rteDo("inline", "c", null); rteClosePop(); } }, [h("span", {}, ["A"]), h("small", {}, ["預設"])]));
     pop.appendChild(grid);
     pop.appendChild(h("div", { class: "hint", style: "max-width:270px" }, ["顏色固定 9 種，白底上都看得清楚；LINE 和網頁顯示一樣。"]));
+  } else if (kind === "mark") {   // 第 30 批：螢光筆
+    pop.appendChild(h("div", { class: "rtpop-t" }, ["螢光筆（先選取要畫的字）"]));
+    var mg = h("div", { class: "rtsw rtmk" });
+    YZ_RT_MARK_ORDER.forEach(function (c) {
+      mg.appendChild(h("button", { type: "button", class: "rtsw-b", title: YZ_RT_MARKS[c].label + "色螢光", "data-m": c, onclick: function () { rteDo("mark", c); rteClosePop(); } }, [h("span", { class: "rtmk-s", style: "background:" + YZ_RT_MARKS[c].bg }, ["字"]), h("small", {}, [YZ_RT_MARKS[c].label])]));
+    });
+    mg.appendChild(h("button", { type: "button", class: "rtsw-b", title: "拿掉螢光筆", "data-m": "", onclick: function () { rteDo("inline", "m", null); rteClosePop(); } }, [h("span", { class: "rtmk-s" }, ["字"]), h("small", {}, ["拿掉"])]));
+    pop.appendChild(mg);
+    pop.appendChild(h("div", { class: "hint", style: "max-width:290px" }, ["網頁、編輯器：螢光底色。LINE 不能幫一段字加底色：整行都畫同一色＝那一行有底色；只畫一部分＝同色系的粗體字。快捷鍵 Ctrl+Shift+H（Mac：⌘+Shift+H）。"]));
   } else if (kind === "size") {
     pop.appendChild(h("div", { class: "rtpop-t" }, ["文字大小（先選取要改的字）"]));
     [["sm", "小"], ["", "普通"], ["lg", "大"], ["xl", "特大"]].forEach(function (x) {
@@ -4046,12 +4102,14 @@ function rteBarSync() {
       else if (id.indexOf("box-") === 0) on = st.kind === "box" && st.tone === id.slice(4);
       else if (id === "ul" || id === "ol" || id === "todo") on = st.list === id;
       else if (id === "p") on = st.kind === "p" && !st.list;
+      else if (id === "mark") on = !!st.m;   // 第 30 批：選到的字整段都是同一色螢光＝亮
     }
     if (id === "raw") { dis = !c; on = raw; }
     if (id === "undo" || id === "redo") { var hh = c ? c.hasHist() : { undo: false, redo: false }; dis = !c || raw || !hh[id]; }
     B[id].disabled = dis; B[id].classList.toggle("on", !!on && !dis); B[id].setAttribute("aria-pressed", on && !dis ? "true" : "false");
   });
   var cb = B.color && B.color.querySelector(".fbcbar"); if (cb) cb.style.background = YZ_RT_COLORS[(st && st.c) || RTE.lastColor] || "#999";
+  var mb = B.mark && B.mark.querySelector(".fbmbar"); if (mb) mb.style.background = (YZ_RT_MARKS[(st && st.m) || RTE.lastMark] || YZ_RT_MARKS.yellow).bg;   // 第 30 批：下面那條＝現在／上一次的螢光色
   var stat = document.getElementById("fbstat");
   if (stat) stat.textContent = c ? (raw ? "標記模式" : "") : "← 先點一下要改的那一段文字，格式鍵才會亮";
 }
@@ -4060,11 +4118,13 @@ document.addEventListener("keydown", function (e) { if (e.key === "Escape") rteC
 document.addEventListener("selectionchange", function () { if (RTE.cur) rteBarSync(); });
 
 /* ════════ shapelib.js ════════ */
-/* ═══════════════ shapelib.js：圖一（目錄圖）的物品圖庫（第 27 批；第 28 批：覆核＝條碼掃描器＋電腦、冰箱改到水藥調劑；第 29 批：行政事宜＝整個文件資料櫃）═══════════════
+/* ═══════════════ shapelib.js：圖一（目錄圖）的物品圖庫（第 27 批；第 28 批：覆核＝條碼掃描器＋電腦、冰箱改到水藥調劑；第 29 批：行政事宜＝整個文件資料櫃；第 30 批：加上新的圖一——行政事宜＝整個文件資料櫃、水藥調劑＝只亮冰箱）═══════════════
  * 用比較準的方法（SAM，物品分割的模型）在開發的電腦上先把圖一裡每個按鍵該亮的物品切好，這裡只存外框的點（整張圖的 %）。
- * 編輯器按「儲存」時：目錄圖是這一張（比對 fp＝圖的指紋：縮成 17×8 格、左右比亮暗的 128 個 0/1，看不出圖的內容）→ 直接用這裡的物品；
- * 換了別張圖 → 照舊在框裡自動找（shFind）。ids＝預設的地點（yzSetup 建的 p1…p10）優先用哪一個物品。不用手動改這個檔。 */
-var SH_LIB = [{"fp":"6ea8eaaab6c5bd4ddc9c78d33bcb38eb","ar":2.3325,"objs":[{"id":"book","nm":"法規書（整本）","r":[[30.8,84.2,29.3,82.6,28.7,82.1,28.3,82.1,27.5,81.2,27.0,80.4,26.0,80.0,25.3,79.5,25.0,78.8,23.9,78.0,23.0,76.7,22.0,76.0,21.0,74.9,20.6,74.7,19.3,73.3,18.3,73.0,15.7,74.3,15.2,74.8,14.3,75.3,13.7,75.9,11.6,77.0,11.2,77.5,8.8,79.0,8.5,79.4,7.9,79.5,6.7,80.4,6.5,80.9,6.1,84.2,6.1,87.1,6.5,88.7,7.9,90.7,8.5,91.2,8.8,92.0,9.9,93.3,10.3,94.2,10.9,94.8,11.9,96.5,12.3,96.8,14.0,99.9,18.0,99.9,18.0,96.5,18.2,96.0,20.1,94.0,20.5,93.9,22.2,92.1,23.6,91.1,25.1,89.5,29.8,85.6,30.8,84.5]],"ids":["p8"],"c":1},{"id":"binder","nm":"規則本（整本）","r":[[71.9,94.2,71.9,97.8,72.0,98.4,72.5,99.1,72.9,99.4,73.3,99.4,73.6,99.6,73.6,99.9,96.0,99.9,96.2,99.4,96.2,98.4,95.8,95.9,95.5,94.3,95.4,93.3,95.1,92.6,94.8,89.8,94.5,88.9,94.2,86.7,93.8,85.1,93.4,82.1,93.2,81.1,92.7,78.7,92.6,78.3,91.1,77.6,90.1,77.6,89.3,77.2,88.4,77.1,88.1,76.9,85.3,76.4,84.9,76.1,84.5,76.1,84.2,75.9,82.9,75.6,82.6,75.4,81.5,75.3,81.1,75.0,80.7,75.2,80.4,74.9,79.9,74.9,79.5,74.7,78.3,74.5,78.0,74.2,77.1,73.9,76.6,73.9,76.2,74.2,75.9,75.0,75.7,76.1,75.4,76.7,73.4,86.0,73.2,86.8,73.0,88.2,72.5,89.8,72.0,92.7]],"ids":["p10"],"c":1},{"id":"clip","nm":"處方夾板","r":[[55.2,88.8,55.3,89.5,55.7,90.1,56.1,90.1,57.5,91.0,58.0,91.0,60.5,92.6,61.4,92.8,61.9,93.4,63.6,94.2,64.2,94.2,64.5,94.5,65.7,94.9,66.0,95.2,68.3,96.7,68.6,96.3,68.9,95.1,68.9,94.4,70.0,88.9,70.2,87.2,70.7,85.3,71.1,82.8,71.7,80.1,71.8,78.4,71.6,78.0,70.5,77.3,69.0,76.9,68.4,77.1,68.3,76.9,68.2,76.2,67.6,76.1,67.4,76.4,66.9,75.9,65.3,75.5,65.1,75.3,64.5,75.4,64.2,75.2,63.8,75.2,63.6,75.5,63.1,75.5,62.2,74.8,61.5,74.8,60.4,77.1,59.4,79.5,58.7,80.6,57.9,82.5,57.8,82.9,57.6,83.2,55.6,87.7]],"ids":["p9"],"c":1},{"id":"tray","nm":"藥盤","r":[[36.0,68.8,36.6,69.5,37.1,70.9,37.5,71.3,38.1,70.9,39.6,71.1,40.1,71.5,40.9,71.6,41.5,72.1,42.5,72.4,43.1,72.8,44.3,72.8,44.8,73.3,45.8,73.4,47.2,74.2,47.9,75.2,48.9,75.4,49.4,76.2,49.7,76.2,50.1,76.9,50.5,77.0,51.0,76.6,51.7,74.8,53.6,71.9,54.8,71.0,55.3,70.4,56.2,68.3,56.4,67.1,56.5,66.1,55.9,65.7,54.9,65.4,53.4,65.4,52.8,64.8,50.7,64.3,50.0,63.8,48.7,63.8,48.2,63.2,48.2,62.6,47.9,62.4,47.1,62.5,46.7,63.1,45.3,63.1,44.4,62.6,43.2,62.4,41.8,63.5,40.8,63.8,40.5,64.7,39.5,65.5,38.9,65.7,37.8,66.6,37.0,67.0,36.1,68.0]],"ids":["p7"],"c":1},{"id":"liquid","nm":"藥水瓶、量杯和冰箱","r":[[7.6,19.9,7.4,20.3,7.4,23.8,7.3,23.9,7.4,26.3,7.4,29.2,7.4,29.4,7.4,36.3,7.4,36.4,7.4,42.5,7.3,42.6,7.4,46.8,7.5,47.7,8.1,47.9,8.7,47.6,9.0,47.3,9.3,47.3,9.5,47.5,9.8,46.9,10.0,46.2,10.0,42.1,10.0,40.3,9.9,39.8,9.9,34.8,9.8,33.4,9.8,29.0,9.8,28.9,10.0,23.1,9.8,21.0,9.7,20.5,9.6,20.3,9.1,20.5,8.8,20.2],[8.6,62.0,8.4,61.8,8.1,61.8,8.0,61.6,7.9,61.6,7.9,61.8,7.3,61.9,7.2,62.0,7.0,62.0,6.8,62.2,6.7,62.5,6.7,64.6,6.6,65.0,6.5,65.3,6.3,66.0,6.3,67.7,6.2,68.0,6.0,67.7,5.8,67.8,5.2,68.0,5.2,68.1,5.0,68.1,4.8,68.5,4.8,68.7,4.8,68.8,4.8,70.9,4.7,71.0,4.7,71.7,4.8,71.9,4.8,73.6,4.9,74.1,5.1,74.3,6.0,74.3,6.2,74.1,6.3,73.9,6.3,73.7,6.4,73.4,6.5,73.6,6.8,73.7,7.4,73.2,7.6,73.2,7.7,73.1,8.0,73.0,8.3,72.7,8.6,72.6,8.9,72.2,9.0,71.7,9.0,65.7,8.8,64.1,8.8,62.5],[17.7,64.2,17.4,64.9,17.4,67.2,17.3,67.7,17.3,70.6,17.2,70.8,17.2,72.7,17.3,73.0,17.4,73.1,17.8,73.0,18.7,72.4,18.8,71.9,18.8,69.1,18.9,68.8,19.0,68.6,19.6,68.6,19.8,69.1,19.8,73.2,19.8,73.4,20.5,74.2,20.7,74.3,21.0,74.2,21.2,73.6,21.2,67.8,21.0,66.9,20.8,66.3,20.8,65.2,20.6,65.0,20.6,65.2,20.0,65.3,19.7,66.0,19.5,65.7,19.3,65.4,19.1,65.7,19.0,65.5,18.9,64.7,18.5,64.1,18.2,64.1,18.2,64.2,17.8,64.1],[14.4,65.0,14.2,64.7,14.2,64.8,13.6,64.8,13.5,64.9,13.0,64.8,12.8,65.0,12.6,64.9,12.4,65.3,11.4,65.3,11.1,65.5,11.1,65.7,11.1,67.7,11.0,67.8,11.0,69.1,11.1,69.7,11.1,70.6,11.3,70.9,11.4,70.9,11.5,71.0,11.5,70.9,11.8,70.9,11.9,70.8,12.1,70.8,12.1,70.6,12.4,70.6,12.6,70.4,12.7,69.8,12.9,69.4,13.1,69.7,13.5,69.8,13.6,69.7,13.8,69.7,14.2,69.3,14.3,68.9,14.4,68.3],[22.4,69.1,22.4,69.3,22.3,69.4,22.3,71.0,22.3,71.1,22.3,72.6,22.3,72.7,22.3,73.1,22.4,73.2,22.5,73.8,22.7,74.5,22.8,74.7,23.0,74.7,23.1,74.8,23.3,74.8,23.3,74.7,23.6,74.7,23.6,74.5,24.7,74.8,25.0,74.5,25.1,74.2,25.1,73.9,25.2,73.8,25.2,69.4,25.0,69.2,24.7,69.2,24.6,69.3,24.4,69.3,24.4,69.4,23.5,69.5,23.3,69.3,22.8,69.3,22.5,68.9]],"ids":["p6"],"c":8},{"id":"consult","nm":"藥師和病人（左邊窗口）","r":[[46.1,22.4,45.8,22.0,45.1,21.9,44.7,22.5,44.6,23.0,44.5,26.2,44.7,26.9,44.2,27.6,43.3,30.0,43.2,29.8,42.4,27.8,41.6,27.2,41.3,26.4,40.8,26.1,40.5,26.6,40.5,28.6,40.0,30.5,39.7,30.7,39.5,30.6,39.1,28.7,38.9,28.5,38.7,28.6,38.4,30.2,38.3,32.0,38.3,33.3,39.0,34.7,39.0,36.2,38.6,38.1,38.7,39.2,38.9,39.5,40.8,39.6,41.7,40.3,42.5,40.3,42.7,40.1,42.7,39.2,42.3,34.2,42.3,33.6,42.4,33.3,42.7,33.1,43.1,33.4,43.7,33.4,43.9,33.0,44.0,32.0,44.2,31.7,45.0,32.3,45.5,31.4,46.8,31.5,47.3,31.2,47.4,30.8,47.3,29.5,46.8,27.4,46.4,23.6]],"ids":["p2"],"c":2},{"id":"dispense","nm":"藥師和病人（中間窗口）","r":[[58.8,26.2,58.6,26.4,58.3,27.2,58.0,27.8,57.4,28.3,57.2,28.9,57.0,30.1,57.0,34.6,57.1,35.6,57.5,35.9,57.7,36.4,57.7,37.4,57.5,38.2,57.4,39.7,57.4,40.3,57.2,41.2,57.2,42.0,57.4,42.3,57.6,42.3,57.7,42.4,59.2,42.5,59.2,42.6,59.6,42.6,59.6,42.8,60.4,42.8,60.5,42.9,60.9,42.9,60.9,43.0,61.6,43.0,61.7,42.8,61.8,42.1,61.7,41.5,61.6,39.3,61.3,37.4,61.3,36.7,61.2,36.1,61.2,35.6,61.5,35.1,62.0,35.6,62.2,35.6,62.7,35.2,62.9,34.8,63.1,34.0,63.1,32.9,63.0,32.6,62.4,31.9,61.8,30.5,61.6,29.0,61.4,28.5,60.3,27.5,59.9,26.6,59.5,26.2],[64.5,20.7,64.2,21.4,64.2,21.9,64.2,23.3,64.5,24.0,64.5,24.2,64.3,24.8,64.3,25.9,64.2,26.2,63.8,26.2,63.2,27.3,62.8,28.7,62.8,29.7,63.0,30.0,63.2,30.0,63.3,29.8,64.1,30.0,64.2,30.1,64.4,30.1,64.6,30.5,65.0,30.5,65.3,29.8,65.5,29.8,65.8,30.2,66.9,30.2,67.1,30.6,67.2,32.3,67.4,32.5,67.5,32.4,67.6,31.5,67.6,30.9,67.7,30.6,67.7,29.1,67.5,27.5,67.4,27.3,66.9,26.8,66.7,26.3,66.4,26.1,66.2,26.1,66.0,25.7,65.8,24.5,65.8,23.8,66.0,23.0,66.1,22.2,65.9,21.3,65.4,20.3,65.0,20.3]],"ids":["p3"],"c":2},{"id":"er","nm":"藥師和病人（右邊窗口）","r":[[91.7,21.2,90.8,20.5,90.0,21.6,89.8,22.4,90.0,23.9,89.8,25.9,88.7,27.2,88.3,28.9,87.4,28.7,86.6,27.5,86.1,27.6,86.1,30.8,85.8,33.0,85.5,33.5,84.8,32.4,84.3,29.5,83.8,29.4,83.5,29.8,83.2,31.5,83.0,35.6,83.5,37.1,84.2,38.1,83.9,42.5,85.8,43.2,86.5,43.0,87.3,41.9,88.7,41.2,88.4,37.9,88.4,34.2,88.8,33.9,89.3,34.3,89.8,33.9,90.1,33.0,90.0,31.5,88.9,30.1,89.0,29.5,90.0,29.0,91.1,29.4,91.2,30.1,90.9,30.8,91.1,32.9,91.3,33.3,91.7,33.0,92.3,31.3,94.0,31.2,94.1,30.2,93.7,27.8,93.1,26.9,92.5,25.0,92.1,24.4,92.0,22.2]],"ids":["p4"],"c":2},{"id":"review","nm":"條碼掃描器和電腦","r":[[79.5,42.6,73.6,42.1,70.7,41.4,69.3,41.7,68.9,47.5,68.8,53.0,68.2,53.3,67.1,53.3,66.2,54.8,65.7,56.4,65.7,57.5,65.9,58.6,66.9,59.2,67.3,59.9,67.6,63.7,67.6,64.9,66.9,65.5,66.5,66.6,66.4,67.8,66.6,68.2,69.5,69.1,70.6,67.6,70.7,67.1,70.6,65.9,69.6,64.9,69.5,61.6,69.1,59.8,69.4,59.0,69.8,60.2,71.1,59.9,71.7,60.8,71.9,60.5,72.7,60.8,72.8,61.3,72.7,64.2,74.0,64.7,74.2,64.2,74.3,61.9,74.8,60.2,76.0,59.1,76.2,58.0,76.6,57.4,78.0,56.2,78.9,55.9,79.3,54.9,79.5,52.6,79.7,44.5,79.7,43.1]],"ids":["p5"],"c":2},{"id":"cabinet","nm":"文件資料櫃（整個櫃子，不含冰箱）","r":[[15.6,15.0,11.1,13.3,10.7,12.8,8.4,12.4,6.5,11.7,5.8,11.9,5.1,13.0,5.2,14.6,5.2,22.7,5.0,25.0,5.2,26.7,5.1,28.7,5.2,29.5,5.1,31.5,5.3,33.6,5.1,36.1,5.3,36.7,5.4,40.2,5.2,44.9,5.5,51.4,5.8,51.4,5.7,50.4,5.9,50.1,6.5,49.8,7.2,48.1,7.0,46.2,7.2,36.2,7.0,23.8,7.2,19.7,7.6,19.2,9.1,19.9,9.6,19.7,9.8,20.0,10.1,20.8,10.2,23.0,10.0,28.7,10.3,45.1,12.2,45.2,12.6,43.6,13.3,43.4,13.3,40.6,13.0,40.0,12.7,40.0,12.5,39.1,12.6,38.2,13.1,38.2,13.4,37.6,13.2,34.2,14.2,33.0,15.3,33.1,15.7,32.3,15.7,22.4,15.6,21.0,15.7,16.6]],"ids":["p1"],"c":1},{"id":"files","nm":"文件夾（最上面那一層）","r":[[9.6,14.9,9.7,16.1,9.6,16.7,9.6,19.1,9.7,19.6,10.1,20.3,10.2,21.4,10.3,21.7,11.5,21.7,11.6,21.8,11.9,21.8,12.2,21.4,12.5,21.9,12.8,21.9,12.9,22.0,15.2,22.0,15.2,22.2,15.5,22.0,15.5,21.8,15.5,15.7,15.4,15.5,15.0,15.5,14.9,15.3,14.5,15.2,14.5,15.1,14.3,15.1,14.2,15.0,14.2,15.1,13.8,15.1,13.7,15.0,13.6,15.0,13.4,14.7,13.3,14.9,12.3,14.9,12.2,15.1,11.9,14.5,10.4,14.5,10.4,14.6,9.9,14.5]],"c":1},{"id":"beaker","nm":"量杯","r":[[22.4,69.1,22.4,69.3,22.3,69.4,22.3,71.0,22.3,71.1,22.3,72.6,22.3,72.7,22.3,73.1,22.4,73.2,22.5,73.8,22.7,74.5,22.8,74.7,23.0,74.7,23.1,74.8,23.3,74.8,23.3,74.7,23.6,74.7,23.6,74.5,24.7,74.8,25.0,74.5,25.1,74.2,25.1,73.9,25.2,73.8,25.2,69.4,25.0,69.2,24.7,69.2,24.6,69.3,24.4,69.3,24.4,69.4,23.5,69.5,23.3,69.3,22.8,69.3,22.5,68.9]],"c":1},{"id":"bottles","nm":"藥水瓶","r":[[8.6,62.0,8.4,61.8,8.1,61.8,8.0,61.6,7.9,61.6,7.9,61.8,7.3,61.9,7.2,62.0,7.0,62.0,6.8,62.2,6.7,62.5,6.7,64.6,6.6,65.0,6.5,65.3,6.3,66.0,6.3,67.7,6.2,68.0,6.0,67.7,5.8,67.8,5.2,68.0,5.2,68.1,5.0,68.1,4.8,68.5,4.8,68.7,4.8,68.8,4.8,70.9,4.7,71.0,4.7,71.7,4.8,71.9,4.8,73.6,4.9,74.1,5.1,74.3,6.0,74.3,6.2,74.1,6.3,73.9,6.3,73.7,6.4,73.4,6.5,73.6,6.8,73.7,7.4,73.2,7.6,73.2,7.7,73.1,8.0,73.0,8.3,72.7,8.6,72.6,8.9,72.2,9.0,71.7,9.0,65.7,8.8,64.1,8.8,62.5],[17.7,64.2,17.4,64.9,17.4,67.2,17.3,67.7,17.3,70.6,17.2,70.8,17.2,72.7,17.3,73.0,17.4,73.1,17.8,73.0,18.7,72.4,18.8,71.9,18.8,69.1,18.9,68.8,19.0,68.6,19.6,68.6,19.8,69.1,19.8,73.2,19.8,73.4,20.5,74.2,20.7,74.3,21.0,74.2,21.2,73.6,21.2,67.8,21.0,66.9,20.8,66.3,20.8,65.2,20.6,65.0,20.6,65.2,20.0,65.3,19.7,66.0,19.5,65.7,19.3,65.4,19.1,65.7,19.0,65.5,18.9,64.7,18.5,64.1,18.2,64.1,18.2,64.2,17.8,64.1],[14.4,65.0,14.2,64.7,14.2,64.8,13.6,64.8,13.5,64.9,13.0,64.8,12.8,65.0,12.6,64.9,12.4,65.3,11.4,65.3,11.1,65.5,11.1,65.7,11.1,67.7,11.0,67.8,11.0,69.1,11.1,69.7,11.1,70.6,11.3,70.9,11.4,70.9,11.5,71.0,11.5,70.9,11.8,70.9,11.9,70.8,12.1,70.8,12.1,70.6,12.4,70.6,12.6,70.4,12.7,69.8,12.9,69.4,13.1,69.7,13.5,69.8,13.6,69.7,13.8,69.7,14.2,69.3,14.3,68.9,14.4,68.3]],"c":6},{"id":"fridge","nm":"冰箱","r":[[7.6,19.9,7.4,20.3,7.4,23.8,7.3,23.9,7.4,26.3,7.4,29.2,7.4,29.4,7.4,36.3,7.4,36.4,7.4,42.5,7.3,42.6,7.4,46.8,7.5,47.7,8.1,47.9,8.7,47.6,9.0,47.3,9.3,47.3,9.5,47.5,9.8,46.9,10.0,46.2,10.0,42.1,10.0,40.3,9.9,39.8,9.9,34.8,9.8,33.4,9.8,29.0,9.8,28.9,10.0,23.1,9.8,21.0,9.7,20.5,9.6,20.3,9.1,20.5,8.8,20.2]],"c":1},{"id":"folders","nm":"資料夾","r":[[12.3,15.2,12.2,15.5,12.2,16.1,12.1,16.7,12.1,17.4,12.1,17.5,12.1,18.0,12.1,18.1,12.1,19.4,12.1,19.5,12.1,20.0,12.2,20.1,12.2,21.3,12.3,21.6,12.5,21.8,12.8,21.8,12.8,21.9,14.4,21.9,14.4,22.0,15.4,21.9,15.5,21.8,15.5,21.6,15.5,18.1,15.5,18.0,15.5,17.4,15.5,17.3,15.5,16.1,15.5,15.8,15.4,15.7,14.7,15.6,14.7,15.5,14.4,15.5,14.3,15.3,13.8,15.3,13.6,15.1,13.0,15.1,13.0,15.0,12.4,15.0]],"c":1},{"id":"monitor","nm":"電腦螢幕","r":[[69.6,42.8,69.3,44.0,69.2,46.2,69.0,47.9,68.9,49.8,69.0,50.4,69.0,52.7,69.1,53.2,69.3,53.6,69.8,54.9,70.0,57.6,70.1,57.7,70.5,57.6,70.9,58.0,72.1,58.3,72.4,58.2,73.2,58.6,73.5,59.0,74.2,59.0,74.8,59.3,74.9,59.2,75.7,59.2,76.0,59.0,76.2,58.0,76.7,57.1,77.4,56.8,78.0,56.2,78.7,56.0,79.1,55.2,79.1,54.1,79.2,53.5,79.5,52.7,79.5,51.5,79.6,50.5,79.6,43.4,79.5,42.9,79.1,42.6,78.2,42.5,77.8,43.0,76.4,42.4,75.9,42.4,75.5,42.8,74.7,42.3,73.6,42.5,73.2,42.0,72.0,42.3,71.7,42.0,70.8,41.9,70.5,41.7,70.0,41.9]],"c":1},{"id":"printer","nm":"印表機","r":[[53.3,48.4,52.9,48.0,52.3,47.9,52.3,47.7,50.2,47.5,49.5,47.9,49.2,48.4,48.9,48.7,48.6,49.3,48.4,50.5,48.1,51.4,48.0,52.4,48.0,53.7,48.0,53.8,48.0,56.5,47.9,56.6,47.9,57.7,47.8,58.6,47.8,59.9,47.7,60.0,47.7,61.0,47.8,61.4,48.2,61.8,49.1,61.8,49.8,62.1,50.2,62.1,50.4,62.4,51.0,62.4,51.1,62.2,51.2,61.5,51.2,58.8,51.3,58.6,51.6,58.0,52.0,57.5,52.5,57.2,53.1,56.8,53.3,56.0,53.4,55.7,53.4,54.4,53.3,54.3,53.3,53.6,53.4,53.5,53.4,48.6]],"c":1},{"id":"pillbottle","nm":"藥罐","r":[[55.2,71.0,55.1,71.1,54.9,71.6,54.9,76.9,55.0,77.0,55.0,77.5,55.1,77.8,55.4,78.0,55.4,78.1,56.2,78.1,56.2,78.0,56.3,78.0,56.5,77.7,56.5,77.5,56.6,77.3,56.6,76.0,56.6,75.9,56.6,75.0,56.7,74.9,56.7,71.9,56.6,71.7,56.6,71.5,56.5,71.3,56.1,70.9,55.4,70.9,55.4,71.0]],"c":1}]}];
+ * 編輯器按「儲存」時：目錄圖是這裡的其中一張（比對 fp＝圖的指紋：縮成 17×8 格、左右比亮暗的 128 個 0/1，看不出圖的內容）→ 直接用這裡的物品；
+ * 換了別張圖 → 照舊在框裡自動找（shFind）。ids＝預設的地點（yzSetup 建的 p1…p10）優先用哪一個物品。
+ * bx＝這張圖的預設按鍵位置（x、y、w、h、標籤在哪一邊）：按鍵還在「別張圖的預設位置」（沒動過）→ 換成這張圖的；動過的不動。不用手動改這個檔。 */
+var SH_LIB = [{"fp":"6ea8eaaab6c5bd4ddc9c78d33bcb38eb","ar":2.3325,"objs":[{"id":"book","nm":"法規書（整本）","r":[[30.8,84.2,29.3,82.6,28.7,82.1,28.3,82.1,27.5,81.2,27.0,80.4,26.0,80.0,25.3,79.5,25.0,78.8,23.9,78.0,23.0,76.7,22.0,76.0,21.0,74.9,20.6,74.7,19.3,73.3,18.3,73.0,15.7,74.3,15.2,74.8,14.3,75.3,13.7,75.9,11.6,77.0,11.2,77.5,8.8,79.0,8.5,79.4,7.9,79.5,6.7,80.4,6.5,80.9,6.1,84.2,6.1,87.1,6.5,88.7,7.9,90.7,8.5,91.2,8.8,92.0,9.9,93.3,10.3,94.2,10.9,94.8,11.9,96.5,12.3,96.8,14.0,99.9,18.0,99.9,18.0,96.5,18.2,96.0,20.1,94.0,20.5,93.9,22.2,92.1,23.6,91.1,25.1,89.5,29.8,85.6,30.8,84.5]],"ids":["p8"],"c":1},{"id":"binder","nm":"規則本（整本）","r":[[71.9,94.2,71.9,97.8,72.0,98.4,72.5,99.1,72.9,99.4,73.3,99.4,73.6,99.6,73.6,99.9,96.0,99.9,96.2,99.4,96.2,98.4,95.8,95.9,95.5,94.3,95.4,93.3,95.1,92.6,94.8,89.8,94.5,88.9,94.2,86.7,93.8,85.1,93.4,82.1,93.2,81.1,92.7,78.7,92.6,78.3,91.1,77.6,90.1,77.6,89.3,77.2,88.4,77.1,88.1,76.9,85.3,76.4,84.9,76.1,84.5,76.1,84.2,75.9,82.9,75.6,82.6,75.4,81.5,75.3,81.1,75.0,80.7,75.2,80.4,74.9,79.9,74.9,79.5,74.7,78.3,74.5,78.0,74.2,77.1,73.9,76.6,73.9,76.2,74.2,75.9,75.0,75.7,76.1,75.4,76.7,73.4,86.0,73.2,86.8,73.0,88.2,72.5,89.8,72.0,92.7]],"ids":["p10"],"c":1},{"id":"clip","nm":"處方夾板","r":[[55.2,88.8,55.3,89.5,55.7,90.1,56.1,90.1,57.5,91.0,58.0,91.0,60.5,92.6,61.4,92.8,61.9,93.4,63.6,94.2,64.2,94.2,64.5,94.5,65.7,94.9,66.0,95.2,68.3,96.7,68.6,96.3,68.9,95.1,68.9,94.4,70.0,88.9,70.2,87.2,70.7,85.3,71.1,82.8,71.7,80.1,71.8,78.4,71.6,78.0,70.5,77.3,69.0,76.9,68.4,77.1,68.3,76.9,68.2,76.2,67.6,76.1,67.4,76.4,66.9,75.9,65.3,75.5,65.1,75.3,64.5,75.4,64.2,75.2,63.8,75.2,63.6,75.5,63.1,75.5,62.2,74.8,61.5,74.8,60.4,77.1,59.4,79.5,58.7,80.6,57.9,82.5,57.8,82.9,57.6,83.2,55.6,87.7]],"ids":["p9"],"c":1},{"id":"tray","nm":"藥盤","r":[[36.0,68.8,36.6,69.5,37.1,70.9,37.5,71.3,38.1,70.9,39.6,71.1,40.1,71.5,40.9,71.6,41.5,72.1,42.5,72.4,43.1,72.8,44.3,72.8,44.8,73.3,45.8,73.4,47.2,74.2,47.9,75.2,48.9,75.4,49.4,76.2,49.7,76.2,50.1,76.9,50.5,77.0,51.0,76.6,51.7,74.8,53.6,71.9,54.8,71.0,55.3,70.4,56.2,68.3,56.4,67.1,56.5,66.1,55.9,65.7,54.9,65.4,53.4,65.4,52.8,64.8,50.7,64.3,50.0,63.8,48.7,63.8,48.2,63.2,48.2,62.6,47.9,62.4,47.1,62.5,46.7,63.1,45.3,63.1,44.4,62.6,43.2,62.4,41.8,63.5,40.8,63.8,40.5,64.7,39.5,65.5,38.9,65.7,37.8,66.6,37.0,67.0,36.1,68.0]],"ids":["p7"],"c":1},{"id":"liquid","nm":"藥水瓶、量杯和冰箱","r":[[7.6,19.9,7.4,20.3,7.4,23.8,7.3,23.9,7.4,26.3,7.4,29.2,7.4,29.4,7.4,36.3,7.4,36.4,7.4,42.5,7.3,42.6,7.4,46.8,7.5,47.7,8.1,47.9,8.7,47.6,9.0,47.3,9.3,47.3,9.5,47.5,9.8,46.9,10.0,46.2,10.0,42.1,10.0,40.3,9.9,39.8,9.9,34.8,9.8,33.4,9.8,29.0,9.8,28.9,10.0,23.1,9.8,21.0,9.7,20.5,9.6,20.3,9.1,20.5,8.8,20.2],[8.6,62.0,8.4,61.8,8.1,61.8,8.0,61.6,7.9,61.6,7.9,61.8,7.3,61.9,7.2,62.0,7.0,62.0,6.8,62.2,6.7,62.5,6.7,64.6,6.6,65.0,6.5,65.3,6.3,66.0,6.3,67.7,6.2,68.0,6.0,67.7,5.8,67.8,5.2,68.0,5.2,68.1,5.0,68.1,4.8,68.5,4.8,68.7,4.8,68.8,4.8,70.9,4.7,71.0,4.7,71.7,4.8,71.9,4.8,73.6,4.9,74.1,5.1,74.3,6.0,74.3,6.2,74.1,6.3,73.9,6.3,73.7,6.4,73.4,6.5,73.6,6.8,73.7,7.4,73.2,7.6,73.2,7.7,73.1,8.0,73.0,8.3,72.7,8.6,72.6,8.9,72.2,9.0,71.7,9.0,65.7,8.8,64.1,8.8,62.5],[17.7,64.2,17.4,64.9,17.4,67.2,17.3,67.7,17.3,70.6,17.2,70.8,17.2,72.7,17.3,73.0,17.4,73.1,17.8,73.0,18.7,72.4,18.8,71.9,18.8,69.1,18.9,68.8,19.0,68.6,19.6,68.6,19.8,69.1,19.8,73.2,19.8,73.4,20.5,74.2,20.7,74.3,21.0,74.2,21.2,73.6,21.2,67.8,21.0,66.9,20.8,66.3,20.8,65.2,20.6,65.0,20.6,65.2,20.0,65.3,19.7,66.0,19.5,65.7,19.3,65.4,19.1,65.7,19.0,65.5,18.9,64.7,18.5,64.1,18.2,64.1,18.2,64.2,17.8,64.1],[14.4,65.0,14.2,64.7,14.2,64.8,13.6,64.8,13.5,64.9,13.0,64.8,12.8,65.0,12.6,64.9,12.4,65.3,11.4,65.3,11.1,65.5,11.1,65.7,11.1,67.7,11.0,67.8,11.0,69.1,11.1,69.7,11.1,70.6,11.3,70.9,11.4,70.9,11.5,71.0,11.5,70.9,11.8,70.9,11.9,70.8,12.1,70.8,12.1,70.6,12.4,70.6,12.6,70.4,12.7,69.8,12.9,69.4,13.1,69.7,13.5,69.8,13.6,69.7,13.8,69.7,14.2,69.3,14.3,68.9,14.4,68.3],[22.4,69.1,22.4,69.3,22.3,69.4,22.3,71.0,22.3,71.1,22.3,72.6,22.3,72.7,22.3,73.1,22.4,73.2,22.5,73.8,22.7,74.5,22.8,74.7,23.0,74.7,23.1,74.8,23.3,74.8,23.3,74.7,23.6,74.7,23.6,74.5,24.7,74.8,25.0,74.5,25.1,74.2,25.1,73.9,25.2,73.8,25.2,69.4,25.0,69.2,24.7,69.2,24.6,69.3,24.4,69.3,24.4,69.4,23.5,69.5,23.3,69.3,22.8,69.3,22.5,68.9]],"ids":["p6"],"c":8},{"id":"consult","nm":"藥師和病人（左邊窗口）","r":[[46.1,22.4,45.8,22.0,45.1,21.9,44.7,22.5,44.6,23.0,44.5,26.2,44.7,26.9,44.2,27.6,43.3,30.0,43.2,29.8,42.4,27.8,41.6,27.2,41.3,26.4,40.8,26.1,40.5,26.6,40.5,28.6,40.0,30.5,39.7,30.7,39.5,30.6,39.1,28.7,38.9,28.5,38.7,28.6,38.4,30.2,38.3,32.0,38.3,33.3,39.0,34.7,39.0,36.2,38.6,38.1,38.7,39.2,38.9,39.5,40.8,39.6,41.7,40.3,42.5,40.3,42.7,40.1,42.7,39.2,42.3,34.2,42.3,33.6,42.4,33.3,42.7,33.1,43.1,33.4,43.7,33.4,43.9,33.0,44.0,32.0,44.2,31.7,45.0,32.3,45.5,31.4,46.8,31.5,47.3,31.2,47.4,30.8,47.3,29.5,46.8,27.4,46.4,23.6]],"ids":["p2"],"c":2},{"id":"dispense","nm":"藥師和病人（中間窗口）","r":[[58.8,26.2,58.6,26.4,58.3,27.2,58.0,27.8,57.4,28.3,57.2,28.9,57.0,30.1,57.0,34.6,57.1,35.6,57.5,35.9,57.7,36.4,57.7,37.4,57.5,38.2,57.4,39.7,57.4,40.3,57.2,41.2,57.2,42.0,57.4,42.3,57.6,42.3,57.7,42.4,59.2,42.5,59.2,42.6,59.6,42.6,59.6,42.8,60.4,42.8,60.5,42.9,60.9,42.9,60.9,43.0,61.6,43.0,61.7,42.8,61.8,42.1,61.7,41.5,61.6,39.3,61.3,37.4,61.3,36.7,61.2,36.1,61.2,35.6,61.5,35.1,62.0,35.6,62.2,35.6,62.7,35.2,62.9,34.8,63.1,34.0,63.1,32.9,63.0,32.6,62.4,31.9,61.8,30.5,61.6,29.0,61.4,28.5,60.3,27.5,59.9,26.6,59.5,26.2],[64.5,20.7,64.2,21.4,64.2,21.9,64.2,23.3,64.5,24.0,64.5,24.2,64.3,24.8,64.3,25.9,64.2,26.2,63.8,26.2,63.2,27.3,62.8,28.7,62.8,29.7,63.0,30.0,63.2,30.0,63.3,29.8,64.1,30.0,64.2,30.1,64.4,30.1,64.6,30.5,65.0,30.5,65.3,29.8,65.5,29.8,65.8,30.2,66.9,30.2,67.1,30.6,67.2,32.3,67.4,32.5,67.5,32.4,67.6,31.5,67.6,30.9,67.7,30.6,67.7,29.1,67.5,27.5,67.4,27.3,66.9,26.8,66.7,26.3,66.4,26.1,66.2,26.1,66.0,25.7,65.8,24.5,65.8,23.8,66.0,23.0,66.1,22.2,65.9,21.3,65.4,20.3,65.0,20.3]],"ids":["p3"],"c":2},{"id":"er","nm":"藥師和病人（右邊窗口）","r":[[91.7,21.2,90.8,20.5,90.0,21.6,89.8,22.4,90.0,23.9,89.8,25.9,88.7,27.2,88.3,28.9,87.4,28.7,86.6,27.5,86.1,27.6,86.1,30.8,85.8,33.0,85.5,33.5,84.8,32.4,84.3,29.5,83.8,29.4,83.5,29.8,83.2,31.5,83.0,35.6,83.5,37.1,84.2,38.1,83.9,42.5,85.8,43.2,86.5,43.0,87.3,41.9,88.7,41.2,88.4,37.9,88.4,34.2,88.8,33.9,89.3,34.3,89.8,33.9,90.1,33.0,90.0,31.5,88.9,30.1,89.0,29.5,90.0,29.0,91.1,29.4,91.2,30.1,90.9,30.8,91.1,32.9,91.3,33.3,91.7,33.0,92.3,31.3,94.0,31.2,94.1,30.2,93.7,27.8,93.1,26.9,92.5,25.0,92.1,24.4,92.0,22.2]],"ids":["p4"],"c":2},{"id":"review","nm":"條碼掃描器和電腦","r":[[79.5,42.6,73.6,42.1,70.7,41.4,69.3,41.7,68.9,47.5,68.8,53.0,68.2,53.3,67.1,53.3,66.2,54.8,65.7,56.4,65.7,57.5,65.9,58.6,66.9,59.2,67.3,59.9,67.6,63.7,67.6,64.9,66.9,65.5,66.5,66.6,66.4,67.8,66.6,68.2,69.5,69.1,70.6,67.6,70.7,67.1,70.6,65.9,69.6,64.9,69.5,61.6,69.1,59.8,69.4,59.0,69.8,60.2,71.1,59.9,71.7,60.8,71.9,60.5,72.7,60.8,72.8,61.3,72.7,64.2,74.0,64.7,74.2,64.2,74.3,61.9,74.8,60.2,76.0,59.1,76.2,58.0,76.6,57.4,78.0,56.2,78.9,55.9,79.3,54.9,79.5,52.6,79.7,44.5,79.7,43.1]],"ids":["p5"],"c":2},{"id":"cabinet","nm":"文件資料櫃（整個櫃子，不含冰箱）","r":[[15.6,15.0,11.1,13.3,10.7,12.8,8.4,12.4,6.5,11.7,5.8,11.9,5.1,13.0,5.2,14.6,5.2,22.7,5.0,25.0,5.2,26.7,5.1,28.7,5.2,29.5,5.1,31.5,5.3,33.6,5.1,36.1,5.3,36.7,5.4,40.2,5.2,44.9,5.5,51.4,5.8,51.4,5.7,50.4,5.9,50.1,6.5,49.8,7.2,48.1,7.0,46.2,7.2,36.2,7.0,23.8,7.2,19.7,7.6,19.2,9.1,19.9,9.6,19.7,9.8,20.0,10.1,20.8,10.2,23.0,10.0,28.7,10.3,45.1,12.2,45.2,12.6,43.6,13.3,43.4,13.3,40.6,13.0,40.0,12.7,40.0,12.5,39.1,12.6,38.2,13.1,38.2,13.4,37.6,13.2,34.2,14.2,33.0,15.3,33.1,15.7,32.3,15.7,22.4,15.6,21.0,15.7,16.6]],"ids":["p1"],"c":1},{"id":"files","nm":"文件夾（最上面那一層）","r":[[9.6,14.9,9.7,16.1,9.6,16.7,9.6,19.1,9.7,19.6,10.1,20.3,10.2,21.4,10.3,21.7,11.5,21.7,11.6,21.8,11.9,21.8,12.2,21.4,12.5,21.9,12.8,21.9,12.9,22.0,15.2,22.0,15.2,22.2,15.5,22.0,15.5,21.8,15.5,15.7,15.4,15.5,15.0,15.5,14.9,15.3,14.5,15.2,14.5,15.1,14.3,15.1,14.2,15.0,14.2,15.1,13.8,15.1,13.7,15.0,13.6,15.0,13.4,14.7,13.3,14.9,12.3,14.9,12.2,15.1,11.9,14.5,10.4,14.5,10.4,14.6,9.9,14.5]],"c":1},{"id":"beaker","nm":"量杯","r":[[22.4,69.1,22.4,69.3,22.3,69.4,22.3,71.0,22.3,71.1,22.3,72.6,22.3,72.7,22.3,73.1,22.4,73.2,22.5,73.8,22.7,74.5,22.8,74.7,23.0,74.7,23.1,74.8,23.3,74.8,23.3,74.7,23.6,74.7,23.6,74.5,24.7,74.8,25.0,74.5,25.1,74.2,25.1,73.9,25.2,73.8,25.2,69.4,25.0,69.2,24.7,69.2,24.6,69.3,24.4,69.3,24.4,69.4,23.5,69.5,23.3,69.3,22.8,69.3,22.5,68.9]],"c":1},{"id":"bottles","nm":"藥水瓶","r":[[8.6,62.0,8.4,61.8,8.1,61.8,8.0,61.6,7.9,61.6,7.9,61.8,7.3,61.9,7.2,62.0,7.0,62.0,6.8,62.2,6.7,62.5,6.7,64.6,6.6,65.0,6.5,65.3,6.3,66.0,6.3,67.7,6.2,68.0,6.0,67.7,5.8,67.8,5.2,68.0,5.2,68.1,5.0,68.1,4.8,68.5,4.8,68.7,4.8,68.8,4.8,70.9,4.7,71.0,4.7,71.7,4.8,71.9,4.8,73.6,4.9,74.1,5.1,74.3,6.0,74.3,6.2,74.1,6.3,73.9,6.3,73.7,6.4,73.4,6.5,73.6,6.8,73.7,7.4,73.2,7.6,73.2,7.7,73.1,8.0,73.0,8.3,72.7,8.6,72.6,8.9,72.2,9.0,71.7,9.0,65.7,8.8,64.1,8.8,62.5],[17.7,64.2,17.4,64.9,17.4,67.2,17.3,67.7,17.3,70.6,17.2,70.8,17.2,72.7,17.3,73.0,17.4,73.1,17.8,73.0,18.7,72.4,18.8,71.9,18.8,69.1,18.9,68.8,19.0,68.6,19.6,68.6,19.8,69.1,19.8,73.2,19.8,73.4,20.5,74.2,20.7,74.3,21.0,74.2,21.2,73.6,21.2,67.8,21.0,66.9,20.8,66.3,20.8,65.2,20.6,65.0,20.6,65.2,20.0,65.3,19.7,66.0,19.5,65.7,19.3,65.4,19.1,65.7,19.0,65.5,18.9,64.7,18.5,64.1,18.2,64.1,18.2,64.2,17.8,64.1],[14.4,65.0,14.2,64.7,14.2,64.8,13.6,64.8,13.5,64.9,13.0,64.8,12.8,65.0,12.6,64.9,12.4,65.3,11.4,65.3,11.1,65.5,11.1,65.7,11.1,67.7,11.0,67.8,11.0,69.1,11.1,69.7,11.1,70.6,11.3,70.9,11.4,70.9,11.5,71.0,11.5,70.9,11.8,70.9,11.9,70.8,12.1,70.8,12.1,70.6,12.4,70.6,12.6,70.4,12.7,69.8,12.9,69.4,13.1,69.7,13.5,69.8,13.6,69.7,13.8,69.7,14.2,69.3,14.3,68.9,14.4,68.3]],"c":6},{"id":"fridge","nm":"冰箱","r":[[7.6,19.9,7.4,20.3,7.4,23.8,7.3,23.9,7.4,26.3,7.4,29.2,7.4,29.4,7.4,36.3,7.4,36.4,7.4,42.5,7.3,42.6,7.4,46.8,7.5,47.7,8.1,47.9,8.7,47.6,9.0,47.3,9.3,47.3,9.5,47.5,9.8,46.9,10.0,46.2,10.0,42.1,10.0,40.3,9.9,39.8,9.9,34.8,9.8,33.4,9.8,29.0,9.8,28.9,10.0,23.1,9.8,21.0,9.7,20.5,9.6,20.3,9.1,20.5,8.8,20.2]],"c":1},{"id":"folders","nm":"資料夾","r":[[12.3,15.2,12.2,15.5,12.2,16.1,12.1,16.7,12.1,17.4,12.1,17.5,12.1,18.0,12.1,18.1,12.1,19.4,12.1,19.5,12.1,20.0,12.2,20.1,12.2,21.3,12.3,21.6,12.5,21.8,12.8,21.8,12.8,21.9,14.4,21.9,14.4,22.0,15.4,21.9,15.5,21.8,15.5,21.6,15.5,18.1,15.5,18.0,15.5,17.4,15.5,17.3,15.5,16.1,15.5,15.8,15.4,15.7,14.7,15.6,14.7,15.5,14.4,15.5,14.3,15.3,13.8,15.3,13.6,15.1,13.0,15.1,13.0,15.0,12.4,15.0]],"c":1},{"id":"monitor","nm":"電腦螢幕","r":[[69.6,42.8,69.3,44.0,69.2,46.2,69.0,47.9,68.9,49.8,69.0,50.4,69.0,52.7,69.1,53.2,69.3,53.6,69.8,54.9,70.0,57.6,70.1,57.7,70.5,57.6,70.9,58.0,72.1,58.3,72.4,58.2,73.2,58.6,73.5,59.0,74.2,59.0,74.8,59.3,74.9,59.2,75.7,59.2,76.0,59.0,76.2,58.0,76.7,57.1,77.4,56.8,78.0,56.2,78.7,56.0,79.1,55.2,79.1,54.1,79.2,53.5,79.5,52.7,79.5,51.5,79.6,50.5,79.6,43.4,79.5,42.9,79.1,42.6,78.2,42.5,77.8,43.0,76.4,42.4,75.9,42.4,75.5,42.8,74.7,42.3,73.6,42.5,73.2,42.0,72.0,42.3,71.7,42.0,70.8,41.9,70.5,41.7,70.0,41.9]],"c":1},{"id":"printer","nm":"印表機","r":[[53.3,48.4,52.9,48.0,52.3,47.9,52.3,47.7,50.2,47.5,49.5,47.9,49.2,48.4,48.9,48.7,48.6,49.3,48.4,50.5,48.1,51.4,48.0,52.4,48.0,53.7,48.0,53.8,48.0,56.5,47.9,56.6,47.9,57.7,47.8,58.6,47.8,59.9,47.7,60.0,47.7,61.0,47.8,61.4,48.2,61.8,49.1,61.8,49.8,62.1,50.2,62.1,50.4,62.4,51.0,62.4,51.1,62.2,51.2,61.5,51.2,58.8,51.3,58.6,51.6,58.0,52.0,57.5,52.5,57.2,53.1,56.8,53.3,56.0,53.4,55.7,53.4,54.4,53.3,54.3,53.3,53.6,53.4,53.5,53.4,48.6]],"c":1},{"id":"pillbottle","nm":"藥罐","r":[[55.2,71.0,55.1,71.1,54.9,71.6,54.9,76.9,55.0,77.0,55.0,77.5,55.1,77.8,55.4,78.0,55.4,78.1,56.2,78.1,56.2,78.0,56.3,78.0,56.5,77.7,56.5,77.5,56.6,77.3,56.6,76.0,56.6,75.9,56.6,75.0,56.7,74.9,56.7,71.9,56.6,71.7,56.6,71.5,56.5,71.3,56.1,70.9,55.4,70.9,55.4,71.0]],"c":1}],"bx":{"p1":[5,12,11,17,"t"],"p2":[37,9,12,22,"t"],"p3":[55,9,14,21,"t"],"p4":[81,8,14,21,"t"],"p5":[60,46,10,16,"t"],"p6":[10,57,11,15,"t"],"p7":[36,63,16,13,"b"],"p8":[6,75,13,16,"t"],"p9":[57,76,14,16,"l"],"p10":[81,74,15,14,"t"]}},
+{"fp":"3768d56adbccfe551cd84ce66c66785d","ar":2.2399,"bx":{"p1":[17,12,6,29,"r"],"p2":[43,19,8,17,"t"],"p3":[59,19,10,20,"t"],"p4":[82,20,11,20,"t"],"p5":[66,37,13,23,"t"],"p6":[14,18,4,25,"b"],"p7":[42,53,18,13,"b"],"p8":[20,61,19,23,"t"],"p9":[58,63,14,17,"l"],"p10":[71,64,18,26,"t"]},"objs":[{"id":"book","nm":"法規書（整本）","r":[[20.2,70.0,20.2,71.6,20.4,72.7,20.7,73.4,21.9,74.8,23.6,77.3,24.1,77.8,26.5,81.1,28.7,84.0,29.5,83.8,30.7,82.6,31.0,82.5,32.8,80.4,33.0,80.4,33.8,79.6,34.1,79.5,35.4,77.9,35.9,77.7,37.9,75.8,38.0,75.4,38.0,74.8,37.9,74.0,37.7,71.4,37.9,71.0,38.3,70.6,38.3,70.3,38.1,70.0,37.2,69.5,36.4,68.5,35.7,68.1,34.5,66.7,33.1,65.6,32.6,64.8,31.4,63.8,29.6,61.9,26.7,62.3,26.4,62.6,26.3,63.2,26.1,63.6,25.3,63.7,24.7,64.6,23.7,65.0,23.2,65.8,22.8,65.8,22.3,66.3,21.6,66.6,20.8,67.4,20.4,68.6]],"ids":["p8"],"c":1},{"id":"binder","nm":"規則本（整本）","r":[[71.1,77.6,71.1,80.4,71.2,81.3,71.6,82.0,72.8,82.3,73.8,83.1,75.0,83.4,76.0,84.0,76.7,84.1,77.4,84.7,78.4,85.1,79.2,85.7,80.1,85.9,80.7,86.4,81.7,86.8,82.6,87.4,83.5,87.6,83.7,87.8,85.0,88.5,85.6,88.7,86.1,89.1,87.5,89.9,88.0,90.0,88.2,89.6,88.2,88.1,88.1,87.2,88.1,86.0,88.0,84.7,88.4,83.7,88.3,80.9,88.2,80.3,88.2,79.5,88.0,77.0,88.0,74.1,87.6,68.7,87.5,68.3,87.3,68.0,86.5,67.9,86.3,67.7,85.7,67.7,83.7,66.7,81.6,66.2,80.9,65.6,80.2,65.8,79.5,65.3,79.1,65.3,78.8,65.0,76.9,64.6,76.4,64.2,74.7,64.0,74.5,64.3,74.2,65.2,74.0,66.2,72.7,70.6,71.8,74.5,71.4,75.5]],"ids":["p10"],"c":1},{"id":"clip","nm":"處方夾板","r":[[58.6,73.7,58.7,74.2,60.3,75.3,60.6,75.3,62.0,76.3,62.6,76.4,63.3,77.0,63.8,77.1,65.2,77.9,66.5,78.9,67.0,79.0,68.0,79.7,68.4,79.7,68.7,79.0,69.5,75.2,69.7,74.6,69.8,73.7,71.3,67.3,71.3,66.3,70.9,66.0,69.3,65.5,68.6,64.8,67.3,64.6,67.0,64.1,66.4,64.1,66.1,63.8,65.8,63.8,65.4,63.5,64.7,63.6,63.5,63.5,62.1,66.6,61.9,66.7,61.1,68.3,60.5,69.8,59.5,71.6,58.8,73.2]],"ids":["p9"],"c":1},{"id":"tray","nm":"藥盤","r":[[59.3,57.3,58.8,56.7,58.1,56.7,57.3,55.8,55.7,55.7,55.2,55.4,54.7,55.4,54.1,54.5,53.5,54.7,52.1,54.4,51.4,53.6,50.9,53.6,50.3,54.1,48.0,53.7,47.1,53.9,46.8,54.7,46.6,54.9,46.1,55.1,45.5,55.7,45.0,55.8,43.5,56.8,42.8,57.8,42.3,58.2,42.1,58.7,42.1,59.1,42.6,59.5,42.8,60.1,42.8,60.6,43.0,61.0,44.4,61.0,45.3,61.3,45.7,61.3,46.4,61.8,48.2,62.5,48.7,63.1,49.7,63.2,50.3,63.7,51.4,63.8,52.1,64.3,52.7,64.4,53.6,65.5,54.1,65.5,54.3,65.3,54.7,64.3,55.3,63.4,56.3,62.3,56.6,61.7,57.3,61.0,58.2,60.3,58.7,58.4,59.3,57.5]],"ids":["p7"],"c":1},{"id":"liquid","nm":"冰箱（水藥）","r":[[16.2,18.3,14.8,18.3,14.7,18.4,14.5,18.9,14.5,19.5,14.5,19.6,14.5,22.6,14.5,22.7,14.5,26.6,14.4,26.7,14.4,27.4,14.5,27.6,14.5,29.5,14.5,29.6,14.5,30.8,14.5,30.9,14.5,33.3,14.5,33.4,14.5,33.9,14.5,34.0,14.5,37.4,14.4,37.5,14.4,38.7,14.5,38.8,14.5,40.6,14.4,40.9,14.5,41.1,14.5,42.2,14.5,42.6,14.7,42.7,14.8,42.5,15.3,42.2,16.1,41.6,16.6,41.6,16.9,41.3,17.1,40.7,17.1,38.3,17.2,38.2,17.1,34.2,17.0,34.1,17.0,32.2,17.1,32.1,17.0,31.6,17.0,30.3,17.1,30.2,17.1,24.1,17.0,24.0,17.0,22.8,17.0,22.7,17.1,20.0,16.9,18.7,16.7,18.5,16.5,18.5]],"ids":["p6"],"c":1},{"id":"consult","nm":"藥師和病人（左邊窗口）","r":[[49.9,19.9,49.4,19.7,48.7,20.8,48.6,22.0,48.6,24.1,47.8,26.4,47.6,26.3,47.2,25.1,46.2,24.0,45.9,24.0,45.8,24.2,45.6,26.1,45.2,27.2,45.0,27.2,44.6,26.6,44.6,25.9,44.4,25.4,44.3,25.3,44.1,25.7,43.8,26.7,43.8,29.6,43.9,30.0,44.3,30.3,44.5,30.9,44.1,33.9,44.0,34.7,44.1,35.1,44.8,35.3,45.9,35.3,46.1,35.6,47.4,35.6,47.5,35.3,47.5,34.5,47.3,31.7,47.1,31.0,47.2,30.2,47.4,29.8,47.9,30.0,48.1,29.7,48.5,28.5,48.8,28.9,49.0,28.9,49.3,28.2,49.7,27.8,50.6,28.0,50.9,27.6,51.0,27.1,50.9,25.2,50.4,23.4,50.4,22.3,50.2,21.0]],"ids":["p2"],"c":2},{"id":"dispense","nm":"藥師和病人（中間窗口）","r":[[61.0,19.3,60.7,19.7,60.5,20.2,60.1,22.0,60.1,23.4,60.3,24.0,60.3,24.9,60.0,25.4,59.5,25.9,59.2,26.5,59.1,29.4,59.1,31.1,59.8,32.6,59.8,32.9,59.5,34.7,59.3,37.2,59.6,37.6,60.4,37.6,61.2,37.9,62.2,37.9,63.0,38.2,63.1,38.1,63.1,36.6,62.8,34.0,62.7,31.9,62.8,31.6,63.2,31.7,63.7,31.6,64.1,30.4,64.2,29.5,64.6,29.0,64.7,28.4,64.4,27.9,64.2,27.9,64.0,28.3,64.0,29.0,63.9,29.2,63.7,29.2,63.3,28.6,63.3,28.2,63.0,27.4,62.8,26.4,61.9,25.7,61.6,25.1,61.7,24.6,62.2,23.4,62.4,22.4,62.4,21.0,62.4,20.6,62.0,19.7,61.5,19.3],[65.1,19.6,65.0,19.8,65.0,20.9,65.1,21.5,65.1,23.0,64.9,23.5,64.6,23.7,64.1,24.6,63.9,25.9,63.8,26.8,64.1,27.1,64.5,27.1,64.5,27.2,65.1,27.1,65.3,27.4,65.3,27.8,65.4,27.9,65.7,27.9,65.8,27.8,65.9,27.3,66.1,27.1,66.4,27.1,66.6,27.3,67.2,27.4,67.4,27.8,67.7,28.8,67.8,28.9,68.0,28.9,68.1,28.6,68.1,28.0,68.1,27.9,68.1,27.3,68.0,27.2,68.0,26.7,68.0,26.6,68.0,26.0,67.9,25.9,67.9,25.5,67.9,25.4,67.8,24.8,67.7,24.5,67.4,24.2,67.1,23.7,66.8,23.4,66.5,22.3,66.5,21.7,66.5,21.6,66.5,21.1,66.6,21.0,66.6,19.9,66.4,19.5,66.0,19.1,65.4,19.1]],"ids":["p3"],"c":2},{"id":"er","nm":"藥師和病人（右邊窗口）","r":[[90.0,20.4,89.3,20.2,88.7,20.8,88.5,22.1,88.7,23.2,88.5,24.6,87.4,25.5,87.1,27.4,86.3,27.3,85.7,26.5,85.3,26.7,85.1,30.1,84.7,31.1,84.4,31.1,84.1,30.7,83.6,27.9,83.2,27.8,82.7,28.4,82.5,32.7,82.7,33.9,83.4,34.5,83.5,35.1,83.2,38.7,83.3,39.5,84.4,39.7,86.3,38.8,86.8,39.0,87.5,38.8,86.9,32.1,87.3,31.7,87.9,32.3,88.3,31.9,88.4,30.1,88.2,29.5,87.7,29.2,87.4,28.4,87.4,28.0,88.0,27.7,88.5,28.0,89.3,27.7,89.6,28.3,89.5,32.2,89.7,32.8,90.5,32.7,90.6,30.3,90.8,29.5,91.2,29.1,92.1,29.2,92.0,26.7,91.7,26.0,90.2,24.1,90.3,22.2,90.0,21.5]],"ids":["p4"],"c":2},{"id":"review","nm":"條碼掃描器和電腦","r":[[67.2,58.4,67.4,58.7,69.3,59.4,69.7,59.1,70.1,58.4,70.0,56.8,69.7,56.1,69.6,53.7,69.4,52.3,69.5,51.2,69.6,51.0,69.8,51.7,70.1,51.9,70.8,51.9,71.3,53.0,71.8,52.6,72.5,52.9,72.5,55.0,72.0,55.4,72.0,55.6,72.3,55.6,73.0,56.4,73.7,56.7,73.9,56.4,73.9,54.3,74.3,53.3,75.0,52.7,75.3,52.0,76.0,51.1,76.9,50.4,78.3,50.0,78.4,49.8,78.5,43.2,78.7,40.8,78.7,39.5,78.3,39.0,73.6,38.4,71.3,37.8,69.6,37.8,69.3,38.9,69.1,43.6,68.8,45.0,68.9,46.9,67.2,48.3,66.6,49.5,66.6,50.4,67.0,51.6,67.9,52.4,68.1,54.9,68.1,56.1,67.3,57.0]],"ids":["p5"],"c":2},{"id":"cabinet","nm":"文件資料櫃（整個櫃子）","r":[[22.4,13.5,21.2,13.5,20.8,13.7,20.4,13.4,20.1,13.7,19.8,13.1,19.3,13.1,18.8,12.8,17.9,12.8,17.4,13.1,17.3,13.6,17.2,17.2,17.4,17.8,17.3,21.4,17.4,22.2,17.3,28.2,17.3,30.4,17.2,31.9,17.3,33.2,17.2,38.7,17.3,38.8,17.3,40.7,17.4,40.9,17.9,40.9,18.4,40.7,19.0,40.1,20.1,40.0,20.8,39.3,21.2,39.3,21.5,38.9,21.5,37.9,21.1,36.9,21.1,36.0,21.3,35.7,21.4,35.0,21.4,32.8,21.0,30.2,21.2,29.8,21.5,29.7,22.2,29.7,22.4,29.4,22.5,28.6,22.5,27.9,22.5,14.3,22.5,13.6]],"ids":["p1"],"c":1},{"id":"narrow","nm":"窄藥架（冰箱旁邊）","r":[[14.3,17.2,13.9,17.2,13.6,17.7,13.5,18.4,13.3,18.7,12.9,20.3,13.0,20.8,12.9,25.5,13.0,25.9,12.8,27.1,12.8,27.8,12.9,27.9,12.9,34.5,12.9,34.6,12.9,37.8,12.8,37.9,12.8,39.4,12.9,39.5,12.8,42.2,12.9,42.4,12.9,43.7,13.1,43.8,13.3,43.3,14.4,43.0,14.6,42.7,14.7,42.4,14.7,42.0,14.7,40.6,14.6,40.5,14.7,37.0,14.6,36.9,14.6,34.5,14.5,34.4,14.5,31.4,14.7,30.5,14.7,28.6,14.6,28.5,14.7,28.2,14.7,26.5,14.6,26.4,14.6,22.8,14.5,22.7,14.5,20.0,14.6,19.6,14.4,19.0,14.5,17.8,14.4,17.3]],"c":1},{"id":"shelves","nm":"藥品櫃（左邊兩座）","r":[[0.0,11.3,0.0,51.4,1.7,50.4,3.1,50.1,3.5,49.5,3.8,49.6,4.3,49.4,5.1,49.4,5.7,48.6,6.1,48.4,6.4,47.4,6.8,47.1,7.5,46.2,7.9,46.4,8.7,45.6,10.1,45.7,10.3,45.9,10.8,45.7,11.2,45.9,12.0,45.6,12.7,45.0,12.9,44.0,12.9,38.9,13.0,38.2,13.1,36.2,12.9,28.6,13.1,27.3,13.1,25.2,12.9,24.3,13.1,21.7,12.9,19.1,12.7,18.1,12.8,16.5,12.7,13.2,11.3,13.4,11.1,13.1,10.8,13.5,9.4,13.1,8.6,13.2,8.0,13.0,7.6,12.4,6.3,12.5,5.7,12.3,4.8,12.3,4.4,13.0,3.9,11.9,3.4,12.2,2.6,11.5,2.1,11.8,1.7,11.1,0.6,11.5],[6.8,8.7,6.8,9.5,6.7,9.7,6.7,10.0,6.8,10.1,6.8,10.5,6.9,10.6,7.0,10.4,7.4,10.4,7.5,10.6,7.9,10.0,8.2,10.0,8.4,10.3,8.5,10.1,9.1,10.1,9.2,9.9,9.2,9.1,9.1,8.9,8.8,9.3,8.7,9.3,8.4,8.8,8.2,9.2,8.0,9.3,7.7,8.8,7.1,8.8,6.9,8.6]],"c":2},{"id":"bottles","nm":"藥水瓶（水槽上）","r":[[23.8,52.1,23.6,51.9,23.2,51.9,22.8,52.4,22.7,53.0,22.8,56.1,22.6,56.3,22.1,56.3,21.6,56.6,21.5,56.4,21.3,55.8,21.3,53.5,20.7,52.4,20.5,52.5,20.4,53.0,19.8,54.3,19.5,53.8,19.1,53.6,18.8,53.6,18.4,53.9,18.2,54.5,18.1,56.4,17.8,57.3,17.8,58.1,17.6,58.4,17.0,58.4,16.6,59.1,16.6,62.8,16.6,63.0,16.9,63.4,17.4,63.5,17.7,63.1,18.0,62.6,18.6,62.8,18.8,62.5,19.6,62.2,20.1,61.3,20.4,61.6,21.2,61.3,21.6,60.6,21.7,60.7,22.0,60.4,22.4,60.4,22.8,59.8,23.0,60.0,23.4,60.0,24.0,59.5,24.1,59.2,24.1,57.8,24.1,57.3,24.1,55.1,24.0,53.6],[29.5,54.8,29.2,54.5,28.2,54.5,28.1,54.7,28.1,54.9,28.1,55.5,27.9,55.7,27.7,55.6,27.6,55.5,27.3,55.5,27.3,55.6,26.9,55.7,26.7,56.0,26.6,56.6,26.7,57.4,26.6,57.5,26.6,58.1,26.6,58.2,26.6,61.7,26.6,61.8,26.8,61.9,26.9,61.8,27.1,61.8,27.1,61.7,27.3,61.7,27.4,61.6,27.6,61.6,27.7,61.5,27.9,61.3,28.0,61.1,28.0,59.5,28.0,59.4,28.0,58.8,28.2,58.6,28.4,58.9,28.7,59.4,28.7,59.7,28.7,59.8,28.7,61.3,28.7,61.6,28.8,61.7,29.5,61.7,29.7,61.5,29.7,58.0,29.5,57.2]],"c":7},{"id":"beaker","nm":"量杯","r":[[30.6,53.2,30.5,53.5,30.5,54.4,30.5,54.5,30.5,55.1,30.6,55.3,30.6,59.2,30.6,59.3,30.6,60.0,30.6,60.1,30.6,62.5,30.8,63.0,31.2,63.5,31.5,63.6,32.3,64.4,32.7,64.6,32.8,64.4,33.0,63.5,33.0,62.5,32.9,62.4,32.9,57.6,33.0,57.5,33.0,55.8,32.9,55.7,32.9,55.4,33.0,55.3,33.0,54.2,33.0,54.1,33.0,53.7,32.9,53.2,32.8,53.1,32.3,53.0,32.2,52.9,31.4,52.9,31.4,53.0,31.1,53.0,31.1,53.1]],"c":1},{"id":"monitor","nm":"電腦螢幕","r":[[69.4,38.2,69.3,38.9,69.1,43.6,68.8,45.0,68.8,46.5,68.9,46.9,69.7,47.7,70.0,48.6,70.0,50.5,69.8,51.0,69.8,51.7,70.1,51.9,70.3,51.8,70.8,51.9,71.0,52.1,71.3,53.0,71.8,52.6,72.2,52.6,72.5,53.0,72.5,55.0,72.0,55.4,72.0,55.6,72.1,55.7,72.3,55.6,73.0,56.4,73.7,56.7,73.9,56.4,73.9,54.3,74.3,53.3,75.0,52.7,75.3,52.0,76.0,51.1,76.4,51.0,76.9,50.4,78.2,50.1,78.4,49.8,78.4,47.1,78.5,46.1,78.5,43.2,78.7,40.8,78.7,39.7,78.6,39.4,78.3,39.0,75.2,38.7,74.6,38.4,73.6,38.4,71.3,37.8,69.7,37.7]],"c":1},{"id":"scanner","nm":"條碼掃描器","r":[[68.5,47.1,68.2,47.5,67.8,47.6,67.0,48.6,66.6,49.5,66.6,50.4,66.8,51.1,67.0,51.6,67.4,52.0,67.6,52.0,67.9,52.4,67.9,53.5,68.0,53.6,68.0,53.8,68.1,54.3,68.1,54.8,68.1,54.9,68.1,55.8,68.1,56.1,67.9,56.3,67.8,56.3,67.3,57.0,67.3,57.3,67.2,57.8,67.2,58.4,67.4,58.7,67.7,58.7,67.7,58.8,68.1,58.9,68.2,59.1,68.7,59.1,68.7,59.2,69.0,59.2,69.0,59.3,69.4,59.4,69.7,59.1,69.8,58.7,70.1,58.4,70.1,57.6,70.0,57.2,70.0,56.8,69.7,56.1,69.7,54.7,69.6,54.5,69.6,53.7,69.6,53.6,69.6,53.1,69.4,52.3,69.5,51.2,69.8,50.4,69.9,49.3,69.8,49.2,69.8,48.6,69.6,47.9,68.9,47.1]],"c":1},{"id":"printer","nm":"印表機","r":[[55.9,42.4,55.7,42.4,55.7,42.2,54.9,42.2,54.8,42.1,53.9,42.0,53.9,41.9,53.2,41.9,52.4,42.6,51.6,44.3,51.5,44.7,51.5,45.1,51.5,45.2,51.4,45.8,51.4,45.9,51.4,47.0,51.5,47.1,51.5,49.3,51.4,49.4,51.4,51.0,51.5,51.1,51.4,53.0,51.5,53.1,51.8,53.5,52.1,53.5,52.2,53.6,53.5,53.7,53.5,53.8,53.9,53.8,54.0,53.9,54.1,53.9,54.3,53.6,54.3,52.7,54.3,52.6,54.3,51.0,54.4,50.7,54.6,50.4,54.8,50.1,55.0,50.1,55.0,50.0,55.5,50.0,55.5,50.1,55.7,50.0,55.9,49.6,56.0,48.7,56.0,45.6,56.1,45.5,56.2,44.6,56.3,43.9,56.3,43.1,56.2,42.6]],"c":1},{"id":"pillbottle","nm":"藥罐","r":[[58.3,60.5,58.1,60.9,57.9,61.0,57.7,61.7,57.7,62.4,57.8,62.5,57.8,65.8,57.8,66.0,58.0,66.2,58.8,66.2,59.0,65.9,59.1,61.2,59.0,61.0,58.8,60.7,58.6,60.7,58.4,60.5]],"c":1}]}];
 
 /* ════════ shape.js ════════ */
 /* ───────── 物品的形狀（第 26 批）：在「物品框」裡自動找出物品的輪廓 ─────────
@@ -4074,8 +4134,8 @@ var SH_LIB = [{"fp":"6ea8eaaab6c5bd4ddc9c78d33bcb38eb","ar":2.3325,"objs":[{"id"
    「點一下要亮的物品」（pick）：那一點附近一定算物品，最後只留那一樣（框裡的其他東西不亮）。
    這個檔裡的函式除了 shFind、shFp（要畫布）以外都不碰畫面，測試可以直接跑。
    第 27 批：目錄圖是「圖一」（物品圖庫 shapelib.js 裡有的那一張）→ 直接用圖庫裡切好的整個物品（整本書、整個藥盤…，不用設定）；別張圖才用上面的方法在框裡找。 */
-var SH_VER = "s4", SH_SIDE = 180, SH_ITER = 4, SH_K = 5, SH_GAMMA = 12, SH_PTS = 40, SH_RINGS = 4;
-// SH_VER：第 28 批改成 s3（圖庫的「覆核」多了電腦）、第 29 批 s4（行政事宜＝整個文件資料櫃）→ 存過的形狀都會重找一次（圖一用圖庫，很快；打開編輯器、自動存檔開著就自動做）。
+var SH_VER = "s5", SH_SIDE = 180, SH_ITER = 4, SH_K = 5, SH_GAMMA = 12, SH_PTS = 40, SH_RINGS = 4;
+// SH_VER：第 28 批改成 s3（圖庫的「覆核」多了電腦）、第 29 批 s4（行政事宜＝整個文件資料櫃）、第 30 批 s5（圖庫多了新的圖一）→ 存過的形狀都會重找一次（圖一用圖庫，很快；打開編輯器、自動存檔開著就自動做）。
 // SH_GAMMA：「相鄰的點盡量同一邊」有多重要。縮小過的圖用 OpenCV 的 50 太重（整個框會變成背景）；12 試過藥盤、藥水瓶、法規書、處方夾都對。
 // 還是整個變背景的話，自動用一半再試一次。
 
@@ -4145,15 +4205,39 @@ function shLibPick(L, s) {
   });
   return best;
 }
-// 編輯器：img＝目錄圖（載好的），s＝地點 → 圖庫裡有：{ r, n, nm }；這張圖不在圖庫、或框裡沒有圖庫的物品：null
-function shLibFind(img, s) {
+// 編輯器：img＝目錄圖（載好的）→ 圖庫裡的那一筆（不在圖庫＝null）。算一次就記在 img 上
+function shLibOf(img) {
   if (!img) return null;
   if (img.__shLib === undefined) {
     var IW = img.naturalWidth || img.width, IH = img.naturalHeight || img.height, L = null;
     try { if (IW && IH) L = shLibMatch(shFp(img), IW / IH); } catch (e) { L = null; }
     img.__shLib = L;
   }
-  var o = img.__shLib ? shLibPick(img.__shLib, s) : null;
+  return img.__shLib;
+}
+// 第 30 批：換了目錄圖（圖庫裡的另一張）→ 按鍵還在「別張圖的預設位置」（沒動過）的，搬到這張圖的預設位置（L.bx：x、y、w、h、標籤在哪一邊）。
+//   動過的（不是任何一張圖的預設位置）不動；標籤的位置也是：還是舊的預設才換。點選過的物品（pick）是舊圖上的位置：拿掉。回傳搬了哪幾個（代號）。
+function shLibMove(L, spots) {
+  var lib = typeof SH_LIB !== "undefined" ? SH_LIB : [], moved = [];
+  if (!L || !L.bx) return moved;
+  var same = function (s, b) { return !!b && Math.abs(+s.x - b[0]) < 0.05 && Math.abs(+s.y - b[1]) < 0.05 && Math.abs(+s.w - b[2]) < 0.05 && Math.abs(+s.h - b[3]) < 0.05; };
+  (spots || []).forEach(function (s) {
+    var nb = L.bx[s.id]; if (!nb || same(s, nb)) return;
+    var from = null;
+    lib.forEach(function (E) { if (E !== L && E.bx && same(s, E.bx[s.id])) from = E.bx[s.id]; });
+    if (!from) return;
+    s.x = nb[0]; s.y = nb[1]; s.w = nb[2]; s.h = nb[3];
+    if (nb[4] && (s.pos || "t") === (from[4] || "t")) s.pos = nb[4];
+    delete s.pick;
+    moved.push(s.id);
+  });
+  return moved;
+}
+// 編輯器：img＝目錄圖（載好的），s＝地點 → 圖庫裡有：{ r, n, nm }；這張圖不在圖庫、或框裡沒有圖庫的物品：null
+function shLibFind(img, s) {
+  if (!img) return null;
+  var L = shLibOf(img);
+  var o = L ? shLibPick(L, s) : null;
   return o ? { r: o.r.map(function (r) { return r.slice(); }), n: o.c || o.r.length, nm: o.nm } : null;
 }
 
@@ -4837,6 +4921,17 @@ function edCatImg() {   // 目錄圖（載好的 Image）：同一張圖只載�
   p.catch(function () { if (ED_IMG && ED_IMG.p === p) ED_IMG = null; });
   return p;
 }
+// 第 30 批：目錄圖是圖庫裡的一張、按鍵還在「別張圖的預設位置」（沒動過）→ 搬到這張圖上對應的物品（動過的不動）
+function edSpotsMove(img) {
+  var L = null; try { L = shLibOf(img); } catch (e) { L = null; }
+  var mv = shLibMove(L, ED.cat.spots);
+  if (mv.length) {
+    markDirty();
+    toast("📍 這張目錄圖認得：沒動過的 " + mv.length + " 個按鍵，已經搬到圖上對應的物品（可以再拖）");
+    if (ED.cur && ED.cur.kind === "map") setTimeout(function () { if (ED && TAB === "edit") renderEdit(); }, 0);
+  }
+  return mv;
+}
 function edShapeOne(img, s) {   // 算一個（算過的就拿出來）→ 寫進這個地點。第 27 批：圖一 → 用物品圖庫（整個物品）；別張圖 → 在框裡找
   var cat = ED.cat, k = shKey(cat, s), r = SHC[k];
   if (!r) { try { r = shLibFind(img, s) || shFind(img, s); } catch (e) { r = { r: [], n: 0 }; } SHC[k] = r; }
@@ -4845,9 +4940,11 @@ function edShapeOne(img, s) {   // 算一個（算過的就拿出來）→ 寫�
   return r;
 }
 function edShapeMake(onStep) {   // 按「儲存」：要（重）算的都算好。Promise：算了幾個
-  var cat = ED.cat, todo = cat.spots.filter(function (s) { return shNeed(cat, s); });
-  if (!todo.length) return Promise.resolve(0);
+  var cat = ED.cat;
+  if (!cat.spots.some(function (s) { return shNeed(cat, s); })) return Promise.resolve(0);
   return edCatImg().then(function (img) {
+    edSpotsMove(img);   // 第 30 批：先把沒動過的按鍵搬到這張圖的位置（搬了，框就變了，下面照新的框算）
+    var todo = cat.spots.filter(function (s) { return shNeed(cat, s); });
     return new Promise(function (ok) {
       var i = 0;
       var next = function () {
@@ -7168,7 +7265,12 @@ function drawSettings() {
   row("showAll", "所有藥師都看得到「📘 藥戰手冊」按鍵", "LINE 下面那排每個人都有這顆；還沒核可的人按了是「申請」（填員工代號），內容一樣要核可＋驗證才看得到。關掉＝只有可以看的人才有這顆");
   var idle = h("input", { class: "in", type: "number", min: "5", max: "240", value: String(c.idle || 30), style: "width:80px", "aria-label": "閒置幾分鐘自動退出" });
   idle.onchange = function () { var v = Math.max(5, Math.min(240, parseInt(idle.value, 10) || 30)); idle.value = String(v); save({ idle: v }, idle); };
-  box.appendChild(settingRow("閒置自動退出（分鐘）", "LINE 和網頁都用這個時間：LINE 下次一按就回補藥神器；網頁自動登出、要再驗證（5～240）", h("div", { class: "sw2" }, [idle, h("span", { class: "muted" }, ["分鐘"])])));
+  box.appendChild(settingRow("閒置自動退出（分鐘）", "LINE 和網頁都用這個時間：LINE 時間到了 1 分鐘內主動說一聲、換回補藥神器；網頁自動登出、要再驗證（5～240）", h("div", { class: "sw2" }, [idle, h("span", { class: "muted" }, ["分鐘"])])));
+  // 第 30 批：LINE 閒置到期主動通知（用 LINE 的推播額度）：每個月最多幾則；0＝不主動通知（照舊：下次一按才說）
+  var ipv = c.idlePush === undefined ? 100 : +c.idlePush || 0;
+  var ip = h("input", { class: "in", type: "number", min: "0", max: "1000", value: String(ipv), style: "width:80px", "aria-label": "LINE 閒置到期主動通知：每月最多幾則" });
+  ip.onchange = function () { var v = parseInt(ip.value, 10); v = isNaN(v) ? 100 : Math.max(0, Math.min(1000, v)); ip.value = String(v); save({ idlePush: v }, ip); };
+  box.appendChild(settingRow("LINE：閒置到期主動通知（每月最多）", "時間到了 1 分鐘內推一則「已自動離開藥戰手冊」，下面那排換回補藥神器。會用 LINE 的推播額度（輕用量方案每月 200 則，其他通知也要用）；用完了就改回「下次一按才說」。0＝不主動通知。這個月用了幾則：在 LINE 的手冊裡按「🔧 開發者」看", h("div", { class: "sw2" }, [ip, h("span", { class: "muted" }, ["則／月"])])));
   row("watermark", "網頁浮水印", "網頁每一頁蓋「姓名＋員工代號＋時間」");
   row("viewLog", "看過紀錄", "記誰、何時、看哪一章／哪個標題（不記內容）");
   row("footer", "固定頁尾「內部資料，請勿外傳」", "LINE 每張卡片和網頁最下面都放這一行");

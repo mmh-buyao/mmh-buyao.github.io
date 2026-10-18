@@ -5,7 +5,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src https://script.google.com https://script.googleusercontent.com; media-src 'self' blob: data:; manifest-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="buyao-v" content="v11.22.2 beta">
+<meta name="buyao-v" content="v6">
 <title>補藥神器</title>
 <link rel="icon" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
@@ -143,13 +143,11 @@
   .bindf button:disabled{opacity:.6}
   .bindm{display:block; min-height:1.7em; color:var(--danger); font-size:14px; overflow-wrap:anywhere}   /* 後端回的字很長、沒有空白（亂碼、網址）也要折行，不能把網頁撐出橫向捲軸 */
   .bindbox small{display:block; color:var(--muted); font-size:12.5px}
-  /* v11.22.2 beta：代號登入（沒有 LINE 連結的瀏覽器）：上面一行「後端代號」讓人核對是不是真的補藥神器；下面是代號區塊（.pairbx；不能叫 .pair——藥品卡片的「注意」框已經用了 .box.pair）、驗證碼輸入框（一個 6 位數的輸入框＋登入鍵）、最下面小小的「開發者登入」 */
+  /* v11.22.2 beta：代號登入（沒有 LINE 連結的瀏覽器）：上面一行標題；下面是代號區塊（.pairbx；不能叫 .pair——藥品卡片的「注意」框已經用了 .box.pair）、驗證碼輸入框（一個 6 位數的輸入框＋登入鍵）、最下面小小的「開發者登入」 */
   .codebox{width:100%; max-width:460px; margin:0 auto; padding-inline:4px}   /* width:100%：不然 main（flex 直欄）會把它縮到「最寬那行字」的寬度，代號區塊在「有代號」「作廢」之間寬度會跳 */
   .codebox small{display:block; color:var(--ink2); font-size:12.5px; margin-top:6px}
   .cdhead{display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px 14px}
-  .cdhead > b{margin:0}   /* .empty b 的 margin-bottom 不要：標題和「後端代號」同一列，放不下才換行 */
-  .cdbk{display:inline-block; margin:0; padding:3px 12px; border-radius:999px; background:var(--sunk); color:var(--ink2); font-size:13px; line-height:1.6}
-  .cdbk b{display:inline; margin:0; font-size:14.5px; letter-spacing:.08em; color:var(--ink)}
+  .cdhead > b{margin:0}   /* .empty b 的 margin-bottom 不要：標題下面的間距由下面的 .cdgrid 自己留 */
   .cdbox{display:flex; flex-direction:column; gap:12px; margin:14px auto 4px; max-width:420px; text-align:center}
   .cdin{width:100%; min-width:0; border:1.5px solid var(--edge); background:var(--surface); color:var(--ink); border-radius:12px; padding:12px 14px; font-size:28px; font-weight:700; line-height:1.3; text-align:center; letter-spacing:.32em; text-indent:.32em;
     font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace; font-variant-numeric:tabular-nums}   /* 6 位數字：等寬、字距拉開、置中（text-indent 抵掉最後一個字後面多出來的字距） */
@@ -486,7 +484,7 @@
     text-align:center; padding:6px 12px calc(6px + env(safe-area-inset-bottom,0px)); border-top:1px solid var(--line)}
 </style>
 <script src="cfg.js" defer></script>
-<script src="app.js?v=v11.22.2%20beta" defer></script>
+<script src="app.js?v=v6" defer></script>
 </head>
 <body>
 <header class="top"><div class="topin">

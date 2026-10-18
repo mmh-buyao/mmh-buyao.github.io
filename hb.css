@@ -615,6 +615,13 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .layw .layseg{flex-wrap:wrap}
 .layw.sm{margin:2px 0 6px}
 .layw .layinfo{margin-top:6px;color:var(--ink2)}
+/* 第 30 批：螢光筆（字的底色）——網頁、編輯器一樣 */
+.rt-m{border-radius:.22em;padding:.02em .1em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.fb .fbM{font-size:13px;line-height:1;margin-bottom:3px}
+.fb .fbmbar{position:absolute;left:7px;bottom:3px;width:17px;height:5px;border-radius:2px;background:#FFF176;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+.rtmk .rtmk-s{display:inline-block;padding:1px 6px;border-radius:4px;font-weight:700;color:#1F1F1F;border:1px solid #E1E5EA}
+.rtsw.rtmk{grid-template-columns:repeat(4,56px)}
+.rt-m mark{background:transparent;box-shadow:inset 0 0 0 2px #D97706}
 
 /* ───────── 目錄圖 第 3 版：標籤（圖示＋名稱）＋圓點，網頁、編輯器共用 ─────────
  * 一個地點 ＝ 一個「物品框」（.mspot，位置大小用佔整張圖的 %）。圓點在框的正中間，標籤在圓點的上／下／左／右。
