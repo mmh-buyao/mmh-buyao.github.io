@@ -15,6 +15,7 @@
  *               [img=圖的代號] 一張圖（第 28 批：文字和圖片放在同一塊；圖的網址、圖說放在這一塊的 pics 裡）
  *               [tbl=表格的代號] 一張表格（第 29 批：表格也能「併到上一塊」；表格的內容放在這一塊的 tbls 裡）
  *   行內（可疊）：[b]粗體[/b]　[i]斜體[/i]　[u]底線[/u]　[s]刪除線[/s]　[c=red]顏色[/c]　[z=lg]大小[/z]　[m=yellow]螢光筆[/m]（第 30 批）
+ *   公式（第 31 批）：[fx]1/6[/fx]　裡面照 Word 的打法（1/6＝上下排的分數、m^2、C_max、√(…)）；整個公式算一個字，不能從中間切開
  *   縮排：開頭的全形空格（一格＝一層，最多 3 層）
  *   字本身有「[b]」這種長得像標記的字，寫成「[[b]」（兩個左括號）；其他情況不用管。
  *   標記只管「這一行」，不會跨行。 */
@@ -58,17 +59,17 @@ var YZ_RT_ITEM = /^((?:\d{1,2}[.、)）](?!\d)|\(\d{1,2}\)|（\d{1,2}）|[①-�
 
 // ── 小工具 ──
 function _yzRtRunsText_(runs) { var s = ""; for (var i = 0; i < (runs || []).length; i++) s += runs[i].t; return s; }
-function _yzRtAttrKey_(r) { var k = ""; for (var i = 0; i < YZ_RT_ORDER.length; i++) k += (r[YZ_RT_ORDER[i]] ? YZ_RT_ORDER[i] + "=" + r[YZ_RT_ORDER[i]] + ";" : ""); return k; }
+function _yzRtAttrKey_(r) { var k = ""; for (var i = 0; i < YZ_RT_ORDER.length; i++) k += (r[YZ_RT_ORDER[i]] ? YZ_RT_ORDER[i] + "=" + r[YZ_RT_ORDER[i]] + ";" : ""); return k + (r.fx ? "fx;" : ""); }
 function _yzRtMerge_(runs) {   // 相鄰、格式一樣的合併；空字串丟掉
   var out = [];
   (runs || []).forEach(function (r) {
     if (!r || !r.t) return;
     var last = out[out.length - 1];
-    if (last && _yzRtAttrKey_(last) === _yzRtAttrKey_(r)) last.t += r.t; else out.push(_yzRtCopy_(r));
+    if (last && !last.fx && !r.fx && _yzRtAttrKey_(last) === _yzRtAttrKey_(r)) last.t += r.t; else out.push(_yzRtCopy_(r));   // 公式：一個一個分開（不跟旁邊的合併）
   });
   return out;
 }
-function _yzRtCopy_(r) { var o = { t: r.t }; for (var i = 0; i < YZ_RT_ORDER.length; i++) if (r[YZ_RT_ORDER[i]]) o[YZ_RT_ORDER[i]] = r[YZ_RT_ORDER[i]]; return o; }
+function _yzRtCopy_(r) { var o = { t: r.t }; for (var i = 0; i < YZ_RT_ORDER.length; i++) if (r[YZ_RT_ORDER[i]]) o[YZ_RT_ORDER[i]] = r[YZ_RT_ORDER[i]]; if (r.fx) o.fx = 1; return o; }
 function _yzRtCut_(runs, n) {   // 去掉前 n 個字（算出「記號」之後，剩下的才是內文）
   var out = [];
   (runs || []).forEach(function (r) {
@@ -96,6 +97,10 @@ function _yzRtInline_(s) {
     var ch = s.charAt(i);
     if (ch === "[") {
       if (s.charAt(i + 1) === "[") { buf += "["; i += 2; continue; }   // 「[[」＝一個真的「[」
+      if (s.substr(i, 4) === "[fx]") {   // 第 31 批：公式（到 [/fx] 為止整段原封不動；沒有結尾＝當成字）
+        var fe = s.indexOf("[/fx]", i + 4);
+        if (fe > i + 4) { flush(); var fr = { t: s.slice(i + 4, fe), fx: 1 }; for (var fk in cur) fr[fk] = cur[fk]; runs.push(fr); i = fe + 5; continue; }
+      }
       var m = /^\[(\/?)(b|i|u|s|c|z|m)(?:=([a-z0-9]+))?\]/.exec(s.substr(i, 16));
       if (m) {
         var close = m[1] === "/", key = m[2], val = m[3], ok = false;
@@ -142,7 +147,7 @@ function _yzRtParse_(text) {   // 一段字 → 一行一行（編輯器載入�
 
 // ── 一行的資料 → 字 ──
 function _yzRtEsc_(s) {   // 字本身長得像標記的，左括號寫成兩個；結尾的「[」也寫成兩個（後面可能接標記）
-  return String(s).replace(/\[(?=\[|$|\/?(?:b|i|u|s)\]|\/(?:c|z|m)\]|(?:c|z|m)=[a-z0-9]+\]|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?\])/g, "[[");
+  return String(s).replace(/\[(?=\[|$|\/?(?:b|i|u|s|fx)\]|\/(?:c|z|m)\]|(?:c|z|m)=[a-z0-9]+\]|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?\])/g, "[[");
 }
 function _yzRtSerRuns_(runs) {
   var out = "", stack = [], x;
@@ -153,7 +158,7 @@ function _yzRtSerRuns_(runs) {
     for (x = stack.length - 1; x >= j; x--) out += "[/" + stack[x].charAt(0) + "]";
     stack = stack.slice(0, j);
     for (x = j; x < want.length; x++) { out += "[" + want[x] + "]"; stack.push(want[x]); }
-    out += _yzRtEsc_(r.t);
+    out += r.fx ? "[fx]" + _yzFxClean_(r.t) + "[/fx]" : _yzRtEsc_(r.t);   // 公式：原封不動放在 [fx]…[/fx] 裡
   });
   for (x = stack.length - 1; x >= 0; x--) out += "[/" + stack[x].charAt(0) + "]";
   return out;
@@ -183,7 +188,7 @@ function _yzRtPlainLines_(text) {
 }
 function _yzRtPlain_(text) { return _yzRtPlainLines_(text).join("\n"); }
 // 這段字有沒有用到格式標記（LINE 裡改字時，要提醒「請保留標記」）
-function _yzRtHas_(text) { return /\[(?:\/?(?:b|i|u|s)|\/(?:c|z|m)|(?:c|z|m)=[a-z0-9]+|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?)\]/.test(String(text === null || text === undefined ? "" : text)); }
+function _yzRtHas_(text) { return /\[(?:\/?(?:b|i|u|s|fx)|\/(?:c|z|m)|(?:c|z|m)=[a-z0-9]+|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?)\]/.test(String(text === null || text === undefined ? "" : text)); }
 // 第 30 批：這一行是不是「整行都畫了同一色螢光筆」（空白不算）→ 那個顏色；不是 → ""（LINE 整行的才能畫成底色）
 function _yzRtBand_(runs) {
   var m = "", any = false;
@@ -247,6 +252,149 @@ function _yzRtNextMark_(mark) {
   if (mark === "☑") return "☐";
   return mark;
 }
+
+// ═══ 第 31 批：公式（數學公式）═══
+// 打法跟 Word 的方程式一樣（一行打完）：1/6＝上下排的分數　m^2＝次方　C_max＝下標　√(…) 或 sqrt(…)＝根號
+//   括號包起來＝一整塊（當分子、分母、次方時括號會拿掉）：((140-年齡)×體重)/(72×Scr)　{…}＝看不見的括號
+//   * → ×　<= → ≤　>= → ≥　!= → ≠　~= → ≈　+- → ±　-> → →　//＝真的斜線（不要上下排）
+// 公式存成 [fx]原本打的字[/fx]（搜尋照樣找得到）；網頁、編輯器畫成上下排的分數；LINE 夾在句子裡用 ¹⁄₆、m² 這種小字代替，整行只有公式時排成上下排。
+var YZ_FX_MAX = 200;   // 一個公式最多幾個字
+var YZ_FX_OPS = { "*": "×", "·": "·", "-": "−", "−": "−", "+": "+", "=": "=", "<": "<", ">": ">", "×": "×", "÷": "÷", "±": "±", "≤": "≤", "≥": "≥", "≠": "≠", "≈": "≈", "→": "→", "⇒": "⇒", ",": ",", "，": "，", ":": ":", ";": ";", "%": "%", "°": "°", "!": "!", "|": "|", "∕": "/", "…": "…", "∞": "∞", "∑": "∑", "∆": "Δ" };
+var YZ_FX_TWO = { "<=": "≤", ">=": "≥", "!=": "≠", "~=": "≈", "+-": "±", "->": "→", "=>": "⇒", "//": "/" };
+var YZ_FX_SUP = { "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹", "+": "⁺", "−": "⁻", "=": "⁼", "(": "⁽", ")": "⁾", "n": "ⁿ", "i": "ⁱ", "x": "ˣ" };
+var YZ_FX_SUB = { "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄", "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉", "+": "₊", "−": "₋", "=": "₌", "(": "₍", ")": "₎", "a": "ₐ", "e": "ₑ", "o": "ₒ", "x": "ₓ", "h": "ₕ", "k": "ₖ", "l": "ₗ", "m": "ₘ", "n": "ₙ", "p": "ₚ", "s": "ₛ", "t": "ₜ" };
+var YZ_FX_SP = { "=": 1, "≈": 1, "≠": 1, "≤": 1, "≥": 1, "<": 1, ">": 1, "→": 1, "⇒": 1, "±": 1, "+": 1, "−": 1 };   // 前後空一點的符號（二元運算）
+
+// 存之前整理：換行變空白、拿掉會跟標記打架的字（[/fx]）、太長的切掉
+function _yzFxClean_(s) {
+  s = String(s === null || s === undefined ? "" : s);
+  while (s.indexOf("[/fx]") >= 0) s = s.split("[/fx]").join("");   // 拿掉以後又湊出一個（[/f[/fx]x]）：再拿一次
+  return s.replace(/\s+/g, " ").replace(/^ | $/g, "").slice(0, YZ_FX_MAX);
+}
+// 字 → 一個一個的「記號」
+function _yzFxTok_(src) {
+  var s = _yzFxClean_(src).replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+    .replace(/[（]/g, "(").replace(/[）]/g, ")").replace(/[／]/g, "/").replace(/[＾]/g, "^").replace(/[＿]/g, "_").replace(/[＊]/g, "*").replace(/[＝]/g, "=").replace(/[＋]/g, "+").replace(/[－]/g, "-");
+  var out = [], i = 0, n = s.length, m;
+  while (i < n) {
+    var c = s.charAt(i), two = s.substr(i, 2);
+    if (/\s/.test(c)) { while (i < n && /\s/.test(s.charAt(i))) i++; out.push({ k: "sp" }); continue; }
+    if ((m = /^\d+(?:\.\d+)?/.exec(s.slice(i)))) { out.push({ k: "num", t: m[0] }); i += m[0].length; continue; }
+    if (YZ_FX_TWO[two]) { out.push({ k: "op", t: YZ_FX_TWO[two] }); i += 2; continue; }
+    if (/^sqrt\s*\(/i.test(s.slice(i))) { out.push({ k: "sqrt" }); i += 4; continue; }
+    if (c === "√") { out.push({ k: "sqrt" }); i++; continue; }
+    if (c === "/" || c === "^" || c === "_") { out.push({ k: c }); i++; continue; }
+    if (c === "(" || c === "[" || c === "{") { out.push({ k: "open", t: c }); i++; continue; }
+    if (c === ")" || c === "]" || c === "}") { out.push({ k: "close", t: c }); i++; continue; }
+    if (YZ_FX_OPS[c]) { out.push({ k: "op", t: YZ_FX_OPS[c] }); i++; continue; }
+    if ((m = /^[A-Za-zµͰ-Ͽ′″']+/.exec(s.slice(i)))) { out.push({ k: "id", t: m[0] }); i += m[0].length; continue; }
+    if ((m = /^[^\s\d()[\]{}\/^_*·+\-−=<>×÷±≤≥≠≈→⇒,，:;%°!|√A-Za-z]+/.exec(s.slice(i)))) { out.push({ k: "id", t: m[0] }); i += m[0].length; continue; }
+    out.push({ k: "op", t: c }); i++;
+  }
+  return out;
+}
+// 記號 → 樹：{k:"seq",a:[…]}、{k:"num"|"id"|"op",t}、{k:"sp"}、{k:"frac",n,d}、{k:"sup",b,s}、{k:"sub",b,s}、{k:"subsup",b,sub,sup}、{k:"sqrt",a}、{k:"par",o,c,a}（看得到的括號）、{k:"grp",a}
+// 寫錯也不會壞：多的、少的括號、單獨的 / ^ _ 都當成一般的字
+function _yzFxParse_(src) {
+  var tk = _yzFxTok_(src), p = 0;
+  var CL = { "(": ")", "[": "]", "{": "}" };
+  function nextAt(k) { var q = p; while (tk[q] && tk[q].k === "sp") q++; return tk[q] && tk[q].k === k ? q : -1; }
+  function unwrap(x) { return x && ((x.k === "par" && x.o === "(") || x.k === "grp") ? x.a : x; }
+  function seq(inner) {
+    var a = [];
+    while (p < tk.length) {
+      var t = tk[p];
+      if (t.k === "close") { if (inner) break; p++; a.push({ k: "op", t: t.t }); continue; }
+      if (t.k === "sp") { p++; if (a.length && a[a.length - 1].k !== "sp") a.push({ k: "sp" }); continue; }
+      if (t.k === "op") { p++; a.push({ k: "op", t: t.t }); continue; }
+      a.push(frac());
+    }
+    while (a.length && a[a.length - 1].k === "sp") a.pop();
+    while (a.length && a[0].k === "sp") a.shift();
+    return a.length === 1 ? a[0] : { k: "seq", a: a };
+  }
+  function frac() {
+    var x = script(), q;
+    while ((q = nextAt("/")) >= 0) {
+      var save = p; p = q + 1; while (tk[p] && tk[p].k === "sp") p++;
+      if (!tk[p] || tk[p].k === "close" || tk[p].k === "op" || tk[p].k === "/") { p = save; break; }   // 「1/」後面沒東西：斜線當字
+      var y = script();
+      x = { k: "frac", n: unwrap(x), d: unwrap(y) };
+    }
+    return x;
+  }
+  function script() {
+    var b = prim(), sub = null, sup = null, q;
+    while ((q = nextAt("^")) >= 0 || (q = nextAt("_")) >= 0) {
+      var w = tk[q].k; p = q + 1;
+      if (!tk[p] || tk[p].k === "sp" || tk[p].k === "close") { p = q; break; }
+      var s = prim();
+      if (w === "^") sup = unwrap(s); else sub = unwrap(s);
+    }
+    if (sub && sup) return { k: "subsup", b: b, sub: sub, sup: sup };
+    if (sup) return { k: "sup", b: b, s: sup };
+    if (sub) return { k: "sub", b: b, s: sub };
+    return b;
+  }
+  function prim() {
+    var t = tk[p];
+    if (!t) return { k: "seq", a: [] };
+    p++;
+    if (t.k === "num" || t.k === "id") return { k: t.k, t: t.t };
+    if (t.k === "sqrt") { while (tk[p] && tk[p].k === "sp") p++; return { k: "sqrt", a: unwrap(prim()) }; }
+    if (t.k === "open") {
+      var inner = seq(true), c = "";
+      if (tk[p] && tk[p].k === "close") { c = tk[p].t; p++; }
+      return t.t === "{" ? { k: "grp", a: inner } : { k: "par", o: t.t, c: c || CL[t.t], a: inner };
+    }
+    if (t.k === "op") return { k: "op", t: t.t };
+    return { k: "op", t: t.k === "close" ? t.t : t.k };   // 單獨的 / ^ _ ）
+  }
+  return seq(false);
+}
+// 這一塊是不是「黏得比斜線緊」（數字、字、括號、根號；次方、下標看它的底）：一行的寫法當分子分母、次方的底時，不用另外加括號
+function _yzFxFlat_(n) {
+  if (!n) return false;
+  if (n.k === "num" || n.k === "id" || n.k === "par" || n.k === "sqrt") return true;
+  return (n.k === "sup" || n.k === "sub" || n.k === "subsup") && _yzFxFlat_(n.b);
+}
+function _yzFxMap_(s, tbl) { var o = ""; for (var i = 0; i < s.length; i++) { var c = tbl[s.charAt(i)]; if (!c) return null; o += c; } return o; }
+// 樹 → 一行字（LINE 夾在句子裡、搜尋結果、小視窗的「LINE 上」）：¹⁄₆、m²、C_max、√(…)
+function _yzFxLin_(n) {
+  if (!n) return "";
+  switch (n.k) {
+    case "num": case "id": return n.t;
+    case "sp": return " ";
+    case "op": return n.t;
+    case "seq":
+      var out = "";
+      n.a.forEach(function (x, i) {
+        var pv = n.a[i - 1], bin = x.k === "op" && YZ_FX_SP[x.t] && pv && !(pv.k === "op") && !(pv.k === "sp");
+        if (x.k === "sp" && (out.slice(-1) === " " || !out)) return;
+        out += bin ? (out.slice(-1) === " " ? "" : " ") + x.t + " " : _yzFxLin_(x);
+      });
+      return out.replace(/\s+$/, "").replace(/ {2,}/g, " ");
+    case "par": return n.o + _yzFxLin_(n.a) + n.c;
+    case "grp": return _yzFxLin_(n.a);
+    case "frac":
+      var a = _yzFxLin_(n.n), b = _yzFxLin_(n.d);
+      if (/^\d{1,4}$/.test(a) && /^\d{1,4}$/.test(b)) return _yzFxMap_(a, YZ_FX_SUP) + "⁄" + _yzFxMap_(b, YZ_FX_SUB);   // 1/6 → ¹⁄₆
+      return (_yzFxFlat_(n.n) ? a : "(" + a + ")") + "/" + (_yzFxFlat_(n.d) ? b : "(" + b + ")");
+    case "sup": case "sub": case "subsup":
+      var base = _yzFxLin_(n.b), bw = _yzFxFlat_(n.b) ? base : "(" + base + ")";
+      var up = n.k === "sub" ? "" : _yzFxLin_(n.k === "sup" ? n.s : n.sup), dn = n.k === "sup" ? "" : _yzFxLin_(n.k === "sub" ? n.s : n.sub);
+      var u2 = up ? (_yzFxMap_(up.replace(/-/g, "−").replace(/\s+/g, ""), YZ_FX_SUP) || "^" + (up.length > 1 ? "(" + up + ")" : up)) : "";   // 小字裡不要空白：AUC₀₋₂₄
+      var d2 = dn ? (_yzFxMap_(dn.replace(/-/g, "−").replace(/\s+/g, ""), YZ_FX_SUB) || "_" + (dn.length > 1 ? "(" + dn + ")" : dn)) : "";
+      return bw + d2 + u2;
+    case "sqrt":
+      var r = _yzFxLin_(n.a);
+      return "√" + (_yzFxFlat_(n.a) && n.a.k !== "sqrt" ? r : "(" + r + ")");
+  }
+  return "";
+}
+function _yzFxLinear_(src) { return _yzFxLin_(_yzFxParse_(src)); }
+// 一段字裡的公式 → 一般的字（搜尋、純文字用；不管格式）
+function _yzRtRunsLin_(runs) { var s = ""; (runs || []).forEach(function (r) { s += r.fx ? _yzFxLinear_(r.t) : r.t; }); return s; }
 
 /* ════════ cards.js ════════ */
 /* cards.js — 藥戰手冊的 LINE 卡片（純函式：進去資料，出來 Flex JSON；不讀不寫任何東西）。
@@ -315,9 +463,9 @@ function _yzRtTextNode_(runs, base) {
   if (base.style) node.style = base.style;
   if (base.flex !== undefined) node.flex = base.flex;
   if (base.margin) node.margin = base.margin;
-  if (simple) { node.text = _yzRtRunsText_(runs); return node.text ? node : null; }
+  if (simple) { node.text = _yzRtRunsLin_(runs); return node.text ? node : null; }   // 第 31 批：公式 → ¹⁄₆、m² 這種一行的寫法
   node.contents = runs.map(function (r) {
-    var sp = { type: "span", text: r.t };
+    var sp = { type: "span", text: r.fx ? _yzFxLinear_(r.t) || " " : r.t };
     sp.size = r.z ? YZ_RT_SIZES[r.z].line : node.size;
     sp.color = r.c ? YZ_RT_COLORS[r.c] : node.color;
     var mk = !base.band && r.m && YZ_RT_MARKS[r.m];   // 第 30 批：只畫一部分的螢光筆：LINE 不能加底色 → 同色系的粗體字
@@ -328,6 +476,44 @@ function _yzRtTextNode_(runs, base) {
     return sp;
   });
   return node;
+}
+
+// 第 31 批：這一行是不是「只有一個公式」（前後的空白不算）→ 那一段；不是 → null
+function _yzFxOnly_(runs) {
+  var hit = null;
+  for (var i = 0; i < (runs || []).length; i++) {
+    var r = runs[i];
+    if (r.fx) { if (hit) return null; hit = r; continue; }
+    if (String(r.t || "").replace(/\s/g, "")) return null;
+  }
+  return hit;
+}
+// 第 31 批：整行的公式 → LINE 的一排：分數＝直的一小塊（分子、一條線、分母）；其他的照一行的寫法。
+// 沒有分數、或太長（LINE 一行放不下）→ null（照一般的字：¹⁄₆ 那種）
+var YZ_FX_LINE_MAX = 24;
+function _yzFxFlex_(src, base) {
+  var ast = _yzFxParse_(src), items = ast.k === "seq" ? ast.a : [ast];
+  var rootFrac = function (x) { return x.k === "sqrt" && x.a && x.a.k === "frac"; };   // 根號裡面是分數（BSA 那種）：√＋上面一條線＋上下排
+  if (!items.some(function (x) { return x.k === "frac" || rootFrac(x); })) return null;
+  var parts = [], seg = [], total = 0, size = base.size || "sm", color = base.color || "#1F1F1F";
+  var tx = function (t, al) { var o = { type: "text", text: t, size: size, color: color, flex: 0 }; if (al) o.align = al; if (base.weight === "bold") o.weight = "bold"; return o; };
+  var flush = function () {
+    var t = _yzFxLin_({ k: "seq", a: seg }).replace(/^\s+|\s+$/g, ""); seg = [];
+    if (t) { parts.push(tx(t)); total += t.length; }
+  };
+  var fracBox = function (x) {
+    var a = _yzFxLin_(x.n) || " ", b = _yzFxLin_(x.d) || " ";
+    total += Math.max(a.length, b.length);
+    return { type: "box", layout: "vertical", flex: 0, contents: [tx(a, "center"), { type: "separator", color: color }, tx(b, "center")] };
+  };
+  items.forEach(function (x) {
+    if (x.k === "frac") { flush(); parts.push(fracBox(x)); return; }
+    if (rootFrac(x)) { flush(); total += 1; parts.push({ type: "box", layout: "horizontal", flex: 0, alignItems: "center", contents: [tx("√"), { type: "box", layout: "vertical", flex: 0, contents: [{ type: "separator", color: color }, fracBox(x.a)] }] }); return; }
+    seg.push(x);
+  });
+  flush();
+  if (total > YZ_FX_LINE_MAX || parts.length > 9) return null;
+  return { type: "box", layout: "horizontal", alignItems: "center", spacing: "sm", contents: parts };
 }
 
 // 第 30 批：整行畫了同一色螢光筆 → 包一層那個顏色的底色（LINE 只能幫「一整塊」加底色）；它前面的間距（margin）搬到外面
@@ -412,6 +598,11 @@ function _yzTextLines_(text, o) {
       // 左邊那條線：外框塗灰色、只留 3px，裡面的白底蓋掉其餘的（比「單邊框線」可靠，LINE 沒有單邊框線）
       if (qk.length) out.push(_yzIndent_({ type: "box", layout: "horizontal", backgroundColor: "#B8C2CC", paddingStart: "3px", contents: [{ type: "box", layout: "vertical", backgroundColor: "#FFFFFF", paddingStart: "10px", spacing: "xs", contents: qk }] }, pad));
       i = j; first = false; continue;
+    }
+    var fxl = L.k === "plain" ? _yzFxOnly_(L.runs) : null, fxn = fxl ? _yzFxFlex_(fxl.t, { size: size, color: L.runs.length && fxl.c && YZ_RT_COLORS[fxl.c] ? YZ_RT_COLORS[fxl.c] : color, weight: fxl.b ? "bold" : "" }) : null;
+    if (fxn) {   // 第 31 批：整行只有一個公式（裡面有分數）→ 上下排的分數（LINE 只能這樣排；夾在句子裡的照下面一般的字，用 ¹⁄₆）
+      out.push(_yzIndent_(fxl.m && YZ_RT_MARKS[fxl.m] ? _yzMarkBand_(fxn, fxl.m) : fxn, pad));   // 整行的公式畫了螢光筆：一樣有底色
+      first = false; i++; continue;
     }
     var band = _yzRtBand_(L.runs);   // 第 30 批：整行畫了同一色螢光筆
     if (L.k === "item") {
@@ -2527,11 +2718,39 @@ function hlNodes(text, hl, sq) {   // 搜尋的字用 <mark> 標出來（sq＝�
   if (!hl || !hl.length) return [text];
   return _yzHL_(text, hl, sq).map(function (g) { return g.h ? h("mark", {}, [g.t]) : g.t; });
 }
+// 第 31 批：公式 → 網頁上上下排的分數、次方、下標、根號（不靠外掛，用一般的 HTML＋CSS 排；每種瀏覽器都一樣）
+function fxNode(n) {
+  if (!n) return h("span", {});
+  switch (n.k) {
+    case "num": return h("span", { class: "fxn" }, [n.t]);
+    case "id": return h("span", { class: "fxi" }, [n.t]);   // 不用斜體：藥師寫的多半是單位、縮寫（mg/m²、CrCl）
+    case "sp": return h("span", { class: "fxs" }, [" "]);
+    case "op": return h("span", { class: "fxo" }, [n.t]);
+    case "seq": return h("span", { class: "fxr" }, n.a.map(function (x, i) {
+      var e = fxNode(x), pv = n.a[i - 1];
+      if (x.k === "op" && YZ_FX_SP[x.t] && pv && pv.k !== "op" && pv.k !== "sp") e.classList.add("b");   // 二元運算：前後空一點
+      return e;
+    }));
+    case "par": return h("span", { class: "fxr" }, [h("span", { class: "fxp" }, [n.o]), fxNode(n.a), h("span", { class: "fxp" }, [n.c])]);
+    case "grp": return fxNode(n.a);
+    case "frac": return h("span", { class: "fxf" }, [h("span", { class: "fxu" }, [fxNode(n.n)]), h("span", { class: "fxd" }, [fxNode(n.d)])]);
+    case "sup": return h("span", { class: "fxr" }, [fxNode(n.b), h("sup", { class: "fxsup" }, [fxNode(n.s)])]);
+    case "sub": return h("span", { class: "fxr" }, [fxNode(n.b), h("sub", { class: "fxsub" }, [fxNode(n.s)])]);
+    case "subsup": return h("span", { class: "fxr" }, [fxNode(n.b), h("span", { class: "fxss" }, [h("sup", { class: "fxsup" }, [fxNode(n.sup)]), h("sub", { class: "fxsub" }, [fxNode(n.sub)])])]);
+    case "sqrt": return h("span", { class: "fxq" }, [h("span", { class: "fxqs", html: FX_ROOT }), h("span", { class: "fxqb" }, [fxNode(n.a)])]);   // 根號：勾勾跟著裡面的高度拉長，上面一條線
+  }
+  return h("span", {});
+}
+var FX_ROOT = '<svg viewBox="0 0 12 24" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0.6 13.6 L3 11.9 L6.1 22.9 L11.4 0.6 L12 0.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>';
+function fxEl(src) {   // 一個公式（念螢幕的軟體念一行的寫法：1/6 → ¹⁄₆）
+  var lin = _yzFxLinear_(src);
+  return h("span", { class: "fx", role: "math", "aria-label": lin, title: lin }, [fxNode(_yzFxParse_(src))]);
+}
 // 一行字裡一小段一小段（各有自己的格式）→ 網頁上的 span。搜尋的字照樣用 <mark> 標出來
 function rtKids(runs, hl) {
   var out = [];
   (runs || []).forEach(function (r) {
-    var kids = hlNodes(r.t, hl);
+    var kids = r.fx ? [fxEl(r.t)] : hlNodes(r.t, hl);   // 第 31 批：公式
     if (!(r.b || r.i || r.u || r.s || r.c || r.z || r.m)) { out = out.concat(kids); return; }
     var mk = r.m && YZ_RT_MARKS[r.m];   // 第 30 批：螢光筆（底色）
     var cls = "rt" + (r.b ? " rt-b" : "") + (r.i ? " rt-i" : "") + (r.u ? " rt-u" : "") + (r.s ? " rt-s" : "") + (r.z && YZ_RT_SIZES[r.z] ? " rt-z" + r.z : "") + (mk ? " rt-m" : "");
@@ -3319,7 +3538,7 @@ function rteCreate(o) {
   var inst = {};
   var body = h("div", { class: "rtbody", contenteditable: "true", spellcheck: "false", autocapitalize: "off", autocorrect: "off", role: "textbox", "aria-multiline": "true", "aria-label": "文字內容（選取文字後，按最上面第二排的按鍵）" });
   var rawTa = h("textarea", { class: "ta rtraw", spellcheck: "false", "aria-label": "原始標記" });
-  var rawNote = h("div", { class: "hint rtrawnote" }, ["標記模式：這就是「LINE 裡改字」時看到的樣子。[b]…[/b] 粗體、[c=red]…[/c] 紅字、[m=yellow]…[/m] 黃色螢光筆、[h2] 標題。改完再按一次「</> 標記」回到一般模式。"]);
+  var rawNote = h("div", { class: "hint rtrawnote" }, ["標記模式：這就是「LINE 裡改字」時看到的樣子。[b]…[/b] 粗體、[c=red]…[/c] 紅字、[m=yellow]…[/m] 黃色螢光筆、[fx]1/6[/fx] 公式、[h2] 標題。改完再按一次「</> 標記」回到一般模式。"]);
   rawTa.hidden = true; rawNote.hidden = true;
   var el = h("div", { class: "rte" }, [body, rawNote, rawTa]);
   var lines = _yzRtParse_(o.value || "");
@@ -3328,9 +3547,12 @@ function rteCreate(o) {
 
   // ───────── 資料 → 畫面 ─────────
   function runNode(r) {
-    if (!(r.b || r.i || r.u || r.s || r.c || r.z || r.m)) return document.createTextNode(r.t);
-    var sp = h("span", { class: "rt" + (r.b ? " rt-b" : "") + (r.i ? " rt-i" : "") + (r.u ? " rt-u" : "") + (r.s ? " rt-s" : "") + (r.z ? " rt-z" + r.z : "") + (r.m && YZ_RT_MARKS[r.m] ? " rt-m" : "") });
-    sp.textContent = r.t;
+    if (!(r.b || r.i || r.u || r.s || r.c || r.z || r.m || r.fx)) return document.createTextNode(r.t);
+    var sp = h("span", { class: "rt" + (r.b ? " rt-b" : "") + (r.i ? " rt-i" : "") + (r.u ? " rt-u" : "") + (r.s ? " rt-s" : "") + (r.z ? " rt-z" + r.z : "") + (r.m && YZ_RT_MARKS[r.m] ? " rt-m" : "") + (r.fx ? " rt-fx" : "") });
+    if (r.fx) {   // 第 31 批：公式＝一整塊（裡面不能打字；點一下打開「∑ 公式」改）。data-fx＝公式原本的寫法（1/6）
+      sp.setAttribute("contenteditable", "false"); sp.setAttribute("data-fx", r.t); sp.setAttribute("title", "公式（點一下修改）：" + r.t);
+      sp.appendChild(fxEl(r.t));
+    } else sp.textContent = r.t;
     if (r.b) sp.setAttribute("data-b", "1");
     if (r.i) sp.setAttribute("data-i", "1");
     if (r.u) sp.setAttribute("data-u", "1");
@@ -3435,8 +3657,11 @@ function rteCreate(o) {
   }
 
   // ───────── 畫面 → 資料 ─────────
+  function isFx(n) { return !!n && n.nodeType === 1 && n.hasAttribute("data-fx"); }
+  function fxOf(n) { while (n && n !== body) { if (isFx(n)) return n; n = n.parentNode; } return null; }   // 在哪個公式裡面（沒有＝null）
   function textLen(n) {
     if (n.nodeType === 3) return n.nodeValue.length;
+    if (isFx(n)) return n.getAttribute("data-fx").length;   // 第 31 批：公式＝原本寫法的字數（跟存起來的一樣）
     if (n.nodeName === "BR" || (n.nodeType === 1 && n.getAttribute("contenteditable") === "false")) return 0;
     var s = 0; for (var c = n.firstChild; c; c = c.nextSibling) s += textLen(c);
     return s;
@@ -3455,6 +3680,7 @@ function rteCreate(o) {
       if (n.hasAttribute("data-c") && YZ_RT_COLORS[n.getAttribute("data-c")]) a.c = n.getAttribute("data-c");
       if (n.hasAttribute("data-z") && YZ_RT_SIZES[n.getAttribute("data-z")]) a.z = n.getAttribute("data-z");
       if (n.hasAttribute("data-m") && YZ_RT_MARKS[n.getAttribute("data-m")]) a.m = n.getAttribute("data-m");
+      if (isFx(n)) { var fr = { t: _yzFxClean_(n.getAttribute("data-fx")), fx: 1 }; for (var k3 in a) fr[k3] = a[k3]; if (fr.t) runs.push(fr); return; }   // 第 31 批：公式（裡面畫出來的分數不算字）
       for (var c = n.firstChild; c; c = c.nextSibling) walk(c, a);
     })(root, {});
     return _yzRtMerge_(runs);
@@ -3486,7 +3712,12 @@ function rteCreate(o) {
     for (i = 0; i < lns.length; i++) {
       var k = lns[i].getAttribute("data-k"); if (k === "hr" || k === "go" || k === "img" || k === "tbl") continue;
       var all = lns[i].getElementsByTagName("*");
-      for (j = 0; j < all.length; j++) { var e = all[j]; if (e.nodeName === "BR") continue; if (e.nodeName === "SPAN" && e.classList.contains("rt")) continue; return true; }
+      for (j = 0; j < all.length; j++) {
+        var e = all[j]; if (e.nodeName === "BR") continue;
+        if (fxOf(e.parentNode)) continue;   // 第 31 批：公式裡面（畫分數用的標籤）不算
+        if (e.nodeName === "SPAN" && e.classList.contains("rt")) continue;
+        return true;
+      }
     }
     return false;
   }
@@ -3499,7 +3730,9 @@ function rteCreate(o) {
 
   // ───────── 游標位置（第幾行、第幾個字） ─────────
   function lineIndexOf(node) { var n = node; while (n && n.parentNode !== body) n = n.parentNode; return n ? Array.prototype.indexOf.call(body.childNodes, n) : -1; }
-  function domPos(node, off) {
+  function domPos(node, off, end) {
+    var fo = fxOf(node);
+    if (fo) { node = fo.parentNode; off = Array.prototype.indexOf.call(node.childNodes, fo) + (end ? 1 : 0); }   // 第 31 批：在公式裡面＝公式前面／後面（公式是一整塊）
     if (node === body) { var last = body.childNodes.length - 1, li0 = Math.max(0, Math.min(off, last)); return { li: li0, o: off > last ? textLen(body.childNodes[li0]) : 0 }; }
     var li = lineIndexOf(node); if (li < 0) return null;
     var lineNode = body.childNodes[li], count = 0, found = false;
@@ -3510,6 +3743,7 @@ function rteCreate(o) {
         found = true; return;
       }
       if (n.nodeType === 3) { count += n.nodeValue.length; return; }
+      if (isFx(n)) { count += textLen(n); return; }
       if (n.nodeName === "BR" || (n.nodeType === 1 && n.getAttribute("contenteditable") === "false")) return;
       for (var c = n.firstChild; c; c = c.nextSibling) { walk(c); if (found) return; }
     })(lineNode);
@@ -3518,22 +3752,28 @@ function rteCreate(o) {
   function domFromPos(li, off) {
     var lineNode = body.childNodes[li]; if (!lineNode) return null;
     if (lineNode.getAttribute("contenteditable") === "false") return { node: body, offset: li };
-    var rest = off, lastT = null, res = null;
+    var rest = off, lastP = null, res = null;
     (function walk(n) {
       if (res) return;
-      if (n.nodeType === 3) { if (rest <= n.nodeValue.length) { res = { node: n, offset: rest }; return; } rest -= n.nodeValue.length; lastT = n; return; }
+      if (n.nodeType === 3) { if (rest <= n.nodeValue.length) { res = { node: n, offset: rest }; return; } rest -= n.nodeValue.length; lastP = { node: n, offset: n.nodeValue.length }; return; }
       if (n.nodeName === "BR") return;
+      if (isFx(n)) {   // 第 31 批：公式是一整塊：游標只能在它前面或後面
+        var fl = textLen(n), pi = Array.prototype.indexOf.call(n.parentNode.childNodes, n);
+        if (rest <= 0) { res = { node: n.parentNode, offset: pi }; return; }
+        if (rest < fl) { res = { node: n.parentNode, offset: pi + 1 }; return; }
+        rest -= fl; lastP = { node: n.parentNode, offset: pi + 1 }; return;
+      }
       for (var c = n.firstChild; c; c = c.nextSibling) { walk(c); if (res) return; }
     })(lineNode);
     if (res) return res;
-    if (lastT) return { node: lastT, offset: lastT.nodeValue.length };
+    if (lastP) return lastP;
     return { node: lineNode, offset: 0 };
   }
   function getSel() {
     var s = window.getSelection(); if (!s || !s.rangeCount) return null;
     var r = s.getRangeAt(0);
     if (!body.contains(r.startContainer) || !body.contains(r.endContainer)) return null;
-    var a = domPos(r.startContainer, r.startOffset), b = domPos(r.endContainer, r.endOffset);
+    var a = domPos(r.startContainer, r.startOffset), b = domPos(r.endContainer, r.endOffset, true);
     return a && b ? { a: a, b: b } : null;
   }
   function setSel(a, b) {
@@ -3763,6 +4003,50 @@ function rteCreate(o) {
     }, true);
   }
   function cmdImg() { if (rawMode) return; lastSel = getSel() || lastSel; rtePickFile(insertImgFile); }
+  // ── 第 31 批：公式 ──
+  // 放一個公式（at＝null：放在游標處，選了一行裡的字＝換掉那些字）；改一個舊的（at＝{li, o, n, src}）；src 空的＝拿掉那個公式
+  function fxPut(src, at, sel) {
+    src = _yzFxClean_(src);
+    if (sel) { focusBody(); try { setSel(sel.a, sel.b); } catch (e) { /* 位置對不上就算了 */ } lastSel = sel; }   // 小視窗關掉後：游標回到原本的地方（不要跑到最前面）
+    var lost = false;
+    run(function (ls, s) {
+      if (at) {
+        var L = ls[at.li], len = L && !rteIsBlock(L) ? rteLen(L) : 0, old = len ? _yzRtSlice_(L.runs, at.o, at.o + at.n) : [];
+        if (old.length !== 1 || !old[0].fx || old[0].t !== at.src) { lost = true; return s; }   // 畫面重畫過、位置對不上：不要改錯地方
+        var nr = _yzRtCopy_(old[0]); nr.t = src;
+        L.runs = _yzRtMerge_(_yzRtSlice_(L.runs, 0, at.o).concat(src ? [nr] : [], _yzRtSlice_(L.runs, at.o + at.n, len)));
+        return caret(at.li, at.o + src.length);
+      }
+      if (!src) return s;
+      if (s.a.li !== s.b.li) s = { a: s.b, b: s.b };   // 選了好幾行：不換掉，放在選取的最後面
+      var pos = deleteSel(ls, s), L2 = ls[pos.li];
+      if (rteIsBlock(L2)) { ls.splice(pos.li + 1, 0, rteNewLine()); pos = { li: pos.li + 1, o: 0 }; L2 = ls[pos.li]; }
+      var len2 = rteLen(L2), pv = pos.o > 0 ? _yzRtSlice_(L2.runs, pos.o - 1, pos.o)[0] : null, r = pv ? _yzRtCopy_(pv) : {};   // 格式跟前一個字一樣（像打字一樣）
+      r.t = src; r.fx = 1;
+      L2.runs = _yzRtMerge_(_yzRtSlice_(L2.runs, 0, pos.o).concat([r], _yzRtSlice_(L2.runs, pos.o, len2)));
+      return caret(pos.li, pos.o + src.length);
+    });
+    if (lost) toast("畫面剛剛更新過，請再點一次那個公式");
+  }
+  // 「∑ 公式」：chip＝點到的那個公式（改它）；沒有＝放一個新的（選了一行裡的字：那些字直接拿來當公式）
+  function cmdFx(chip) {
+    if (rawMode) return;
+    var at = null, init = "", s = null, ls = readLines();
+    if (chip && body.contains(chip)) {
+      var cp = domPos(chip.parentNode, Array.prototype.indexOf.call(chip.parentNode.childNodes, chip));
+      if (!cp) return;
+      init = chip.getAttribute("data-fx") || "";
+      at = { li: cp.li, o: cp.o, n: init.length, src: init };
+    } else {
+      s = getSel() || lastSel;
+      if (s && !isCollapsed(s) && s.a.li === s.b.li && ls[s.a.li] && !rteIsBlock(ls[s.a.li])) {
+        var pc = _yzRtSlice_(ls[s.a.li].runs, s.a.o, s.b.o);
+        if (pc.length === 1 && pc[0].fx) { init = pc[0].t; at = { li: s.a.li, o: s.a.o, n: init.length, src: init }; }   // 選到的剛好是一個公式：改它
+        else init = rteTxt(pc).replace(/\s+/g, " ").trim().slice(0, YZ_FX_MAX);
+      }
+    }
+    rteFxDialog(init, !!at, function (src) { fxPut(src, at, s); }, at ? function () { fxPut("", at, s); } : null);
+  }
   function cmdText(str, mode) {   // 在游標處放字（表情符號、貼上）。mode："markup"＝當成格式文字讀（從 LINE 或這個編輯器複製來的）；其他＝一般字，一行一行放
     str = String(str === null || str === undefined ? "" : str).replace(/\r\n?/g, "\n").replace(/ /g, " ");
     var P = mode === "markup" ? _yzRtParse_(str) : str.split("\n").map(function (x) { return { k: "p", lv: 0, runs: x ? [{ t: x }] : [] }; });
@@ -3883,7 +4167,7 @@ function rteCreate(o) {
       }
       part.push(c);
     }
-    e.clipboardData.setData("text/plain", part.map(function (L) { return rteIsBlock(L) ? "" : rteTxt(L.runs); }).join("\n"));
+    e.clipboardData.setData("text/plain", part.map(function (L) { return rteIsBlock(L) ? "" : _yzRtRunsLin_(L.runs); }).join("\n"));   // 公式：一行的寫法（¹⁄₆）
     e.clipboardData.setData("application/x-yz-rt", _yzRtSerialize_(part));
     var pp = {}, pics = o.pics ? o.pics() || {} : {};   // 複製到的圖：圖的資料也帶著（貼到別的文字塊也看得到）
     part.forEach(function (L) { if (L.k === "img" && pics[L.img]) pp[L.img] = pics[L.img]; });
@@ -3913,6 +4197,13 @@ function rteCreate(o) {
     }
     else if (tx) cmdText(tx, _yzRtHas_(tx) ? "markup" : "plain");   // 貼上的字：長得像標記的（從 LINE 裡改字複製來的）就還原格式；其他一律當一般字，外面的格式不會跟進來
     else toast("剪貼簿裡沒有文字");
+  });
+  var fxDown = null;   // 第 31 批：按下去的時候在哪個公式上（放開前畫面如果動了一下，放開時就不在公式上，瀏覽器不會把「點一下」送給公式）
+  body.addEventListener("pointerdown", function (e) { var fo = fxOf(e.target); fxDown = fo ? { el: fo, x: e.clientX, y: e.clientY } : null; });
+  body.addEventListener("click", function (e) {   // 點一下公式＝打開「∑ 公式」改它
+    var fo = fxOf(e.target), d = fxDown; fxDown = null;
+    if (!fo && d && d.el.isConnected && Math.abs(e.clientX - d.x) < 8 && Math.abs(e.clientY - d.y) < 8) fo = d.el;   // 滑鼠沒動：就是點那個公式
+    if (fo && !rawMode) { e.preventDefault(); RTE.cur = inst; cmdFx(fo); }
   });
   body.addEventListener("dragstart", function (e) { e.preventDefault(); });
   body.addEventListener("drop", function (e) {   // 把圖拖進來：放一張圖（其他東西不收）
@@ -3967,7 +4258,7 @@ function rteCreate(o) {
 
   render(); histInit();
   inst.el = el; inst.body = body;
-  inst.cmd = { inline: cmdInline, clear: cmdClear, kind: cmdKind, list: cmdList, line: cmdInsertLine, indent: cmdIndent, text: cmdText, undo: undo, redo: redo, raw: function () { setRaw(!rawMode); }, img: cmdImg, mark: cmdMark };
+  inst.cmd = { inline: cmdInline, clear: cmdClear, kind: cmdKind, list: cmdList, line: cmdInsertLine, indent: cmdIndent, text: cmdText, undo: undo, redo: redo, raw: function () { setRaw(!rawMode); }, img: cmdImg, mark: cmdMark, fx: function () { cmdFx(null); } };
   inst.refresh = function () { lines = readLines(); render(); };   // 圖片裡的字辨識好了之類（畫面重畫，內容不變）
   inst.state = state; inst.value = function () { return rawMode ? rawTa.value.replace(/\n+$/, "") : value(); }; inst.isRaw = function () { return rawMode; };
   inst.splitAtCaret = function () { if (rawMode) setRaw(false); return splitAtCaret(); };
@@ -3980,6 +4271,68 @@ function rteCreate(o) {
   return inst;
 }
 
+/* ───────── 第 31 批：「∑ 公式」小視窗（打公式、馬上看到樣子、LINE 上的樣子） ───────── */
+// 快速鍵：t＝沒選字時放的樣子；w＝選了字時（$＝選到的字）；|＝游標停的地方
+var RTE_FX_KEYS = [
+  { h: "▭⁄▭ 分數", t: "(|)/()", w: "($)/(|)", tip: "分數（上下排）：分子、分母各放在括號裡；也可以直接打 1/6" },
+  { h: "x² 次方", t: "^(|)", w: "($)^(|)", tip: "次方（上標）：例如 m^2" },
+  { h: "x₁ 下標", t: "_(|)", w: "($)_(|)", tip: "下標：例如 C_max" },
+  { h: "√ 根號", t: "√(|)", w: "√($)|", tip: "根號：例如 √(身高×體重/3600)" },
+  { h: "( ) 括號", t: "(|)", w: "($)|", tip: "括號：把一整段包起來（當分子、分母、次方時，外面那層括號不會顯示）" }
+];
+var RTE_FX_SYM = ["×", "÷", "±", "≤", "≥", "≈", "≠", "→", "·", "°", "µ", "Δ"];
+var RTE_FX_EX = [["分數", "1/6"], ["每平方公尺", "mg/m^2"], ["下標", "C_max"], ["CrCl", "((140-年齡)×體重)/(72×Scr)"], ["BSA", "√((身高×體重)/3600)"]];
+function rteFxDialog(init, editing, onDone, onRemove) {
+  var bx = h("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-label": "數學公式" }), shut = false;
+  var close = function () { if (shut) return; shut = true; bx.remove(); };
+  var inp = h("input", { class: "in fxin", type: "text", maxlength: String(YZ_FX_MAX), placeholder: "例如 1/6、m^2、C_max、√(x)", "aria-label": "公式", autocomplete: "off", autocapitalize: "off", spellcheck: "false" });
+  inp.value = init || "";
+  var pv = h("div", { class: "fxpv", "aria-live": "polite" }), lin = h("div", { class: "hint fxlin" });
+  var okB = btn(editing ? "改好了" : "放進去", function () {
+    var v = _yzFxClean_(inp.value);
+    if (!v) { toast("先打公式"); inp.focus(); return; }
+    close(); onDone(v);
+  }, "sm pri fxok");
+  function paint() {
+    var v = _yzFxClean_(inp.value);
+    pv.innerHTML = "";
+    okB.disabled = !v;
+    if (!v) { pv.appendChild(h("span", { class: "muted fxph" }, ["在上面打公式，這裡就是網頁、編輯器上的樣子"])); lin.textContent = ""; return; }
+    pv.appendChild(fxEl(v));
+    var l = _yzFxLinear_(v), st = !!_yzFxFlex_(v, {});
+    lin.textContent = "LINE 上：一行只放這個公式＝" + (st ? "跟上面一樣上下排" : l) + "；夾在句子裡＝" + l;
+  }
+  function put(tpl, wrap) {
+    var v = inp.value, a = typeof inp.selectionStart === "number" ? inp.selectionStart : v.length, b = typeof inp.selectionEnd === "number" ? inp.selectionEnd : a, sel = v.slice(a, b);
+    var parts = (sel && wrap ? wrap : tpl).split("|"), pre = parts[0].split("$").join(sel), post = (parts[1] || "").split("$").join(sel);
+    inp.value = (v.slice(0, a) + pre + post + v.slice(b)).slice(0, YZ_FX_MAX);
+    try { inp.focus(); inp.setSelectionRange(a + pre.length, a + pre.length); } catch (e) { /* 沒關係 */ }
+    paint();
+  }
+  var keep = function (e) { e.preventDefault(); };   // 按快速鍵：輸入框不會失去焦點（游標、選的字才不會不見）
+  var keys = h("div", { class: "fxkeys", role: "group", "aria-label": "快速鍵" });
+  RTE_FX_KEYS.forEach(function (k) { keys.appendChild(h("button", { type: "button", class: "btn sm fxk", title: k.tip, onmousedown: keep, onclick: function () { put(k.t, k.w); } }, [k.h])); });
+  RTE_FX_SYM.forEach(function (c) { keys.appendChild(h("button", { type: "button", class: "btn sm fxk fxsym", title: "放一個「" + c + "」", onmousedown: keep, onclick: function () { put(c + "|", c + "$|"); } }, [c])); });
+  var exs = h("div", { class: "fxexs" }, [h("span", { class: "muted" }, ["例子（點一下換成這個）："])]);
+  RTE_FX_EX.forEach(function (x) { exs.appendChild(h("button", { type: "button", class: "btn sm fxex", title: x[1], onmousedown: keep, onclick: function () { inp.value = x[1]; paint(); try { inp.focus(); } catch (e) { /* 沒關係 */ } } }, [h("small", {}, [x[0]]), fxEl(x[1])])); });
+  var help = h("div", { class: "hint fxhelp" }, [
+    h("div", {}, ["打法跟 Word 一樣：", h("b", {}, ["1/6"]), " → 上下排的分數；", h("b", {}, ["m^2"]), " → m²；", h("b", {}, ["C_max"]), " → 下標；", h("b", {}, ["√(…)"]), " 或 ", h("b", {}, ["sqrt(…)"]), " → 根號；", h("b", {}, ["*"]), " → ×；", h("b", {}, ["<="]), " → ≤。"]),
+    h("div", {}, ["一整段當分子、分母或次方：用括號包起來（外面那層括號不會顯示）。要一條真的斜線、不要變分數：打兩條 ", h("b", {}, ["//"]), "。"])
+  ]);
+  var btns = [];
+  if (onRemove) btns.push(btn("🗑 拿掉這個公式", function () { close(); onRemove(); }, "sm bad fxdel"));
+  btns.push(h("span", { class: "fxsp" }), btn("取消", close, "sm"), okB);
+  bx.appendChild(h("div", { class: "dlg fxdlg" }, [h("h3", {}, [editing ? "∑ 改公式" : "∑ 放一個公式"]), inp, pv, lin, keys, help, exs, h("div", { class: "dlg-b" }, btns)]));
+  inp.addEventListener("input", paint);
+  inp.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); okB.click(); } });
+  bx.onkeydown = function (e) { if (e.key === "Escape") close(); };
+  bx.addEventListener("mousedown", function (e) { if (e.target === bx) close(); });   // 點外面＝取消
+  document.body.appendChild(bx);
+  paint();
+  try { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } catch (e) { /* 沒關係 */ }
+  return close;
+}
+
 /* ───────── 最上面的「格式列」（所有文字塊共用，作用在你正在改的那一個） ───────── */
 var RTE_BAR = [
   { g: "字", items: [
@@ -3990,6 +4343,7 @@ var RTE_BAR = [
     { id: "color", h: '<span class="fbA">A</span><i class="fbcbar"></i><span class="fbcar">▾</span>', tip: "文字顏色：先選取要改的字", pop: "color" },
     { id: "mark", h: '<span class="fbM">🖍</span><i class="fbmbar"></i><span class="fbcar">▾</span>', tip: "螢光筆（黃、綠、藍、粉、橘、紫）：先選取要畫的字。Ctrl+Shift+H＝用上一次的顏色畫／再按一次拿掉", pop: "mark" },
     { id: "size", h: "Aa ▾", tip: "文字大小（小・普通・大・特大）：先選取要改的字", pop: "size" },
+    { id: "fx", h: "∑ 公式", tip: "數學公式（像 Word 一樣打）：1/6＝上下排的分數、m^2＝次方、C_max＝下標、√(…)＝根號。放好的公式點一下可以修改", a: ["fx"] },
     { id: "clear", h: "清除格式", tip: "把選到的字的粗體、顏色、大小…全部拿掉", a: ["clear"] }
   ] },
   { g: "整行", items: [
@@ -4111,7 +4465,7 @@ function rteBarSync() {
   var cb = B.color && B.color.querySelector(".fbcbar"); if (cb) cb.style.background = YZ_RT_COLORS[(st && st.c) || RTE.lastColor] || "#999";
   var mb = B.mark && B.mark.querySelector(".fbmbar"); if (mb) mb.style.background = (YZ_RT_MARKS[(st && st.m) || RTE.lastMark] || YZ_RT_MARKS.yellow).bg;   // 第 30 批：下面那條＝現在／上一次的螢光色
   var stat = document.getElementById("fbstat");
-  if (stat) stat.textContent = c ? (raw ? "標記模式" : "") : "← 先點一下要改的那一段文字，格式鍵才會亮";
+  if (stat) stat.textContent = c ? (raw ? "標記模式" : "小提示：選字再按上面的鍵｜點一下公式可以修改｜Ctrl+Z 復原") : "← 先點一下要改的那一段文字，格式鍵才會亮";   // 第 31 批：這一行一直都在（以前點進文字框，這行字不見，下面整個往上跳一下，點的位置就偏了）
 }
 document.addEventListener("mousedown", function (e) { if (RTE.pop && !RTE.pop.el.contains(e.target) && !RTE.pop.anchor.contains(e.target)) rteClosePop(); });
 document.addEventListener("keydown", function (e) { if (e.key === "Escape") rteClosePop(); });
@@ -5135,14 +5489,28 @@ function verOpen() {
   if (ED.saving || UPL) { toast("等存好（圖片上傳好）再看舊版本"); return; }
   var bx = h("div", { class: "modal", role: "dialog", "aria-modal": "true" }), close = function () { bx.remove(); };
   var list = h("div", { class: "verlist" }, [h("div", { class: "muted" }, ["讀取中…"])]);
-  var dlg = h("div", { class: "dlg verdlg" }, [h("h3", {}, ["🕘 舊版本"]), h("div", { class: "dlg-p" }, [h("p", {}, ["每 10 分鐘留一份「存之前的樣子」，最多 50 份（放在手冊資料夾裡的「舊版本」，檔名亂碼）。選一份「載入」：編輯器先換成那一份讓你看，按「儲存」才算數。"])]), list,
-    h("div", { class: "dlg-b" }, [btn("關閉", close, "sm")])]);
+  var note = h("p", {}, ["每 10 分鐘留一份「存之前的樣子」，最多 50 份（放在手冊資料夾裡的「舊版本」，檔名亂碼）。選一份「載入」：編輯器先換成那一份讓你看，按「儲存」才算數。"]);
+  var clr = btn("🧹 全部清空", function () {   // 第 31 批：想清就按（丟到雲端硬碟的垃圾桶，30 天內救得回來）
+    modal({ title: "清空全部的舊版本？", lines: ["全部丟到雲端硬碟的垃圾桶（30 天內還救得回來，之後 Google 自動刪掉）。", "現在手冊的內容不受影響；之後的存檔一樣會再留新的舊版本。"], buttons: [{ label: "不要", cls: "sm" }, { label: "🧹 清空", cls: "sm bad", fn: function () {
+      clr.disabled = true;
+      call("hbVer", ["clear"]).then(function (r) {
+        clr.disabled = false;
+        if (!r || !r.ok) { toast("❌ " + (r && r.err || "清不掉")); return; }
+        toast("🧹 清掉了 " + r.n + " 份舊版本（丟到雲端硬碟的垃圾桶）");
+        list.innerHTML = ""; list.appendChild(h("div", { class: "muted" }, ["舊版本都清掉了。之後的存檔會再留新的。"]));
+      }, function (e) { clr.disabled = false; toast("❌ " + e.message); });
+    } }] });
+  }, "sm bad verclr");
+  var dlg = h("div", { class: "dlg verdlg" }, [h("h3", {}, ["🕘 舊版本"]), h("div", { class: "dlg-p" }, [note]), list,
+    h("div", { class: "dlg-b" }, [clr, h("span", { style: "flex:1" }), btn("關閉", close, "sm")])]);
   bx.appendChild(dlg); document.body.appendChild(bx);
   bx.onkeydown = function (e) { if (e.key === "Escape") close(); };
   call("hbVer", ["list"]).then(function (r) {
     if (r && r.st === "lock") { close(); logout("expired"); return; }
     list.innerHTML = "";
     if (!r || !r.ok) { list.appendChild(h("div", { class: "muted" }, ["❌ " + (r && r.err || "拿不到舊版本")])); return; }
+    if (r.days !== undefined) note.textContent = "每 10 分鐘留一份「存之前的樣子」，" + (r.days > 0 ? "留 " + r.days + " 天（過了自動丟到雲端硬碟的垃圾桶；最新 " + (r.keep || 3) + " 份一定留）、" : "") + "最多 50 份（放在手冊資料夾裡的「舊版本」，檔名亂碼）。選一份「載入」：編輯器先換成那一份讓你看，按「儲存」才算數。留幾天：「管理 → 設定」可以改。";
+    clr.style.display = r.list.length ? "" : "none";
     if (!r.list.length) { list.appendChild(h("div", { class: "muted" }, ["還沒有舊版本（第一次存檔、或 10 分鐘後的存檔，才會留第一份）。"])); return; }
     r.list.forEach(function (v) {
       var label = v.at;
@@ -6715,6 +7083,14 @@ function edOnShow() {
   ED_OPENED = true;
   edOcrPump();
   setTimeout(function () { if (ED && TAB === "edit" && AS.on && !AS.pause && !ED.dirty && !ED.saving && !UPL && (edShapeNeed() || edBgTodo().length)) saveEd(false, true); }, 1500);
+  setTimeout(edClean, 6000);
+}
+// 第 31 批：每天第一次打開編輯器：在背景清掉超過 N 天的舊版本、沒在用的舊圖（換過的目錄圖、重做過的章元背景…）→ 雲端硬碟的垃圾桶
+function edClean() {
+  call("hbClean", []).then(function (r) {
+    if (!r || !r.ok || (!r.ver && !r.img)) return;
+    toast("🧹 清掉了" + (r.img ? " " + r.img + " 張沒在用的舊圖" : "") + (r.img && r.ver ? "、" : "") + (r.ver ? " " + r.ver + " 份舊版本" : "") + "（丟到雲端硬碟的垃圾桶，30 天內救得回來）");
+  }, function () { /* 下次打開再清 */ });
 }
 
 /* ── 編輯的第三個分頁「🖼 目錄圖」：換圖、在圖上拖拉框出「可以點的地方」（LINE 卡片的畫法在 cards.js）── */
@@ -7271,6 +7647,11 @@ function drawSettings() {
   var ip = h("input", { class: "in", type: "number", min: "0", max: "1000", value: String(ipv), style: "width:80px", "aria-label": "LINE 閒置到期主動通知：每月最多幾則" });
   ip.onchange = function () { var v = parseInt(ip.value, 10); v = isNaN(v) ? 100 : Math.max(0, Math.min(1000, v)); ip.value = String(v); save({ idlePush: v }, ip); };
   box.appendChild(settingRow("LINE：閒置到期主動通知（每月最多）", "時間到了 1 分鐘內推一則「已自動離開藥戰手冊」，下面那排換回補藥神器。會用 LINE 的推播額度（輕用量方案每月 200 則，其他通知也要用）；用完了就改回「下次一按才說」。0＝不主動通知。這個月用了幾則：在 LINE 的手冊裡按「🔧 開發者」看", h("div", { class: "sw2" }, [ip, h("span", { class: "muted" }, ["則／月"])])));
+  // 第 31 批：舊版本留幾天（過了自動丟到雲端硬碟的垃圾桶；最新 3 份一定留）；0＝不自動清（只留最新 50 份）
+  var vdv = c.verDays === undefined ? 3 : +c.verDays || 0;
+  var vd = h("input", { class: "in", type: "number", min: "0", max: "30", value: String(vdv), style: "width:80px", "aria-label": "舊版本留幾天" });
+  vd.onchange = function () { var v = parseInt(vd.value, 10); v = isNaN(v) ? 3 : Math.max(0, Math.min(30, v)); vd.value = String(v); save({ verDays: v }, vd); };
+  box.appendChild(settingRow("編輯器的「🕘 舊版本」留幾天", "過了就自動丟到雲端硬碟的垃圾桶（30 天內救得回來）；最新 3 份一定留。每次存檔、每天第一次打開編輯器時清。0＝不自動清（只留最新 50 份）。沒在用的舊圖（換掉的目錄圖、重做過的章元背景）也是每天第一次打開編輯器時清", h("div", { class: "sw2" }, [vd, h("span", { class: "muted" }, ["天"])])));
   row("watermark", "網頁浮水印", "網頁每一頁蓋「姓名＋員工代號＋時間」");
   row("viewLog", "看過紀錄", "記誰、何時、看哪一章／哪個標題（不記內容）");
   row("footer", "固定頁尾「內部資料，請勿外傳」", "LINE 每張卡片和網頁最下面都放這一行");

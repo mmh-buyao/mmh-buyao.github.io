@@ -371,7 +371,7 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .fb .fbcbar{position:absolute;left:8px;bottom:4px;width:13px;height:3px;border-radius:2px;background:#B91C1C}
 .fb .fbcar{font-size:10px;margin-left:3px}
 .fb-todo,.fb-ul,.fb-ol{min-width:0}
-.fbstat{font-size:12px;margin-left:4px}
+.fbstat{font-size:12px;margin-left:4px;flex:1 0 100%;min-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .rtpop{position:fixed;z-index:60;background:#fff;border:1px solid #B8C2CE;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,32,.22);padding:8px 10px;max-width:calc(100vw - 16px)}
 .rtpop-t{font-size:12px;color:var(--ink3);font-weight:600;margin-bottom:6px}
 .rtsw{display:grid;grid-template-columns:repeat(5,52px);gap:4px}
@@ -622,6 +622,41 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .rtmk .rtmk-s{display:inline-block;padding:1px 6px;border-radius:4px;font-weight:700;color:#1F1F1F;border:1px solid #E1E5EA}
 .rtsw.rtmk{grid-template-columns:repeat(4,56px)}
 .rt-m mark{background:transparent;box-shadow:inset 0 0 0 2px #D97706}
+/* 第 31 批：公式（上下排的分數、次方、下標、根號）——網頁、編輯器一樣 */
+.fx{display:inline-flex;align-items:center;white-space:nowrap;vertical-align:middle;line-height:1.2;margin:0 .1em;max-width:100%;overflow-x:auto;overflow-y:hidden}
+.fx .fxr{display:inline-flex;align-items:center}
+.fx .fxf{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 .15em}
+.fx .fxu{padding:0 .2em .08em;text-align:center}
+.fx .fxd{padding:.08em .2em 0;border-top:.08em solid currentColor;align-self:stretch;display:flex;justify-content:center}
+.fx .fxf .fxf{font-size:.88em}
+.fx .fxo{padding:0 .06em}
+.fx .fxo.b{padding:0 .28em}
+.fx .fxs{width:.3em;display:inline-block}
+.fx sup,.fx sub{font-size:.68em;line-height:1;position:relative;vertical-align:0}
+.fx sup{top:-.55em}
+.fx sub{top:.35em}
+.fx .fxss{display:inline-flex;flex-direction:column;font-size:.68em;line-height:1;margin-left:.05em}
+.fx .fxss sup,.fx .fxss sub{font-size:1em;top:0}
+.fx .fxq{display:inline-flex;align-items:stretch;margin:0 .05em}
+.fx .fxqs{display:inline-block;flex:0 0 .7em;width:.7em;min-height:1.2em;position:relative}
+.fx .fxqs svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible}
+.fx .fxqb{border-top:.08em solid currentColor;padding:.14em .15em 0 .08em;display:inline-flex;align-items:center}
+.fx .fxp{font-size:1.1em}
+.rte .rt-fx{cursor:pointer;border-radius:4px;padding:1px 2px;outline:1px dashed transparent}
+.rte .rt-fx:hover{outline-color:var(--accent);background:var(--accent2)}
+.modal .dlg.fxdlg{max-width:620px;text-align:left}
+.fxdlg .fxin{font-size:17px;width:100%}
+.fxdlg .fxpv{min-height:84px;display:flex;align-items:center;justify-content:center;font-size:1.7em;background:#FAFBFC;border:1px solid var(--line);border-radius:10px;margin:10px 0;padding:10px;overflow-x:auto}
+.fxdlg .fxkeys{display:flex;flex-wrap:wrap;gap:4px;margin:6px 0}
+.fxdlg .fxkeys button{min-width:38px}
+.fxdlg .fxlin{margin-top:4px}
+.fxdlg .fxkeys .fxsym{min-width:34px;padding:4px 6px}
+.fxdlg .fxhelp{margin:8px 0;line-height:1.7}
+.fxdlg .fxexs{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.fxdlg .fxex{display:inline-flex;align-items:center;gap:6px}
+.fxdlg .fxex small{color:var(--ink3)}
+.fxdlg .fxph{font-size:14px}
+.fxdlg .dlg-b .fxsp{flex:1}
 
 /* ───────── 目錄圖 第 3 版：標籤（圖示＋名稱）＋圓點，網頁、編輯器共用 ─────────
  * 一個地點 ＝ 一個「物品框」（.mspot，位置大小用佔整張圖的 %）。圓點在框的正中間，標籤在圓點的上／下／左／右。
