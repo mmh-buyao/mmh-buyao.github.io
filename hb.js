@@ -1059,14 +1059,16 @@ var YZ_MAP_WARN_BYTES = 20e3;   // 目錄卡片超過這個大小就提醒（上
 var YZ_MAP_LOCK_INK = "#6B7480", YZ_MAP_LOCK_DOT = "#8A94A0", YZ_MAP_NEW = "#E5484D";
 var YZ_MAP_URL_SAMPLE = "https://drive.google.com/thumbnail?id=1AbCdEfGhIjKlMnOpQrStUvWxYz00000&sz=w1000";   // 算大小用：跟真的圖片網址一樣長
 
-function _yzMapTo_(to) {   // "c:c2" → "yz=c&c=c2"；"t:t22" → "yz=t&t=t22"；看不懂 → ""
-  var m = /^([ct]):([A-Za-z0-9_\-]+)$/.exec(String(to === null || to === undefined ? "" : to));
+function _yzMapTo_(to) {   // "c:c2" → "yz=c&c=c2"；"t:t22" → "yz=t&t=t22"；第 32 批："q:all" → "yz=qz"（問卷清單）、"q:代號" → 那一份問卷；看不懂 → ""
+  var m = /^([ctq]):([A-Za-z0-9_\-]+)$/.exec(String(to === null || to === undefined ? "" : to));
+  if (m && m[1] === "q") return m[2] === "all" ? "yz=qz" : "yz=qs&q=" + m[2];
   return m ? "yz=" + m[1] + "&" + m[1] + "=" + m[2] : "";
 }
-function _yzMapToInfo_(to, hb) {   // 連到哪裡：{ ok, kind:"c"|"t", name:"藥品補充與藥品請領"（標題：「章名　標題」）, short:"藥品補充與藥品請領" }
-  var m = /^([ct]):(.+)$/.exec(String(to === null || to === undefined ? "" : to)), i;
+function _yzMapToInfo_(to, hb) {   // 連到哪裡：{ ok, kind:"c"|"t"|"q", name:"藥品補充與藥品請領"（標題：「章名　標題」）, short:"藥品補充與藥品請領" }
+  var m = /^([ctq]):(.+)$/.exec(String(to === null || to === undefined ? "" : to)), i;
   if (m && m[1] === "c") { var cs = (hb && hb.chapters) || []; for (i = 0; i < cs.length; i++) if (cs[i].id === m[2]) return { ok: true, kind: "c", name: cs[i].name, short: cs[i].name }; }
   if (m && m[1] === "t") { var f = hb ? _yzFindTitle_(hb, m[2]) : null; if (f) return { ok: true, kind: "t", name: f.ch.name + "　" + f.t.name, short: f.t.name }; }
+  if (m && m[1] === "q" && /^[A-Za-z0-9_\-]+$/.test(m[2])) return { ok: true, kind: "q", name: m[2] === "all" ? "📋 問卷、考試（清單）" : "📋 問卷", short: "問卷" };   // 第 32 批
   return { ok: false, kind: m ? m[1] : "", name: "（找不到）", short: "" };
 }
 function _yzMapNum_(v, lo, hi) { v = Math.round(Number(v)); if (!isFinite(v)) v = lo; return Math.max(lo, Math.min(hi, v)); }
@@ -1997,7 +1999,7 @@ function _yzNoticeBubble_(title, lines, kind) {
 function _yzJoinBubble_(lines, url, label) {
   var b = {
     type: "bubble", size: "mega",
-    header: _yzHead_("📘 藥戰手冊", "申請看藥戰手冊", "要員工代號＋開發者核可"),
+    header: _yzHead_("📘 藥戰手冊", "申請看藥戰手冊", "要員工編號＋姓名、開發者核可"),
     body: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "13px", contents: lines.map(function (l) { return { type: "text", text: l, size: "sm", wrap: true, color: "#1F1F1F" }; }) }
   };
   if (url) b.footer = { type: "box", layout: "vertical", paddingAll: "10px", contents: [{ type: "button", style: "primary", color: YZ_ACCENT, height: "sm", action: { type: "uri", label: label || "📝 填申請", uri: url } }] };
@@ -2044,6 +2046,169 @@ function _yzQuickBar_(mode, o) {
   var base = [{ label: "🌐 網頁", web: "app" }, m("📖 教學", "教學"), m("📢 藥品通知", "公告"), m("🛠 BUG", "bug"), m("👥 加入補藥神器", "加入補藥神器")];
   if (o.dev) base.push(m("🔧 開發者", "開發者"));
   return o.approved ? [m("📘 藥戰手冊", "藥戰手冊")].concat(base) : base;
+}
+
+/* ════════ qzcards.js ════════ */
+// ── 第 32 批：問卷、考試的 LINE 卡片（LINE 專案的 05 用；網頁編輯器的「LINE 預覽」也用同一份）──
+// 題型、選項代號（YZ_QZ_T、YZ_QZ_LET）：LINE 專案在「問卷＋考試」那一段；網頁編輯器在 quiz.js（前端）自己有一份。
+function _yzQzCut_(s, n) {
+  s = String(s || "");
+  return s.length > n ? s.substring(0, n - 1) + "…" : s;
+}
+
+// 清單：開放中的問卷、考試＋我的狀態
+function _yzQzListBubble_(list) {
+  const body = [];
+  list.slice(0, 8).forEach(function(x, i) {
+    const exam = x.kind === "x", me = x.mine;
+    const sub = (exam ? "考試・" + x.n + " 題・" + x.pass + " 分及格" : "問卷・" + x.n + " 題" + (x.named ? "" : "・不記名")) + (x.to ? "・到 " + x.to.substring(5) : "");
+    const stx = me ? exam ? "最高 " + me.best + " 分（考了 " + me.times + " 次）" + (me.pass ? "　✅ 及格" : "") : "✅ 已經填過了，謝謝" : exam ? "還沒考" : "還沒填";
+    const can = exam ? !me || x.retake : !me;
+    if (i) body.push({ type: "separator", margin: "md" });
+    const box = { type: "box", layout: "vertical", spacing: "xs", margin: i ? "md" : "none", contents: [
+      { type: "text", text: (exam ? "📝 " : "📋 ") + x.title, size: "md", weight: "bold", wrap: true, color: "#1F1F1F" },
+      { type: "text", text: sub, size: "xs", color: "#7B8696", wrap: true },
+      { type: "text", text: stx, size: "xs", color: me ? YZ_ACCENT : "#8A5A00", wrap: true }
+    ] };
+    if (x.note) box.contents.splice(1, 0, { type: "text", text: _yzQzCut_(x.note, 80), size: "xs", color: "#4A5565", wrap: true });
+    if (can) box.contents.push({ type: "button", style: me ? "secondary" : "primary", color: me ? undefined : YZ_ACCENT, height: "sm", margin: "sm", action: _yzPB_("yz=qs&q=" + x.id, exam ? me ? "再考一次" : "開始考試" : "開始填寫") });
+    if (!box.contents[box.contents.length - 1].color && box.contents[box.contents.length - 1].type === "button") delete box.contents[box.contents.length - 1].color;
+    body.push(box);
+  });
+  if (!body.length) body.push({ type: "text", text: "目前沒有開放的問卷或考試。", size: "sm", color: "#4A5565", wrap: true });
+  return { type: "bubble", size: "mega", header: _yzHead_("📘 藥戰手冊", "📋 問卷、考試", list.length ? "點一份開始：一題一張卡片，按按鈕回答" : ""), body: { type: "box", layout: "vertical", paddingAll: "13px", contents: body.concat([ _yzFoot_() ]) } };
+}
+
+// 一題的卡片（qz＝作答中的狀態）
+function _yzQzOptLine_(q, k, on) {
+  return { type: "text", text: (q.t === "many" ? on ? "☑ " : "☐ " : on ? "● " : "") + (q.t === "tf" ? q.opts[k] : YZ_QZ_LET.charAt(k) + ". " + q.opts[k]), size: "sm", wrap: true, color: on ? YZ_ACCENT : "#1F1F1F", weight: on ? "bold" : "regular" };
+}
+
+function _yzQzCard_(qz, note) {
+  const n = qz.qs.length, i = qz.i;
+  if (i >= n) return _yzQzSumCard_(qz, note);
+  const q = qz.qs[i], a = qz.a[i], exam = qz.z.kind === "x", tag = "&i=" + i;
+  const body = [ { type: "text", text: "第 " + (i + 1) + "／" + n + " 題" + (exam ? "" : q.req ? "（必填）" : "（可以跳過）") + "　" + YZ_QZ_T[q.t] + (q.t === "many" ? "：可以選好幾個" : ""), size: "xs", color: "#7B8696", wrap: true } ];
+  if (note) body.push({ type: "text", text: note, size: "xs", color: "#B3261E", wrap: true, weight: "bold" });
+  body.push({ type: "text", text: q.q, size: "md", weight: "bold", wrap: true, color: "#1F1F1F", margin: "sm" });
+  const btns = [];
+  if (q.t === "one" || q.t === "many" || q.t === "tf") {
+    const ob = { type: "box", layout: "vertical", spacing: "xs", margin: "md", contents: [] };
+    q.opts.forEach(function(o, k) {
+      const on = q.t === "many" ? (a || []).indexOf(k) >= 0 : a === k;
+      ob.contents.push(_yzQzOptLine_(q, k, on));
+      const lab = q.t === "tf" ? o : (q.t === "many" ? on ? "☑ " : "☐ " : "") + YZ_QZ_LET.charAt(k) + "　" + _yzQzCut_(o, 14);
+      btns.push({ type: "button", style: on ? "primary" : "secondary", height: "sm", action: _yzPB_((q.t === "many" ? "yz=qm" : "yz=qa") + "&v=" + k + tag, lab) });
+      if (on) btns[btns.length - 1].color = YZ_ACCENT;
+    });
+    body.push(ob);
+    if (q.t === "many") btns.push({ type: "button", style: "link", height: "sm", color: YZ_ACCENT, action: _yzPB_("yz=qn" + tag, "選好了，下一題 ›") });
+  }
+  if (q.t === "rate") {
+    body.push({ type: "text", text: "1 分最低、5 分最高" + (a ? "　你選了 " + a + " 分" : ""), size: "xs", color: "#4A5565", wrap: true, margin: "md" });
+    const row = { type: "box", layout: "horizontal", spacing: "xs", contents: [] };
+    [ 1, 2, 3, 4, 5 ].forEach(function(v) {
+      const b = { type: "button", style: a === v ? "primary" : "secondary", height: "sm", flex: 1, action: _yzPB_("yz=qa&v=" + v + tag, String(v)) };
+      if (a === v) b.color = YZ_ACCENT;
+      row.contents.push(b);
+    });
+    btns.push(row);
+  }
+  if (q.t === "text") {
+    body.push({ type: "text", text: "✏️ 請直接在下面打字回答，送出就好。", size: "sm", color: "#8A5A00", wrap: true, margin: "md" });
+    if (a) body.push({ type: "text", text: "你寫的：" + _yzQzCut_(a, 200), size: "sm", color: YZ_ACCENT, wrap: true });
+  }
+  if (!exam && !q.req && q.t !== "many") btns.push({ type: "button", style: "link", height: "sm", color: "#4A5565", action: _yzPB_("yz=qk" + tag, a === null || a === undefined || a === "" ? "跳過 ›" : "下一題 ›") });
+  const nav = { type: "box", layout: "horizontal", spacing: "sm", margin: "sm", contents: [] };
+  if (i > 0) nav.contents.push({ type: "button", style: "link", height: "sm", flex: 1, color: "#4A5565", action: _yzPB_("yz=qg&v=" + (i - 1) + tag, "‹ 上一題") });
+  nav.contents.push({ type: "button", style: "link", height: "sm", flex: 1, color: "#B3261E", action: _yzPB_("yz=qx", exam ? "✖ 先不考了" : "✖ 先不填了") });
+  btns.push(nav);
+  return { type: "bubble", size: "mega", header: _yzHead_("📘 藥戰手冊　" + (exam ? "📝 考試" : "📋 問卷"), _yzQzCut_(qz.z.title, 40), ""), body: { type: "box", layout: "vertical", paddingAll: "13px", contents: body }, footer: { type: "box", layout: "vertical", spacing: "xs", paddingAll: "10px", contents: btns } };
+}
+
+function _yzQzShort_(q, a) {   // 一題的答案（短）
+  if (a === null || a === undefined || a === "" || Array.isArray(a) && !a.length) return "（沒有回答）";
+  if (q.t === "text") return _yzQzCut_(a, 30);
+  if (q.t === "rate") return a + " 分";
+  if (q.t === "tf") return q.opts[a] || "";
+  if (q.t === "many") return a.map(function(k) {
+    return YZ_QZ_LET.charAt(k);
+  }).join("、");
+  return YZ_QZ_LET.charAt(a) + ". " + _yzQzCut_(q.opts[a], 20);
+}
+
+function _yzQzSumCard_(qz, note) {   // 全部答完：看一下、送出
+  const exam = qz.z.kind === "x", body = [];
+  if (note) body.push({ type: "text", text: note, size: "sm", color: "#B3261E", wrap: true, weight: "bold" });
+  const done = qz.a.filter(function(v) {
+    return !(v === null || v === undefined || v === "" || Array.isArray(v) && !v.length);
+  }).length;
+  body.push({ type: "text", text: "共 " + qz.qs.length + " 題，答了 " + done + " 題。" + (exam ? "沒答的算錯。" : ""), size: "sm", wrap: true, color: "#1F1F1F" });
+  qz.qs.slice(0, 20).forEach(function(q, k) {
+    body.push({ type: "box", layout: "baseline", spacing: "sm", contents: [ { type: "text", text: k + 1 + ".", size: "xs", color: "#7B8696", flex: 0 }, { type: "text", text: _yzQzShort_(q, qz.a[k]), size: "xs", color: "#1F1F1F", wrap: true, flex: 5 } ] });
+  });
+  body.push({ type: "text", text: "要改哪一題：往上找那一題的卡片，直接按新的答案。", size: "xxs", color: "#7B8696", wrap: true, margin: "md" });
+  return { type: "bubble", size: "mega", header: _yzHead_("📘 藥戰手冊　" + (exam ? "📝 考試" : "📋 問卷"), _yzQzCut_(qz.z.title, 40), "全部答完了"), body: { type: "box", layout: "vertical", spacing: "xs", paddingAll: "13px", contents: body }, footer: { type: "box", layout: "vertical", spacing: "xs", paddingAll: "10px", contents: [
+    { type: "button", style: "primary", color: YZ_ACCENT, height: "sm", action: _yzPB_("yz=qd", exam ? "✅ 交卷" : "✅ 送出") },
+    { type: "box", layout: "horizontal", spacing: "sm", contents: [ { type: "button", style: "link", height: "sm", flex: 1, color: "#4A5565", action: _yzPB_("yz=qg&v=0", "‹ 從第 1 題看") }, { type: "button", style: "link", height: "sm", flex: 1, color: "#B3261E", action: _yzPB_("yz=qx", exam ? "✖ 先不考了" : "✖ 先不填了") } ] }
+  ] } };
+}
+
+// 考試的結果：分數一張＋每一題（對錯、你的答案、正確答案、詳解）幾題一張
+function _yzQzResultBubbles_(r, z) {
+  const pass = !!r.pass, col = pass ? YZ_ACCENT : "#B3261E";
+  const sum = { type: "bubble", size: "mega", header: _yzHead_("📘 藥戰手冊　📝 考試", _yzQzCut_(r.title, 40), "考完了"), body: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "13px", contents: [
+    { type: "text", text: r.score + " 分", size: "3xl", weight: "bold", color: col, align: "center" },
+    { type: "text", text: pass ? "✅ 及格（" + r.need + " 分及格）" : "還沒及格（" + r.need + " 分及格）", size: "sm", weight: "bold", color: col, align: "center", wrap: true },
+    { type: "text", text: "答對 " + r.right + "／" + r.n + " 題　第 " + r.times + " 次", size: "sm", color: "#4A5565", align: "center" },
+    { type: "text", text: "往右滑看每一題的答案和詳解 ›", size: "xs", color: "#7B8696", align: "center", margin: "md" },
+    _yzFoot_()
+  ] } };
+  const foot = [];
+  if (r.retake) foot.push({ type: "button", style: "secondary", height: "sm", flex: 1, action: _yzPB_("yz=qs&q=" + z.id, "再考一次") });
+  foot.push({ type: "button", style: "secondary", height: "sm", flex: 1, action: _yzPB_("yz=qz", "📋 其他問卷") });
+  sum.footer = { type: "box", layout: "horizontal", spacing: "sm", paddingAll: "10px", contents: foot };
+  const ans = function(q, a) {
+    if (!a || !a.length) return "（沒有回答）";
+    return a.map(function(k) {
+      return q.t === "tf" ? q.opts[k] : YZ_QZ_LET.charAt(k) + ". " + _yzQzCut_(q.opts[k], 40);
+    }).join("\n");
+  };
+  const cards = [], per = 3;
+  for (let s = 0; s < r.review.length; s += per) {
+    const c = [];
+    r.review.slice(s, s + per).forEach(function(x, k) {
+      const no = s + k + 1;
+      if (k) c.push({ type: "separator", margin: "md" });
+      c.push({ type: "text", text: "第 " + no + " 題　" + (x.ok ? "✅ 答對" : "❌ 答錯"), size: "sm", weight: "bold", color: x.ok ? YZ_ACCENT : "#B3261E", margin: k ? "md" : "none" });
+      c.push({ type: "text", text: _yzQzCut_(x.q, 300), size: "sm", wrap: true, color: "#1F1F1F" });
+      c.push({ type: "text", text: "你的答案：" + ans(x, x.mine), size: "xs", wrap: true, color: x.ok ? YZ_ACCENT : "#B3261E" });
+      if (!x.ok) c.push({ type: "text", text: "正確答案：" + ans(x, x.ans), size: "xs", wrap: true, color: YZ_ACCENT, weight: "bold" });
+      if (x.ex) c.push({ type: "text", text: "詳解：" + _yzQzCut_(x.ex, 400), size: "xs", wrap: true, color: "#4A5565" });
+    });
+    cards.push({ type: "bubble", size: "mega", body: { type: "box", layout: "vertical", spacing: "xs", paddingAll: "13px", contents: c } });
+  }
+  // 一則最多 12 張、50 KB：照大小分好幾則（第一則是分數那一張）
+  const msgs = [], take = [ sum ].concat(cards);
+  let cur = [];
+  take.forEach(function(b) {
+    const size = _yzBytes_({ type: "carousel", contents: cur.concat([ b ]) });   // 算 bytes（中文一個字 3 bytes）
+    if (cur.length && (cur.length >= 12 || size > 42e3)) {
+      msgs.push(cur);
+      cur = [];
+    }
+    cur.push(b);
+  });
+  if (cur.length) msgs.push(cur);
+  return msgs.slice(0, 5).map(function(g) {
+    return g.length === 1 ? g[0] : { type: "carousel", contents: g };
+  });
+}
+
+// 開發者按「📣 LINE 通知大家」推出去的那一張（z＝一份問卷／考試）
+function _yzQzPushCard_(z) {
+  const exam = z.kind === "x";
+  return { type: "bubble", size: "mega", header: _yzHead_("📘 藥戰手冊", (exam ? "📝 新的考試：" : "📋 新的問卷：") + z.title, z.to ? "請在 " + z.to + " 以前完成" : ""), body: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "13px", contents: [ { type: "text", text: z.note || (exam ? "共 " + z.x.n + " 題、" + z.x.pass + " 分及格。" : "共 " + z.qs.length + " 題，幾分鐘就好。"), size: "sm", wrap: true, color: "#1F1F1F" }, _yzFoot_() ] }, footer: { type: "box", layout: "vertical", paddingAll: "10px", contents: [ { type: "button", style: "primary", color: YZ_ACCENT, height: "sm", action: _yzPB_("yz=qs&q=" + z.id, exam ? "開始考試" : "開始填寫") } ] } };
 }
 
 /* ════════ flex.js ════════ */
@@ -2406,7 +2571,7 @@ function stop(msg, code, need) {
   SESS++;
   lockClean();
   if (code === "bind" && need) { scrBind(msg); return; }
-  if (code === "tok") { keyDrop(); scrMsg("連結過期了", [msg || "登入的鑰匙不對或過期了。", MSG_LINE]); return; }
+  if (code === "tok") { keyDrop(); T = ""; if (canLogin()) { scrLogin("tok"); return; } scrMsg("連結過期了", [msg || "登入的鑰匙不對或過期了。", MSG_LINE]); return; }   // 第 32 批：可以直接用代號重新登入
   scrMsg(code === "down" ? "現在連不到後端" : "沒辦法打開", [msg || "後端沒有回應。"], [reloadBtn()]);
 }
 // 開發者連結：這台還沒綁定 → 輸入 LINE「開發者網頁 綁定」給的 6 位數碼
@@ -2428,92 +2593,198 @@ function scrBind(msg) {
   try { inp.focus(); } catch (e) { /* 沒關係 */ }
 }
 
-/* ── 沒核可：送申請、等核可 ── */
-function scrJoin(r) {
-  var emp = h("input", { class: "in", maxlength: "20", autocomplete: "off", placeholder: "例：E10107", "aria-label": "員工代號" });
-  var nm = h("input", { class: "in", maxlength: "20", autocomplete: "off", placeholder: "可以不填", "aria-label": "名字" });
+/* ── 登入（第 32 批）：跟補藥神器網頁一樣——網頁出代號 → 貼到 LINE 補藥神器（一對一聊天室）→ LINE 回 6 位數驗證碼 → 打在這裡 ──
+   第一次（名單上還沒有員工編號、姓名）：驗證完再打員工編號＋姓名（審核用；第一次＝送出申請，開發者核可才看得到）。
+   閒置太久、按了登出：要重新取得代號、驗證碼。代號 5 分鐘內有效：倒數到 0 自動換新的（沒人理的分頁連續換 2 次就停）；
+   記在這個分頁（sessionStorage），手機切去 LINE 再切回來，還是同一組。 */
+var KEEP_ED = null;   // 閒置登出時還沒存的修改（只在記憶體，重新登入後接著編輯）
+var LG = { code: "", sec: "", ex: 0, dev: false, dead: false, seq: 0, tm: 0, busy: false, auto: 0, role: "", note: "" };
+var LG_MIN = 5, LG_AUTO = 2, LG_AN = /^[A-HJ-NP-Za-kmnp-z2-9]{9}$/, LG_NUM = /^\d{6}$/;
+function canLogin() { return !!(X && XRE.test(X) && DKX && window.fetch); }
+function lgLabel() {   // 這台叫什麼（LINE 的驗證碼卡片上會寫：「網頁自己報的名稱」）
+  var u = navigator.userAgent || "";
+  var b = /Edg\//.test(u) ? "Edge" : /OPR\//.test(u) ? "Opera" : /Firefox\/|FxiOS/.test(u) ? "Firefox" : /CriOS|Chrome\//.test(u) ? "Chrome" : /Safari\//.test(u) ? "Safari" : "瀏覽器";
+  var o = /Windows/.test(u) ? "Windows" : /iPhone|iPad|iPod/.test(u) ? "iOS" : /Android/.test(u) ? "Android" : /Mac OS X|Macintosh/.test(u) ? "macOS" : /Linux/.test(u) ? "Linux" : "";
+  return "藥戰手冊・" + (o ? b + " / " + o : b);
+}
+function lgSave() { try { if (LG.code && !LG.dead) sessionStorage.setItem("hbpair", JSON.stringify({ x: X, code: LG.code, sec: LG.sec, ex: LG.ex, dev: LG.dev ? 1 : 0 })); else sessionStorage.removeItem("hbpair"); } catch (e) { /* 記不住就算了 */ } }
+function lgLoad() {
+  try {
+    var o = JSON.parse(sessionStorage.getItem("hbpair") || "null"), now = Date.now();
+    if (o && o.x === X && (o.dev ? LG_NUM : LG_AN).test(String(o.code || "")) && TRE.test(String(o.sec || "")) && +o.ex > now + 3000 && +o.ex <= now + 900000) return o;
+  } catch (e) { /* 沒有 */ }
+  return null;
+}
+function lgStop() { clearInterval(LG.tm); LG.tm = 0; }
+function scrLogin(why, r) {
+  r = r || {};
+  lgStop();
+  var lines = [];
+  if (why === "idle") lines.push("閒置超過 " + Math.round(IDLE_MS / 6e4) + " 分鐘，已自動登出，手冊內容已經從畫面上拿掉。要再看：重新取得代號、驗證碼登入。");
+  else if (why === "out") lines.push("已登出，手冊內容已經從畫面上拿掉。");
+  else if (why === "expired") lines.push("太久沒動作，這一台的登入過期了：重新取得代號、驗證碼登入。");
+  else if (why === "bad") lines.push("這條連結用過了、或已經過期（從 LINE 按下去之後太久才開）。用下面的代號登入，或回 LINE 再按一次「🌐 網頁」。");
+  else if (why === "tok") lines.push("這台記住的登入過期了：用下面的代號重新登入。");
+  else if (why === "again") lines.push(r.err || "太久沒完成：重新取得代號登入。");
+  if (!canLogin()) { scrMsg("請從 LINE 打開", lines.concat([MSG_LINE])); return; }
+  var pair = h("div", { class: "lgpair", id: "lgpair", "aria-live": "polite" });
+  var cin = h("input", { class: "in lgin", type: "text", inputmode: "numeric", autocomplete: "one-time-code", maxlength: "9", placeholder: "6 位數", "aria-label": "LINE 回的 6 位數驗證碼" });
+  var go = h("button", { class: "btn pri lggo", type: "button" }, ["登入"]);
+  var msg = h("div", { class: "scr-m lgm", role: "status" });
+  var wrap = h("div", { class: "lgwrap", hidden: true }, [h("div", { class: "lgst2" }, ["② LINE 會回你 6 位數的", h("b", {}, ["驗證碼"]), "，打在這裡"]), h("div", { class: "lgrow" }, [cin, go]), msg]);
+  var role = h("button", { class: "lglink", type: "button" }, [LG.role === "dev" ? "← 回藥師登入" : "開發者登入"]);
+  screen([logo(), h("h2", {}, ["🔐 登入藥戰手冊"]),
+    lines.length ? h("div", { class: "scr-p" }, lines.map(function (l) { return h("p", {}, [l]); })) : null,
+    h("div", { class: "lggrid" }, [pair, wrap]),
+    h("p", { class: "lgfine" }, ["跟補藥神器網頁一樣：把代號貼到 LINE 補藥神器，換 6 位數驗證碼。第一次登入，還要打員工編號和姓名（審核用）。", h("br"), "代號、驗證碼只能在這個網頁用；代號 " + LG_MIN + " 分鐘內要完成登入（超過會自己換新的）；驗證碼只能用一次，不要傳給任何人。"]),
+    KEEP_ED || (typeof KEEP_QE !== "undefined" && KEEP_QE) ? h("p", { class: "lockkeep" }, ["✏️ 你有還沒儲存的修改：登入以後會接著編輯（還沒存進去）。"]) : null,
+    h("div", { class: "lgrolew" }, [role])], "lgscr");
+  var my = ++LG.seq;
+  var alive = function () { return my === LG.seq && pair.isConnected; };
+  var fmt = function (s) { return Math.floor(s / 60) + ":" + ("0" + s % 60).slice(-2); };
+  var tick = function () {
+    var el = $("#lgcd", pair);
+    if (!alive() || !el || LG.dead) { lgStop(); return; }
+    var s = Math.ceil((LG.ex - Date.now()) / 1000);
+    if (s <= 0) { if (LG.busy || document.visibilityState === "hidden") return; if (LG.auto >= LG_AUTO) { gone("這組代號已經過期（" + LG_MIN + " 分鐘）"); return; } LG.auto++; start("⌛ 超過 " + LG_MIN + " 分鐘沒有登入，已經換成新的代號：把這組新的再貼到 LINE 就好。"); return; }
+    el.textContent = fmt(s); el.className = s <= 20 ? "low" : "";
+  };
+  var copy = function (b) {
+    var c = LG.code, done = function (ok) { b.textContent = ok ? "已複製 ✓" : "複製不了，請長按上面的代號"; setTimeout(function () { if (b.isConnected) b.textContent = "複製代號"; }, 2200); };
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(c).then(function () { done(true); }, function () { done(false); }); return; } } catch (e) { /* 換下面的 */ }
+    done(false);
+  };
+  var live = function () {
+    var dev = LG.dev, c = LG.code, shown = dev ? c.slice(0, 3) + " " + c.slice(3) : c;
+    var cb = h("button", { class: "lgcopy", type: "button" }, ["複製代號"]); cb.onclick = function () { copy(cb); };
+    var again = h("button", { class: "lglink", type: "button" }, ["重新取得代號"]); again.onclick = function () { LG.auto = 0; start(""); };
+    pair.innerHTML = "";
+    if (dev) pair.appendChild(h("div", { class: "lgrole" }, ["🛠 開發者登入"]));
+    if (LG.note) pair.appendChild(h("div", { class: "lgnote" }, [LG.note]));
+    pair.appendChild(h("div", { class: "lgst" }, ["① 打開 LINE 補藥神器（一對一，不是群組），把這組", h("b", {}, [dev ? "開發者代號" : "代號"]), dev ? "打進去" : "貼進去"]));
+    pair.appendChild(h("div", { class: "lgcode" + (dev ? " num" : ""), id: "lgcode", role: "img", "aria-label": (dev ? "開發者代號 " : "代號 ") + c.split("").join(" ") }, [shown]));
+    pair.appendChild(cb);
+    pair.appendChild(h("div", { class: "lgmeta" }, [dev ? "" : "英文大小寫都可以　", "請在 ", h("b", { id: "lgcd" }, [""]), " 內完成登入", h("br"), again]));
+    wrap.hidden = false;
+    lgStop(); tick(); LG.tm = setInterval(tick, 1000);
+  };
+  var gone = function (why2) {
+    LG.dead = true; lgSave(); lgStop();
+    var again = h("button", { class: "btn pri", type: "button" }, ["重新取得代號"]); again.onclick = function () { LG.auto = 0; start(""); };
+    pair.innerHTML = ""; pair.appendChild(h("div", { class: "lgst" }, ["① " + why2])); pair.appendChild(h("div", { class: "lgcode gone" }, ["⌛ 請重新取得代號"])); pair.appendChild(again);
+    wrap.hidden = true; msg.textContent = "";
+  };
+  var start = function (note) {
+    if (LG.busy) return;
+    var old = LG.sec && !LG.dead ? LG.sec : "", s0 = Date.now(), mine = ++LG.seq;
+    my = mine; LG.note = note || ""; LG.code = ""; LG.dead = true; lgSave(); lgStop();
+    pair.innerHTML = ""; pair.appendChild(h("div", { class: "lgst" }, ["① 正在向後端要代號…"])); pair.appendChild(h("div", { class: "lgcode gone" }, ["⏳"]));
+    wrap.hidden = true; msg.textContent = ""; cin.value = "";
+    var slow = setTimeout(function () { if (my === mine && pair.isConnected && !LG.code) pair.appendChild(h("div", { class: "lgst" }, ["後端剛睡醒的時候要等 30 秒左右，請先別關掉這個畫面。"])); }, 6000);
+    call("appCodeStart", [lgLabel(), old, LG.role], { ms: 75000 }).then(function (x) {
+      clearTimeout(slow);
+      if (my !== mine || !pair.isConnected) return;
+      var dev = LG.role === "dev";
+      if (x && x.ok && (dev ? LG_NUM : LG_AN).test(String(x.code || "")) && TRE.test(String(x.sec || ""))) {
+        LG.code = String(x.code); LG.sec = String(x.sec); LG.dev = dev; LG.dead = false; LG.ex = s0 + Math.max(30, Math.min(900, +x.ttl || LG_MIN * 60)) * 1000;
+        lgSave(); live(); return;
+      }
+      pair.innerHTML = ""; pair.appendChild(h("div", { class: "lgst" }, ["① 沒拿到代號"])); pair.appendChild(h("div", { class: "lgcode gone" }, [String(x && x.err || "沒拿到代號，再試一次").slice(0, 200)]));
+      var tryb = h("button", { class: "btn pri", type: "button" }, ["再試一次"]); tryb.onclick = function () { start(""); }; pair.appendChild(tryb);
+    }, function (e) {
+      clearTimeout(slow);
+      if (my !== mine || !pair.isConnected) return;
+      pair.innerHTML = ""; pair.appendChild(h("div", { class: "lgst" }, ["① 沒拿到代號"])); pair.appendChild(h("div", { class: "lgcode gone" }, [/等太久/.test(String(e && e.message)) ? "等太久沒有回應，再試一次" : "連不上後端，網路好了再試一次"]));
+      var tryb = h("button", { class: "btn pri", type: "button" }, ["再試一次"]); tryb.onclick = function () { start(""); }; pair.appendChild(tryb);
+    });
+  };
+  var submit = function () {
+    if (LG.busy) return;
+    var v = String(cin.value || "").replace(/[０-９]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 65248); }).replace(/[\s-]/g, "");
+    if (!LG.code || LG.dead) { gone("這組代號已經不能用了"); return; }
+    if (LG.ex <= Date.now()) { start("⌛ 超過 " + LG_MIN + " 分鐘沒有登入，已經換成新的代號：把這組新的再貼到 LINE 就好。"); return; }
+    if (!/^\d{6}$/.test(v)) { msg.textContent = "請打 LINE 回給你的 6 位數字"; try { cin.focus(); } catch (e) { /* 沒關係 */ } return; }
+    if (LG.dev && v === LG.code) { msg.textContent = "這裡要打 LINE 回給你的 6 位數驗證碼，不是上面的開發者代號（開發者代號是要打進 LINE 的）。"; return; }
+    LG.busy = true; go.disabled = true; cin.readOnly = true; msg.textContent = "確認中…";
+    var slow = setTimeout(function () { if (LG.busy && pair.isConnected) msg.textContent = "確認中…後端剛睡醒的時候要等 30 秒左右，請先別關掉、也不用再按。"; }, 6000);
+    var P = LG.sec;
+    call("hbCodeLogin", [P, v, lgLabel()], { ms: 80000 }).then(function (x) {
+      clearTimeout(slow); LG.busy = false; go.disabled = false; cin.readOnly = false;
+      if (x && TRE.test(String(x.t || ""))) {   // 驗證碼對了：這台記住鑰匙（跟補藥神器網頁共用），接著看要做什麼
+        LG.code = ""; LG.dead = true; lgSave(); lgStop();
+        T = String(x.t); FROMSAVED = false; FROMLINK = false; keySave();
+        onBoot(x); return;
+      }
+      if (!pair.isConnected || P !== LG.sec) return;
+      if (x && x.dead) { gone("這組代號已經用不了了（打錯太多次）"); return; }
+      if (x && x.gone) { if (x.full) gone(String(x.err || "開發者版名額滿了").replace(/^🔒\s*/, "")); else gone("這組代號已經不能用了（過期、用掉了，或已經作廢）"); return; }
+      if (x && x.wait) { msg.textContent = "⏳ LINE 還沒收到這組代號。到 LINE 補藥神器" + (LG.dev ? "打 " : "貼上 ") + LG.code + "，拿到驗證碼再回來輸入。"; return; }
+      if (x && x.bad) { msg.textContent = "❌ 驗證碼不對，再輸入一次。（要照 LINE 卡片上現在這一張；不確定就按「重新取得代號」換新的一組）"; cin.value = ""; try { cin.focus(); } catch (e) { /* 沒關係 */ } return; }
+      msg.textContent = "❌ " + String(x && x.err || "沒登入成功，再試一次").slice(0, 200);
+    }, function (e) {
+      clearTimeout(slow); LG.busy = false; go.disabled = false; cin.readOnly = false;
+      msg.textContent = /等太久/.test(String(e && e.message)) ? "❌ 等太久沒有回應。再試一次；若說「代號已經不能用」，按「重新取得代號」重來。" : "❌ 連不上後端，網路好了再試一次";
+    });
+  };
+  go.onclick = submit;
+  cin.onkeydown = function (e) { if (e.key === "Enter") submit(); };
+  cin.oninput = function () { LG.auto = 0; };
+  role.onclick = function () { LG.role = LG.role === "dev" ? "" : "dev"; role.textContent = LG.role === "dev" ? "← 回藥師登入" : "開發者登入"; LG.auto = 0; start(""); };
+  var p = lgLoad();
+  if (p && (p.dev ? "dev" : "") === LG.role) { LG.code = p.code; LG.sec = p.sec; LG.ex = +p.ex; LG.dev = !!p.dev; LG.dead = false; LG.note = ""; live(); try { cin.focus({ preventScroll: true }); } catch (e) { /* 沒關係 */ } }
+  else start("");
+}
+document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") LG.auto = 0; });
+
+/* ── 驗證過是本人了，第一次要打員工編號＋姓名（審核用）── */
+function scrId(r) {
+  r = r || {};
+  var need = r.need || "join";
+  var emp = h("input", { class: "in", maxlength: "20", autocomplete: "off", autocapitalize: "characters", placeholder: "例：E10107", "aria-label": "員工編號", "aria-required": "true" });
+  var nm = h("input", { class: "in", maxlength: "20", autocomplete: "off", placeholder: "例：王小明", "aria-label": "姓名", "aria-required": "true" });
   var m = h("div", { class: "scr-m", role: "status" });
-  var b = btn("送出申請", function () {
-    var e = emp.value.trim().toUpperCase();
-    if (!/^[A-Z0-9-]{2,20}$/.test(e)) { m.textContent = "員工代號只能是英文字母、數字（2～20 個字）"; return; }
+  var b = btn(need === "join" ? "送出申請" : "進入藥戰手冊", function () {
+    var e = emp.value.replace(/\s+/g, "").toUpperCase(), n = nm.value.replace(/\s+/g, " ").trim();
+    if (!e) { m.textContent = "請打員工編號"; try { emp.focus(); } catch (x) { /* 沒關係 */ } return; }
+    if (!/^[A-Z0-9Ａ-Ｚａ-ｚ０-９-－]{2,20}$/.test(e)) { m.textContent = "員工編號只能是英文字母、數字（2～20 個字）"; try { emp.focus(); } catch (x) { /* 沒關係 */ } return; }
+    if (!n) { m.textContent = "請打姓名"; try { nm.focus(); } catch (x) { /* 沒關係 */ } return; }
     b.disabled = true; m.textContent = "送出中…";
-    call("hbJoin", [e, nm.value.trim()]).then(function (x) {
+    call("hbIdLogin", [e, n]).then(function (x) {
       b.disabled = false;
-      if (x && x.err) { m.textContent = "❌ " + x.err; return; }
-      if (x && x.st === "wait") { scrWait({ me: { emp: e } }); return; }
-      boot();
+      if (x && x.again) { scrLogin("again", x); return; }
+      if (x && x.err) { m.textContent = "❌ " + x.err; var f = x.field === "name" ? nm : emp; try { f.focus(); } catch (y) { /* 沒關係 */ } return; }
+      onBoot(x);
     }, function (er) { b.disabled = false; m.textContent = "❌ " + er.message; });
   }, "pri");
-  screen([logo(), h("h2", {}, ["要開發者核可才能看"]),
-    h("div", { class: "scr-p" }, [h("p", {}, ["藥戰手冊是院內同事的工作手冊。請填員工代號送出申請；開發者的 LINE 會收到審核卡，核可後你的 LINE 會收到通知。"]), h("p", { class: "muted" }, ["核可之前看不到任何內容。"])]),
-    h("div", { class: "scr-form" }, [h("label", {}, [h("span", {}, ["員工代號"]), emp]), h("label", {}, [h("span", {}, ["名字"]), nm])]),
-    h("div", { class: "scr-b" }, [b]), m]);
+  [emp, nm].forEach(function (inp) { inp.onkeydown = function (ev) { if (ev.key === "Enter") b.onclick(); }; });
+  var title = need === "join" ? "最後一步：員工編號＋姓名" : need === "every" ? "打員工編號＋姓名" : "補上員工編號＋姓名（只要一次）";
+  var say = need === "join" ? ["✅ 已經從 LINE 確認是你了。第一次用藥戰手冊，請打員工編號和姓名（兩個都要填），送出申請。", "開發者核可以後，你的 LINE 會收到通知，就能看手冊（核可之前看不到任何內容）。"]
+    : need === "every" ? ["✅ 已經從 LINE 確認是你了。請打員工編號和姓名（要跟申請時填的一樣）。"]
+    : ["✅ 已經從 LINE 確認是你了。名單上還沒有你的員工編號或姓名，補上就能進去（只要一次）。"];
+  screen([logo(), h("h2", {}, [title]), h("div", { class: "scr-p" }, say.map(function (l) { return h("p", {}, [l]); })),
+    h("div", { class: "scr-form" }, [h("label", {}, [h("span", {}, ["員工編號（必填）"]), emp]), h("label", {}, [h("span", {}, ["姓名（必填）"]), nm])]),
+    h("div", { class: "scr-b" }, [b]), m,
+    h("p", { class: "lgfine" }, ["要在 10 分鐘內送出；超過的話，重新取得代號登入。"])]);
   try { emp.focus(); } catch (e) { /* 沒關係 */ }
 }
 var POLL = 0, POLL2 = 0;
 function stopPolls() { clearTimeout(POLL); clearInterval(POLL2); POLL = POLL2 = 0; }
 function scrWait(r) {
   var emp = r && r.me && r.me.emp;
-  screen([logo(), h("h2", {}, ["⏳ 已送出，等開發者核可"]),
-    h("div", { class: "scr-p" }, [h("p", {}, [(emp ? "員工代號 " + emp + "。" : "") + "核可後你的 LINE 會收到通知；" + MSG_LINE]), h("p", { class: "muted" }, ["這個畫面每 30 秒會自己檢查一次。"])]),
+  screen([logo(), h("h2", {}, ["⏳ 已送出申請，等開發者核可"]),
+    h("div", { class: "scr-p" }, [h("p", {}, [(emp ? "員工編號 " + emp + "。" : "") + "核可後你的 LINE 會收到通知。"]), h("p", {}, ["10 分鐘內核可的話，按「現在檢查」就能進去；超過的話，回到這個網頁重新取得代號登入（或回 LINE 打開「📘 藥戰手冊」按「🌐 網頁」）。"]), h("p", { class: "muted" }, ["這個畫面每 30 秒會自己檢查一次。"])]),
     h("div", { class: "scr-b" }, [btn("現在檢查", function () { boot(); })])]);
   var t0 = Date.now();
   (function loop() { POLL = setTimeout(function () { if (Date.now() - t0 > 30 * 6e4) return; if (document.visibilityState === "hidden") { loop(); return; } call("hbBoot", [""]).then(function (x) { if (x && x.st === "wait") loop(); else onBoot(x); }, function () { loop(); }); }, 30000); })();
 }
 
-/* ── 能看，但這一台還沒驗證（或閒置登出了）──
-   方法一（手機）：回 LINE 手冊按「🌐 網頁」。方法二（電腦）：網頁出「手冊 1234」，在 LINE 打這幾個字；打了這個畫面自己會打開。 */
-var KEEP_ED = null;   // 閒置登出時還沒存的修改（只在記憶體，重新驗證後接著編輯）
-function scrLock(r, why) {
-  r = r || {};
-  var lines = [];
-  if (why === "idle") lines.push("閒置超過 " + Math.round(IDLE_MS / 6e4) + " 分鐘，已自動登出，手冊內容已經從畫面上拿掉。");
-  else if (why === "out") lines.push("已登出，手冊內容已經從畫面上拿掉。");
-  else if (why === "expired") lines.push("太久沒動作，這一台的驗證過期了。");
-  else if (r.bad) lines.push("這條連結用過了、或已經過期（從 LINE 按下去之後太久才開）。");
-  lines.push("看手冊之前，要先驗證這一台（每一台各自驗證；閒置太久要再驗證一次）。");
-  var codeEl = h("div", { class: "lockcode", "aria-live": "polite" }, ["…"]), left = h("span", { class: "muted" }), m = h("div", { class: "scr-m", role: "status" });
-  var again = btn("重新取得", function () { getCode(); });
-  screen([logo(), h("h2", {}, ["🔒 先驗證這一台"]), h("div", { class: "scr-p" }, lines.map(function (l) { return h("p", {}, [l]); })),
-    h("div", { class: "lockway" }, [h("b", {}, ["方法一（手機）"]), h("p", {}, [MSG_LINE])]),
-    h("div", { class: "lockway" }, [h("b", {}, ["方法二（電腦）"]), h("p", {}, ["在手機的 LINE（補藥神器聊天室）打下面這幾個字："]), codeEl, h("div", { class: "lockrow" }, [left, again]), h("p", { class: "muted" }, ["打了之後，這個畫面會自己打開（不用按任何東西）。只在你自己的電腦上用。"])]),
-    KEEP_ED ? h("p", { class: "lockkeep" }, ["✏️ 你有還沒儲存的修改：驗證好以後會接著編輯（還沒存進手冊）。"]) : null,
-    m]);
-  var exp = 0;
-  function tick() { var s = Math.max(0, Math.round((exp - Date.now()) / 1000)); left.textContent = exp ? (s > 0 ? "這組 " + Math.floor(s / 60) + ":" + ("0" + s % 60).slice(-2) + " 內有效" : "這組過期了，按「重新取得」") : ""; if (exp && s <= 0) codeEl.classList.add("dead"); }
-  function getCode() {
-    again.disabled = true; codeEl.classList.remove("dead"); codeEl.textContent = "…"; m.textContent = "";
-    call("hbCode", []).then(function (x) {
-      again.disabled = false;
-      if (x && x.code) { codeEl.textContent = "手冊 " + x.code; exp = Date.now() + (x.ttl || 300) * 1000; tick(); poll(); return; }
-      if (x && x.st === "open") {   // 後端說這一台還是驗證過的
-        if (OUTED) { hbOut().then(getCode, function () { codeEl.textContent = "—"; m.textContent = "❌ 網路不好，登出還沒送到後端；網路好了請重新載入。"; }); return; }
-        boot(); return;
-      }
-      if (x && x.st && x.st !== "lock") { onBoot(x); return; }
-      codeEl.textContent = "—"; m.textContent = "❌ " + (x && x.err || "拿不到驗證碼");
-    }, function (e) { again.disabled = false; codeEl.textContent = "—"; m.textContent = "❌ " + e.message; });
-  }
-  function poll() {
-    clearTimeout(POLL);
-    POLL = setTimeout(function () {
-      if (Date.now() > exp + 5000) return;
-      if (document.visibilityState === "hidden") { poll(); return; }
-      call("hbBoot", [""]).then(function (x) { if (x && x.st === "lock") poll(); else onBoot(x); }, function () { poll(); });
-    }, 3000);
-  }
-  clearInterval(POLL2); POLL2 = setInterval(tick, 1000);
-  getCode();
-}
-
 /* ── 開場 ── */
 function gate(cb) {
-  if (!X && !T) { cb("none"); return; }
+  if (!X) { cb("none"); return; }   // 不知道後端在哪：要先從 LINE 開過一次（或開發者放了 cfg.js）
   if (!XRE.test(X) || (T && !TRE.test(T))) { cb("bad"); return; }
   if (!window.fetch || !window.Promise) { cb("old"); return; }
-  if (!T) { cb("none"); return; }
   if (!DK || !(window.crypto && crypto.subtle && window.TextEncoder)) { cb("nodk"); return; }
-  crypto.subtle.digest("SHA-256", new TextEncoder().encode(DK + "|" + X)).then(function (b) { DKX = hex(b).slice(0, 32); cb("ok"); }, function () { cb("nodk"); });
+  crypto.subtle.digest("SHA-256", new TextEncoder().encode(DK + "|" + X)).then(function (b) { DKX = hex(b).slice(0, 32); cb(T ? "ok" : "login"); }, function () { cb("nodk"); });   // 第 32 批：沒有鑰匙＝代號登入
 }
 function boot() {
   stopPolls();
@@ -2527,12 +2798,12 @@ function onBoot(r) {
   var st = r.st;
   if (st === "closed") { scrMsg("藥戰手冊還沒開放", ["請等開發者通知。"]); return; }
   if (st === "setup") { scrMsg("藥戰手冊還沒建立", ["在 LINE 專案的 Apps Script 編輯器，選 yzSetup → 執行一次。", "建好以後重新整理這一頁。"], [reloadBtn()]); return; }
-  if (st === "none") { scrJoin(r); return; }
+  if (st === "need") { scrId(r); return; }   // 第 32 批：驗證過是本人了，第一次要打員工編號＋姓名
   if (st === "wait") { scrWait(r); return; }
   if (st === "no") { scrMsg("沒有通過審核", ["看不到藥戰手冊的內容。有疑問請找開發者。"]); return; }
   if (st === "off") { scrMsg("權限已經撤銷", ["你的藥戰手冊權限已經被撤銷，看不到內容了。有疑問請找開發者。"]); return; }
   if (st === "nodk") { scrMsg("這個瀏覽器不能用", [MSG_NODK]); return; }
-  if (st === "lock") { ME = r.me || ME; if (r.cfg) { CFG = r.cfg; applyCfg(); } scrLock(r); return; }
+  if (st === "lock" || st === "none") { ME = r.me || ME; if (r.cfg) { CFG = r.cfg; applyCfg(); } scrLogin(r.bad ? "bad" : "", r); return; }   // 第 32 批：代號登入（跟補藥神器網頁一樣）
   if ((st === "ok" || st === "dev") && r.data) { enterMain(r); return; }
   scrMsg("沒辦法打開", ["看不懂後端的回應（" + String(st) + "）。"], [reloadBtn()]);
 }
@@ -2576,7 +2847,9 @@ function enterMain(r) {
   buildView();
   if (IS_DEV) { buildEditPane(); buildAdminPane(); }
   syncTabsH();
+  var qeBack = IS_DEV && typeof qeRestore === "function" && qeRestore();   // 第 32 批：還沒存的問卷
   if (IS_DEV && KEEP_ED) { edRestore(KEEP_ED); KEEP_ED = null; showTab("edit"); toast("接著剛剛還沒儲存的修改（還沒存進手冊）"); }
+  else if (qeBack) { ED.mode = "qz"; ED.cur = { kind: "qz", id: "" }; ED.view = "web"; showTab("edit"); toast("接著剛剛還沒儲存的問卷（還沒存進問卷試算表）"); }
   else if (IS_DEV && HP.edit && edTitleExists(HP.edit)) { gotoEdit(HP.edit); }
   else { showTab("view"); if (HP.t && titleOf(HP.t)) openTitle(HP.t); }
   HP.t = HP.edit = "";
@@ -2636,6 +2909,9 @@ function lockClean() {
   try { if (typeof PV !== "undefined" && PV.pano) { PV.pano.destroy(); PV.pano = null; } } catch (e) { /* 沒關係 */ }
   $$(".lightbox, .bigov, #pvwin, .modal").forEach(function (x) { x.remove(); });
   catBlobDrop();
+  if (typeof qzReset === "function") qzReset();   // 第 32 批：還沒送出的問卷答案也丟掉
+  if (typeof RTE !== "undefined") RTE.clip = null;   // 第 32 批：「📋 複製」的內容也丟掉（手冊內容只在記憶體）
+  if (typeof ED_CLIP !== "undefined") ED_CLIP = null;
   HB = null;
 }
 var OUTED = false;   // 這邊自己登出的（後端那邊也要確定作廢，才可以出驗證碼）
@@ -2643,14 +2919,16 @@ function hbOut(n) { return post("hbOut", [], 8000).then(function (j) { if (!j ||
 function logout(why) {
   if (!MAIN) return;
   if (IS_DEV && typeof ED !== "undefined" && ED && ED.dirty) KEEP_ED = edKeep();
+  if (IS_DEV && typeof qeKeep === "function") { KEEP_QE = qeKeep() || KEEP_QE; qeDrop(); }   // 還沒存的問卷：留在記憶體，驗證後接著改
   MAIN = false; OUTED = true;
   lockClean();
   if (typeof ED !== "undefined") ED = null;
   screen([logo(), h("h2", {}, [why === "idle" ? "閒置太久，登出中…" : "登出中…"])]);
   var sid = ++SESS;
-  hbOut().then(function () { if (sid === SESS) scrLock({}, why); }, function () { if (sid === SESS) scrMsg("已登出", ["手冊內容已經從畫面上拿掉。", "（網路不好，登出還沒送到後端；網路好了請重新載入。）"], [reloadBtn()]); });
+  if (IS_DEV) LG.role = "dev";   // 第 32 批：開發者登出：登入畫面直接出開發者代號（才拿得到能編輯的鑰匙）
+  hbOut().then(function () { if (sid === SESS) scrLogin(why); }, function () { if (sid === SESS) scrMsg("已登出", ["手冊內容已經從畫面上拿掉。", "（網路不好，登出還沒送到後端；網路好了請重新載入。）"], [reloadBtn()]); });
 }
-window.addEventListener("beforeunload", function (e) { if (MAIN && IS_DEV && typeof ED !== "undefined" && ED && ED.dirty) { e.preventDefault(); e.returnValue = ""; } });
+window.addEventListener("beforeunload", function (e) { if (MAIN && IS_DEV && ((typeof ED !== "undefined" && ED && ED.dirty) || (typeof QE !== "undefined" && QE && (QE.dirty || QE.bDirty)))) { e.preventDefault(); e.returnValue = ""; } });
 
 /* ── 小視窗（取代瀏覽器的 confirm，網頁不用跳出系統視窗）── */
 function modal(o) {
@@ -2701,10 +2979,11 @@ function start() {
   backendCheck(function () {
     gate(function (g) {
       if (g === "ok") { API = "https://script.google.com/macros/s/" + X + "/exec"; screen([logo(), h("p", { class: "muted" }, ["載入中…"])]); boot(); return; }
+      if (g === "login") { API = "https://script.google.com/macros/s/" + X + "/exec"; scrLogin(""); return; }   // 第 32 批：沒有鑰匙 → 代號登入（跟補藥神器網頁一樣）
       if (g === "nodk") { scrMsg("這個瀏覽器不能用", [MSG_NODK]); return; }
       if (g === "old") { scrMsg("瀏覽器太舊", ["請改用最新的 Chrome 或 Safari。"]); return; }
       if (g === "bad") { scrMsg("連結不完整", [MSG_LINE]); return; }
-      scrMsg("請從 LINE 打開", [MSG_LINE, "（這台瀏覽器登入過「補藥神器網頁」的話，也可以直接開這一頁。）"]);
+      scrMsg("請從 LINE 打開", [MSG_LINE, "（從 LINE 開過一次以後，這台瀏覽器直接打網址就會出現代號登入；登入過「補藥神器網頁」的也可以直接開。）"]);
     });
   });
 }
@@ -2719,32 +2998,48 @@ function hlNodes(text, hl, sq) {   // 搜尋的字用 <mark> 標出來（sq＝�
   return _yzHL_(text, hl, sq).map(function (g) { return g.h ? h("mark", {}, [g.t]) : g.t; });
 }
 // 第 31 批：公式 → 網頁上上下排的分數、次方、下標、根號（不靠外掛，用一般的 HTML＋CSS 排；每種瀏覽器都一樣）
+// 第 32 批：排版要用的樣式直接寫在每個元件上（FXS），不靠 hb.css：GitHub 上 hb.css 慢一步更新、或沒換到，公式也不會散掉（第 31 批有人遇到）
+var FXS = {
+  fx: "display:inline-flex;align-items:center;white-space:nowrap;vertical-align:middle;line-height:1.2;margin:0 .1em;max-width:100%",
+  r: "display:inline-flex;align-items:center",
+  f: "display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 .15em",
+  u: "display:block;padding:0 .2em .08em;text-align:center",
+  d: "display:flex;justify-content:center;align-self:stretch;padding:.08em .2em 0;border-top:.08em solid currentColor",
+  sup: "font-size:.68em;line-height:1;position:relative;vertical-align:0;top:-.55em",
+  sub: "font-size:.68em;line-height:1;position:relative;vertical-align:0;top:.35em",
+  ss: "display:inline-flex;flex-direction:column;font-size:.68em;line-height:1;margin-left:.05em",
+  ssi: "font-size:1em;top:0;position:relative;vertical-align:0;line-height:1",
+  q: "display:inline-flex;align-items:stretch;margin:0 .05em",
+  qs: "display:inline-block;flex:0 0 .7em;width:.7em;min-height:1.2em;position:relative",
+  qb: "display:inline-flex;align-items:center;padding:.14em .15em 0 .08em;border-top:.08em solid currentColor",
+  o: "padding:0 .06em", ob: "padding:0 .28em", sp: "display:inline-block;width:.3em", p: "font-size:1.1em"
+};
 function fxNode(n) {
   if (!n) return h("span", {});
   switch (n.k) {
     case "num": return h("span", { class: "fxn" }, [n.t]);
     case "id": return h("span", { class: "fxi" }, [n.t]);   // 不用斜體：藥師寫的多半是單位、縮寫（mg/m²、CrCl）
-    case "sp": return h("span", { class: "fxs" }, [" "]);
-    case "op": return h("span", { class: "fxo" }, [n.t]);
-    case "seq": return h("span", { class: "fxr" }, n.a.map(function (x, i) {
+    case "sp": return h("span", { class: "fxs", style: FXS.sp }, [" "]);
+    case "op": return h("span", { class: "fxo", style: FXS.o }, [n.t]);
+    case "seq": return h("span", { class: "fxr", style: FXS.r }, n.a.map(function (x, i) {
       var e = fxNode(x), pv = n.a[i - 1];
-      if (x.k === "op" && YZ_FX_SP[x.t] && pv && pv.k !== "op" && pv.k !== "sp") e.classList.add("b");   // 二元運算：前後空一點
+      if (x.k === "op" && YZ_FX_SP[x.t] && pv && pv.k !== "op" && pv.k !== "sp") { e.classList.add("b"); e.style.cssText = FXS.ob; }   // 二元運算：前後空一點
       return e;
     }));
-    case "par": return h("span", { class: "fxr" }, [h("span", { class: "fxp" }, [n.o]), fxNode(n.a), h("span", { class: "fxp" }, [n.c])]);
+    case "par": return h("span", { class: "fxr", style: FXS.r }, [h("span", { class: "fxp", style: FXS.p }, [n.o]), fxNode(n.a), h("span", { class: "fxp", style: FXS.p }, [n.c])]);
     case "grp": return fxNode(n.a);
-    case "frac": return h("span", { class: "fxf" }, [h("span", { class: "fxu" }, [fxNode(n.n)]), h("span", { class: "fxd" }, [fxNode(n.d)])]);
-    case "sup": return h("span", { class: "fxr" }, [fxNode(n.b), h("sup", { class: "fxsup" }, [fxNode(n.s)])]);
-    case "sub": return h("span", { class: "fxr" }, [fxNode(n.b), h("sub", { class: "fxsub" }, [fxNode(n.s)])]);
-    case "subsup": return h("span", { class: "fxr" }, [fxNode(n.b), h("span", { class: "fxss" }, [h("sup", { class: "fxsup" }, [fxNode(n.sup)]), h("sub", { class: "fxsub" }, [fxNode(n.sub)])])]);
-    case "sqrt": return h("span", { class: "fxq" }, [h("span", { class: "fxqs", html: FX_ROOT }), h("span", { class: "fxqb" }, [fxNode(n.a)])]);   // 根號：勾勾跟著裡面的高度拉長，上面一條線
+    case "frac": return h("span", { class: "fxf", style: FXS.f }, [h("span", { class: "fxu", style: FXS.u }, [fxNode(n.n)]), h("span", { class: "fxd", style: FXS.d }, [fxNode(n.d)])]);
+    case "sup": return h("span", { class: "fxr", style: FXS.r }, [fxNode(n.b), h("sup", { class: "fxsup", style: FXS.sup }, [fxNode(n.s)])]);
+    case "sub": return h("span", { class: "fxr", style: FXS.r }, [fxNode(n.b), h("sub", { class: "fxsub", style: FXS.sub }, [fxNode(n.s)])]);
+    case "subsup": return h("span", { class: "fxr", style: FXS.r }, [fxNode(n.b), h("span", { class: "fxss", style: FXS.ss }, [h("sup", { class: "fxsup", style: FXS.ssi }, [fxNode(n.sup)]), h("sub", { class: "fxsub", style: FXS.ssi }, [fxNode(n.sub)])])]);
+    case "sqrt": return h("span", { class: "fxq", style: FXS.q }, [h("span", { class: "fxqs", style: FXS.qs, html: FX_ROOT }), h("span", { class: "fxqb", style: FXS.qb }, [fxNode(n.a)])]);   // 根號：勾勾跟著裡面的高度拉長，上面一條線
   }
   return h("span", {});
 }
-var FX_ROOT = '<svg viewBox="0 0 12 24" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0.6 13.6 L3 11.9 L6.1 22.9 L11.4 0.6 L12 0.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>';
+var FX_ROOT = '<svg viewBox="0 0 12 24" preserveAspectRatio="none" aria-hidden="true" focusable="false" style="position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible"><path d="M0.6 13.6 L3 11.9 L6.1 22.9 L11.4 0.6 L12 0.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>';
 function fxEl(src) {   // 一個公式（念螢幕的軟體念一行的寫法：1/6 → ¹⁄₆）
   var lin = _yzFxLinear_(src);
-  return h("span", { class: "fx", role: "math", "aria-label": lin, title: lin }, [fxNode(_yzFxParse_(src))]);
+  return h("span", { class: "fx", role: "math", "aria-label": lin, title: lin, style: FXS.fx }, [fxNode(_yzFxParse_(src))]);
 }
 // 一行字裡一小段一小段（各有自己的格式）→ 網頁上的 span。搜尋的字照樣用 <mark> 標出來
 function rtKids(runs, hl) {
@@ -3202,7 +3497,7 @@ function webChapterCard(c, n, o) {
 /* ───────── 看手冊 ───────── */
 // view：""＝首頁／章／內容、"search"＝搜尋結果
 var WV = { cid: null, tid: null, view: "", q: "", qv: "", hl: null, pano: null, flat: false };
-function buildView() { WV = { cid: null, tid: null, view: "", q: "", qv: "", hl: null, pano: null, flat: false }; }
+function buildView() { WV = { cid: null, tid: null, view: "", q: "", qv: "", hl: null, pano: null, flat: false }; qzReset(); }
 function seen(kind, label) { if (CFG && CFG.viewLog === false) return; call("hbSeen", [kind, String(label || "").slice(0, 80)]).then(function (x) { if (x && x.st === "lock") logout("expired"); }, function () { /* 記不到就算了 */ }); }
 // 捲到某個地方以後，上面的圖才載好（高度變了）：再捲一次。自己動過畫面（滾輪、手指、按鍵）就不管；最多 5 秒
 function keepInView(el) {
@@ -3242,9 +3537,9 @@ function drawWeb() {
   if (WV.pano) { try { WV.pano.destroy(); } catch (e) { /* 沒關係 */ } WV.pano = null; }
   root.innerHTML = "";
   var atHome = !WV.cid && !WV.tid && !WV.view;
-  if (atHome && homeMapOn()) { drawHomeFull(root); return; }   // 首頁＝滿版調劑台
-  homeClass(true);   // 章、標題、搜尋（還有沒有目錄圖時的首頁）：也是整個畫面，上面那一排收起來
-  drawPage(root, atHome);
+  if (atHome && homeMapOn()) drawHomeFull(root);   // 首頁＝滿版調劑台
+  else { homeClass(true); drawPage(root, atHome); }   // 章、標題、搜尋、問卷（還有沒有目錄圖時的首頁）：也是整個畫面，上面那一排收起來
+  qzPeek();   // 第 32 批：左下角「📋 問卷」要不要出現（5 分鐘問一次）
 }
 
 /* ───────── 章、標題、搜尋、沒有目錄圖時的首頁：照「圖一」的樣子（第 25 批）─────────
@@ -3288,24 +3583,26 @@ function pgStatus() {   // 名字、閒置倒數、登出（開發者多「編�
   ]);
 }
 function drawPage(root, atHome) {
-  var t = WV.view !== "search" && WV.tid ? titleOf(WV.tid) : null;
-  var c = WV.view === "search" ? null : t ? chapterOf(t.ch) : (WV.cid ? chapterOf(WV.cid) : null);
-  if (!atHome && WV.view !== "search" && !c) { WV.cid = null; WV.tid = null; atHome = true; }
+  var isQz = WV.view === "qz", other = WV.view === "search" || isQz;   // 第 32 批：問卷頁
+  var t = !other && WV.tid ? titleOf(WV.tid) : null;
+  var c = other ? null : t ? chapterOf(t.ch) : (WV.cid ? chapterOf(WV.cid) : null);
+  if (!atHome && !other && !c) { WV.cid = null; WV.tid = null; atHome = true; }
   var bg = c ? chBgUrl(c) : "", ico = c ? chIco(c) : "";
-  var pg = h("section", { class: "pg" + (bg ? " has-bg" : ""), "aria-label": c ? c.name : WV.view === "search" ? "搜尋" : "藥戰手冊" });
+  var pg = h("section", { class: "pg" + (bg ? " has-bg" : "") + (isQz ? " qzpg" : ""), "aria-label": c ? c.name : WV.view === "search" ? "搜尋" : isQz ? "問卷、考試" : "藥戰手冊" });
   var back = h("div", { class: "pgbg", "aria-hidden": "true" });
   if (bg) back.style.backgroundImage = cssUrl(bg);
   pg.appendChild(back);
-  var mqOn = mqConf(HB.cat).on, mqName = c ? c.name : WV.view === "search" ? "搜尋" : "";
+  var mqOn = mqConf(HB.cat).on, mqName = c ? c.name : WV.view === "search" ? "搜尋" : isQz ? "問卷、考試" : "";
   if (mqOn) pg.appendChild(marquee(mqWords(mqName))); else pg.style.setProperty("--mqh", "0px");
   var col = h("div", { class: "pgcol" });
   // 上：‹ 回上一層 ＋ 標誌
-  var up = null;
-  if (t && c && titlesOf(c.id).length > 1) up = h("button", { class: "pgback", type: "button", onclick: function () { openChapter(c.id); } }, ["‹ " + c.name]);
-  else if (!atHome) up = h("button", { class: "pgback", type: "button", onclick: goHome }, ["‹ " + homeName()]);
+  var up = isQz ? qzBackBtn() : null;   // 問卷：作答、結果頁＝「‹ 問卷清單」
+  if (!up && t && c && titlesOf(c.id).length > 1) up = h("button", { class: "pgback", type: "button", onclick: function () { openChapter(c.id); } }, ["‹ " + c.name]);
+  else if (!up && !atHome) up = h("button", { class: "pgback", type: "button", onclick: goHome }, ["‹ " + homeName()]);
   col.appendChild(h("div", { class: "pgtop" }, [up || h("span"), h("button", { class: "pglogo", type: "button", title: "回首頁", onclick: goHomeTab }, ["藥戰手冊"])]));
   col.appendChild(pgStatus());
   if (WV.view === "search") drawSearchResults(col);
+  else if (isQz) qzDraw(col);
   else if (t) drawTitlePage(col, c, t);
   else if (c) drawChapterPage(col, c, ico, bg);
   else drawHome(col);
@@ -3314,11 +3611,12 @@ function drawPage(root, atHome) {
   if (mqOn) pg.appendChild(marquee(mqWords(mqName), "mqb"));
   pg.appendChild(h("div", { class: "pgdock" }, [
     btn("🔍 搜尋", function () { homeSearch(pg); }, "hfab"),
-    btn("☰ 章元", function () { homeDrawer(pg); }, "hfab")
+    btn("☰ 章元", function () { homeDrawer(pg); }, "hfab"),
+    qzFab()
   ]));
   if (!atHome) pg.appendChild(h("button", { class: "hhome", type: "button", onclick: goHome, title: "回首頁" }, ["🏠 首頁"]));
   root.appendChild(pg);
-  if (WV.cid || WV.tid || WV.view) pg.style.setProperty("--colw", (t ? Math.min(1000, Math.max(680, (t.ww || 760) + 70)) : 680) + "px");
+  if (WV.cid || WV.tid || WV.view) pg.style.setProperty("--colw", (t ? Math.min(1000, Math.max(680, (t.ww || 760) + 70)) : isQz ? 760 : 680) + "px");
   idleTick();
 }
 function drawChapterPage(col, c, ico, bg) {
@@ -3399,7 +3697,7 @@ function drawHomeFull(root) {
   WV.cid = null; WV.tid = null;
   homeClass(true);
   var cat = _yzMapLive_(HB.cat, HB, IS_DEV);
-  var goTo = function (to) { var m = /^([ct]):(.+)$/.exec(to || ""); if (!m) return; if (m[1] === "c") openChapter(m[2]); else openTitle(m[2]); };
+  var goTo = function (to) { var m = /^([ctq]):(.+)$/.exec(to || ""); if (!m) return; if (m[1] === "q") { qzOpen(m[2] === "all" ? "" : m[2]); return; } if (m[1] === "c") openChapter(m[2]); else openTitle(m[2]); };   // 第 32 批：q＝問卷
   var onLock = function (s) { homeLockToast(s && s.label); };
   var home = h("section", { class: "home", "aria-label": "首頁（手冊目錄）" });
   var stage = h("div", { class: "hstage" }), scene = h("div", { class: "hscene" });
@@ -3436,7 +3734,8 @@ function drawHomeFull(root) {
   // 左下：搜尋、章元
   stage.appendChild(h("div", { class: "hdock" }, [
     btn("🔍 搜尋", function () { homeSearch(stage); }, "hfab"),
-    btn("☰ 章元", function () { homeDrawer(stage); }, "hfab")
+    btn("☰ 章元", function () { homeDrawer(stage); }, "hfab"),
+    qzFab()   // 第 32 批：有開放中的問卷、考試才出現
   ]));
   idleTick();
   if (WV.pano && WV.pano.refreshAvoid) WV.pano.refreshAvoid();
@@ -3490,6 +3789,311 @@ function drawSearchResults(col) {
   });
 }
 
+/* ════════ quiz.js ════════ */
+/* ═══════════════ quiz.js：問卷、考試（藥師在網頁上填；第 32 批）═══════════════
+ * 從哪裡進來：首頁目錄圖上的「問卷」、左下角的「📋 問卷」（有開放中的才出現；開發者一直都有）。
+ * 問卷：一頁就是全部的題目，填好按「送出」（一個人填一次；不記名的問卷不記名字）。
+ * 考試：按「開始考試」才向後端抽題（答案只在後端），交卷後馬上看到分數、正確答案、詳解。
+ * 還沒送出的答案只放在記憶體：離開這一頁再回來還在；登出（閒置到時間）就不見。 */
+var YZ_QZ_T = { one: "單選", many: "複選", text: "簡答", rate: "評分", tf: "是非" };   // 跟後端（LINE、網頁專案）一樣
+var YZ_QZ_LET = "ABCDEF";
+var QZ = qzFresh();
+function qzFresh() { return { page: "list", list: null, none: false, busy: false, err: "", want: "", cur: null, ans: [], miss: [], res: null, peek: null, peekAt: 0, peekBusy: false, sending: false }; }
+function qzReset() { QZ = qzFresh(); }
+function qzEmpty(v) { return v === null || v === undefined || (typeof v === "string" && !v.trim()) || (Array.isArray(v) && !v.length); }
+function qzErrText(e) { return e && e.code === "bad" ? "網頁專案還沒換成第 32 批（03 要貼新版、部署新版本）" : String(e && e.message || e); }
+function qzCall(act, a, b) {
+  return call("hbQz", [act, a === undefined ? "" : a, b === undefined ? "" : b], { ms: 60000 }).then(function (r) {
+    if (r && r.st === "lock") { logout("expired"); throw new Error("驗證過期了"); }
+    if (!r) throw new Error("後端沒有回應");
+    if (r.st && !r.ok && !r.err) throw new Error(r.st === "closed" ? "手冊還沒開放" : "現在不能填（請重新整理）");
+    return r;
+  });
+}
+function qzItem(id) { return (QZ.list || []).filter(function (x) { return x.id === id; })[0] || null; }
+
+/* ── 左下角的「📋 問卷」：有開放中的才出現（開發者一直都有）；紅點＝還沒填的份數 ── */
+function qzTake(r) {
+  QZ.none = !!r.none; QZ.list = Array.isArray(r.list) ? r.list : []; QZ.err = "";
+  var todo = 0; QZ.list.forEach(function (x) { if (!x.mine) todo++; });
+  QZ.peek = { n: QZ.list.length, todo: todo }; QZ.peekAt = Date.now();
+}
+function qzPeek(force) {   // 每 5 分鐘最多問一次後端
+  if (!MAIN || QZ.peekBusy || QZ.busy) return;
+  if (!force && QZ.peekAt && Date.now() - QZ.peekAt < 5 * 6e4) return;
+  QZ.peekBusy = true; QZ.peekAt = Date.now();
+  qzCall("list").then(function (r) { QZ.peekBusy = false; if (r && r.ok) { qzTake(r); qzFabPaint(); } }, function () { QZ.peekBusy = false; });
+}
+function qzFab() {
+  var b = h("button", { class: "btn hfab qzfab", type: "button", onclick: function () { qzOpen(""); } });
+  qzFabSet(b);
+  return b;
+}
+function qzFabSet(b) {
+  var p = QZ.peek, n = p ? p.todo : 0;
+  b.hidden = !(IS_DEV || (p && p.n > 0));
+  b.textContent = "📋 問卷";
+  if (n) b.appendChild(h("span", { class: "qzdot", "aria-hidden": "true" }, [n > 9 ? "9+" : String(n)]));
+  b.setAttribute("aria-label", "問卷、考試" + (n ? "（" + n + " 份還沒填）" : ""));
+}
+function qzFabPaint() {
+  $$(".qzfab").forEach(qzFabSet);
+  if (WV.pano && WV.pano.refreshAvoid) try { WV.pano.refreshAvoid(); } catch (e) { /* 沒關係 */ }
+}
+
+/* ── 打開問卷頁（id：直接開始那一份；沒給＝清單）── */
+function qzOpen(id) {
+  if (!MAIN || !HB) return;
+  id = String(id || "").replace(/[^A-Za-z0-9_-]/g, "").slice(0, 80);
+  WV.cid = null; WV.tid = null; WV.view = "qz"; WV.hl = null;
+  if (id && QZ.cur && QZ.cur.z.id === id) QZ.page = "form";
+  else { QZ.page = "list"; QZ.want = id; QZ.res = null; }
+  if (TAB !== "view") showTab("view"); else drawWeb();
+  topOfView();
+  qzLoad();
+}
+function qzLoad() {
+  if (QZ.busy) return;
+  QZ.busy = true; QZ.err = "";
+  qzCall("list").then(function (r) {
+    QZ.busy = false;
+    if (!r.ok) { QZ.err = r.err || "拿不到問卷"; qzRedraw("list"); return; }
+    qzTake(r); qzFabPaint();
+    var w = QZ.want; QZ.want = "";
+    if (w) { if (qzItem(w)) { qzStart(w); return; } toast("這一份已經結束、或還沒開放"); }
+    qzRedraw("list");
+  }, function (e) { QZ.busy = false; QZ.err = qzErrText(e); qzRedraw("list"); });
+}
+function qzRedraw(page) {   // 還停在問卷頁（而且是同一個畫面）才重畫：不打斷正在填的人
+  if (!MAIN || TAB !== "view" || WV.view !== "qz") return;
+  if (page && QZ.page !== page) return;
+  drawWeb();
+}
+function qzGo(page) { QZ.page = page; if (MAIN && TAB === "view" && WV.view === "qz") { drawWeb(); topOfView(); } }
+function qzBackBtn() {   // 左上角：作答、結果頁＝回清單（答案留著）；清單＝回首頁（view.js 自己放）
+  if (QZ.page !== "form" && QZ.page !== "res") return null;
+  return h("button", { class: "pgback", type: "button", onclick: function () { QZ.res = null; qzGo("list"); qzLoad(); } }, ["‹ 問卷清單"]);
+}
+
+// 開始一份：問卷＝題目；考試＝後端抽好的題目（答案不會給網頁）
+function qzStart(id, el) {
+  if (QZ.cur && QZ.cur.z.id === id) { qzGo("form"); return; }
+  if (QZ.sending) return;
+  QZ.sending = true;
+  var old = el ? el.textContent : "";
+  if (el) { el.textContent = "準備題目中…"; el.classList.add("busy"); }
+  qzCall("start", id).then(function (r) {
+    QZ.sending = false;
+    if (el) { el.textContent = old; el.classList.remove("busy"); }
+    if (r.done) {
+      var me = r.mine || {}, exam = r.z && r.z.kind === "x";
+      modal({ title: exam ? "這個考試只能考一次" : "你已經填過了", lines: exam ? ["你的分數：" + (me.best === null || me.best === undefined ? "—" : me.best + " 分") + (me.pass ? "（及格）" : "")] : ["謝謝你！一個人填一次就好。"], buttons: [{ label: "好", cls: "sm pri" }] });
+      qzLoad(); return;
+    }
+    if (!r.ok) { toast("⚠ " + (r.err || "開始不了，等一下再試")); qzLoad(); return; }
+    QZ.cur = { z: r.z, qs: r.qs || [], times: r.times || 0, at: Date.now() };
+    QZ.ans = QZ.cur.qs.map(function () { return null; }); QZ.miss = []; QZ.res = null;
+    WV.cid = null; WV.tid = null; WV.view = "qz";
+    if (MAIN && TAB !== "view") showTab("view");
+    qzGo("form");
+  }, function (e) { QZ.sending = false; if (el) { el.textContent = old; el.classList.remove("busy"); } toast("⚠ " + qzErrText(e)); });
+}
+
+function qzDraw(col) {
+  if (QZ.page === "form" && QZ.cur) return qzDrawForm(col);
+  if (QZ.page === "res" && QZ.res) return qzDrawRes(col);
+  QZ.page = "list";
+  qzDrawList(col);
+}
+
+/* ── 清單 ── */
+function qzDrawList(col) {
+  var L = QZ.list;
+  col.appendChild(pgHead("📋 問卷、考試", L && L.length ? "點一份開始；考試交卷後馬上看到分數和詳解" : ""));
+  if (QZ.cur) {
+    var cz = QZ.cur.z, done = QZ.ans.filter(function (v) { return !qzEmpty(v); }).length;
+    col.appendChild(pgCard([h("div", { class: "pc-meta" }, [h("span", { class: "pc-ch qzwip" }, ["✏️ 還沒送出"])]), h("h2", { class: "pc-t" }, [cz.title]),
+      h("div", { class: "pc-note" }, ["剛剛答到一半（" + done + "／" + QZ.cur.qs.length + " 題）：按一下接著" + (cz.kind === "x" ? "考" : "填") + "。"]), h("div", { class: "pc-act" }, [h("span", { class: "pbtn dark", "aria-hidden": "true" }, ["繼續作答 ›"])])],
+      { cls: "qzdraft", go: function () { qzGo("form"); }, label: "繼續作答「" + cz.title + "」" }));
+  }
+  if (QZ.err && !L) {
+    col.appendChild(pgCard([h("div", { class: "pc-t" }, ["⚠ 拿不到問卷"]), h("div", { class: "pc-note qzlong" }, [QZ.err]), h("div", { class: "pc-act" }, [h("button", { class: "pbtn dark", type: "button", onclick: function () { QZ.err = ""; qzRedraw("list"); qzLoad(); } }, ["🔄 再試一次"])])]));
+    return;
+  }
+  if (!L) { col.appendChild(pgCard([h("div", { class: "pc-t qzload" }, ["載入中…"])])); return; }
+  if (!L.length) {
+    col.appendChild(pgCard([h("div", { class: "pc-t" }, ["目前沒有開放的問卷或考試"]), h("div", { class: "pc-note qzlong" }, ["有新的會在這裡出現（LINE 也會收到通知）。"])]));
+    if (IS_DEV) col.appendChild(h("div", { class: "pgdev" }, [QZ.none ? "（開發者）還沒建立問卷試算表：到「✏️ 編輯」→ 左上的「📋 問卷」→ 按「建立問卷試算表」。" : "（開發者）到「✏️ 編輯」→ 左上的「📋 問卷」新增問卷或考試；狀態改成「開放」、按「儲存」，這裡就看得到。"]));
+    return;
+  }
+  L.forEach(function (x) { col.appendChild(qzItemCard(x)); });
+}
+function qzItemCard(x) {
+  var exam = x.kind === "x", me = x.mine, going = !!(QZ.cur && QZ.cur.z.id === x.id), can = going || (exam ? (!me || x.retake) : !me);
+  var meta = [h("span", { class: "pc-ch" }, [exam ? "📝 考試" : "📋 問卷"]), h("span", {}, [x.n + " 題"]), exam ? h("span", {}, [x.pass + " 分及格"]) : x.named ? null : h("span", {}, ["不記名"]), x.to ? h("span", { class: "pc-pg" }, [x.to.slice(5).replace("/", "／") + " 截止"]) : null];
+  var stx = me ? (exam ? "你考過 " + me.times + " 次，最高 " + (me.best === null || me.best === undefined ? "—" : me.best + " 分") + (me.pass ? "　✅ 及格" : "") + (x.retake ? "" : "（只能考一次）") : "✅ 已經填過了，謝謝") : (exam ? "還沒考" : "還沒填");
+  var act = going ? "繼續作答 ›" : !can ? "" : exam ? (me ? "再考一次" : "開始考試") : "開始填寫";
+  var b = act ? h("span", { class: "pbtn dark", "aria-hidden": "true" }, [act]) : null;
+  return pgCard([h("div", { class: "pc-meta" }, meta), h("h2", { class: "pc-t" }, [x.title]), x.note ? h("div", { class: "pc-note qznote" }, [x.note]) : null,
+    h("div", { class: "qzme" + (me ? " done" : "") }, [stx]), b ? h("div", { class: "pc-act" }, [b]) : null],
+    can ? { go: function () { qzStart(x.id, b); }, label: act.replace(" ›", "") + "「" + x.title + "」" } : {});
+}
+
+/* ── 作答（一頁全部題目）── */
+function qzDrawForm(col) {
+  var cur = QZ.cur, z = cur.z, exam = z.kind === "x";
+  col.appendChild(pgHead((exam ? "📝 " : "📋 ") + z.title));
+  col.appendChild(qzFormEl(z, cur.qs, QZ.ans, { px: "qzf", miss: QZ.miss, times: cur.times, onChange: function (i, v) { QZ.ans[i] = v; QZ.miss = QZ.miss.filter(function (k) { return k !== i; }); qzProgPaint(); } }));
+  var send = h("button", { class: "pbtn dark qzsend", type: "button", onclick: qzSubmit }, [exam ? "✅ 交卷" : "✅ 送出"]);
+  col.appendChild(pgCard([
+    h("div", { class: "qzprog", "aria-live": "polite" }, [qzProgText()]),
+    h("div", { class: "pc-act qzacts" }, [send, h("button", { class: "pbtn nav", type: "button", onclick: qzQuit }, [exam ? "✖ 先不考了" : "✖ 先不填了"])]),
+    h("div", { class: "qzfine" }, [exam ? "交卷以後就不能改答案；馬上看到分數、正確答案和詳解。" : "按「送出」才會存。離開這一頁再回來，剛剛填的還在（登出就不見）。"])
+  ], { cls: "qzfoot" }));
+}
+function qzProgText() {
+  var n = QZ.cur ? QZ.cur.qs.length : 0, d = QZ.ans.filter(function (v) { return !qzEmpty(v); }).length;
+  return "已經回答 " + d + "／" + n + " 題" + (d < n && QZ.cur && QZ.cur.z.kind === "x" ? "（沒答的算錯）" : "");
+}
+function qzProgPaint() { $$(".qzprog").forEach(function (e) { e.textContent = qzProgText(); }); }
+
+// 題目（藥師作答、編輯器的預覽都用這一個）。o：{ px（id 的開頭）, miss, times, onChange(i, v), preview }
+function qzFormEl(z, qs, ans, o) {
+  o = o || {}; ans = ans || [];
+  var exam = z.kind === "x", wrap = h("div", { class: "qzform" });
+  var intro = exam ? ["共 " + qs.length + " 題", (z.pass === null || z.pass === undefined ? 60 : z.pass) + " 分及格", "沒答的算錯", o.times ? "這是第 " + (o.times + 1) + " 次" : ""] :
+    ["共 " + qs.length + " 題", qs.some(function (q) { return q.req; }) ? "標「必填」的一定要答" : "", z.named === false ? "不記名：不會記你是誰" : "會記你的名字和員工代號"];
+  wrap.appendChild(pgCard([h("div", { class: "pc-meta" }, [h("span", { class: "pc-ch" }, [exam ? "📝 考試" : "📋 問卷"])].concat(intro.filter(Boolean).map(function (s) { return h("span", {}, [s]); }))),
+    z.note ? h("div", { class: "qzintro" }, [z.note]) : null], { cls: "slim qzhead" }));
+  qs.forEach(function (q, i) { wrap.appendChild(qzQEl(q, i, qs.length, ans[i], { px: o.px || "qzf", exam: exam, miss: (o.miss || []).indexOf(i) >= 0, onChange: o.onChange || function () { /* 預覽：不存 */ } })); });
+  if (!qs.length) wrap.appendChild(pgCard([h("div", { class: "pc-note qzlong" }, [o.preview ? "（還沒有題目）" : "這一份還沒有題目。"])]));
+  return wrap;
+}
+function qzQEl(q, i, n, val, o) {
+  var px = o.px, qid = px + "-q" + i;
+  var head = h("div", { class: "qzq-h" }, [h("span", { class: "qzq-no" }, ["第 " + (i + 1) + "／" + n + " 題"]), h("span", { class: "qzq-ty" }, [(YZ_QZ_T[q.t] || "") + (q.t === "many" ? "：可以選好幾個" : q.t === "rate" ? "：1～5 分" : "")]),
+    o.exam ? null : h("span", { class: q.req ? "qzq-req" : "qzq-opt" }, [q.req ? "必填" : "可以不填"])]);
+  var box = h("div", { class: "pcard flat qzq" + (o.miss ? " miss" : ""), id: px + "-" + i, role: "group", "aria-labelledby": qid }, [head, h("div", { class: "qzq-q", id: qid }, [q.q])]);
+  var set = function (v) { o.onChange(i, v); box.classList.remove("miss"); };
+  if (q.t === "one" || q.t === "tf" || q.t === "many") {
+    var many = q.t === "many", list = h("div", { class: "qzopts" + (q.t === "tf" ? " tf" : "") });
+    (q.opts || []).forEach(function (op, k) {
+      var on = many ? (val || []).indexOf(k) >= 0 : val === k;
+      var inp = h("input", { type: many ? "checkbox" : "radio", name: px + "-o" + i, value: String(k), checked: on });
+      inp.onchange = function () {
+        if (many) { var cur = []; $$("input", list).forEach(function (x, kk) { if (x.checked) cur.push(kk); }); set(cur); } else set(k);
+        $$(".qzo", list).forEach(function (l) { l.classList.toggle("on", $("input", l).checked); });
+      };
+      list.appendChild(h("label", { class: "qzo" + (on ? " on" : "") }, [inp, h("span", { class: "qzo-k", "aria-hidden": "true" }, [q.t === "tf" ? (k === 0 ? "⭕" : "❌") : YZ_QZ_LET.charAt(k)]), h("span", { class: "qzo-t" }, [op])]));
+    });
+    box.appendChild(list);
+  } else if (q.t === "rate") {
+    var row = h("div", { class: "qzrate" });
+    [1, 2, 3, 4, 5].forEach(function (v) {
+      var inp2 = h("input", { type: "radio", name: px + "-o" + i, value: String(v), checked: val === v, "aria-label": v + " 分" + (v === 1 ? "（最低）" : v === 5 ? "（最高）" : "") });
+      inp2.onchange = function () { set(v); $$(".qzr", row).forEach(function (l) { l.classList.toggle("on", $("input", l).checked); }); };
+      row.appendChild(h("label", { class: "qzr" + (val === v ? " on" : "") }, [inp2, h("b", { "aria-hidden": "true" }, [String(v)]), h("small", { "aria-hidden": "true" }, [v === 1 ? "最低" : v === 5 ? "最高" : ""])]));
+    });
+    box.appendChild(row);
+  } else {
+    var cnt = h("div", { class: "qzcnt", "aria-hidden": "true" }, [(val ? String(val).length : 0) + "／1000"]);
+    var ta = h("textarea", { class: "qzta", rows: "3", maxlength: "1000", placeholder: "在這裡打字回答", "aria-labelledby": qid });
+    ta.value = val || "";
+    ta.oninput = function () { set(ta.value.trim() ? ta.value : ""); cnt.textContent = ta.value.length + "／1000"; };
+    box.appendChild(ta); box.appendChild(cnt);
+  }
+  return box;
+}
+function qzQuit() {
+  var cur = QZ.cur; if (!cur) return;
+  modal({ title: cur.z.kind === "x" ? "先不考了？" : "先不填了？", lines: ["剛剛的答案不會送出，下次要重新" + (cur.z.kind === "x" ? "開始（題目會重新抽）。" : "填。")], buttons: [{ label: "繼續作答", cls: "sm" }, { label: cur.z.kind === "x" ? "先不考了" : "先不填了", cls: "sm bad", fn: function () { QZ.cur = null; QZ.ans = []; QZ.miss = []; qzGo("list"); } }] });
+}
+function qzSubmit() {
+  var cur = QZ.cur; if (!cur || QZ.sending) return;
+  var exam = cur.z.kind === "x";
+  var miss = exam ? [] : cur.qs.map(function (q, i) { return q.req && qzEmpty(QZ.ans[i]) ? i : -1; }).filter(function (i) { return i >= 0; });
+  if (miss.length) { qzMissShow(miss); return; }
+  var left = cur.qs.filter(function (q, i) { return qzEmpty(QZ.ans[i]); }).length;
+  if (exam) modal({ title: left ? "還有 " + left + " 題沒答" : "確定交卷？", lines: [left ? "沒答的算錯。確定要交卷嗎？" : "交卷以後就不能改答案了。"], buttons: [{ label: "再看一下", cls: "sm" }, { label: "交卷", cls: "sm pri", fn: qzSend }] });
+  else qzSend();
+}
+function qzMissShow(miss) {
+  QZ.miss = miss;
+  miss.forEach(function (i) { var el = document.getElementById("qzf-" + i); if (el) el.classList.add("miss"); });
+  var f = document.getElementById("qzf-" + miss[0]); if (f) f.scrollIntoView({ block: "center" });
+  toast("第 " + miss.map(function (i) { return i + 1; }).join("、") + " 題是必填，還沒回答");
+}
+function qzSend() {
+  var cur = QZ.cur; if (!cur || QZ.sending) return;
+  QZ.sending = true;
+  var sb = $(".qzsend"), old = sb ? sb.textContent : "";
+  if (sb) { sb.disabled = true; sb.textContent = "送出中…"; }
+  var ans = QZ.ans.map(function (v) { return typeof v === "string" ? v.trim() : v; });
+  qzCall("submit", cur.z.id, JSON.stringify(ans)).then(function (r) {
+    QZ.sending = false;
+    if (sb && sb.isConnected) { sb.disabled = false; sb.textContent = old; }
+    if (!r.ok) {
+      if (r.miss && r.miss.length) { qzMissShow(r.miss.map(function (n) { return n - 1; })); return; }
+      if (r.again) {
+        modal({ title: "這一次的題目過期了", lines: [r.err || "超過 6 小時、或已經交過卷了。", "按「重新開始」會重新抽題。"], buttons: [{ label: "先不要", cls: "sm" }, { label: "重新開始", cls: "sm pri", fn: function () { var id = cur.z.id; QZ.cur = null; QZ.ans = []; qzStart(id); } }] });
+        return;
+      }
+      if (r.done) { QZ.cur = null; QZ.ans = []; modal({ title: "送不出去", lines: [r.err || "已經填過了"], buttons: [{ label: "好", cls: "sm pri" }] }); qzGo("list"); qzLoad(); return; }
+      toast("⚠ " + (r.err || "送不出去，等一下再試")); return;
+    }
+    QZ.res = { r: r, z: cur.z, qs: cur.qs, ans: ans };
+    QZ.cur = null; QZ.ans = []; QZ.miss = [];
+    QZ.peekAt = 0;
+    qzGo("res");
+    qzPeek(true);
+  }, function (e) { QZ.sending = false; if (sb && sb.isConnected) { sb.disabled = false; sb.textContent = old; } toast("⚠ " + qzErrText(e) + "（答案還在，可以再按一次）"); });
+}
+
+/* ── 送出以後 ── */
+function qzDrawRes(col) {
+  var R = QZ.res, r = R.r, z = R.z;
+  var acts = function () {
+    return h("div", { class: "pc-act qzacts" }, [
+      r.kind === "x" && r.retake ? h("button", { class: "pbtn dark", type: "button", onclick: function () { QZ.res = null; qzStart(z.id); } }, ["再考一次"]) : null,
+      h("button", { class: "pbtn nav", type: "button", onclick: function () { QZ.res = null; qzGo("list"); qzLoad(); } }, ["‹ 問卷清單"]),
+      h("button", { class: "pbtn nav", type: "button", onclick: function () { QZ.res = null; goHome(); } }, ["🏠 回首頁"])
+    ]);
+  };
+  if (r.kind !== "x") {
+    col.appendChild(pgHead("📋 " + z.title));
+    col.appendChild(pgCard([h("div", { class: "qzbig ok", "aria-hidden": "true" }, ["✅"]), h("h2", { class: "pc-t qzc" }, ["送出了，謝謝你！"]),
+      h("div", { class: "qzfine qzc" }, [z.named === false ? "這一份不記名：沒有記你是誰。" : "已經記下你的回答。"]), acts()], { cls: "qzres" }));
+    return;
+  }
+  var pass = !!r.pass;
+  col.appendChild(pgHead("📝 " + z.title, "考完了"));
+  col.appendChild(pgCard([
+    h("div", { class: "qzscore" + (pass ? " ok" : " no") }, [h("b", {}, [String(r.score)]), h("span", {}, ["分"])]),
+    h("div", { class: "qzpass" + (pass ? " ok" : " no") }, [pass ? "✅ 及格（" + r.need + " 分及格）" : "還沒及格（" + r.need + " 分及格）"]),
+    h("div", { class: "qzfine qzc" }, ["答對 " + r.right + "／" + r.n + " 題　第 " + r.times + " 次" + (r.retake ? "" : "（只能考一次）")]),
+    acts()
+  ], { cls: "qzres" }));
+  (r.review || []).forEach(function (x, i) { col.appendChild(qzRevEl(x, i)); });
+  if ((r.review || []).length > 2) col.appendChild(h("div", { class: "pgnav c" }, [h("button", { class: "pbtn nav", type: "button", onclick: function () { QZ.res = null; qzGo("list"); qzLoad(); } }, ["‹ 問卷清單"])]));
+}
+function qzRevEl(x, i) {
+  var opts = h("div", { class: "qzopts rev" + (x.t === "tf" ? " tf" : "") }), mine = x.mine || [], ans = x.ans || [];
+  (x.opts || []).forEach(function (op, k) {
+    var right = ans.indexOf(k) >= 0, me = mine.indexOf(k) >= 0;
+    opts.appendChild(h("div", { class: "qzo" + (right ? " ok" : "") + (me && !right ? " bad" : "") }, [
+      h("span", { class: "qzo-k", "aria-hidden": "true" }, [x.t === "tf" ? (k === 0 ? "⭕" : "❌") : YZ_QZ_LET.charAt(k)]),
+      h("span", { class: "qzo-t" }, [op]),
+      right || me ? h("span", { class: "qzo-tag" }, [right && me ? "✅ 你選的（正確）" : right ? "正確答案" : "✖ 你選的"]) : null
+    ]));
+  });
+  return pgCard([
+    h("div", { class: "qzq-h" }, [h("span", { class: "qzq-no" }, ["第 " + (i + 1) + " 題"]), h("span", { class: x.ok ? "qzok" : "qzno" }, [x.ok ? "✅ 答對" : "❌ 答錯"])]),
+    h("div", { class: "qzq-q" }, [x.q]), opts,
+    mine.length ? null : h("div", { class: "qzfine" }, ["（這一題沒有回答）"]),
+    x.ex ? h("div", { class: "qzex" }, [h("b", {}, ["詳解"]), h("div", {}, [x.ex])]) : null
+  ], { cls: "qzq" + (x.ok ? "" : " wrong") });
+}
+
 /* ════════ rte.js ════════ */
 /* rte.js — 文字編輯器（網頁編輯用）。像 Notion 那樣「看到什麼就是什麼」，格式用最上面那一排按鍵（沒有「/」選單）。
  * 內容存成「格式文字」（rt.js 的標記）；這裡只管畫面和操作：選字 → 按鍵、按 Enter 換行、Backspace 合併、貼上、復原。
@@ -3497,7 +4101,7 @@ function drawSearchResults(col) {
  * 資料的單位是「一行」：{k:種類, lv:縮排, tone:標註顏色, go:連結的標題, img:圖的代號, runs:[{t:字, b,i,u,s,c,z}]}。
  * 第 28 批：一行也可以是一張圖（[img=代號]）：文字和圖片放在同一塊；圖的網址、圖說放在這一塊的 pics（o.pics() 拿得到），上傳交給編輯器（o.imgUp）。
  * 第 29 批：一行也可以是一張表格（[tbl=代號]，表格「併到上一塊」來的）：內容放在這一塊的 tbls（o.tbls()），按「✏️ 編輯表格」交給編輯器（o.tblEdit）。 */
-var RTE = { cur: null, pop: null, bar: null, lastColor: "red", lastMark: "yellow" };   // lastMark：上一次用的螢光筆顏色（第 30 批）
+var RTE = { cur: null, pop: null, bar: null, lastColor: "red", lastMark: "yellow", clip: null };   // clip：格式列「📋 複製」的字（第 32 批；只放記憶體，登出就丟掉）   // lastMark：上一次用的螢光筆顏色（第 30 批）
 var RTE_EMOJI = ["⚠️", "❗", "❓", "✅", "❌", "➡️", "⬆️", "⬇️", "📌", "📖", "📞", "⏰", "🔒", "💊", "💉", "🌡️", "❄️", "🔥", "⭐", "🔴", "🟡", "🟢", "🔵", "👍"];
 
 function rteTxt(runs) { return _yzRtRunsText_(runs); }
@@ -4150,8 +4754,8 @@ function rteCreate(o) {
     if (!composing && dirtyDom()) normalize();
     lines = readLines(); lastSel = getSel() || lastSel; emit(); histLater(); syncBar();
   });
-  function copySel(e, cut) {
-    var s = getSel(); if (!s || isCollapsed(s) || !e.clipboardData) return;   // 沒選字：交給瀏覽器
+  function packSel() {   // 選起來的那一段：{ text（一般字）, own（格式標記）, pics（文字裡的圖）, tbls（文字裡的表格）}；沒選＝null
+    var s = getSel(); if (!s || isCollapsed(s)) return null;
     var ls = readLines(), to = lineSpan(s).to, part = [], li;
     for (li = s.a.li; li <= to; li++) {
       var L = ls[li]; if (!L) continue;
@@ -4167,16 +4771,46 @@ function rteCreate(o) {
       }
       part.push(c);
     }
-    e.clipboardData.setData("text/plain", part.map(function (L) { return rteIsBlock(L) ? "" : _yzRtRunsLin_(L.runs); }).join("\n"));   // 公式：一行的寫法（¹⁄₆）
-    e.clipboardData.setData("application/x-yz-rt", _yzRtSerialize_(part));
     var pp = {}, pics = o.pics ? o.pics() || {} : {};   // 複製到的圖：圖的資料也帶著（貼到別的文字塊也看得到）
     part.forEach(function (L) { if (L.k === "img" && pics[L.img]) pp[L.img] = pics[L.img]; });
-    if (Object.keys(pp).length) e.clipboardData.setData("application/x-yz-pics", JSON.stringify(pp));
     var tt = {}, tbls = o.tbls ? o.tbls() || {} : {};   // 第 29 批：複製到的表格：表格的內容也帶著
     part.forEach(function (L) { if (L.k === "tbl" && tbls[L.tbl]) tt[L.tbl] = tbls[L.tbl]; });
-    if (Object.keys(tt).length) e.clipboardData.setData("application/x-yz-tbls", JSON.stringify(tt));
+    return { text: part.map(function (L) { return rteIsBlock(L) ? "" : _yzRtRunsLin_(L.runs); }).join("\n"), own: _yzRtSerialize_(part), pics: JSON.parse(JSON.stringify(pp)), tbls: JSON.parse(JSON.stringify(tt)) };   // 公式：一行的寫法（¹⁄₆）
+  }
+  function copySel(e, cut) {
+    if (!e.clipboardData) return;
+    var pk = packSel(); if (!pk) return;   // 沒選字：交給瀏覽器
+    e.clipboardData.setData("text/plain", pk.text);
+    e.clipboardData.setData("application/x-yz-rt", pk.own);
+    if (Object.keys(pk.pics).length) e.clipboardData.setData("application/x-yz-pics", JSON.stringify(pk.pics));
+    if (Object.keys(pk.tbls).length) e.clipboardData.setData("application/x-yz-tbls", JSON.stringify(pk.tbls));
+    RTE.clip = pk; rteBarSync();   // 第 32 批：Ctrl+C 複製的，格式列的「📌 貼上」也貼得出來
     e.preventDefault();
     if (cut) run(function (ls2, s2) { var p = deleteSel(ls2, s2); return caret(p.li, p.o); });
+  }
+  function pasteOwn(own, pj, tj) {   // 貼上自己的格式（Ctrl+V、格式列的「📌 貼上」都走這裡）：圖、表格的資料也放進這一塊
+    try { var pics = o.pics ? o.pics() : null; if (pj && pics) Object.keys(pj).forEach(function (k) { if (!pics[k] && pj[k] && pj[k].url) pics[k] = JSON.parse(JSON.stringify(pj[k])); }); } catch (x) { /* 沒有圖 */ }
+    try {   // 表格：每貼一次都是一張新的表（代號換新的，不會兩行改同一張）
+      var tbs = o.tbls ? o.tbls() : null;
+      if (tj && tbs) Object.keys(tj).forEach(function (k) { if (!tj[k] || !Array.isArray(tj[k].rows)) return; var nid = tbs[k] ? rteNewPicId(tbs) : k; tbs[nid] = JSON.parse(JSON.stringify(tj[k])); if (nid !== k) own = own.split("[tbl=" + k + "]").join("[tbl=" + nid + "]"); });
+      else if (!tbs) own = own.split("\n").filter(function (ln) { return !/^[ 　\t]*\[tbl=/.test(ln); }).join("\n");   // 這裡不能放表格：表格那幾行不要
+    } catch (x) { /* 沒有表格 */ }
+    cmdText(own, "markup");
+  }
+  function cmdCopy() {   // 第 32 批：格式列的「📋 複製」：選起來的字（格式、圖、表格都帶著）
+    if (rawMode) return;
+    var pk = packSel();
+    if (!pk) { toast("先選取要複製的字（按住滑鼠拖過去），再按「📋 複製」"); return; }
+    RTE.clip = pk; rteBarSync();
+    try { document.execCommand("copy"); } catch (x) { /* 系統的剪貼簿用不了也沒關係：「📌 貼上」照樣貼得出來 */ }
+    toast("📋 複製好了：到要放的地方點一下，按「📌 貼上」（Ctrl+V 也可以）");
+  }
+  function cmdPaste() {
+    if (rawMode) return;
+    var pk = RTE.clip;
+    if (!pk) { toast("還沒有複製的字：先選字、按「📋 複製」"); return; }
+    pasteOwn(pk.own, pk.pics, pk.tbls);
+    toast("📌 貼上了");
   }
   body.addEventListener("copy", function (e) { copySel(e, false); });
   body.addEventListener("cut", function (e) { copySel(e, true); });
@@ -4187,13 +4821,10 @@ function rteCreate(o) {
       for (var pi = 0; pi < cd.items.length; pi++) if (cd.items[pi].kind === "file" && /^image\//.test(cd.items[pi].type || "")) { var pf = cd.items[pi].getAsFile(); if (pf) { insertImgFile(pf); return; } }
     }
     if (own) {
-      try { var pj = JSON.parse(cd.getData("application/x-yz-pics") || "null"), pics = o.pics ? o.pics() : null; if (pj && pics) Object.keys(pj).forEach(function (k) { if (!pics[k] && pj[k] && pj[k].url) pics[k] = pj[k]; }); } catch (x) { /* 沒有圖 */ }
-      try {   // 表格：每貼一次都是一張新的表（代號換新的，不會兩行改同一張）
-        var tj = JSON.parse(cd.getData("application/x-yz-tbls") || "null"), tbs = o.tbls ? o.tbls() : null;
-        if (tj && tbs) Object.keys(tj).forEach(function (k) { if (!tj[k] || !Array.isArray(tj[k].rows)) return; var nid = tbs[k] ? rteNewPicId(tbs) : k; tbs[nid] = JSON.parse(JSON.stringify(tj[k])); if (nid !== k) own = own.split("[tbl=" + k + "]").join("[tbl=" + nid + "]"); });
-        else if (!tbs) own = own.split("\n").filter(function (ln) { return !/^[ 　\t]*\[tbl=/.test(ln); }).join("\n");   // 這裡不能放表格：表格那幾行不要
-      } catch (x) { /* 沒有表格 */ }
-      cmdText(own, "markup");
+      var pj = null, tj = null;
+      try { pj = JSON.parse(cd.getData("application/x-yz-pics") || "null"); } catch (x) { pj = null; }
+      try { tj = JSON.parse(cd.getData("application/x-yz-tbls") || "null"); } catch (x) { tj = null; }
+      pasteOwn(own, pj, tj);
     }
     else if (tx) cmdText(tx, _yzRtHas_(tx) ? "markup" : "plain");   // 貼上的字：長得像標記的（從 LINE 裡改字複製來的）就還原格式；其他一律當一般字，外面的格式不會跟進來
     else toast("剪貼簿裡沒有文字");
@@ -4258,7 +4889,7 @@ function rteCreate(o) {
 
   render(); histInit();
   inst.el = el; inst.body = body;
-  inst.cmd = { inline: cmdInline, clear: cmdClear, kind: cmdKind, list: cmdList, line: cmdInsertLine, indent: cmdIndent, text: cmdText, undo: undo, redo: redo, raw: function () { setRaw(!rawMode); }, img: cmdImg, mark: cmdMark, fx: function () { cmdFx(null); } };
+  inst.cmd = { inline: cmdInline, clear: cmdClear, kind: cmdKind, list: cmdList, line: cmdInsertLine, indent: cmdIndent, text: cmdText, undo: undo, redo: redo, raw: function () { setRaw(!rawMode); }, img: cmdImg, mark: cmdMark, fx: function () { cmdFx(null); }, copy: cmdCopy, paste: cmdPaste };
   inst.refresh = function () { lines = readLines(); render(); };   // 圖片裡的字辨識好了之類（畫面重畫，內容不變）
   inst.state = state; inst.value = function () { return rawMode ? rawTa.value.replace(/\n+$/, "") : value(); }; inst.isRaw = function () { return rawMode; };
   inst.splitAtCaret = function () { if (rawMode) setRaw(false); return splitAtCaret(); };
@@ -4367,6 +4998,8 @@ var RTE_BAR = [
     { id: "outdent", h: "⇤", tip: "取消縮排（Shift+Tab）", a: ["indent", -1] }
   ] },
   { g: "其他", items: [
+    { id: "copy", h: "📋 複製", tip: "複製選起來的字（格式、文字裡的圖、表格都帶著）：到別的地方（別的標題也可以）點一下，按「📌 貼上」", a: ["copy"] },
+    { id: "paste", h: "📌 貼上", tip: "把「📋 複製」的字貼在游標的位置（格式、圖、表格都帶著）", a: ["paste"] },
     { id: "emoji", h: "☺ 表情 ▾", tip: "放一個表情符號", pop: "emoji" },
     { id: "undo", h: "↶", tip: "復原（Ctrl+Z）", a: ["undo"] },
     { id: "redo", h: "↷", tip: "重做（Ctrl+Y）", a: ["redo"] },
@@ -4460,6 +5093,7 @@ function rteBarSync() {
     }
     if (id === "raw") { dis = !c; on = raw; }
     if (id === "undo" || id === "redo") { var hh = c ? c.hasHist() : { undo: false, redo: false }; dis = !c || raw || !hh[id]; }
+    if (id === "paste") dis = !c || raw || !RTE.clip;   // 第 32 批：還沒複製東西：「📌 貼上」是灰的
     B[id].disabled = dis; B[id].classList.toggle("on", !!on && !dis); B[id].setAttribute("aria-pressed", on && !dis ? "true" : "false");
   });
   var cb = B.color && B.color.querySelector(".fbcbar"); if (cb) cb.style.background = YZ_RT_COLORS[(st && st.c) || RTE.lastColor] || "#999";
@@ -4472,13 +5106,15 @@ document.addEventListener("keydown", function (e) { if (e.key === "Escape") rteC
 document.addEventListener("selectionchange", function () { if (RTE.cur) rteBarSync(); });
 
 /* ════════ shapelib.js ════════ */
-/* ═══════════════ shapelib.js：圖一（目錄圖）的物品圖庫（第 27 批；第 28 批：覆核＝條碼掃描器＋電腦、冰箱改到水藥調劑；第 29 批：行政事宜＝整個文件資料櫃；第 30 批：加上新的圖一——行政事宜＝整個文件資料櫃、水藥調劑＝只亮冰箱）═══════════════
+/* ═══════════════ shapelib.js：圖一（目錄圖）的物品圖庫（第 27 批；第 28 批：覆核＝條碼掃描器＋電腦、冰箱改到水藥調劑；第 29 批：行政事宜＝整個文件資料櫃；第 30 批：加上新的圖一——行政事宜＝整個文件資料櫃、水藥調劑＝只亮冰箱；第 32 批：加上有「問卷」夾板的圖一，覆核＝電腦＋兩盒處方、行政事宜＝文件資料櫃＋辦公桌、水藥＝藥品櫃＋窄藥架＋冰箱）═══════════════
  * 用比較準的方法（SAM，物品分割的模型）在開發的電腦上先把圖一裡每個按鍵該亮的物品切好，這裡只存外框的點（整張圖的 %）。
  * 編輯器按「儲存」時：目錄圖是這裡的其中一張（比對 fp＝圖的指紋：縮成 17×8 格、左右比亮暗的 128 個 0/1，看不出圖的內容）→ 直接用這裡的物品；
- * 換了別張圖 → 照舊在框裡自動找（shFind）。ids＝預設的地點（yzSetup 建的 p1…p10）優先用哪一個物品。
- * bx＝這張圖的預設按鍵位置（x、y、w、h、標籤在哪一邊）：按鍵還在「別張圖的預設位置」（沒動過）→ 換成這張圖的；動過的不動。不用手動改這個檔。 */
+ * 換了別張圖 → 照舊在框裡自動找（shFind）。ids＝預設的地點（yzSetup 建的 p1…p10；第 32 批多 p11＝問卷）優先用哪一個物品。
+ * bx＝這張圖的預設按鍵位置（x、y、w、h、標籤在哪一邊）：按鍵還在「別張圖的預設位置」（沒動過）→ 換成這張圖的；動過的不動。
+ * add＝這張圖多的按鍵（還沒有就自動加，例如問卷）；pr＝探針（某一塊的平均顏色：兩張圖很像、指紋差沒幾個時，挑顏色最接近的那一筆）。不用手動改這個檔。 */
 var SH_LIB = [{"fp":"6ea8eaaab6c5bd4ddc9c78d33bcb38eb","ar":2.3325,"objs":[{"id":"book","nm":"法規書（整本）","r":[[30.8,84.2,29.3,82.6,28.7,82.1,28.3,82.1,27.5,81.2,27.0,80.4,26.0,80.0,25.3,79.5,25.0,78.8,23.9,78.0,23.0,76.7,22.0,76.0,21.0,74.9,20.6,74.7,19.3,73.3,18.3,73.0,15.7,74.3,15.2,74.8,14.3,75.3,13.7,75.9,11.6,77.0,11.2,77.5,8.8,79.0,8.5,79.4,7.9,79.5,6.7,80.4,6.5,80.9,6.1,84.2,6.1,87.1,6.5,88.7,7.9,90.7,8.5,91.2,8.8,92.0,9.9,93.3,10.3,94.2,10.9,94.8,11.9,96.5,12.3,96.8,14.0,99.9,18.0,99.9,18.0,96.5,18.2,96.0,20.1,94.0,20.5,93.9,22.2,92.1,23.6,91.1,25.1,89.5,29.8,85.6,30.8,84.5]],"ids":["p8"],"c":1},{"id":"binder","nm":"規則本（整本）","r":[[71.9,94.2,71.9,97.8,72.0,98.4,72.5,99.1,72.9,99.4,73.3,99.4,73.6,99.6,73.6,99.9,96.0,99.9,96.2,99.4,96.2,98.4,95.8,95.9,95.5,94.3,95.4,93.3,95.1,92.6,94.8,89.8,94.5,88.9,94.2,86.7,93.8,85.1,93.4,82.1,93.2,81.1,92.7,78.7,92.6,78.3,91.1,77.6,90.1,77.6,89.3,77.2,88.4,77.1,88.1,76.9,85.3,76.4,84.9,76.1,84.5,76.1,84.2,75.9,82.9,75.6,82.6,75.4,81.5,75.3,81.1,75.0,80.7,75.2,80.4,74.9,79.9,74.9,79.5,74.7,78.3,74.5,78.0,74.2,77.1,73.9,76.6,73.9,76.2,74.2,75.9,75.0,75.7,76.1,75.4,76.7,73.4,86.0,73.2,86.8,73.0,88.2,72.5,89.8,72.0,92.7]],"ids":["p10"],"c":1},{"id":"clip","nm":"處方夾板","r":[[55.2,88.8,55.3,89.5,55.7,90.1,56.1,90.1,57.5,91.0,58.0,91.0,60.5,92.6,61.4,92.8,61.9,93.4,63.6,94.2,64.2,94.2,64.5,94.5,65.7,94.9,66.0,95.2,68.3,96.7,68.6,96.3,68.9,95.1,68.9,94.4,70.0,88.9,70.2,87.2,70.7,85.3,71.1,82.8,71.7,80.1,71.8,78.4,71.6,78.0,70.5,77.3,69.0,76.9,68.4,77.1,68.3,76.9,68.2,76.2,67.6,76.1,67.4,76.4,66.9,75.9,65.3,75.5,65.1,75.3,64.5,75.4,64.2,75.2,63.8,75.2,63.6,75.5,63.1,75.5,62.2,74.8,61.5,74.8,60.4,77.1,59.4,79.5,58.7,80.6,57.9,82.5,57.8,82.9,57.6,83.2,55.6,87.7]],"ids":["p9"],"c":1},{"id":"tray","nm":"藥盤","r":[[36.0,68.8,36.6,69.5,37.1,70.9,37.5,71.3,38.1,70.9,39.6,71.1,40.1,71.5,40.9,71.6,41.5,72.1,42.5,72.4,43.1,72.8,44.3,72.8,44.8,73.3,45.8,73.4,47.2,74.2,47.9,75.2,48.9,75.4,49.4,76.2,49.7,76.2,50.1,76.9,50.5,77.0,51.0,76.6,51.7,74.8,53.6,71.9,54.8,71.0,55.3,70.4,56.2,68.3,56.4,67.1,56.5,66.1,55.9,65.7,54.9,65.4,53.4,65.4,52.8,64.8,50.7,64.3,50.0,63.8,48.7,63.8,48.2,63.2,48.2,62.6,47.9,62.4,47.1,62.5,46.7,63.1,45.3,63.1,44.4,62.6,43.2,62.4,41.8,63.5,40.8,63.8,40.5,64.7,39.5,65.5,38.9,65.7,37.8,66.6,37.0,67.0,36.1,68.0]],"ids":["p7"],"c":1},{"id":"liquid","nm":"藥水瓶、量杯和冰箱","r":[[7.6,19.9,7.4,20.3,7.4,23.8,7.3,23.9,7.4,26.3,7.4,29.2,7.4,29.4,7.4,36.3,7.4,36.4,7.4,42.5,7.3,42.6,7.4,46.8,7.5,47.7,8.1,47.9,8.7,47.6,9.0,47.3,9.3,47.3,9.5,47.5,9.8,46.9,10.0,46.2,10.0,42.1,10.0,40.3,9.9,39.8,9.9,34.8,9.8,33.4,9.8,29.0,9.8,28.9,10.0,23.1,9.8,21.0,9.7,20.5,9.6,20.3,9.1,20.5,8.8,20.2],[8.6,62.0,8.4,61.8,8.1,61.8,8.0,61.6,7.9,61.6,7.9,61.8,7.3,61.9,7.2,62.0,7.0,62.0,6.8,62.2,6.7,62.5,6.7,64.6,6.6,65.0,6.5,65.3,6.3,66.0,6.3,67.7,6.2,68.0,6.0,67.7,5.8,67.8,5.2,68.0,5.2,68.1,5.0,68.1,4.8,68.5,4.8,68.7,4.8,68.8,4.8,70.9,4.7,71.0,4.7,71.7,4.8,71.9,4.8,73.6,4.9,74.1,5.1,74.3,6.0,74.3,6.2,74.1,6.3,73.9,6.3,73.7,6.4,73.4,6.5,73.6,6.8,73.7,7.4,73.2,7.6,73.2,7.7,73.1,8.0,73.0,8.3,72.7,8.6,72.6,8.9,72.2,9.0,71.7,9.0,65.7,8.8,64.1,8.8,62.5],[17.7,64.2,17.4,64.9,17.4,67.2,17.3,67.7,17.3,70.6,17.2,70.8,17.2,72.7,17.3,73.0,17.4,73.1,17.8,73.0,18.7,72.4,18.8,71.9,18.8,69.1,18.9,68.8,19.0,68.6,19.6,68.6,19.8,69.1,19.8,73.2,19.8,73.4,20.5,74.2,20.7,74.3,21.0,74.2,21.2,73.6,21.2,67.8,21.0,66.9,20.8,66.3,20.8,65.2,20.6,65.0,20.6,65.2,20.0,65.3,19.7,66.0,19.5,65.7,19.3,65.4,19.1,65.7,19.0,65.5,18.9,64.7,18.5,64.1,18.2,64.1,18.2,64.2,17.8,64.1],[14.4,65.0,14.2,64.7,14.2,64.8,13.6,64.8,13.5,64.9,13.0,64.8,12.8,65.0,12.6,64.9,12.4,65.3,11.4,65.3,11.1,65.5,11.1,65.7,11.1,67.7,11.0,67.8,11.0,69.1,11.1,69.7,11.1,70.6,11.3,70.9,11.4,70.9,11.5,71.0,11.5,70.9,11.8,70.9,11.9,70.8,12.1,70.8,12.1,70.6,12.4,70.6,12.6,70.4,12.7,69.8,12.9,69.4,13.1,69.7,13.5,69.8,13.6,69.7,13.8,69.7,14.2,69.3,14.3,68.9,14.4,68.3],[22.4,69.1,22.4,69.3,22.3,69.4,22.3,71.0,22.3,71.1,22.3,72.6,22.3,72.7,22.3,73.1,22.4,73.2,22.5,73.8,22.7,74.5,22.8,74.7,23.0,74.7,23.1,74.8,23.3,74.8,23.3,74.7,23.6,74.7,23.6,74.5,24.7,74.8,25.0,74.5,25.1,74.2,25.1,73.9,25.2,73.8,25.2,69.4,25.0,69.2,24.7,69.2,24.6,69.3,24.4,69.3,24.4,69.4,23.5,69.5,23.3,69.3,22.8,69.3,22.5,68.9]],"ids":["p6"],"c":8},{"id":"consult","nm":"藥師和病人（左邊窗口）","r":[[46.1,22.4,45.8,22.0,45.1,21.9,44.7,22.5,44.6,23.0,44.5,26.2,44.7,26.9,44.2,27.6,43.3,30.0,43.2,29.8,42.4,27.8,41.6,27.2,41.3,26.4,40.8,26.1,40.5,26.6,40.5,28.6,40.0,30.5,39.7,30.7,39.5,30.6,39.1,28.7,38.9,28.5,38.7,28.6,38.4,30.2,38.3,32.0,38.3,33.3,39.0,34.7,39.0,36.2,38.6,38.1,38.7,39.2,38.9,39.5,40.8,39.6,41.7,40.3,42.5,40.3,42.7,40.1,42.7,39.2,42.3,34.2,42.3,33.6,42.4,33.3,42.7,33.1,43.1,33.4,43.7,33.4,43.9,33.0,44.0,32.0,44.2,31.7,45.0,32.3,45.5,31.4,46.8,31.5,47.3,31.2,47.4,30.8,47.3,29.5,46.8,27.4,46.4,23.6]],"ids":["p2"],"c":2},{"id":"dispense","nm":"藥師和病人（中間窗口）","r":[[58.8,26.2,58.6,26.4,58.3,27.2,58.0,27.8,57.4,28.3,57.2,28.9,57.0,30.1,57.0,34.6,57.1,35.6,57.5,35.9,57.7,36.4,57.7,37.4,57.5,38.2,57.4,39.7,57.4,40.3,57.2,41.2,57.2,42.0,57.4,42.3,57.6,42.3,57.7,42.4,59.2,42.5,59.2,42.6,59.6,42.6,59.6,42.8,60.4,42.8,60.5,42.9,60.9,42.9,60.9,43.0,61.6,43.0,61.7,42.8,61.8,42.1,61.7,41.5,61.6,39.3,61.3,37.4,61.3,36.7,61.2,36.1,61.2,35.6,61.5,35.1,62.0,35.6,62.2,35.6,62.7,35.2,62.9,34.8,63.1,34.0,63.1,32.9,63.0,32.6,62.4,31.9,61.8,30.5,61.6,29.0,61.4,28.5,60.3,27.5,59.9,26.6,59.5,26.2],[64.5,20.7,64.2,21.4,64.2,21.9,64.2,23.3,64.5,24.0,64.5,24.2,64.3,24.8,64.3,25.9,64.2,26.2,63.8,26.2,63.2,27.3,62.8,28.7,62.8,29.7,63.0,30.0,63.2,30.0,63.3,29.8,64.1,30.0,64.2,30.1,64.4,30.1,64.6,30.5,65.0,30.5,65.3,29.8,65.5,29.8,65.8,30.2,66.9,30.2,67.1,30.6,67.2,32.3,67.4,32.5,67.5,32.4,67.6,31.5,67.6,30.9,67.7,30.6,67.7,29.1,67.5,27.5,67.4,27.3,66.9,26.8,66.7,26.3,66.4,26.1,66.2,26.1,66.0,25.7,65.8,24.5,65.8,23.8,66.0,23.0,66.1,22.2,65.9,21.3,65.4,20.3,65.0,20.3]],"ids":["p3"],"c":2},{"id":"er","nm":"藥師和病人（右邊窗口）","r":[[91.7,21.2,90.8,20.5,90.0,21.6,89.8,22.4,90.0,23.9,89.8,25.9,88.7,27.2,88.3,28.9,87.4,28.7,86.6,27.5,86.1,27.6,86.1,30.8,85.8,33.0,85.5,33.5,84.8,32.4,84.3,29.5,83.8,29.4,83.5,29.8,83.2,31.5,83.0,35.6,83.5,37.1,84.2,38.1,83.9,42.5,85.8,43.2,86.5,43.0,87.3,41.9,88.7,41.2,88.4,37.9,88.4,34.2,88.8,33.9,89.3,34.3,89.8,33.9,90.1,33.0,90.0,31.5,88.9,30.1,89.0,29.5,90.0,29.0,91.1,29.4,91.2,30.1,90.9,30.8,91.1,32.9,91.3,33.3,91.7,33.0,92.3,31.3,94.0,31.2,94.1,30.2,93.7,27.8,93.1,26.9,92.5,25.0,92.1,24.4,92.0,22.2]],"ids":["p4"],"c":2},{"id":"review","nm":"條碼掃描器和電腦","r":[[79.5,42.6,73.6,42.1,70.7,41.4,69.3,41.7,68.9,47.5,68.8,53.0,68.2,53.3,67.1,53.3,66.2,54.8,65.7,56.4,65.7,57.5,65.9,58.6,66.9,59.2,67.3,59.9,67.6,63.7,67.6,64.9,66.9,65.5,66.5,66.6,66.4,67.8,66.6,68.2,69.5,69.1,70.6,67.6,70.7,67.1,70.6,65.9,69.6,64.9,69.5,61.6,69.1,59.8,69.4,59.0,69.8,60.2,71.1,59.9,71.7,60.8,71.9,60.5,72.7,60.8,72.8,61.3,72.7,64.2,74.0,64.7,74.2,64.2,74.3,61.9,74.8,60.2,76.0,59.1,76.2,58.0,76.6,57.4,78.0,56.2,78.9,55.9,79.3,54.9,79.5,52.6,79.7,44.5,79.7,43.1]],"ids":["p5"],"c":2},{"id":"cabinet","nm":"文件資料櫃（整個櫃子，不含冰箱）","r":[[15.6,15.0,11.1,13.3,10.7,12.8,8.4,12.4,6.5,11.7,5.8,11.9,5.1,13.0,5.2,14.6,5.2,22.7,5.0,25.0,5.2,26.7,5.1,28.7,5.2,29.5,5.1,31.5,5.3,33.6,5.1,36.1,5.3,36.7,5.4,40.2,5.2,44.9,5.5,51.4,5.8,51.4,5.7,50.4,5.9,50.1,6.5,49.8,7.2,48.1,7.0,46.2,7.2,36.2,7.0,23.8,7.2,19.7,7.6,19.2,9.1,19.9,9.6,19.7,9.8,20.0,10.1,20.8,10.2,23.0,10.0,28.7,10.3,45.1,12.2,45.2,12.6,43.6,13.3,43.4,13.3,40.6,13.0,40.0,12.7,40.0,12.5,39.1,12.6,38.2,13.1,38.2,13.4,37.6,13.2,34.2,14.2,33.0,15.3,33.1,15.7,32.3,15.7,22.4,15.6,21.0,15.7,16.6]],"ids":["p1"],"c":1},{"id":"files","nm":"文件夾（最上面那一層）","r":[[9.6,14.9,9.7,16.1,9.6,16.7,9.6,19.1,9.7,19.6,10.1,20.3,10.2,21.4,10.3,21.7,11.5,21.7,11.6,21.8,11.9,21.8,12.2,21.4,12.5,21.9,12.8,21.9,12.9,22.0,15.2,22.0,15.2,22.2,15.5,22.0,15.5,21.8,15.5,15.7,15.4,15.5,15.0,15.5,14.9,15.3,14.5,15.2,14.5,15.1,14.3,15.1,14.2,15.0,14.2,15.1,13.8,15.1,13.7,15.0,13.6,15.0,13.4,14.7,13.3,14.9,12.3,14.9,12.2,15.1,11.9,14.5,10.4,14.5,10.4,14.6,9.9,14.5]],"c":1},{"id":"beaker","nm":"量杯","r":[[22.4,69.1,22.4,69.3,22.3,69.4,22.3,71.0,22.3,71.1,22.3,72.6,22.3,72.7,22.3,73.1,22.4,73.2,22.5,73.8,22.7,74.5,22.8,74.7,23.0,74.7,23.1,74.8,23.3,74.8,23.3,74.7,23.6,74.7,23.6,74.5,24.7,74.8,25.0,74.5,25.1,74.2,25.1,73.9,25.2,73.8,25.2,69.4,25.0,69.2,24.7,69.2,24.6,69.3,24.4,69.3,24.4,69.4,23.5,69.5,23.3,69.3,22.8,69.3,22.5,68.9]],"c":1},{"id":"bottles","nm":"藥水瓶","r":[[8.6,62.0,8.4,61.8,8.1,61.8,8.0,61.6,7.9,61.6,7.9,61.8,7.3,61.9,7.2,62.0,7.0,62.0,6.8,62.2,6.7,62.5,6.7,64.6,6.6,65.0,6.5,65.3,6.3,66.0,6.3,67.7,6.2,68.0,6.0,67.7,5.8,67.8,5.2,68.0,5.2,68.1,5.0,68.1,4.8,68.5,4.8,68.7,4.8,68.8,4.8,70.9,4.7,71.0,4.7,71.7,4.8,71.9,4.8,73.6,4.9,74.1,5.1,74.3,6.0,74.3,6.2,74.1,6.3,73.9,6.3,73.7,6.4,73.4,6.5,73.6,6.8,73.7,7.4,73.2,7.6,73.2,7.7,73.1,8.0,73.0,8.3,72.7,8.6,72.6,8.9,72.2,9.0,71.7,9.0,65.7,8.8,64.1,8.8,62.5],[17.7,64.2,17.4,64.9,17.4,67.2,17.3,67.7,17.3,70.6,17.2,70.8,17.2,72.7,17.3,73.0,17.4,73.1,17.8,73.0,18.7,72.4,18.8,71.9,18.8,69.1,18.9,68.8,19.0,68.6,19.6,68.6,19.8,69.1,19.8,73.2,19.8,73.4,20.5,74.2,20.7,74.3,21.0,74.2,21.2,73.6,21.2,67.8,21.0,66.9,20.8,66.3,20.8,65.2,20.6,65.0,20.6,65.2,20.0,65.3,19.7,66.0,19.5,65.7,19.3,65.4,19.1,65.7,19.0,65.5,18.9,64.7,18.5,64.1,18.2,64.1,18.2,64.2,17.8,64.1],[14.4,65.0,14.2,64.7,14.2,64.8,13.6,64.8,13.5,64.9,13.0,64.8,12.8,65.0,12.6,64.9,12.4,65.3,11.4,65.3,11.1,65.5,11.1,65.7,11.1,67.7,11.0,67.8,11.0,69.1,11.1,69.7,11.1,70.6,11.3,70.9,11.4,70.9,11.5,71.0,11.5,70.9,11.8,70.9,11.9,70.8,12.1,70.8,12.1,70.6,12.4,70.6,12.6,70.4,12.7,69.8,12.9,69.4,13.1,69.7,13.5,69.8,13.6,69.7,13.8,69.7,14.2,69.3,14.3,68.9,14.4,68.3]],"c":6},{"id":"fridge","nm":"冰箱","r":[[7.6,19.9,7.4,20.3,7.4,23.8,7.3,23.9,7.4,26.3,7.4,29.2,7.4,29.4,7.4,36.3,7.4,36.4,7.4,42.5,7.3,42.6,7.4,46.8,7.5,47.7,8.1,47.9,8.7,47.6,9.0,47.3,9.3,47.3,9.5,47.5,9.8,46.9,10.0,46.2,10.0,42.1,10.0,40.3,9.9,39.8,9.9,34.8,9.8,33.4,9.8,29.0,9.8,28.9,10.0,23.1,9.8,21.0,9.7,20.5,9.6,20.3,9.1,20.5,8.8,20.2]],"c":1},{"id":"folders","nm":"資料夾","r":[[12.3,15.2,12.2,15.5,12.2,16.1,12.1,16.7,12.1,17.4,12.1,17.5,12.1,18.0,12.1,18.1,12.1,19.4,12.1,19.5,12.1,20.0,12.2,20.1,12.2,21.3,12.3,21.6,12.5,21.8,12.8,21.8,12.8,21.9,14.4,21.9,14.4,22.0,15.4,21.9,15.5,21.8,15.5,21.6,15.5,18.1,15.5,18.0,15.5,17.4,15.5,17.3,15.5,16.1,15.5,15.8,15.4,15.7,14.7,15.6,14.7,15.5,14.4,15.5,14.3,15.3,13.8,15.3,13.6,15.1,13.0,15.1,13.0,15.0,12.4,15.0]],"c":1},{"id":"monitor","nm":"電腦螢幕","r":[[69.6,42.8,69.3,44.0,69.2,46.2,69.0,47.9,68.9,49.8,69.0,50.4,69.0,52.7,69.1,53.2,69.3,53.6,69.8,54.9,70.0,57.6,70.1,57.7,70.5,57.6,70.9,58.0,72.1,58.3,72.4,58.2,73.2,58.6,73.5,59.0,74.2,59.0,74.8,59.3,74.9,59.2,75.7,59.2,76.0,59.0,76.2,58.0,76.7,57.1,77.4,56.8,78.0,56.2,78.7,56.0,79.1,55.2,79.1,54.1,79.2,53.5,79.5,52.7,79.5,51.5,79.6,50.5,79.6,43.4,79.5,42.9,79.1,42.6,78.2,42.5,77.8,43.0,76.4,42.4,75.9,42.4,75.5,42.8,74.7,42.3,73.6,42.5,73.2,42.0,72.0,42.3,71.7,42.0,70.8,41.9,70.5,41.7,70.0,41.9]],"c":1},{"id":"printer","nm":"印表機","r":[[53.3,48.4,52.9,48.0,52.3,47.9,52.3,47.7,50.2,47.5,49.5,47.9,49.2,48.4,48.9,48.7,48.6,49.3,48.4,50.5,48.1,51.4,48.0,52.4,48.0,53.7,48.0,53.8,48.0,56.5,47.9,56.6,47.9,57.7,47.8,58.6,47.8,59.9,47.7,60.0,47.7,61.0,47.8,61.4,48.2,61.8,49.1,61.8,49.8,62.1,50.2,62.1,50.4,62.4,51.0,62.4,51.1,62.2,51.2,61.5,51.2,58.8,51.3,58.6,51.6,58.0,52.0,57.5,52.5,57.2,53.1,56.8,53.3,56.0,53.4,55.7,53.4,54.4,53.3,54.3,53.3,53.6,53.4,53.5,53.4,48.6]],"c":1},{"id":"pillbottle","nm":"藥罐","r":[[55.2,71.0,55.1,71.1,54.9,71.6,54.9,76.9,55.0,77.0,55.0,77.5,55.1,77.8,55.4,78.0,55.4,78.1,56.2,78.1,56.2,78.0,56.3,78.0,56.5,77.7,56.5,77.5,56.6,77.3,56.6,76.0,56.6,75.9,56.6,75.0,56.7,74.9,56.7,71.9,56.6,71.7,56.6,71.5,56.5,71.3,56.1,70.9,55.4,70.9,55.4,71.0]],"c":1}],"bx":{"p1":[5,12,11,17,"t"],"p2":[37,9,12,22,"t"],"p3":[55,9,14,21,"t"],"p4":[81,8,14,21,"t"],"p5":[60,46,10,16,"t"],"p6":[10,57,11,15,"t"],"p7":[36,63,16,13,"b"],"p8":[6,75,13,16,"t"],"p9":[57,76,14,16,"l"],"p10":[81,74,15,14,"t"]}},
-{"fp":"3768d56adbccfe551cd84ce66c66785d","ar":2.2399,"bx":{"p1":[17,12,6,29,"r"],"p2":[43,19,8,17,"t"],"p3":[59,19,10,20,"t"],"p4":[82,20,11,20,"t"],"p5":[66,37,13,23,"t"],"p6":[14,18,4,25,"b"],"p7":[42,53,18,13,"b"],"p8":[20,61,19,23,"t"],"p9":[58,63,14,17,"l"],"p10":[71,64,18,26,"t"]},"objs":[{"id":"book","nm":"法規書（整本）","r":[[20.2,70.0,20.2,71.6,20.4,72.7,20.7,73.4,21.9,74.8,23.6,77.3,24.1,77.8,26.5,81.1,28.7,84.0,29.5,83.8,30.7,82.6,31.0,82.5,32.8,80.4,33.0,80.4,33.8,79.6,34.1,79.5,35.4,77.9,35.9,77.7,37.9,75.8,38.0,75.4,38.0,74.8,37.9,74.0,37.7,71.4,37.9,71.0,38.3,70.6,38.3,70.3,38.1,70.0,37.2,69.5,36.4,68.5,35.7,68.1,34.5,66.7,33.1,65.6,32.6,64.8,31.4,63.8,29.6,61.9,26.7,62.3,26.4,62.6,26.3,63.2,26.1,63.6,25.3,63.7,24.7,64.6,23.7,65.0,23.2,65.8,22.8,65.8,22.3,66.3,21.6,66.6,20.8,67.4,20.4,68.6]],"ids":["p8"],"c":1},{"id":"binder","nm":"規則本（整本）","r":[[71.1,77.6,71.1,80.4,71.2,81.3,71.6,82.0,72.8,82.3,73.8,83.1,75.0,83.4,76.0,84.0,76.7,84.1,77.4,84.7,78.4,85.1,79.2,85.7,80.1,85.9,80.7,86.4,81.7,86.8,82.6,87.4,83.5,87.6,83.7,87.8,85.0,88.5,85.6,88.7,86.1,89.1,87.5,89.9,88.0,90.0,88.2,89.6,88.2,88.1,88.1,87.2,88.1,86.0,88.0,84.7,88.4,83.7,88.3,80.9,88.2,80.3,88.2,79.5,88.0,77.0,88.0,74.1,87.6,68.7,87.5,68.3,87.3,68.0,86.5,67.9,86.3,67.7,85.7,67.7,83.7,66.7,81.6,66.2,80.9,65.6,80.2,65.8,79.5,65.3,79.1,65.3,78.8,65.0,76.9,64.6,76.4,64.2,74.7,64.0,74.5,64.3,74.2,65.2,74.0,66.2,72.7,70.6,71.8,74.5,71.4,75.5]],"ids":["p10"],"c":1},{"id":"clip","nm":"處方夾板","r":[[58.6,73.7,58.7,74.2,60.3,75.3,60.6,75.3,62.0,76.3,62.6,76.4,63.3,77.0,63.8,77.1,65.2,77.9,66.5,78.9,67.0,79.0,68.0,79.7,68.4,79.7,68.7,79.0,69.5,75.2,69.7,74.6,69.8,73.7,71.3,67.3,71.3,66.3,70.9,66.0,69.3,65.5,68.6,64.8,67.3,64.6,67.0,64.1,66.4,64.1,66.1,63.8,65.8,63.8,65.4,63.5,64.7,63.6,63.5,63.5,62.1,66.6,61.9,66.7,61.1,68.3,60.5,69.8,59.5,71.6,58.8,73.2]],"ids":["p9"],"c":1},{"id":"tray","nm":"藥盤","r":[[59.3,57.3,58.8,56.7,58.1,56.7,57.3,55.8,55.7,55.7,55.2,55.4,54.7,55.4,54.1,54.5,53.5,54.7,52.1,54.4,51.4,53.6,50.9,53.6,50.3,54.1,48.0,53.7,47.1,53.9,46.8,54.7,46.6,54.9,46.1,55.1,45.5,55.7,45.0,55.8,43.5,56.8,42.8,57.8,42.3,58.2,42.1,58.7,42.1,59.1,42.6,59.5,42.8,60.1,42.8,60.6,43.0,61.0,44.4,61.0,45.3,61.3,45.7,61.3,46.4,61.8,48.2,62.5,48.7,63.1,49.7,63.2,50.3,63.7,51.4,63.8,52.1,64.3,52.7,64.4,53.6,65.5,54.1,65.5,54.3,65.3,54.7,64.3,55.3,63.4,56.3,62.3,56.6,61.7,57.3,61.0,58.2,60.3,58.7,58.4,59.3,57.5]],"ids":["p7"],"c":1},{"id":"liquid","nm":"冰箱（水藥）","r":[[16.2,18.3,14.8,18.3,14.7,18.4,14.5,18.9,14.5,19.5,14.5,19.6,14.5,22.6,14.5,22.7,14.5,26.6,14.4,26.7,14.4,27.4,14.5,27.6,14.5,29.5,14.5,29.6,14.5,30.8,14.5,30.9,14.5,33.3,14.5,33.4,14.5,33.9,14.5,34.0,14.5,37.4,14.4,37.5,14.4,38.7,14.5,38.8,14.5,40.6,14.4,40.9,14.5,41.1,14.5,42.2,14.5,42.6,14.7,42.7,14.8,42.5,15.3,42.2,16.1,41.6,16.6,41.6,16.9,41.3,17.1,40.7,17.1,38.3,17.2,38.2,17.1,34.2,17.0,34.1,17.0,32.2,17.1,32.1,17.0,31.6,17.0,30.3,17.1,30.2,17.1,24.1,17.0,24.0,17.0,22.8,17.0,22.7,17.1,20.0,16.9,18.7,16.7,18.5,16.5,18.5]],"ids":["p6"],"c":1},{"id":"consult","nm":"藥師和病人（左邊窗口）","r":[[49.9,19.9,49.4,19.7,48.7,20.8,48.6,22.0,48.6,24.1,47.8,26.4,47.6,26.3,47.2,25.1,46.2,24.0,45.9,24.0,45.8,24.2,45.6,26.1,45.2,27.2,45.0,27.2,44.6,26.6,44.6,25.9,44.4,25.4,44.3,25.3,44.1,25.7,43.8,26.7,43.8,29.6,43.9,30.0,44.3,30.3,44.5,30.9,44.1,33.9,44.0,34.7,44.1,35.1,44.8,35.3,45.9,35.3,46.1,35.6,47.4,35.6,47.5,35.3,47.5,34.5,47.3,31.7,47.1,31.0,47.2,30.2,47.4,29.8,47.9,30.0,48.1,29.7,48.5,28.5,48.8,28.9,49.0,28.9,49.3,28.2,49.7,27.8,50.6,28.0,50.9,27.6,51.0,27.1,50.9,25.2,50.4,23.4,50.4,22.3,50.2,21.0]],"ids":["p2"],"c":2},{"id":"dispense","nm":"藥師和病人（中間窗口）","r":[[61.0,19.3,60.7,19.7,60.5,20.2,60.1,22.0,60.1,23.4,60.3,24.0,60.3,24.9,60.0,25.4,59.5,25.9,59.2,26.5,59.1,29.4,59.1,31.1,59.8,32.6,59.8,32.9,59.5,34.7,59.3,37.2,59.6,37.6,60.4,37.6,61.2,37.9,62.2,37.9,63.0,38.2,63.1,38.1,63.1,36.6,62.8,34.0,62.7,31.9,62.8,31.6,63.2,31.7,63.7,31.6,64.1,30.4,64.2,29.5,64.6,29.0,64.7,28.4,64.4,27.9,64.2,27.9,64.0,28.3,64.0,29.0,63.9,29.2,63.7,29.2,63.3,28.6,63.3,28.2,63.0,27.4,62.8,26.4,61.9,25.7,61.6,25.1,61.7,24.6,62.2,23.4,62.4,22.4,62.4,21.0,62.4,20.6,62.0,19.7,61.5,19.3],[65.1,19.6,65.0,19.8,65.0,20.9,65.1,21.5,65.1,23.0,64.9,23.5,64.6,23.7,64.1,24.6,63.9,25.9,63.8,26.8,64.1,27.1,64.5,27.1,64.5,27.2,65.1,27.1,65.3,27.4,65.3,27.8,65.4,27.9,65.7,27.9,65.8,27.8,65.9,27.3,66.1,27.1,66.4,27.1,66.6,27.3,67.2,27.4,67.4,27.8,67.7,28.8,67.8,28.9,68.0,28.9,68.1,28.6,68.1,28.0,68.1,27.9,68.1,27.3,68.0,27.2,68.0,26.7,68.0,26.6,68.0,26.0,67.9,25.9,67.9,25.5,67.9,25.4,67.8,24.8,67.7,24.5,67.4,24.2,67.1,23.7,66.8,23.4,66.5,22.3,66.5,21.7,66.5,21.6,66.5,21.1,66.6,21.0,66.6,19.9,66.4,19.5,66.0,19.1,65.4,19.1]],"ids":["p3"],"c":2},{"id":"er","nm":"藥師和病人（右邊窗口）","r":[[90.0,20.4,89.3,20.2,88.7,20.8,88.5,22.1,88.7,23.2,88.5,24.6,87.4,25.5,87.1,27.4,86.3,27.3,85.7,26.5,85.3,26.7,85.1,30.1,84.7,31.1,84.4,31.1,84.1,30.7,83.6,27.9,83.2,27.8,82.7,28.4,82.5,32.7,82.7,33.9,83.4,34.5,83.5,35.1,83.2,38.7,83.3,39.5,84.4,39.7,86.3,38.8,86.8,39.0,87.5,38.8,86.9,32.1,87.3,31.7,87.9,32.3,88.3,31.9,88.4,30.1,88.2,29.5,87.7,29.2,87.4,28.4,87.4,28.0,88.0,27.7,88.5,28.0,89.3,27.7,89.6,28.3,89.5,32.2,89.7,32.8,90.5,32.7,90.6,30.3,90.8,29.5,91.2,29.1,92.1,29.2,92.0,26.7,91.7,26.0,90.2,24.1,90.3,22.2,90.0,21.5]],"ids":["p4"],"c":2},{"id":"review","nm":"條碼掃描器和電腦","r":[[67.2,58.4,67.4,58.7,69.3,59.4,69.7,59.1,70.1,58.4,70.0,56.8,69.7,56.1,69.6,53.7,69.4,52.3,69.5,51.2,69.6,51.0,69.8,51.7,70.1,51.9,70.8,51.9,71.3,53.0,71.8,52.6,72.5,52.9,72.5,55.0,72.0,55.4,72.0,55.6,72.3,55.6,73.0,56.4,73.7,56.7,73.9,56.4,73.9,54.3,74.3,53.3,75.0,52.7,75.3,52.0,76.0,51.1,76.9,50.4,78.3,50.0,78.4,49.8,78.5,43.2,78.7,40.8,78.7,39.5,78.3,39.0,73.6,38.4,71.3,37.8,69.6,37.8,69.3,38.9,69.1,43.6,68.8,45.0,68.9,46.9,67.2,48.3,66.6,49.5,66.6,50.4,67.0,51.6,67.9,52.4,68.1,54.9,68.1,56.1,67.3,57.0]],"ids":["p5"],"c":2},{"id":"cabinet","nm":"文件資料櫃（整個櫃子）","r":[[22.4,13.5,21.2,13.5,20.8,13.7,20.4,13.4,20.1,13.7,19.8,13.1,19.3,13.1,18.8,12.8,17.9,12.8,17.4,13.1,17.3,13.6,17.2,17.2,17.4,17.8,17.3,21.4,17.4,22.2,17.3,28.2,17.3,30.4,17.2,31.9,17.3,33.2,17.2,38.7,17.3,38.8,17.3,40.7,17.4,40.9,17.9,40.9,18.4,40.7,19.0,40.1,20.1,40.0,20.8,39.3,21.2,39.3,21.5,38.9,21.5,37.9,21.1,36.9,21.1,36.0,21.3,35.7,21.4,35.0,21.4,32.8,21.0,30.2,21.2,29.8,21.5,29.7,22.2,29.7,22.4,29.4,22.5,28.6,22.5,27.9,22.5,14.3,22.5,13.6]],"ids":["p1"],"c":1},{"id":"narrow","nm":"窄藥架（冰箱旁邊）","r":[[14.3,17.2,13.9,17.2,13.6,17.7,13.5,18.4,13.3,18.7,12.9,20.3,13.0,20.8,12.9,25.5,13.0,25.9,12.8,27.1,12.8,27.8,12.9,27.9,12.9,34.5,12.9,34.6,12.9,37.8,12.8,37.9,12.8,39.4,12.9,39.5,12.8,42.2,12.9,42.4,12.9,43.7,13.1,43.8,13.3,43.3,14.4,43.0,14.6,42.7,14.7,42.4,14.7,42.0,14.7,40.6,14.6,40.5,14.7,37.0,14.6,36.9,14.6,34.5,14.5,34.4,14.5,31.4,14.7,30.5,14.7,28.6,14.6,28.5,14.7,28.2,14.7,26.5,14.6,26.4,14.6,22.8,14.5,22.7,14.5,20.0,14.6,19.6,14.4,19.0,14.5,17.8,14.4,17.3]],"c":1},{"id":"shelves","nm":"藥品櫃（左邊兩座）","r":[[0.0,11.3,0.0,51.4,1.7,50.4,3.1,50.1,3.5,49.5,3.8,49.6,4.3,49.4,5.1,49.4,5.7,48.6,6.1,48.4,6.4,47.4,6.8,47.1,7.5,46.2,7.9,46.4,8.7,45.6,10.1,45.7,10.3,45.9,10.8,45.7,11.2,45.9,12.0,45.6,12.7,45.0,12.9,44.0,12.9,38.9,13.0,38.2,13.1,36.2,12.9,28.6,13.1,27.3,13.1,25.2,12.9,24.3,13.1,21.7,12.9,19.1,12.7,18.1,12.8,16.5,12.7,13.2,11.3,13.4,11.1,13.1,10.8,13.5,9.4,13.1,8.6,13.2,8.0,13.0,7.6,12.4,6.3,12.5,5.7,12.3,4.8,12.3,4.4,13.0,3.9,11.9,3.4,12.2,2.6,11.5,2.1,11.8,1.7,11.1,0.6,11.5],[6.8,8.7,6.8,9.5,6.7,9.7,6.7,10.0,6.8,10.1,6.8,10.5,6.9,10.6,7.0,10.4,7.4,10.4,7.5,10.6,7.9,10.0,8.2,10.0,8.4,10.3,8.5,10.1,9.1,10.1,9.2,9.9,9.2,9.1,9.1,8.9,8.8,9.3,8.7,9.3,8.4,8.8,8.2,9.2,8.0,9.3,7.7,8.8,7.1,8.8,6.9,8.6]],"c":2},{"id":"bottles","nm":"藥水瓶（水槽上）","r":[[23.8,52.1,23.6,51.9,23.2,51.9,22.8,52.4,22.7,53.0,22.8,56.1,22.6,56.3,22.1,56.3,21.6,56.6,21.5,56.4,21.3,55.8,21.3,53.5,20.7,52.4,20.5,52.5,20.4,53.0,19.8,54.3,19.5,53.8,19.1,53.6,18.8,53.6,18.4,53.9,18.2,54.5,18.1,56.4,17.8,57.3,17.8,58.1,17.6,58.4,17.0,58.4,16.6,59.1,16.6,62.8,16.6,63.0,16.9,63.4,17.4,63.5,17.7,63.1,18.0,62.6,18.6,62.8,18.8,62.5,19.6,62.2,20.1,61.3,20.4,61.6,21.2,61.3,21.6,60.6,21.7,60.7,22.0,60.4,22.4,60.4,22.8,59.8,23.0,60.0,23.4,60.0,24.0,59.5,24.1,59.2,24.1,57.8,24.1,57.3,24.1,55.1,24.0,53.6],[29.5,54.8,29.2,54.5,28.2,54.5,28.1,54.7,28.1,54.9,28.1,55.5,27.9,55.7,27.7,55.6,27.6,55.5,27.3,55.5,27.3,55.6,26.9,55.7,26.7,56.0,26.6,56.6,26.7,57.4,26.6,57.5,26.6,58.1,26.6,58.2,26.6,61.7,26.6,61.8,26.8,61.9,26.9,61.8,27.1,61.8,27.1,61.7,27.3,61.7,27.4,61.6,27.6,61.6,27.7,61.5,27.9,61.3,28.0,61.1,28.0,59.5,28.0,59.4,28.0,58.8,28.2,58.6,28.4,58.9,28.7,59.4,28.7,59.7,28.7,59.8,28.7,61.3,28.7,61.6,28.8,61.7,29.5,61.7,29.7,61.5,29.7,58.0,29.5,57.2]],"c":7},{"id":"beaker","nm":"量杯","r":[[30.6,53.2,30.5,53.5,30.5,54.4,30.5,54.5,30.5,55.1,30.6,55.3,30.6,59.2,30.6,59.3,30.6,60.0,30.6,60.1,30.6,62.5,30.8,63.0,31.2,63.5,31.5,63.6,32.3,64.4,32.7,64.6,32.8,64.4,33.0,63.5,33.0,62.5,32.9,62.4,32.9,57.6,33.0,57.5,33.0,55.8,32.9,55.7,32.9,55.4,33.0,55.3,33.0,54.2,33.0,54.1,33.0,53.7,32.9,53.2,32.8,53.1,32.3,53.0,32.2,52.9,31.4,52.9,31.4,53.0,31.1,53.0,31.1,53.1]],"c":1},{"id":"monitor","nm":"電腦螢幕","r":[[69.4,38.2,69.3,38.9,69.1,43.6,68.8,45.0,68.8,46.5,68.9,46.9,69.7,47.7,70.0,48.6,70.0,50.5,69.8,51.0,69.8,51.7,70.1,51.9,70.3,51.8,70.8,51.9,71.0,52.1,71.3,53.0,71.8,52.6,72.2,52.6,72.5,53.0,72.5,55.0,72.0,55.4,72.0,55.6,72.1,55.7,72.3,55.6,73.0,56.4,73.7,56.7,73.9,56.4,73.9,54.3,74.3,53.3,75.0,52.7,75.3,52.0,76.0,51.1,76.4,51.0,76.9,50.4,78.2,50.1,78.4,49.8,78.4,47.1,78.5,46.1,78.5,43.2,78.7,40.8,78.7,39.7,78.6,39.4,78.3,39.0,75.2,38.7,74.6,38.4,73.6,38.4,71.3,37.8,69.7,37.7]],"c":1},{"id":"scanner","nm":"條碼掃描器","r":[[68.5,47.1,68.2,47.5,67.8,47.6,67.0,48.6,66.6,49.5,66.6,50.4,66.8,51.1,67.0,51.6,67.4,52.0,67.6,52.0,67.9,52.4,67.9,53.5,68.0,53.6,68.0,53.8,68.1,54.3,68.1,54.8,68.1,54.9,68.1,55.8,68.1,56.1,67.9,56.3,67.8,56.3,67.3,57.0,67.3,57.3,67.2,57.8,67.2,58.4,67.4,58.7,67.7,58.7,67.7,58.8,68.1,58.9,68.2,59.1,68.7,59.1,68.7,59.2,69.0,59.2,69.0,59.3,69.4,59.4,69.7,59.1,69.8,58.7,70.1,58.4,70.1,57.6,70.0,57.2,70.0,56.8,69.7,56.1,69.7,54.7,69.6,54.5,69.6,53.7,69.6,53.6,69.6,53.1,69.4,52.3,69.5,51.2,69.8,50.4,69.9,49.3,69.8,49.2,69.8,48.6,69.6,47.9,68.9,47.1]],"c":1},{"id":"printer","nm":"印表機","r":[[55.9,42.4,55.7,42.4,55.7,42.2,54.9,42.2,54.8,42.1,53.9,42.0,53.9,41.9,53.2,41.9,52.4,42.6,51.6,44.3,51.5,44.7,51.5,45.1,51.5,45.2,51.4,45.8,51.4,45.9,51.4,47.0,51.5,47.1,51.5,49.3,51.4,49.4,51.4,51.0,51.5,51.1,51.4,53.0,51.5,53.1,51.8,53.5,52.1,53.5,52.2,53.6,53.5,53.7,53.5,53.8,53.9,53.8,54.0,53.9,54.1,53.9,54.3,53.6,54.3,52.7,54.3,52.6,54.3,51.0,54.4,50.7,54.6,50.4,54.8,50.1,55.0,50.1,55.0,50.0,55.5,50.0,55.5,50.1,55.7,50.0,55.9,49.6,56.0,48.7,56.0,45.6,56.1,45.5,56.2,44.6,56.3,43.9,56.3,43.1,56.2,42.6]],"c":1},{"id":"pillbottle","nm":"藥罐","r":[[58.3,60.5,58.1,60.9,57.9,61.0,57.7,61.7,57.7,62.4,57.8,62.5,57.8,65.8,57.8,66.0,58.0,66.2,58.8,66.2,59.0,65.9,59.1,61.2,59.0,61.0,58.8,60.7,58.6,60.7,58.4,60.5]],"c":1}]}];
+{"fp":"3768d56adbccfe551cd84ce66c66785d","ar":2.2399,"bx":{"p1":[17,12,6,29,"r"],"p2":[43,19,8,17,"t"],"p3":[59,19,10,20,"t"],"p4":[82,20,11,20,"t"],"p5":[66,37,13,23,"t"],"p6":[14,18,4,25,"b"],"p7":[42,53,18,13,"b"],"p8":[20,61,19,23,"t"],"p9":[58,63,14,17,"l"],"p10":[71,64,18,26,"t"]},"objs":[{"id":"book","nm":"法規書（整本）","r":[[20.2,70.0,20.2,71.6,20.4,72.7,20.7,73.4,21.9,74.8,23.6,77.3,24.1,77.8,26.5,81.1,28.7,84.0,29.5,83.8,30.7,82.6,31.0,82.5,32.8,80.4,33.0,80.4,33.8,79.6,34.1,79.5,35.4,77.9,35.9,77.7,37.9,75.8,38.0,75.4,38.0,74.8,37.9,74.0,37.7,71.4,37.9,71.0,38.3,70.6,38.3,70.3,38.1,70.0,37.2,69.5,36.4,68.5,35.7,68.1,34.5,66.7,33.1,65.6,32.6,64.8,31.4,63.8,29.6,61.9,26.7,62.3,26.4,62.6,26.3,63.2,26.1,63.6,25.3,63.7,24.7,64.6,23.7,65.0,23.2,65.8,22.8,65.8,22.3,66.3,21.6,66.6,20.8,67.4,20.4,68.6]],"ids":["p8"],"c":1},{"id":"binder","nm":"規則本（整本）","r":[[71.1,77.6,71.1,80.4,71.2,81.3,71.6,82.0,72.8,82.3,73.8,83.1,75.0,83.4,76.0,84.0,76.7,84.1,77.4,84.7,78.4,85.1,79.2,85.7,80.1,85.9,80.7,86.4,81.7,86.8,82.6,87.4,83.5,87.6,83.7,87.8,85.0,88.5,85.6,88.7,86.1,89.1,87.5,89.9,88.0,90.0,88.2,89.6,88.2,88.1,88.1,87.2,88.1,86.0,88.0,84.7,88.4,83.7,88.3,80.9,88.2,80.3,88.2,79.5,88.0,77.0,88.0,74.1,87.6,68.7,87.5,68.3,87.3,68.0,86.5,67.9,86.3,67.7,85.7,67.7,83.7,66.7,81.6,66.2,80.9,65.6,80.2,65.8,79.5,65.3,79.1,65.3,78.8,65.0,76.9,64.6,76.4,64.2,74.7,64.0,74.5,64.3,74.2,65.2,74.0,66.2,72.7,70.6,71.8,74.5,71.4,75.5]],"ids":["p10"],"c":1},{"id":"clip","nm":"處方夾板","r":[[58.6,73.7,58.7,74.2,60.3,75.3,60.6,75.3,62.0,76.3,62.6,76.4,63.3,77.0,63.8,77.1,65.2,77.9,66.5,78.9,67.0,79.0,68.0,79.7,68.4,79.7,68.7,79.0,69.5,75.2,69.7,74.6,69.8,73.7,71.3,67.3,71.3,66.3,70.9,66.0,69.3,65.5,68.6,64.8,67.3,64.6,67.0,64.1,66.4,64.1,66.1,63.8,65.8,63.8,65.4,63.5,64.7,63.6,63.5,63.5,62.1,66.6,61.9,66.7,61.1,68.3,60.5,69.8,59.5,71.6,58.8,73.2]],"ids":["p9"],"c":1},{"id":"tray","nm":"藥盤","r":[[59.3,57.3,58.8,56.7,58.1,56.7,57.3,55.8,55.7,55.7,55.2,55.4,54.7,55.4,54.1,54.5,53.5,54.7,52.1,54.4,51.4,53.6,50.9,53.6,50.3,54.1,48.0,53.7,47.1,53.9,46.8,54.7,46.6,54.9,46.1,55.1,45.5,55.7,45.0,55.8,43.5,56.8,42.8,57.8,42.3,58.2,42.1,58.7,42.1,59.1,42.6,59.5,42.8,60.1,42.8,60.6,43.0,61.0,44.4,61.0,45.3,61.3,45.7,61.3,46.4,61.8,48.2,62.5,48.7,63.1,49.7,63.2,50.3,63.7,51.4,63.8,52.1,64.3,52.7,64.4,53.6,65.5,54.1,65.5,54.3,65.3,54.7,64.3,55.3,63.4,56.3,62.3,56.6,61.7,57.3,61.0,58.2,60.3,58.7,58.4,59.3,57.5]],"ids":["p7"],"c":1},{"id":"liquid","nm":"藥品櫃＋窄藥架＋冰箱（水藥）","r":[[3.6,12.1,3.2,21.4,3.4,25.2,3.1,26.4,3.4,30.3,3.2,34.6,3.4,35.4,3.2,41.4,3.5,42.2,3.2,44.2,3.2,47.5,3.5,48.3,3.5,49.5,5.1,49.4,6.1,48.4,6.4,47.4,7.3,46.3,7.9,46.4,8.7,45.6,10.3,45.9,12.0,45.6,12.7,45.0,13.3,43.3,14.2,43.1,17.0,41.2,17.2,37.1,17.0,22.7,17.1,20.0,16.9,18.7,16.2,18.3,14.7,18.4,14.4,17.3,13.9,17.2,13.2,19.1,12.9,19.1,12.7,18.1,12.8,15.9,12.8,13.5,12.6,13.1,12.4,13.4,11.1,13.1,10.6,13.5,8.3,13.1,7.6,12.4,4.8,12.3,4.4,13.0,4.0,12.1],[6.8,8.7,6.8,9.5,6.7,9.7,6.7,10.0,6.8,10.1,6.8,10.5,6.9,10.6,7.0,10.4,7.4,10.4,7.5,10.6,7.9,10.0,8.2,10.0,8.4,10.3,8.5,10.1,9.1,10.1,9.2,9.9,9.2,9.1,9.1,8.9,8.8,9.3,8.7,9.3,8.4,8.8,8.2,9.2,8.0,9.3,7.7,8.8,7.1,8.8,6.9,8.6]],"ids":["p6"],"c":3},{"id":"consult","nm":"藥師和病人（左邊窗口）","r":[[49.9,19.9,49.4,19.7,48.7,20.8,48.6,22.0,48.6,24.1,47.8,26.4,47.6,26.3,47.2,25.1,46.2,24.0,45.9,24.0,45.8,24.2,45.6,26.1,45.2,27.2,45.0,27.2,44.6,26.6,44.6,25.9,44.4,25.4,44.3,25.3,44.1,25.7,43.8,26.7,43.8,29.6,43.9,30.0,44.3,30.3,44.5,30.9,44.1,33.9,44.0,34.7,44.1,35.1,44.8,35.3,45.9,35.3,46.1,35.6,47.4,35.6,47.5,35.3,47.5,34.5,47.3,31.7,47.1,31.0,47.2,30.2,47.4,29.8,47.9,30.0,48.1,29.7,48.5,28.5,48.8,28.9,49.0,28.9,49.3,28.2,49.7,27.8,50.6,28.0,50.9,27.6,51.0,27.1,50.9,25.2,50.4,23.4,50.4,22.3,50.2,21.0]],"ids":["p2"],"c":2},{"id":"dispense","nm":"藥師和病人（中間窗口）","r":[[61.0,19.3,60.7,19.7,60.5,20.2,60.1,22.0,60.1,23.4,60.3,24.0,60.3,24.9,60.0,25.4,59.5,25.9,59.2,26.5,59.1,29.4,59.1,31.1,59.8,32.6,59.8,32.9,59.5,34.7,59.3,37.2,59.6,37.6,60.4,37.6,61.2,37.9,62.2,37.9,63.0,38.2,63.1,38.1,63.1,36.6,62.8,34.0,62.7,31.9,62.8,31.6,63.2,31.7,63.7,31.6,64.1,30.4,64.2,29.5,64.6,29.0,64.7,28.4,64.4,27.9,64.2,27.9,64.0,28.3,64.0,29.0,63.9,29.2,63.7,29.2,63.3,28.6,63.3,28.2,63.0,27.4,62.8,26.4,61.9,25.7,61.6,25.1,61.7,24.6,62.2,23.4,62.4,22.4,62.4,21.0,62.4,20.6,62.0,19.7,61.5,19.3],[65.1,19.6,65.0,19.8,65.0,20.9,65.1,21.5,65.1,23.0,64.9,23.5,64.6,23.7,64.1,24.6,63.9,25.9,63.8,26.8,64.1,27.1,64.5,27.1,64.5,27.2,65.1,27.1,65.3,27.4,65.3,27.8,65.4,27.9,65.7,27.9,65.8,27.8,65.9,27.3,66.1,27.1,66.4,27.1,66.6,27.3,67.2,27.4,67.4,27.8,67.7,28.8,67.8,28.9,68.0,28.9,68.1,28.6,68.1,28.0,68.1,27.9,68.1,27.3,68.0,27.2,68.0,26.7,68.0,26.6,68.0,26.0,67.9,25.9,67.9,25.5,67.9,25.4,67.8,24.8,67.7,24.5,67.4,24.2,67.1,23.7,66.8,23.4,66.5,22.3,66.5,21.7,66.5,21.6,66.5,21.1,66.6,21.0,66.6,19.9,66.4,19.5,66.0,19.1,65.4,19.1]],"ids":["p3"],"c":2},{"id":"er","nm":"藥師和病人（右邊窗口）","r":[[90.0,20.4,89.3,20.2,88.7,20.8,88.5,22.1,88.7,23.2,88.5,24.6,87.4,25.5,87.1,27.4,86.3,27.3,85.7,26.5,85.3,26.7,85.1,30.1,84.7,31.1,84.4,31.1,84.1,30.7,83.6,27.9,83.2,27.8,82.7,28.4,82.5,32.7,82.7,33.9,83.4,34.5,83.5,35.1,83.2,38.7,83.3,39.5,84.4,39.7,86.3,38.8,86.8,39.0,87.5,38.8,86.9,32.1,87.3,31.7,87.9,32.3,88.3,31.9,88.4,30.1,88.2,29.5,87.7,29.2,87.4,28.4,87.4,28.0,88.0,27.7,88.5,28.0,89.3,27.7,89.6,28.3,89.5,32.2,89.7,32.8,90.5,32.7,90.6,30.3,90.8,29.5,91.2,29.1,92.1,29.2,92.0,26.7,91.7,26.0,90.2,24.1,90.3,22.2,90.0,21.5]],"ids":["p4"],"c":2},{"id":"review","nm":"電腦和兩盒處方（覆核）","r":[[66.6,49.5,66.8,51.1,67.9,52.4,68.1,54.9,68.1,56.1,67.3,57.0,67.2,58.4,67.4,58.7,69.4,59.4,70.1,58.4,69.4,52.3,69.5,51.1,70.1,51.9,70.8,51.9,71.3,53.0,72.5,52.9,72.5,55.0,72.0,55.6,73.8,56.9,73.7,57.6,73.1,58.1,72.8,59.5,73.2,61.5,73.2,63.8,73.6,64.6,74.1,64.7,74.7,63.6,84.8,66.7,88.0,62.4,88.1,56.7,86.8,55.8,86.9,54.5,87.2,54.1,87.1,52.0,83.9,50.7,82.8,51.2,81.7,50.2,80.7,51.4,80.9,53.0,80.8,55.6,80.4,56.4,80.2,56.1,80.3,53.9,80.1,52.4,79.5,52.1,78.2,50.4,78.7,40.8,78.7,39.5,78.3,39.0,69.7,37.7,69.3,38.9,68.8,45.0,68.9,46.9,67.2,48.3]],"ids":["p5"],"c":4},{"id":"cabinet","nm":"文件資料櫃＋辦公桌（行政事宜）","r":[[22.4,13.5,21.2,13.5,20.8,13.7,20.4,13.4,20.1,13.7,19.8,13.1,19.3,13.1,18.8,12.8,17.9,12.8,17.4,13.1,17.3,13.6,17.2,17.2,17.4,17.8,17.3,21.4,17.4,22.2,17.3,28.2,17.3,30.4,17.2,31.9,17.3,33.2,17.2,38.7,17.3,38.8,17.3,40.7,17.4,40.9,17.9,40.9,18.4,40.7,19.0,40.1,20.1,40.0,20.8,39.3,21.2,39.3,21.5,38.9,21.5,37.9,21.1,36.9,21.1,36.0,21.3,35.7,21.4,35.0,21.4,32.8,21.0,30.2,21.2,29.8,21.5,29.7,22.2,29.7,22.4,29.4,22.5,28.6,22.5,27.9,22.5,14.3,22.5,13.6],[22.8,31.4,22.8,32.1,23.1,32.7,23.2,33.2,23.3,33.3,23.7,32.7,23.9,32.9,23.9,33.7,23.8,33.8,23.8,34.8,23.9,35.0,23.8,38.7,23.9,38.8,23.9,40.1,23.9,40.3,24.3,40.9,24.8,41.1,25.2,41.4,25.6,41.4,25.8,41.6,26.1,41.4,26.1,40.6,26.3,40.1,26.9,40.2,27.3,40.0,28.1,40.0,28.4,39.7,28.3,39.1,28.4,38.7,28.4,37.2,28.3,36.6,28.3,35.8,28.5,35.6,28.8,35.6,29.1,35.1,29.5,35.2,29.6,35.1,29.9,35.1,30.1,34.8,30.2,33.5,30.3,33.2,30.3,32.3,30.2,32.0,29.9,32.1,29.2,32.0,29.1,31.9,28.1,31.9,28.1,32.0,27.8,32.0,26.9,31.4,26.6,31.4,26.5,31.5,25.5,31.5,24.8,31.0,24.7,31.1,23.1,31.0],[26.0,24.0,25.1,24.0,25.0,24.1,24.3,24.1,24.2,24.0,23.9,24.0,23.6,24.3,23.5,26.5,23.4,26.6,23.4,27.2,23.3,27.6,23.3,27.8,23.1,28.3,23.1,28.5,23.2,28.6,23.3,28.8,23.7,29.4,23.7,29.6,23.6,29.8,23.6,30.1,23.7,30.2,23.8,30.1,24.0,30.1,24.3,30.4,24.7,30.4,24.9,30.2,25.1,29.7,25.5,29.5,25.5,29.2,25.3,28.9,25.4,27.4,25.6,27.0,25.8,27.0,25.8,27.1,26.0,26.8,26.0,26.6,26.1,26.5,26.1,25.4,26.1,25.3,26.1,24.1]],"ids":["p1"],"c":3},{"id":"narrow","nm":"窄藥架（冰箱旁邊）","r":[[14.3,17.2,13.9,17.2,13.6,17.7,13.5,18.4,13.3,18.7,12.9,20.3,13.0,20.8,12.9,25.5,13.0,25.9,12.8,27.1,12.8,27.8,12.9,27.9,12.9,34.5,12.9,34.6,12.9,37.8,12.8,37.9,12.8,39.4,12.9,39.5,12.8,42.2,12.9,42.4,12.9,43.7,13.1,43.8,13.3,43.3,14.4,43.0,14.6,42.7,14.7,42.4,14.7,42.0,14.7,40.6,14.6,40.5,14.7,37.0,14.6,36.9,14.6,34.5,14.5,34.4,14.5,31.4,14.7,30.5,14.7,28.6,14.6,28.5,14.7,28.2,14.7,26.5,14.6,26.4,14.6,22.8,14.5,22.7,14.5,20.0,14.6,19.6,14.4,19.0,14.5,17.8,14.4,17.3]],"c":1},{"id":"shelves","nm":"藥品櫃（左邊兩座）","r":[[0.0,11.3,0.0,51.4,1.7,50.4,3.1,50.1,3.5,49.5,3.8,49.6,4.3,49.4,5.1,49.4,5.7,48.6,6.1,48.4,6.4,47.4,6.8,47.1,7.5,46.2,7.9,46.4,8.7,45.6,10.1,45.7,10.3,45.9,10.8,45.7,11.2,45.9,12.0,45.6,12.7,45.0,12.9,44.0,12.9,38.9,13.0,38.2,13.1,36.2,12.9,28.6,13.1,27.3,13.1,25.2,12.9,24.3,13.1,21.7,12.9,19.1,12.7,18.1,12.8,16.5,12.7,13.2,11.3,13.4,11.1,13.1,10.8,13.5,9.4,13.1,8.6,13.2,8.0,13.0,7.6,12.4,6.3,12.5,5.7,12.3,4.8,12.3,4.4,13.0,3.9,11.9,3.4,12.2,2.6,11.5,2.1,11.8,1.7,11.1,0.6,11.5],[6.8,8.7,6.8,9.5,6.7,9.7,6.7,10.0,6.8,10.1,6.8,10.5,6.9,10.6,7.0,10.4,7.4,10.4,7.5,10.6,7.9,10.0,8.2,10.0,8.4,10.3,8.5,10.1,9.1,10.1,9.2,9.9,9.2,9.1,9.1,8.9,8.8,9.3,8.7,9.3,8.4,8.8,8.2,9.2,8.0,9.3,7.7,8.8,7.1,8.8,6.9,8.6]],"c":2},{"id":"bottles","nm":"藥水瓶（水槽上）","r":[[23.8,52.1,23.6,51.9,23.2,51.9,22.8,52.4,22.7,53.0,22.8,56.1,22.6,56.3,22.1,56.3,21.6,56.6,21.5,56.4,21.3,55.8,21.3,53.5,20.7,52.4,20.5,52.5,20.4,53.0,19.8,54.3,19.5,53.8,19.1,53.6,18.8,53.6,18.4,53.9,18.2,54.5,18.1,56.4,17.8,57.3,17.8,58.1,17.6,58.4,17.0,58.4,16.6,59.1,16.6,62.8,16.6,63.0,16.9,63.4,17.4,63.5,17.7,63.1,18.0,62.6,18.6,62.8,18.8,62.5,19.6,62.2,20.1,61.3,20.4,61.6,21.2,61.3,21.6,60.6,21.7,60.7,22.0,60.4,22.4,60.4,22.8,59.8,23.0,60.0,23.4,60.0,24.0,59.5,24.1,59.2,24.1,57.8,24.1,57.3,24.1,55.1,24.0,53.6],[29.5,54.8,29.2,54.5,28.2,54.5,28.1,54.7,28.1,54.9,28.1,55.5,27.9,55.7,27.7,55.6,27.6,55.5,27.3,55.5,27.3,55.6,26.9,55.7,26.7,56.0,26.6,56.6,26.7,57.4,26.6,57.5,26.6,58.1,26.6,58.2,26.6,61.7,26.6,61.8,26.8,61.9,26.9,61.8,27.1,61.8,27.1,61.7,27.3,61.7,27.4,61.6,27.6,61.6,27.7,61.5,27.9,61.3,28.0,61.1,28.0,59.5,28.0,59.4,28.0,58.8,28.2,58.6,28.4,58.9,28.7,59.4,28.7,59.7,28.7,59.8,28.7,61.3,28.7,61.6,28.8,61.7,29.5,61.7,29.7,61.5,29.7,58.0,29.5,57.2]],"c":7},{"id":"beaker","nm":"量杯","r":[[30.6,53.2,30.5,53.5,30.5,54.4,30.5,54.5,30.5,55.1,30.6,55.3,30.6,59.2,30.6,59.3,30.6,60.0,30.6,60.1,30.6,62.5,30.8,63.0,31.2,63.5,31.5,63.6,32.3,64.4,32.7,64.6,32.8,64.4,33.0,63.5,33.0,62.5,32.9,62.4,32.9,57.6,33.0,57.5,33.0,55.8,32.9,55.7,32.9,55.4,33.0,55.3,33.0,54.2,33.0,54.1,33.0,53.7,32.9,53.2,32.8,53.1,32.3,53.0,32.2,52.9,31.4,52.9,31.4,53.0,31.1,53.0,31.1,53.1]],"c":1},{"id":"monitor","nm":"電腦螢幕","r":[[69.4,38.2,69.3,38.9,69.1,43.6,68.8,45.0,68.8,46.5,68.9,46.9,69.7,47.7,70.0,48.6,70.0,50.5,69.8,51.0,69.8,51.7,70.1,51.9,70.3,51.8,70.8,51.9,71.0,52.1,71.3,53.0,71.8,52.6,72.2,52.6,72.5,53.0,72.5,55.0,72.0,55.4,72.0,55.6,72.1,55.7,72.3,55.6,73.0,56.4,73.7,56.7,73.9,56.4,73.9,54.3,74.3,53.3,75.0,52.7,75.3,52.0,76.0,51.1,76.4,51.0,76.9,50.4,78.2,50.1,78.4,49.8,78.4,47.1,78.5,46.1,78.5,43.2,78.7,40.8,78.7,39.7,78.6,39.4,78.3,39.0,75.2,38.7,74.6,38.4,73.6,38.4,71.3,37.8,69.7,37.7]],"c":1},{"id":"scanner","nm":"條碼掃描器","r":[[68.5,47.1,68.2,47.5,67.8,47.6,67.0,48.6,66.6,49.5,66.6,50.4,66.8,51.1,67.0,51.6,67.4,52.0,67.6,52.0,67.9,52.4,67.9,53.5,68.0,53.6,68.0,53.8,68.1,54.3,68.1,54.8,68.1,54.9,68.1,55.8,68.1,56.1,67.9,56.3,67.8,56.3,67.3,57.0,67.3,57.3,67.2,57.8,67.2,58.4,67.4,58.7,67.7,58.7,67.7,58.8,68.1,58.9,68.2,59.1,68.7,59.1,68.7,59.2,69.0,59.2,69.0,59.3,69.4,59.4,69.7,59.1,69.8,58.7,70.1,58.4,70.1,57.6,70.0,57.2,70.0,56.8,69.7,56.1,69.7,54.7,69.6,54.5,69.6,53.7,69.6,53.6,69.6,53.1,69.4,52.3,69.5,51.2,69.8,50.4,69.9,49.3,69.8,49.2,69.8,48.6,69.6,47.9,68.9,47.1]],"c":1},{"id":"printer","nm":"印表機","r":[[55.9,42.4,55.7,42.4,55.7,42.2,54.9,42.2,54.8,42.1,53.9,42.0,53.9,41.9,53.2,41.9,52.4,42.6,51.6,44.3,51.5,44.7,51.5,45.1,51.5,45.2,51.4,45.8,51.4,45.9,51.4,47.0,51.5,47.1,51.5,49.3,51.4,49.4,51.4,51.0,51.5,51.1,51.4,53.0,51.5,53.1,51.8,53.5,52.1,53.5,52.2,53.6,53.5,53.7,53.5,53.8,53.9,53.8,54.0,53.9,54.1,53.9,54.3,53.6,54.3,52.7,54.3,52.6,54.3,51.0,54.4,50.7,54.6,50.4,54.8,50.1,55.0,50.1,55.0,50.0,55.5,50.0,55.5,50.1,55.7,50.0,55.9,49.6,56.0,48.7,56.0,45.6,56.1,45.5,56.2,44.6,56.3,43.9,56.3,43.1,56.2,42.6]],"c":1},{"id":"pillbottle","nm":"藥罐","r":[[58.3,60.5,58.1,60.9,57.9,61.0,57.7,61.7,57.7,62.4,57.8,62.5,57.8,65.8,57.8,66.0,58.0,66.2,58.8,66.2,59.0,65.9,59.1,61.2,59.0,61.0,58.8,60.7,58.6,60.7,58.4,60.5]],"c":1},{"id":"desk","nm":"辦公桌（行政事宜旁邊）","r":[[22.8,31.4,22.8,32.1,23.1,32.7,23.2,33.2,23.3,33.3,23.7,32.7,23.9,32.9,23.9,33.7,23.8,33.8,23.8,34.8,23.9,35.0,23.8,38.7,23.9,38.8,23.9,40.1,23.9,40.3,24.3,40.9,24.8,41.1,25.2,41.4,25.6,41.4,25.8,41.6,26.1,41.4,26.1,40.6,26.3,40.1,26.9,40.2,27.3,40.0,28.1,40.0,28.4,39.7,28.3,39.1,28.4,38.7,28.4,37.2,28.3,36.6,28.3,35.8,28.5,35.6,28.8,35.6,29.1,35.1,29.5,35.2,29.6,35.1,29.9,35.1,30.1,34.8,30.2,33.5,30.3,33.2,30.3,32.3,30.2,32.0,29.9,32.1,29.2,32.0,29.1,31.9,28.1,31.9,28.1,32.0,27.8,32.0,26.9,31.4,26.6,31.4,26.5,31.5,25.5,31.5,24.8,31.0,24.7,31.1,23.1,31.0],[26.0,24.0,25.1,24.0,25.0,24.1,24.3,24.1,24.2,24.0,23.9,24.0,23.6,24.3,23.5,26.5,23.4,26.6,23.4,27.2,23.3,27.6,23.3,27.8,23.1,28.3,23.1,28.5,23.2,28.6,23.3,28.8,23.7,29.4,23.7,29.6,23.6,29.8,23.6,30.1,23.7,30.2,23.8,30.1,24.0,30.1,24.3,30.4,24.7,30.4,24.9,30.2,25.1,29.7,25.5,29.5,25.5,29.2,25.3,28.9,25.4,27.4,25.6,27.0,25.8,27.0,25.8,27.1,26.0,26.8,26.0,26.6,26.1,26.5,26.1,25.4,26.1,25.3,26.1,24.1]],"c":2},{"id":"rxbox","nm":"兩盒處方","r":[[88.1,56.7,87.3,55.8,86.9,56.1,86.8,55.8,86.9,54.5,87.2,54.1,87.2,53.7,87.0,53.2,87.2,52.3,86.6,51.7,84.9,51.3,83.9,50.7,82.8,51.2,82.2,50.4,81.7,50.2,80.7,51.4,80.7,52.1,80.9,53.0,80.8,55.6,80.4,56.4,80.1,55.8,80.3,53.9,80.0,52.3,79.8,52.0,79.5,52.1,78.5,50.6,77.0,50.5,76.6,51.2,75.9,51.6,75.2,53.2,74.5,53.5,74.2,53.8,73.9,54.8,73.9,56.8,73.7,57.6,73.1,58.1,73.1,58.8,72.8,59.5,72.8,60.4,73.1,61.0,73.3,64.2,73.6,64.6,74.1,64.7,74.7,63.6,75.9,63.7,77.9,64.6,79.0,64.4,79.4,64.9,81.1,65.3,83.8,66.6,84.8,66.7,88.0,62.6,88.1,61.9]],"c":2}],"pr":[[40,84,46,96,207,187,171]]},
+{"fp":"3768d56ad9ccfe551cd84ce66c6e7c4d","ar":2.2399,"bx":{"p1":[17,12,6,29,"r"],"p2":[43,19,8,17,"t"],"p3":[59,19,10,20,"t"],"p4":[82,20,11,20,"t"],"p5":[66,37,13,23,"t"],"p6":[14,18,4,25,"b"],"p7":[42,53,18,13,"b"],"p8":[20,61,19,23,"t"],"p9":[58,63,14,17,"l"],"p10":[71,64,18,26,"t"],"p11":[31,76,18,24,"t"]},"objs":[{"id":"book","nm":"法規書（整本）","r":[[20.2,69.9,20.2,71.5,20.5,72.7,20.7,73.3,22.0,74.7,23.5,77.1,24.1,77.6,26.5,81.0,27.8,82.5,28.7,83.9,29.4,83.8,30.6,82.5,31.0,82.3,31.5,81.6,32.1,81.1,32.6,80.5,33.9,79.5,35.5,77.7,36.7,76.8,37.8,75.7,38.1,75.1,38.1,74.7,37.8,73.3,37.7,71.2,38.3,70.6,38.2,70.0,37.7,69.5,35.9,68.1,34.5,66.6,34.1,66.5,33.6,65.8,33.0,65.4,32.7,64.8,31.4,63.8,31.0,63.1,29.5,61.7,28.8,61.9,28.2,61.9,27.9,61.7,26.7,62.1,25.8,63.1,25.1,63.4,24.6,64.3,23.6,64.9,23.2,65.5,22.8,65.6,22.3,66.2,21.6,66.5,20.8,67.3,20.5,68.3],[36.2,62.9,36.1,63.0,36.1,63.2,36.0,63.7,36.0,64.7,36.0,64.9,36.1,65.0,36.4,65.0,36.5,64.8,36.5,64.6,36.6,64.4,36.6,63.2,36.4,63.0]],"ids":["p8"],"c":1},{"id":"binder","nm":"規則本（整本）","r":[[71.1,77.4,71.1,80.3,71.2,81.0,71.4,81.5,71.8,81.9,73.3,82.3,74.5,83.2,75.2,83.3,75.8,83.8,77.0,84.1,77.7,84.7,78.5,85.0,80.0,85.8,80.3,85.8,80.9,86.3,84.3,87.8,84.9,88.3,85.8,88.5,86.0,88.9,86.8,89.4,87.2,89.4,87.6,89.7,88.0,89.7,88.1,89.5,88.2,87.9,88.0,85.7,88.0,84.6,88.4,83.3,88.3,80.9,88.0,76.8,88.0,74.0,87.7,71.1,87.6,68.5,87.3,67.9,87.0,67.9,86.2,67.4,85.2,67.3,83.8,66.6,83.3,66.6,82.2,66.1,81.6,66.1,80.9,65.5,80.5,65.5,80.2,65.8,79.6,65.2,77.5,64.7,76.3,64.1,74.7,63.8,74.3,64.8,73.9,66.2,73.3,68.5,73.1,69.3,72.4,71.7,72.1,73.3,71.4,75.4]],"ids":["p10"],"c":1},{"id":"clip","nm":"處方夾板","r":[[58.6,73.7,58.6,74.0,58.8,74.3,59.4,74.6,60.3,75.3,60.9,75.4,61.3,75.8,61.5,75.8,62.0,76.3,62.6,76.4,63.4,77.1,64.0,77.2,65.0,77.9,65.7,78.2,66.6,78.9,67.1,79.0,67.8,79.6,68.4,79.7,68.6,79.5,69.4,75.7,69.7,74.8,69.8,74.1,69.9,73.5,70.1,73.0,70.1,72.6,70.3,71.8,70.8,69.7,71.3,67.4,71.4,66.3,71.2,66.0,70.6,65.9,70.6,65.8,70.2,65.8,69.5,65.3,69.2,65.3,68.5,64.6,68.2,64.6,67.8,64.2,67.4,64.2,66.9,63.7,66.8,63.8,66.4,63.8,66.4,63.7,65.7,63.6,65.5,63.4,63.5,63.2,62.4,65.8,62.2,65.9,62.0,66.5,61.9,66.6,61.1,68.1,60.4,69.8,60.1,70.2,58.7,73.2]],"ids":["p9"],"c":1},{"id":"tray","nm":"藥盤","r":[[59.1,57.2,58.9,56.7,58.0,56.6,57.3,55.8,55.8,55.7,55.2,55.4,54.8,55.4,54.1,54.4,53.4,54.5,51.9,54.2,51.4,53.6,51.0,53.5,50.2,53.9,49.7,53.9,49.4,53.7,47.8,53.6,47.4,53.8,47.0,53.8,46.7,54.4,46.3,54.9,45.8,55.1,45.2,55.7,44.7,55.8,43.7,56.6,42.7,57.8,42.1,58.0,42.0,58.2,42.0,58.6,42.1,59.1,42.5,59.4,42.7,59.9,42.8,60.6,42.9,60.9,44.8,61.0,45.2,61.2,46.0,61.3,46.4,61.7,48.2,62.4,48.6,63.0,49.9,63.1,50.2,63.5,51.1,63.6,52.2,64.3,52.9,64.4,53.6,65.4,54.2,65.4,55.0,63.6,55.5,63.1,56.8,61.3,58.2,60.1,58.3,59.9,58.3,59.1,58.7,58.1,59.1,57.4]],"ids":["p7"],"c":1},{"id":"liquid","nm":"藥品櫃＋窄藥架＋冰箱（水藥）","r":[[3.5,11.9,3.5,18.0,3.2,21.1,3.4,25.1,3.1,26.1,3.4,31.3,3.2,34.7,3.4,35.4,3.2,41.4,3.6,42.4,3.2,44.2,3.2,47.5,3.5,48.3,3.4,49.4,5.2,49.3,6.0,48.3,6.4,47.1,7.3,46.1,8.0,46.3,8.8,45.5,10.0,45.8,11.9,45.6,12.7,45.0,13.3,43.2,16.7,41.5,17.0,40.9,17.1,19.9,16.9,18.9,16.2,18.4,14.7,18.4,14.4,19.2,14.3,19.0,14.4,17.8,14.2,17.3,14.0,19.2,12.9,19.6,12.6,18.1,12.8,16.5,12.8,13.7,12.6,13.2,11.6,13.2,11.2,12.8,10.7,13.4,10.4,13.0,9.9,13.2,9.2,12.5,8.6,13.0,8.3,12.4,6.9,12.1,6.4,12.4,4.8,12.3,4.4,13.1,4.1,12.1],[6.6,8.2,6.6,9.4,6.6,9.5,6.5,10.1,6.7,11.1,6.9,11.3,7.1,11.0,7.3,11.0,7.5,11.2,7.6,11.2,8.0,10.6,8.4,11.0,8.7,10.5,9.0,10.5,9.5,11.1,9.5,11.9,9.6,12.1,9.9,11.7,10.2,12.1,10.3,12.1,10.5,11.7,10.7,11.6,10.8,11.7,11.0,12.3,11.1,12.5,11.5,12.2,11.7,11.7,11.7,10.9,11.5,10.3,11.6,8.8,11.5,8.7,11.5,8.5,11.2,8.1,11.0,8.1,10.8,8.4,10.3,8.4,10.0,8.0,9.8,8.0,9.7,8.1,9.5,8.1,9.3,8.5,8.9,8.8,8.6,8.7,8.5,8.4,8.4,8.1,8.2,8.1,7.9,8.5,7.7,8.5,7.7,8.6,7.2,8.6,6.8,8.0]],"ids":["p6"],"c":3},{"id":"consult","nm":"藥師和病人（左邊窗口）","r":[[49.9,20.0,49.4,19.8,49.0,20.3,48.7,20.8,48.5,22.2,48.6,24.1,48.1,25.2,47.9,26.0,47.7,26.4,47.4,25.7,47.3,25.2,46.2,24.0,45.8,24.1,45.6,26.1,45.5,26.6,45.1,27.2,44.7,26.7,44.5,25.4,44.3,25.3,44.1,25.7,43.9,26.4,43.8,29.6,44.0,30.1,44.3,30.4,44.5,31.0,44.1,34.1,44.1,34.8,44.2,35.1,46.0,35.3,46.3,35.6,47.5,35.4,47.5,35.3,47.5,33.7,47.3,31.7,47.1,31.1,47.1,30.8,47.3,30.1,47.4,29.8,47.9,30.0,48.4,29.1,48.6,29.2,49.1,29.1,49.3,27.9,49.7,27.2,49.9,27.2,50.2,27.6,50.6,27.3,50.9,26.8,50.9,25.5,50.4,23.3,50.3,21.4]],"ids":["p2"],"c":2},{"id":"dispense","nm":"藥師和病人（中間窗口）","r":[[61.1,19.3,60.8,19.6,60.6,20.0,60.1,22.0,60.1,23.4,60.3,24.0,60.3,24.8,60.0,25.4,59.4,26.0,59.2,26.5,59.1,30.9,59.1,31.3,59.4,31.9,59.6,32.0,59.8,32.6,59.5,34.8,59.3,37.1,59.6,37.6,60.4,37.6,61.5,37.9,63.0,38.1,63.1,37.7,63.1,37.1,63.0,36.2,62.9,35.0,62.7,32.7,62.7,31.7,62.8,31.5,63.3,31.7,63.6,31.7,63.8,31.5,64.0,31.0,64.1,30.3,64.1,29.6,63.9,29.2,63.7,29.2,63.5,29.0,63.2,28.0,63.0,27.4,62.8,26.6,62.7,26.3,61.9,25.7,61.6,25.1,61.7,24.6,62.1,23.6,62.4,22.2,62.4,21.0,62.4,20.6,61.9,19.7,61.6,19.5],[65.3,19.3,65.1,19.8,65.0,20.2,65.0,21.0,65.1,22.0,65.1,23.2,64.8,23.7,64.6,24.0,64.1,24.7,63.9,25.7,63.8,26.8,64.0,27.1,64.2,27.1,64.3,27.2,65.0,27.1,65.6,28.0,65.8,27.9,66.0,27.2,66.3,27.1,66.6,27.4,66.9,27.4,67.2,27.7,67.4,28.2,67.5,28.5,67.7,28.9,68.1,28.6,68.1,28.5,68.1,27.2,68.0,27.1,68.0,25.8,67.8,24.7,67.2,24.1,66.9,23.5,66.5,22.2,66.5,21.5,66.6,21.0,66.6,19.9,66.5,19.7,66.2,19.2,66.0,19.2,65.9,19.1,65.6,19.1]],"ids":["p3"],"c":2},{"id":"er","nm":"藥師和病人（右邊窗口）","r":[[90.0,20.5,89.5,20.2,88.7,20.8,88.5,21.5,88.5,24.6,87.5,25.5,87.1,27.4,86.2,27.3,85.7,26.5,85.3,26.7,85.1,30.1,84.8,31.1,84.3,31.1,83.9,30.2,83.5,28.0,83.2,27.9,82.8,28.4,82.5,32.7,82.8,34.1,83.4,34.5,83.5,35.0,83.2,38.7,83.3,39.4,84.7,39.6,85.3,39.1,87.5,38.8,87.5,38.1,87.1,34.7,86.9,32.0,87.3,31.7,87.9,32.5,88.3,31.9,88.5,32.1,88.8,31.9,88.9,31.3,88.9,30.4,88.4,30.4,88.1,29.4,87.5,28.9,87.9,27.9,88.2,27.8,88.6,28.4,89.1,27.6,89.5,27.9,89.6,28.5,89.5,32.5,89.7,32.8,90.5,32.6,90.6,30.5,90.8,29.5,92.1,29.1,92.1,27.6,91.8,26.1,90.3,24.2,90.4,22.7]],"ids":["p4"],"c":2},{"id":"review","nm":"電腦和兩盒處方（覆核）","r":[[66.6,49.8,67.0,51.4,67.8,52.3,68.1,55.8,67.2,57.3,67.2,58.2,67.4,58.6,69.4,59.3,70.0,58.2,69.5,51.4,70.9,51.9,71.3,53.0,71.8,52.5,72.5,52.7,72.3,55.5,73.9,56.7,73.7,57.6,73.1,58.2,73.1,59.1,72.8,59.8,73.2,60.9,73.3,64.1,74.1,64.6,74.6,63.6,76.3,63.7,84.8,66.6,88.0,62.3,88.1,56.6,86.8,55.7,87.1,52.1,86.6,51.6,84.0,50.7,82.8,51.2,81.6,50.2,80.8,51.6,80.8,55.6,80.3,56.6,80.1,56.0,80.0,52.4,79.4,52.5,78.6,50.8,77.7,50.4,78.4,49.5,78.7,39.9,78.3,39.0,69.7,37.7,69.3,39.0,68.9,46.9,67.2,48.2]],"ids":["p5"],"c":4},{"id":"cabinet","nm":"文件資料櫃＋辦公桌（行政事宜）","r":[[22.3,13.6,21.2,13.5,20.8,13.7,20.6,13.4,20.6,12.8,20.5,12.6,20.3,12.8,20.2,13.1,20.1,13.4,19.7,12.9,19.2,13.0,19.0,12.8,17.9,12.6,17.4,12.9,17.3,13.5,17.1,15.8,17.1,17.1,17.3,17.9,17.4,19.6,17.3,19.9,17.4,23.9,17.3,24.0,17.3,27.7,17.3,27.8,17.2,38.5,17.3,38.7,17.3,40.6,17.4,40.8,18.1,40.6,19.0,40.0,19.3,40.0,19.8,39.6,20.5,39.5,20.8,39.1,21.3,39.3,21.4,39.0,21.4,38.1,21.0,37.0,21.0,36.2,21.3,35.4,21.4,34.6,21.3,32.3,21.2,31.6,20.7,31.1,20.7,30.7,20.9,30.1,21.2,29.8,22.3,29.7,22.4,29.6,22.5,28.9,22.5,24.5,22.4,24.3,22.5,23.7,22.4,22.6,22.5,14.2,22.4,13.8],[23.7,24.1,23.4,27.0,22.9,28.2,22.9,28.9,23.4,29.1,23.5,29.4,23.5,30.2,24.0,30.2,24.4,30.5,24.5,30.9,24.3,31.1,23.7,30.8,22.8,31.3,22.7,32.0,23.2,32.8,23.5,32.6,23.9,32.8,23.8,33.7,23.8,38.7,24.0,40.7,25.9,41.6,26.1,41.4,26.2,40.5,26.4,40.1,26.8,40.2,27.4,39.9,28.9,39.7,28.7,39.1,28.4,38.8,28.2,36.2,28.4,35.7,29.1,35.1,29.5,35.3,30.0,35.1,30.4,32.9,30.3,32.0,27.8,32.0,26.9,31.3,25.4,31.4,24.8,31.0,24.8,30.5,25.4,30.5,26.2,29.5,26.2,28.5,26.1,27.8,25.8,27.8,25.6,28.4,25.4,28.2,25.5,27.3,25.9,27.4,26.1,27.1,26.2,26.4,26.2,24.1,25.6,23.7,24.9,24.0,24.3,23.7]],"ids":["p1"],"c":3},{"id":"quiz","nm":"問卷夾板","r":[[31.4,91.8,31.4,92.4,31.6,92.7,32.6,93.3,33.1,93.8,33.6,93.9,34.6,94.7,35.0,94.9,35.6,95.5,36.2,95.7,36.9,96.3,37.5,96.5,38.5,97.4,39.1,97.6,41.1,99.2,41.6,99.4,42.2,99.4,42.5,99.2,42.7,98.7,43.4,95.9,43.9,94.6,44.2,93.3,44.5,92.7,45.0,90.5,45.7,88.5,45.7,87.9,46.1,86.3,46.8,84.1,47.0,83.2,47.4,81.9,47.5,80.9,47.1,80.4,46.8,80.3,46.4,79.7,45.6,79.6,45.1,78.9,44.6,78.8,44.4,78.4,43.8,78.3,43.0,77.4,42.2,77.4,41.2,77.1,40.5,77.1,40.1,77.3,39.4,77.0,38.5,76.8,38.2,77.2,36.9,79.8,35.0,84.1,32.6,89.0],[48.3,84.5,48.1,84.4,47.7,84.7,47.6,85.0,47.3,85.9,47.0,86.3,47.0,86.5,46.8,87.4,46.7,87.7,46.2,88.8,46.0,89.6,45.3,91.3,45.2,92.1,45.0,92.8,44.9,93.3,44.6,94.2,44.6,94.6,44.6,94.7,44.6,95.2,44.8,95.5,45.2,95.0,45.4,94.4,45.6,93.8,45.9,93.3,46.0,92.7,46.3,92.1,46.4,91.6,46.7,90.9,46.8,90.3,47.5,88.9,47.5,88.5,47.7,87.9,47.8,87.4,48.1,86.6,48.3,85.9,48.3,85.6,48.3,85.4]],"ids":["p11"],"c":2},{"id":"narrow","nm":"窄藥架（冰箱旁邊）","r":[[14.2,17.3,14.1,17.4,14.0,17.7,14.1,19.0,14.0,19.2,13.5,19.6,13.2,19.6,13.1,19.7,12.9,20.3,12.9,20.8,13.0,20.9,13.0,22.9,12.9,23.0,12.9,24.3,12.9,24.5,12.9,26.4,12.8,27.2,12.8,27.8,12.9,27.9,12.9,30.1,12.8,30.2,12.9,32.5,12.8,32.6,12.8,33.1,12.9,33.2,12.9,35.6,12.9,35.7,12.8,41.8,12.8,41.9,12.9,43.6,13.1,43.7,13.3,43.2,13.7,43.1,13.8,43.0,14.3,43.0,14.7,42.5,14.6,39.1,14.7,39.0,14.7,37.6,14.6,36.8,14.6,33.1,14.5,32.9,14.5,31.5,14.7,30.7,14.7,26.4,14.6,26.3,14.6,22.6,14.5,22.4,14.5,20.2,14.6,19.7,14.3,19.0,14.3,18.7,14.4,18.1,14.4,17.8]],"c":1},{"id":"shelves","nm":"藥品櫃（左邊兩座）","r":[[0.0,11.5,0.0,51.3,0.3,51.3,1.8,50.2,2.9,50.2,3.5,49.5,5.2,49.3,5.6,48.6,6.0,48.3,6.4,47.1,7.3,46.1,8.0,46.3,8.8,45.5,10.0,45.8,11.2,45.8,12.7,45.0,12.8,44.3,12.9,42.5,12.8,38.9,13.1,35.1,12.9,28.3,13.1,26.5,12.9,24.1,13.1,22.7,12.9,19.8,12.6,18.1,12.8,16.5,12.7,13.4,11.6,13.2,11.2,12.8,10.7,13.4,10.4,13.0,9.9,13.2,9.2,12.5,8.8,13.0,8.6,13.0,8.3,12.4,8.0,12.5,7.7,12.2,6.9,12.1,6.4,12.4,4.8,12.3,4.4,13.1,4.1,12.1,3.9,11.8,3.3,12.2,2.7,11.6,2.1,11.9,1.7,11.5],[6.6,8.2,6.6,9.4,6.6,9.5,6.5,10.1,6.7,11.1,6.9,11.3,7.1,11.0,7.3,11.0,7.5,11.2,7.6,11.2,8.0,10.6,8.4,11.0,8.7,10.5,9.0,10.5,9.5,11.1,9.5,11.9,9.6,12.1,9.9,11.7,10.2,12.1,10.3,12.1,10.5,11.7,10.7,11.6,10.8,11.7,11.0,12.3,11.1,12.5,11.5,12.2,11.7,11.7,11.7,10.9,11.5,10.3,11.6,8.8,11.5,8.7,11.5,8.5,11.2,8.1,11.0,8.1,10.8,8.4,10.3,8.4,10.0,8.0,9.8,8.0,9.7,8.1,9.5,8.1,9.3,8.5,8.9,8.8,8.6,8.7,8.5,8.4,8.4,8.1,8.2,8.1,7.9,8.5,7.7,8.5,7.7,8.6,7.2,8.6,6.8,8.0]],"c":2},{"id":"bottles","nm":"藥水瓶（水槽上）","r":[[23.8,52.3,23.5,52.0,22.8,52.6,22.8,56.1,21.6,56.4,21.4,56.1,21.3,53.7,21.2,53.1,21.0,52.5,20.6,52.1,20.5,52.3,20.0,53.8,20.0,57.3,19.9,57.5,19.7,57.3,19.7,54.5,19.6,54.1,19.3,53.7,18.8,53.7,18.5,53.9,18.5,54.2,18.9,54.9,18.9,55.5,18.7,55.8,18.2,55.8,17.8,57.2,17.8,58.0,17.0,58.2,16.7,58.6,16.6,58.9,16.5,61.0,16.6,63.0,17.0,63.4,17.5,63.2,17.8,62.8,17.9,62.1,18.1,61.8,18.6,62.3,19.2,62.2,19.7,61.7,19.8,60.9,20.0,60.4,20.1,60.6,20.2,61.3,20.6,61.5,21.2,61.2,21.6,60.6,22.4,60.4,22.9,59.5,23.1,59.8,23.4,59.8,24.0,59.4,24.1,58.5,24.1,55.7,24.0,53.3],[29.5,54.5,29.2,54.3,28.3,54.3,28.1,54.5,28.0,54.8,28.0,55.4,27.9,55.6,27.6,55.5,27.5,55.4,27.4,55.4,27.3,55.5,27.1,55.5,26.7,56.0,26.7,56.2,26.7,57.6,26.6,58.2,26.6,61.6,26.6,61.7,26.8,61.8,26.9,61.7,27.1,61.7,27.1,61.6,27.9,61.2,28.0,61.0,28.0,59.5,28.0,59.4,28.0,58.9,28.2,58.7,28.3,58.9,28.6,59.1,28.7,59.5,28.7,61.5,28.8,61.6,29.5,61.6,29.6,61.5,29.6,61.2,29.7,61.1,29.7,60.5,29.6,60.4,29.6,58.8,29.7,58.7,29.7,58.2,29.6,58.1,29.6,57.5,29.5,57.2,29.5,56.3,29.5,56.2,29.5,54.7]],"c":7},{"id":"beaker","nm":"量杯","r":[[30.7,53.1,30.5,53.5,30.5,54.3,30.5,54.4,30.5,55.0,30.6,55.1,30.6,61.1,30.5,61.2,30.5,62.2,30.6,62.3,30.6,62.5,30.7,62.8,30.9,62.9,31.5,63.6,31.6,63.6,32.2,64.3,32.3,64.3,32.4,64.6,32.8,64.6,32.9,64.4,32.9,64.2,32.9,63.6,33.0,63.5,33.0,59.3,32.9,59.2,32.9,58.2,33.0,58.1,33.0,54.4,33.0,54.3,33.0,53.7,32.9,53.2,32.7,53.0,32.1,52.9,32.1,52.7,31.4,52.7,31.4,52.9,31.1,52.9,31.1,53.0]],"c":1},{"id":"monitor","nm":"電腦螢幕","r":[[69.5,38.1,69.3,39.0,69.1,43.6,68.8,45.1,68.8,46.5,68.9,46.9,69.7,47.7,70.0,48.6,70.0,50.5,69.7,51.1,69.7,51.4,70.1,51.9,70.3,51.8,70.9,51.9,71.2,52.4,71.2,52.9,71.3,53.0,71.8,52.5,72.2,52.5,72.6,53.0,72.5,54.9,72.3,55.3,72.3,55.5,72.9,56.2,73.1,56.2,73.6,56.6,73.9,56.2,73.9,54.3,74.4,53.1,74.9,52.6,76.0,51.0,76.5,50.8,77.0,50.2,77.5,50.2,77.8,49.9,78.2,50.0,78.4,49.8,78.4,49.5,78.4,47.3,78.5,45.9,78.5,43.3,78.7,40.7,78.7,39.9,78.6,39.4,78.3,39.0,75.3,38.7,74.7,38.4,73.6,38.4,73.1,38.2,71.9,38.1,71.3,37.8,69.7,37.7]],"c":1},{"id":"scanner","nm":"條碼掃描器","r":[[67.8,47.5,67.1,48.4,66.8,49.0,66.6,49.8,66.6,50.5,66.8,51.0,67.0,51.4,67.8,52.3,67.9,53.6,68.1,54.1,68.1,55.3,68.2,55.4,68.1,55.8,68.0,56.2,67.6,56.4,67.3,57.0,67.2,58.2,67.4,58.6,67.6,58.6,68.2,58.9,68.6,58.9,69.2,59.3,69.6,59.2,69.8,58.9,69.8,58.6,70.0,58.2,69.8,57.0,69.6,53.1,69.4,52.1,69.5,51.1,69.7,50.5,69.8,50.0,69.8,48.7,69.8,48.3,69.6,47.9,68.9,47.1,68.6,47.1,68.2,47.5]],"c":1},{"id":"printer","nm":"印表機","r":[[56.0,42.5,55.7,42.4,55.7,42.2,54.9,42.2,54.8,42.1,54.0,42.0,53.9,41.9,53.2,41.9,53.1,42.0,52.9,42.1,52.6,42.5,52.4,42.7,51.6,44.4,51.5,44.9,51.5,45.5,51.4,45.8,51.4,46.3,51.4,46.4,51.4,46.9,51.5,47.0,51.5,47.6,51.5,47.7,51.5,49.6,51.5,49.8,51.5,50.6,51.5,50.7,51.5,51.2,51.6,51.3,51.6,51.6,51.5,51.7,51.5,53.0,51.8,53.3,52.6,53.5,52.7,53.6,53.6,53.6,53.7,53.7,54.1,53.7,54.2,53.6,54.2,53.3,54.3,53.2,54.3,52.5,54.3,52.4,54.3,50.8,54.6,50.4,55.2,49.8,55.5,49.9,55.6,50.0,55.7,49.9,56.0,48.8,56.0,48.6,56.0,48.4,56.0,47.7,56.0,47.6,56.0,45.2,56.3,43.7,56.3,42.8]],"c":1},{"id":"pillbottle","nm":"藥罐","r":[[58.4,60.4,58.1,60.7,58.0,60.7,57.8,61.0,57.8,61.2,57.8,64.8,57.7,64.9,57.7,65.4,57.8,65.5,57.8,65.8,58.0,66.1,58.5,66.2,58.6,66.1,58.9,66.1,59.0,65.9,59.0,65.4,59.1,65.3,59.1,65.0,59.0,64.9,59.0,64.1,59.1,64.0,59.1,63.4,59.1,63.2,59.1,62.3,59.1,62.2,59.1,61.1,59.0,60.9,58.8,60.6,58.6,60.6]],"c":1},{"id":"desk","nm":"辦公桌（行政事宜旁邊）","r":[[23.7,24.1,23.4,27.0,22.9,28.2,22.9,28.9,23.4,29.1,23.5,29.4,23.5,30.2,24.0,30.2,24.4,30.5,24.5,30.9,24.3,31.1,23.7,30.8,22.8,31.3,22.7,32.0,23.2,32.8,23.5,32.6,23.9,32.8,23.8,33.7,23.8,38.7,24.0,40.7,25.9,41.6,26.1,41.4,26.2,40.5,26.4,40.1,26.8,40.2,27.4,39.9,28.9,39.7,28.7,39.1,28.4,38.8,28.2,36.2,28.4,35.7,29.1,35.1,29.5,35.3,30.0,35.1,30.4,32.9,30.3,32.0,27.8,32.0,26.9,31.3,25.4,31.4,24.8,31.0,24.8,30.5,25.4,30.5,26.2,29.5,26.2,28.5,26.1,27.8,25.8,27.8,25.6,28.4,25.4,28.2,25.5,27.3,25.9,27.4,26.1,27.1,26.2,26.4,26.2,24.1,25.6,23.7,24.9,24.0,24.3,23.7]],"c":2},{"id":"rxbox","nm":"兩盒處方","r":[[88.1,56.6,87.3,55.7,87.0,56.0,86.8,55.7,87.1,54.2,86.9,53.0,87.1,52.1,86.6,51.6,84.8,51.2,84.0,50.7,82.8,51.2,81.9,50.2,81.6,50.2,80.8,51.3,80.7,51.9,80.9,53.0,80.8,55.6,80.6,56.4,80.3,56.6,80.1,56.0,80.1,53.5,80.0,52.4,79.4,52.5,78.9,51.9,78.4,50.6,77.0,50.5,76.5,51.2,76.0,51.4,75.3,52.9,74.5,53.3,74.1,54.1,73.9,54.9,73.9,57.0,73.1,58.2,73.1,59.1,72.8,60.0,73.2,60.9,73.3,64.1,73.6,64.4,74.1,64.6,74.6,63.6,76.3,63.7,78.2,64.6,78.9,64.3,79.4,64.8,84.8,66.6,88.0,62.5]],"c":2}],"add":{"p11":{"label":"問卷","to":"q:all","ico":"📋","desc":"問卷、考試"}},"pr":[[40,84,46,96,213,213,217]]}];
 
 /* ════════ shape.js ════════ */
 /* ───────── 物品的形狀（第 26 批）：在「物品框」裡自動找出物品的輪廓 ─────────
@@ -4488,8 +5124,9 @@ var SH_LIB = [{"fp":"6ea8eaaab6c5bd4ddc9c78d33bcb38eb","ar":2.3325,"objs":[{"id"
    「點一下要亮的物品」（pick）：那一點附近一定算物品，最後只留那一樣（框裡的其他東西不亮）。
    這個檔裡的函式除了 shFind、shFp（要畫布）以外都不碰畫面，測試可以直接跑。
    第 27 批：目錄圖是「圖一」（物品圖庫 shapelib.js 裡有的那一張）→ 直接用圖庫裡切好的整個物品（整本書、整個藥盤…，不用設定）；別張圖才用上面的方法在框裡找。 */
-var SH_VER = "s5", SH_SIDE = 180, SH_ITER = 4, SH_K = 5, SH_GAMMA = 12, SH_PTS = 40, SH_RINGS = 4;
-// SH_VER：第 28 批改成 s3（圖庫的「覆核」多了電腦）、第 29 批 s4（行政事宜＝整個文件資料櫃）、第 30 批 s5（圖庫多了新的圖一）→ 存過的形狀都會重找一次（圖一用圖庫，很快；打開編輯器、自動存檔開著就自動做）。
+var SH_VER = "s6", SH_SIDE = 180, SH_ITER = 4, SH_K = 5, SH_GAMMA = 12, SH_PTS = 40, SH_RINGS = 4;
+// SH_VER：第 28 批改成 s3（圖庫的「覆核」多了電腦）、第 29 批 s4（行政事宜＝整個文件資料櫃）、第 30 批 s5（圖庫多了新的圖一）、
+//   第 32 批 s6（有問卷夾板的圖一；覆核＋兩盒處方、行政事宜＋辦公桌、水藥＝藥品櫃＋窄藥架＋冰箱）→ 存過的形狀都會重找一次（圖一用圖庫，很快；打開編輯器、自動存檔開著就自動做）。
 // SH_GAMMA：「相鄰的點盡量同一邊」有多重要。縮小過的圖用 OpenCV 的 50 太重（整個框會變成背景）；12 試過藥盤、藥水瓶、法規書、處方夾都對。
 // 還是整個變背景的話，自動用一半再試一次。
 
@@ -4507,22 +5144,37 @@ function shFpOf(px, W, H) {   // px＝RGBA（W×H，已經縮成 272×128）
   for (y = 0; y < 8; y++) for (x = 0; x < 16; x++) { nib = nib * 2 + (L[y * 17 + x] < L[y * 17 + x + 1] ? 1 : 0); if (++nb === 4) { hex += nib.toString(16); nib = 0; nb = 0; } }
   return hex;
 }
-function shFp(img) {   // 瀏覽器裡：載好的圖 → 指紋
+function shSmall(img) {   // 瀏覽器裡：載好的圖 → 縮成 272×128 的像素（RGBA）
   var cv = document.createElement("canvas"); cv.width = 272; cv.height = 128;
   var g = cv.getContext("2d", { willReadFrequently: true });
   g.imageSmoothingEnabled = true; try { g.imageSmoothingQuality = "high"; } catch (e) { /* 舊瀏覽器 */ }
   g.drawImage(img, 0, 0, 272, 128);
-  return shFpOf(g.getImageData(0, 0, 272, 128).data, 272, 128);
+  return g.getImageData(0, 0, 272, 128).data;
+}
+function shFp(img) { return shFpOf(shSmall(img), 272, 128); }   // 瀏覽器裡：載好的圖 → 指紋
+// 第 32 批：探針＝縮成 272×128 以後，某一塊（整張圖的 %）的平均顏色（build_lib3.py 一樣算法）
+function shProbeOf(px, W, H, b) {
+  var X0 = Math.floor(b[0] / 100 * W), Y0 = Math.floor(b[1] / 100 * H), X1 = Math.max(X0 + 1, Math.round(b[2] / 100 * W)), Y1 = Math.max(Y0 + 1, Math.round(b[3] / 100 * H));
+  var s = [0, 0, 0], n = 0, x, y;
+  for (y = Y0; y < Y1; y++) for (x = X0; x < X1; x++) { var o = (y * W + x) * 4; s[0] += px[o]; s[1] += px[o + 1]; s[2] += px[o + 2]; n++; }
+  return n ? [s[0] / n, s[1] / n, s[2] / n] : null;
 }
 function shFpDist(a, b) {   // 兩個指紋差幾個 0/1
   if (!a || !b || a.length !== b.length) return 999;
   var n = 0; for (var i = 0; i < a.length; i++) { var v = parseInt(a.charAt(i), 16) ^ parseInt(b.charAt(i), 16); while (v) { n += v & 1; v >>= 1; } }
   return n;
 }
-function shLibMatch(fp, ar) {   // 指紋、長寬比 → 圖庫裡的那一筆（沒有＝null）
-  var lib = typeof SH_LIB !== "undefined" ? SH_LIB : [];
-  for (var i = 0; i < lib.length; i++) if (Math.abs(ar - lib[i].ar) / lib[i].ar <= 0.03 && shFpDist(fp, lib[i].fp) <= SH_FP_MAX) return lib[i];
-  return null;
+// 指紋、長寬比 → 圖庫裡的那一筆（沒有＝null）。第 32 批：挑「最接近」的那一筆（以前是第一筆對得上的）：
+//   有問卷夾板的圖一跟第 30 批的圖只差一個夾板，指紋只差 4 個 → 兩筆都有探針（夾板那一塊的平均顏色），顏色差越多扣越多分。probe(b)＝這張圖那一塊的平均顏色
+function shLibMatch(fp, ar, probe) {
+  var lib = typeof SH_LIB !== "undefined" ? SH_LIB : [], best = null, bs = Infinity;
+  for (var i = 0; i < lib.length; i++) {
+    var E = lib[i]; if (Math.abs(ar - E.ar) / E.ar > 0.03) continue;
+    var d = shFpDist(fp, E.fp); if (d > SH_FP_MAX) continue;
+    if (probe && E.pr) E.pr.forEach(function (p) { var c = probe(p); if (c) d += Math.sqrt(Math.pow(c[0] - p[4], 2) + Math.pow(c[1] - p[5], 2) + Math.pow(c[2] - p[6], 2)) / 5; });
+    if (d < bs) { bs = d; best = E; }
+  }
+  return best;
 }
 function shInRings(rings, x, y) {   // 這一點在不在物品裡（好幾圈：在任一圈裡就算）
   var c = false;
@@ -4564,7 +5216,7 @@ function shLibOf(img) {
   if (!img) return null;
   if (img.__shLib === undefined) {
     var IW = img.naturalWidth || img.width, IH = img.naturalHeight || img.height, L = null;
-    try { if (IW && IH) L = shLibMatch(shFp(img), IW / IH); } catch (e) { L = null; }
+    try { if (IW && IH) { var px = shSmall(img); L = shLibMatch(shFpOf(px, 272, 128), IW / IH, function (b) { return shProbeOf(px, 272, 128, b); }); } } catch (e) { L = null; }
     img.__shLib = L;
   }
   return img.__shLib;
@@ -4586,6 +5238,20 @@ function shLibMove(L, spots) {
     moved.push(s.id);
   });
   return moved;
+}
+// 第 32 批：這張圖多的按鍵（L.add，例如有問卷夾板的圖一多一個「問卷」）：還沒有就加一個（放在 L.bx 的位置）。
+//   已經有連到同一個地方（to 一樣）、或同一個代號的：不加（自己刪掉又想要，換一次圖或手動新增）。回傳加了哪幾個（代號）
+function shLibAdd(L, spots) {
+  var added = [];
+  if (!L || !L.add || !L.bx || !Array.isArray(spots)) return added;
+  Object.keys(L.add).forEach(function (id) {
+    var a = L.add[id], b = L.bx[id];
+    if (!a || !b || spots.length >= 12) return;
+    if (spots.some(function (s) { return s.id === id || (a.to && s.to === a.to); })) return;
+    spots.push({ id: id, label: a.label || "", to: a.to || "", ico: a.ico || "", x: b[0], y: b[1], w: b[2], h: b[3], pos: b[4] || "t", desc: a.desc || "", st: "" });
+    added.push(id);
+  });
+  return added;
 }
 // 編輯器：img＝目錄圖（載好的），s＝地點 → 圖庫裡有：{ r, n, nm }；這張圖不在圖庫、或框裡沒有圖庫的物品：null
 function shLibFind(img, s) {
@@ -5278,13 +5944,14 @@ function edCatImg() {   // 目錄圖（載好的 Image）：同一張圖只載�
 // 第 30 批：目錄圖是圖庫裡的一張、按鍵還在「別張圖的預設位置」（沒動過）→ 搬到這張圖上對應的物品（動過的不動）
 function edSpotsMove(img) {
   var L = null; try { L = shLibOf(img); } catch (e) { L = null; }
-  var mv = shLibMove(L, ED.cat.spots);
-  if (mv.length) {
+  var mv = shLibMove(L, ED.cat.spots), ad = shLibAdd(L, ED.cat.spots);   // 第 32 批：這張圖多的按鍵（問卷）也自動加上
+  if (mv.length || ad.length) {
     markDirty();
-    toast("📍 這張目錄圖認得：沒動過的 " + mv.length + " 個按鍵，已經搬到圖上對應的物品（可以再拖）");
+    var names = ad.map(function (id) { var s = edSpot(id); return s ? "「" + s.label + "」" : ""; }).join("");
+    toast("📍 這張目錄圖認得：" + (mv.length ? "沒動過的 " + mv.length + " 個按鍵，已經搬到圖上對應的物品" : "") + (mv.length && ad.length ? "；" : "") + (ad.length ? "多了" + names + "按鍵" : "") + "（可以再拖）");
     if (ED.cur && ED.cur.kind === "map") setTimeout(function () { if (ED && TAB === "edit") renderEdit(); }, 0);
   }
-  return mv;
+  return mv.concat(ad);
 }
 function edShapeOne(img, s) {   // 算一個（算過的就拿出來）→ 寫進這個地點。第 27 批：圖一 → 用物品圖庫（整個物品）；別張圖 → 在框裡找
   var cat = ED.cat, k = shKey(cat, s), r = SHC[k];
@@ -5673,7 +6340,7 @@ function saveSend(force, auto, t0) {
   }, function (e) { if (!ED) return; ED.saving = false; asFail(e.message, auto); });
 }
 function edPick(cur, mode) {   // 存完、重新載入以後，盡量停在原本選的地方
-  var gone = !cur || (cur.kind === "title" ? !edTitle(cur.id) : cur.kind === "ch" ? !edCh(cur.id) : cur.kind === "map" ? !!(cur.id && !edSpot(cur.id)) : cur.kind === "mq" ? false : true);
+  var gone = !cur || (cur.kind === "title" ? !edTitle(cur.id) : cur.kind === "ch" ? !edCh(cur.id) : cur.kind === "map" ? !!(cur.id && !edSpot(cur.id)) : cur.kind === "mq" || cur.kind === "qz" ? false : true);
   if (!gone) { ED.cur = cur; ED.mode = mode; }
 }
 function refreshForEdit() {
@@ -5703,14 +6370,22 @@ function renderToolbar() {
   tb.appendChild(h("label", { class: "asck", title: "有修改就自動儲存：停手 3 秒就存，一直在改的話最晚 8 秒（記在這台電腦）" }, [ac, h("span", {}, ["自動存檔"])]));
   tb.appendChild(h("span", { id: "edDirty", class: "dirty", "aria-live": "polite" }, [""]));
   tb.appendChild(h("span", { class: "vsep" }));
-  tb.appendChild(h("span", { class: "tblabel" }, ["新增內容"]));
-  [["text", "＋文字"], ["ladder", "＋階梯式內容"], ["table", "＋表格"], ["img", "＋圖片"], ["anim", "＋動畫"], ["drug", "＋藥品"]].forEach(function (x) {
+  if (ED.mode === "qz") tb.appendChild(h("span", { class: "tblabel qetb" }, ["📋 問卷、考試：用中間的「💾 儲存」（存進問卷試算表；左邊的「儲存」是手冊的）"]));
+  else tb.appendChild(h("span", { class: "tblabel" }, ["新增內容"]));
+  if (ED.mode !== "qz") [["text", "＋文字"], ["ladder", "＋階梯式內容"], ["table", "＋表格"], ["img", "＋圖片"], ["anim", "＋動畫"], ["drug", "＋藥品"]].forEach(function (x) {
     var b = h("button", { class: "btn sm addb", "data-k": x[0], title: isT ? x[0] === "drug" ? "從補藥神器的藥品資料庫找藥放進來（LINE 收起來、網頁直接打開；不顯示位置）" : (x[0] === "text" ? "新的文字塊會接在你點選的那一塊後面（沒點選就放最後面）" : "游標在文字裡的話，文字會從游標那一行切開，新的放在中間；不然接在你點選的那一塊後面") : "先在左邊選一個標題" }, [x[1], x[0] === "ladder" || x[0] === "anim" || x[0] === "drug" ? h("span", { class: "newb" }, ["新"]) : null]);
     if (!isT) b.disabled = true;
     b.addEventListener("mousedown", function (e) { e.preventDefault(); });   // 按下去，文字框不會失去游標（才知道要從哪裡切開）
     b.onclick = function () { addBlock(x[0]); };
     tb.appendChild(b);
   });
+  if (ED.mode !== "qz" && ED_CLIP) {   // 第 32 批：「📋 複製」了某一塊 → 這裡可以貼（放在點選的那一塊後面；沒點選就放最後面）
+    var pb2 = h("button", { class: "btn sm addb pstb", type: "button", title: isT ? "把複製的「" + ED_CLIP.what + "」放在你點選的那一塊後面（沒點選就放最後面）" : "先在左邊選一個標題" }, ["📌 貼上整塊（" + ED_CLIP.blocks.length + "）"]);
+    if (!isT) pb2.disabled = true;
+    pb2.addEventListener("mousedown", function (e) { e.preventDefault(); });
+    pb2.onclick = edPasteBlocks;
+    tb.appendChild(pb2);
+  }
   var fm = $("#edfmt"); if (fm) fm.style.display = isT ? "" : "none";   // 文字格式那一排：只有在編輯「標題」時才出現
   tb.appendChild(h("span", { class: "sp" }));
   var pb = h("button", { class: "btn sm" + (PV.open ? " on" : ""), id: "pvToggle", type: "button", title: "預覽會浮在畫面上，可以拖來拖去、拉大拉小、放到最大" }, [PV.open ? "👁 預覽視窗：開" : "👁 打開預覽視窗"]);
@@ -5723,14 +6398,15 @@ function renderToolbar() {
 function renderTree() {
   var c1 = $("#edc1"); c1.innerHTML = "";
   var seg = h("div", { class: "seg", style: "display:flex;margin-bottom:8px" });
-  [["ch", "章節"], ["map", "🖼 目錄圖"], ["mq", "📢 跑馬燈"]].forEach(function (p) {
-    var b = h("button", { class: ED.mode === p[0] ? "on" : "", style: "flex:1;padding-left:4px;padding-right:4px;white-space:nowrap", "data-m": p[0] }, [p[1]]);
+  [["ch", "章節"], ["map", "🖼 目錄圖"], ["mq", "📢 跑馬燈"], ["qz", "📋 問卷"]].forEach(function (p) {   // 第 32 批：問卷、考試
+    var b = h("button", { class: ED.mode === p[0] ? "on" : "", style: "flex:1;padding-left:3px;padding-right:3px;white-space:nowrap;font-size:12px", "data-m": p[0] }, [p[1]]);
     b.onclick = function () {
       if (ED.mode === p[0]) return;
       if (ED.mode === "ch") ED.lastCh = ED.cur;   // 離開「章節」前，記住看到哪裡，回來時接著看
       ED.mode = p[0]; ED.ab = null;
       if (p[0] === "map") ED.cur = { kind: "map", id: "" };
       else if (p[0] === "mq") { ED.cur = { kind: "mq", id: "" }; ED.view = "web"; }   // 跑馬燈只有網頁有：預覽切到「網頁」
+      else if (p[0] === "qz") { ED.cur = { kind: "qz", id: "" }; ED.view = "web"; }   // 問卷：預覽先看「網頁」（藥師作答的樣子）
       else {
         var lc = ED.lastCh;
         ED.cur = lc && ((lc.kind === "title" && edTitle(lc.id)) || (lc.kind === "ch" && edCh(lc.id))) ? lc : edFirst();
@@ -5742,6 +6418,7 @@ function renderTree() {
   });
   c1.appendChild(seg);
   if (ED.mode === "map") { renderMapTree(c1); return; }
+  if (ED.mode === "qz") { qeTree(c1); return; }
   if (ED.mode === "mq") { c1.appendChild(hint("跑馬燈：網頁最上面那一條會跑的字（章、標題頁上下各一條）。下面還有「🔰 大標題旁的符號」。在中間改內容、速度，存好才會生效（會自動存）。LINE 沒有跑馬燈。")); return; }
   c1.appendChild(lbl("", "章元（" + ED.chapters.length + " ／ 一排最多 12 張）"));
   ED.chapters.forEach(function (c) {
@@ -5760,7 +6437,7 @@ function renderTree() {
   });
   c1.appendChild(h("div", { style: "padding-top:8px" }, [h("button", { class: "btn sm", disabled: ED.chapters.length >= YZ_CAROUSEL_MAX, onclick: addChapter }, ["＋新增章元"])]));
 }
-function selectNode(kind, id) { ED.cur = { kind: kind, id: id }; ED.mode = kind === "map" ? "map" : kind === "mq" ? "mq" : "ch"; ED.ab = null; renderEdit(); }
+function selectNode(kind, id) { ED.cur = { kind: kind, id: id }; ED.mode = kind === "map" ? "map" : kind === "mq" ? "mq" : kind === "qz" ? "qz" : "ch"; ED.ab = null; renderEdit(); }
 function addTitle(cid) {
   var t = { id: "t" + Date.now(), ch: cid, name: "（新標題）", size: "giga", ww: 760, note: "", page: "", blocks: [] };
   ED.titles[cid].push(t); markDirty(); selectNode("title", t.id);
@@ -5779,6 +6456,7 @@ function renderForm() {
   ED.mapUi = null;
   if (ED.cur.kind === "map") return renderMapForm(f);
   if (ED.cur.kind === "mq") return renderMqForm(f);
+  if (ED.cur.kind === "qz") return qeForm(f);
   if (ED.cur.kind === "ch") return renderChForm(f, edCh(ED.cur.id));
   var t = edTitle(ED.cur.id);
   if (!t) return;
@@ -5866,6 +6544,7 @@ function renderTitleForm(f, t, ch) {
 
   f.appendChild(h("div", { style: "display:flex;gap:6px;flex-wrap:wrap;margin-top:14px" }, [
     btn("▲ 往前移", function () { moveTitle(t, -1); }), btn("▼ 往後移", function () { moveTitle(t, 1); }),
+    btn("📋 複製這一篇", function () { edCopyTitle(t); }, "sm cpt"),   // 第 32 批：整篇複製一份，放到選的章
     confirmBtn("刪除這個標題", function () { var a = ED.titles[ch.id], i = a.indexOf(t); a.splice(i, 1); markDirty(); a.length ? selectNode("title", a[Math.min(i, a.length - 1)].id) : selectNode("ch", ch.id); })
   ]));
 }
@@ -5939,8 +6618,10 @@ function blockEditor(t, b, i) {
   // 第 28 批：「⤴ 併到上一塊」：文字、圖片併進上一塊文字（不用一塊一塊調；縮排照舊）
   var mrg = mergeOk(t, i) ? btn("⤴ 併到上一塊", function () { mergeUp(t, i); }, "sm mrgb") : null;
   if (mrg) mrg.title = mergeTip(t, i);
+  var cpB = btn("📋 複製", function () { edClipBlocks(t, [i]); }, "sm cpb");   // 第 32 批：整塊複製 → 別的標題（或這一篇別的地方）按最上面的「📌 貼上整塊」
+  cpB.title = "複製這一塊（文字、圖片、表格…格式都帶著）：到要放的標題，點一下某一塊，按最上面的「📌 貼上整塊」（會放在那一塊後面）";
   var head = h("div", { class: "bh" }, [KIND_NAME[b.t] + "　#" + (i + 1), b.t === "ladder" || b.t === "anim" || b.t === "drug" ? h("span", { class: "newb" }, ["新"]) : null, h("span", { class: "sp" }),
-    mrg, indLbl, decB, incB, brkBtn, btn("▲", function () { moveBlock(t, i, -1); }), btn("▼", function () { moveBlock(t, i, 1); }), delBtn]);
+    mrg, indLbl, decB, incB, brkBtn, cpB, btn("▲", function () { moveBlock(t, i, -1); }), btn("▼", function () { moveBlock(t, i, 1); }), delBtn]);
   var body = h("div", { class: "bb2" });
   var rte = null;
   if (b.t === "text") {
@@ -6109,6 +6790,41 @@ function edTblSplit(t, b, id) {   // 文字從這張表格那一行切開：上�
   t.blocks.splice.apply(t.blocks, [bi, 1].concat(out));
   ED.ab = bi + (before.trim() ? 1 : 0); renderForm(); changed();
   toast("表格拆出來了，變回自己一整塊");
+}
+/* ── 第 32 批：整塊複製、貼上；整篇複製（只放記憶體，登出就丟掉；圖片用同一張，不會多傳一次）── */
+var ED_CLIP = null;   // { blocks:[…], what:"文字" }
+function edClipBlocks(t, idx) {
+  var bs = idx.map(function (i) { return t.blocks[i]; }).filter(Boolean);
+  if (!bs.length) return;
+  ED_CLIP = { blocks: JSON.parse(JSON.stringify(bs)), what: bs.length === 1 ? KIND_NAME[bs[0].t] || "內容" : bs.length + " 塊", from: t.name || "" };
+  renderToolbar();
+  toast("📋 複製好了（" + ED_CLIP.what + "）：到要放的標題，點一下某一塊，按最上面的「📌 貼上整塊」");
+}
+function edPasteBlocks() {
+  if (!ED_CLIP || ED.cur.kind !== "title") return;
+  var t = edTitle(ED.cur.id); if (!t) return;
+  var at = (ED.ab === null || ED.ab === undefined) ? t.blocks.length : Math.min(t.blocks.length, ED.ab + 1);
+  var add = JSON.parse(JSON.stringify(ED_CLIP.blocks));
+  if (at === 0 && add[0]) delete add[0].brk;   // 第一塊不用「換下一張」
+  Array.prototype.splice.apply(t.blocks, [at, 0].concat(add));
+  ED.ab = at + add.length - 1; renderForm(); changed();
+  var el = $("#edc2 .blk[data-i='" + at + "']"); if (el && !window.__SHOT) el.scrollIntoView({ block: "center" });
+  toast("📌 貼上了（" + ED_CLIP.what + "）：放在第 " + (at + 1) + " 塊");
+}
+function edCopyTitle(t) {
+  var sel = h("select", { class: "in", "aria-label": "複製到哪一章" });
+  ED.chapters.forEach(function (c) { sel.appendChild(h("option", { value: c.id }, [(c.id === t.ch ? "（同一章）" : "") + (c.name || "（還沒有章名）")])); });
+  sel.value = t.ch;
+  var close = modal({ title: "📋 複製這一篇", lines: ["整篇（內容、圖片、表格、備註…）複製一份，標題後面加「（複製）」。放在哪一章："], buttons: [{ label: "取消", cls: "sm" }, { label: "📋 複製", cls: "sm pri", fn: function () {
+    var to = sel.value || t.ch, nt = JSON.parse(JSON.stringify(t)), a = ED.titles[to] || (ED.titles[to] = []);
+    nt.id = "t" + Date.now(); nt.ch = to; nt.name = (t.name || "") + "（複製）";
+    if (to === t.ch) a.splice(a.indexOf(t) + 1, 0, nt); else a.push(nt);
+    markDirty(); selectNode("title", nt.id);
+    toast("📋 複製好了：「" + nt.name + "」（在「" + (edCh(to) || {}).name + "」）。改好標題就可以用");
+  } }] });
+  var dlg = $$(".modal .dlg-p").pop(); if (dlg) dlg.appendChild(sel);
+  try { sel.focus(); } catch (e) { /* 沒關係 */ }
+  return close;
 }
 function moveBlock(t, i, d) { var j = i + d; if (j < 0 || j >= t.blocks.length) return; var x = t.blocks[i]; t.blocks[i] = t.blocks[j]; t.blocks[j] = x; ED.ab = j; renderForm(); changed(); }
 function addBlock(kind) {
@@ -6959,6 +7675,7 @@ function refreshPreview() {
   var seg = $$("#pvseg button"); seg.forEach(function (x) { x.classList.toggle("on", x.getAttribute("data-v") === ED.view); });
   var pvw = $("#pvc").clientWidth || 380;
   var stackOf = function (bubbles) { var st = h("div", { class: "pvstack" }); bubbles.forEach(function (b) { st.appendChild(FlexView.render(b, {})); }); return h("div", { class: "pvwrap" }, [st]); };
+  if (ED.cur.kind === "qz") { qePreview(body, meter); return; }   // 第 32 批：問卷、考試
   if (ED.cur.kind === "mq") {
     if (ED.view === "line") { body.appendChild(h("div", { class: "pvempty" }, ["LINE 沒有跑馬燈（只有網頁有）。", "切到上面的「網頁」看樣子。"])); return; }
     body.appendChild(h("div", { class: "mqpv", style: "padding:10px" }, [mqPreview(edMq())]));
@@ -7352,6 +8069,9 @@ function renderMapForm(f) {
     var sel = h("select", { class: "in", "aria-label": "連到哪裡" }), ok = _yzMapToInfo_(s.to, edHb()).ok, lock = s.st === "lock";
     if (lock) sel.appendChild(h("option", { value: "-" }, ["（先不連：尚未開放）"]));
     else if (!ok) sel.appendChild(h("option", { value: "", selected: "selected" }, ["（找不到，請重新選一個）"]));
+    var qg = h("optgroup", { label: "📋 問卷、考試" });   // 第 32 批：連到問卷清單（藥師點了看到開放中的問卷、考試）
+    qg.appendChild(h("option", { value: "q:all" }, ["問卷、考試（清單）"]));
+    sel.appendChild(qg);
     ED.chapters.forEach(function (c) {
       var g = h("optgroup", { label: c.name || "（還沒有章名）" });
       g.appendChild(h("option", { value: "c:" + c.id }, ["整章：" + (c.name || "")]));
@@ -7547,6 +8267,782 @@ function catPartsUp(src, info) {
   });
 }
 
+/* ════════ quized.js ════════ */
+/* ═══════════════ quized.js：編輯器的「📋 問卷」（開發者；第 32 批）═══════════════
+ * 問卷、考試放在另外一個「問卷專用試算表」：按中間的「💾 儲存」馬上寫進去（不是手冊的自動存檔）。
+ * 左邊：問卷、考試的清單、「🗂 題庫」、「✨ AI 出題」；中間：那一份的設定和題目；預覽視窗：藥師在網頁、LINE 上看到的樣子。
+ * 考試的題目從題庫抽：自己出、或叫 AI 出（只用 Gemini 3.8 Flash；送出前遮字清單裡的字換成「本院」；AI 出的先「待審」，你按「採用」才會考到）。 */
+var QE = null, KEEP_QE = null;
+var QE_DIFF = ["中", "高", "更難", "超難"];
+var QE_DIFF_TIP = { "中": "基本：手冊裡直接寫的重點（新進同仁看過一次就該會）", "高": "要理解：把兩、三個重點連起來，或分辨很像的情況", "更難": "要應用：給一個實際的情境（處方、病人、狀況），判斷該怎麼做", "超難": "細節＋陷阱：例外情況、數字、容易搞混的地方，選項都很像" };
+var QE_ST = { draft: "草稿", open: "開放", end: "結束" }, QE_BST = { ok: "採用", wait: "待審", off: "停用" };
+var QE_MAXQ = 40, QE_MAXO = 6;
+function qeNew() {
+  return { loaded: false, busy: false, none: false, err: "", zs: [], bank: [], cnt: {}, mask: 0, today: "", sel: { k: "home", id: "" }, z: null, dirty: false, saving: false,
+    b: null, bDirty: false, bf: { st: "", diff: "", ch: "", by: "", q: "", zx: "" }, bShow: 40, ai: { scope: [], diff: "中", n: 5, types: ["one"], hint: "" }, aiBusy: false, aiRes: null, words: null, res: null, resBusy: false };
+}
+function qeDrop() { QE = null; }
+function qeErr(e) { return e && e.code === "bad" ? "網頁專案還沒換成第 32 批（03 要貼新版、部署新版本）" : String(e && e.message || e); }
+function qeCall(act, a, b, ms) {
+  return call("hbQzEd", [act, a === undefined ? "" : a, b === undefined ? "" : b], { ms: ms || 60000 }).then(function (r) {
+    if (r && r.st === "lock") { logout("expired"); throw new Error("驗證過期了"); }
+    if (!r) throw new Error("後端沒有回應");
+    if (r.err || (r.st && !r.ok)) { var e = new Error(r.err || "現在不能用（請重新整理）"); e.r = r; throw e; }
+    return r;
+  });
+}
+function qeZ(id) { return (QE && QE.zs || []).filter(function (z) { return z.id === id; })[0] || null; }
+function qeB(id) { return (QE && QE.bank || []).filter(function (b) { return b.id === id; })[0] || null; }
+function qeHb() { return ED ? edHb() : HB; }
+
+/* ── 閒置登出：還沒存的問卷留在記憶體，重新驗證後接著改 ── */
+function qeKeep() { return QE && QE.dirty && QE.z ? { z: clone(QE.z), sel: clone(QE.sel) } : null; }
+function qeRestore() {
+  if (!KEEP_QE) return false;
+  QE = qeNew(); QE.z = KEEP_QE.z; QE.sel = KEEP_QE.sel; QE.dirty = true; KEEP_QE = null;
+  return true;
+}
+
+/* ── 讀全部（問卷、題庫、作答數）── */
+function qeLoad(force, quiet) {
+  if (!QE) QE = qeNew();
+  if (QE.busy || (QE.loaded && !force)) return;
+  QE.busy = true; QE.err = "";
+  qeCall("all").then(function (r) {
+    if (!QE) return;
+    QE.busy = false; QE.loaded = true; QE.none = !!r.none;
+    if (!r.none) { QE.zs = r.zs || []; QE.bank = r.bank || []; QE.cnt = r.cnt || {}; QE.mask = r.mask || 0; QE.today = r.today || ""; }
+    if (QE.sel.k === "z" && QE.sel.id && !QE.dirty) { var z = qeZ(QE.sel.id); QE.z = z ? qeZIn(z) : null; if (!z) QE.sel = { k: "home", id: "" }; }
+    if (QE.b && !QE.bDirty) QE.b = null;
+    if (force && !quiet) toast("已經重新讀了問卷試算表");
+    qeRender();
+  }, function (e) { if (!QE) return; QE.busy = false; QE.err = qeErr(e); qeRender(); });
+}
+function qeRender() {   // 停在「📋 問卷」才重畫（游標、捲到哪裡都留著）
+  if (!ED || ED.mode !== "qz" || TAB !== "edit") return;
+  var a = document.activeElement, key = a && a.getAttribute ? a.getAttribute("data-qk") : "", s0 = null, s1 = null, y = window.scrollY;
+  try { s0 = a.selectionStart; s1 = a.selectionEnd; } catch (e) { /* 不是文字框 */ }
+  renderToolbar(); renderTree(); renderForm(); refreshPreview();
+  try { window.scrollTo(0, y); } catch (e) { /* 沒關係 */ }
+  if (key) {
+    var el = $("#edc2 [data-qk=\"" + key + "\"]");
+    if (el) try { el.focus({ preventScroll: true }); if (s0 !== null && el.setSelectionRange) el.setSelectionRange(s0, s1); } catch (e) { /* 沒關係 */ }
+  }
+}
+var QE_PV_T = 0;
+function qePv() { clearTimeout(QE_PV_T); QE_PV_T = setTimeout(function () { if (ED && ED.mode === "qz") refreshPreview(); }, 250); }
+function qeDirty() { QE.dirty = true; qeDirtyPaint(); qePv(); }
+function qeDirtyPaint() {
+  $$(".qedirty").forEach(function (e) { e.textContent = QE.saving ? "儲存中…" : QE.dirty ? "● 有修改還沒存（按「💾 儲存」才會寫進問卷試算表）" : "✅ 都存好了"; e.classList.toggle("on", !!QE.dirty); });
+}
+// 換到別的之前：有還沒存的就先問
+function qeAsk(go) {
+  if (QE && QE.dirty && QE.z) {
+    modal({ title: "「" + (QE.z.title || "（沒有標題）") + "」還沒儲存", lines: ["你改的東西還沒存進問卷試算表。"], buttons: [{ label: "先不要", cls: "sm" }, { label: "不存了", cls: "sm bad", fn: function () { QE.dirty = false; QE.z = null; go(); } }, { label: "💾 儲存再走", cls: "sm pri", fn: function () { qeSaveZ(go); } }] });
+    return;
+  }
+  if (QE && QE.bDirty && QE.b) {
+    modal({ title: "這一題還沒存", lines: ["題庫裡正在改的那一題還沒存。"], buttons: [{ label: "先不要", cls: "sm" }, { label: "不存了", cls: "sm bad", fn: function () { QE.bDirty = false; QE.b = null; go(); } }, { label: "💾 存好再走", cls: "sm pri", fn: function () { qeSaveB(go); } }] });
+    return;
+  }
+  go();
+}
+function qeSel(k, id) { qeAsk(function () { QE.sel = { k: k, id: id || "" }; if (k === "z") { var z = qeZ(id); QE.z = z ? qeZIn(z) : null; QE.dirty = false; } if (k !== "bank") { QE.b = null; QE.bDirty = false; } if (k === "res") QE.res = null; qeRender(); try { window.scrollTo(0, 0); } catch (e) { /* 沒關係 */ } }); }
+
+/* ── 左邊：清單 ── */
+function qeTree(c1) {
+  if (!QE) QE = qeNew();
+  qeLoad();
+  if (QE.err && !QE.loaded) { c1.appendChild(hint("⚠ " + QE.err)); c1.appendChild(btn("🔄 再試一次", function () { QE.err = ""; qeLoad(true); qeRender(); })); return; }
+  if (!QE.loaded) { c1.appendChild(hint("問卷試算表讀取中…")); return; }
+  if (QE.none) { c1.appendChild(hint("還沒建立問卷試算表：按中間的「建立問卷試算表」。")); return; }
+  var item = function (on, ico, name, sub, fn, extra) {
+    return h("div", { class: "chI qeI" + (on ? " on" : ""), role: "button", tabindex: "0", onclick: fn, onkeydown: function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); } } }, [
+      h("div", { class: "th thi" }, [ico]), h("div", { style: "min-width:0;flex:1" }, [h("div", { class: "t2" }, [name]), sub ? h("div", { class: "t1" }, [sub]) : null]), extra || null]);
+  };
+  var zItem = function (z) {
+    var on = QE.sel.k === "z" && QE.sel.id === z.id, n = QE.cnt[z.id] || 0, d = on && QE.dirty;
+    var sub = (z.kind === "x" ? (z.x ? z.x.n : 0) + " 題" : z.qs.length + " 題") + (n ? "・" + n + " 份作答" : "") + (d ? "・● 還沒存" : "");
+    return item(on, z.kind === "x" ? "📝" : "📋", z.title, sub, function () { qeSel("z", z.id); }, h("span", { class: "qest " + z.st }, [QE_ST[z.st]]));
+  };
+  ["q", "x"].forEach(function (k) {
+    var list = QE.zs.filter(function (z) { return z.kind === k; });
+    c1.appendChild(lbl("", (k === "x" ? "📝 考試（" : "📋 問卷（") + list.length + "）"));
+    list.forEach(function (z) { c1.appendChild(zItem(z)); });
+    if (QE.sel.k === "z" && !QE.sel.id && QE.z && QE.z.kind === k) c1.appendChild(item(true, k === "x" ? "📝" : "📋", QE.z.title || "（新的，還沒存）", "還沒存", function () { /* 已經選了 */ }));
+    c1.appendChild(h("div", { style: "padding:2px 0 8px 4px" }, [btn(k === "x" ? "＋新增考試" : "＋新增問卷", function () { qeNewZ(k); })]));
+  });
+  c1.appendChild(lbl("", "出題"));
+  var nw = QE.bank.filter(function (b) { return b.st === "wait"; }).length;
+  c1.appendChild(item(QE.sel.k === "bank", "🗂", "題庫", QE.bank.length + " 題" + (nw ? "・待審 " + nw : ""), function () { qeSel("bank"); }, nw ? h("span", { class: "qest wait" }, ["待審 " + nw]) : null));
+  c1.appendChild(item(QE.sel.k === "ai", "✨", "AI 出題", "3.8 Flash・遮字清單 " + QE.mask + " 個", function () { qeSel("ai"); }));
+  c1.appendChild(h("div", { style: "padding-top:10px;display:flex;gap:6px;flex-wrap:wrap" }, [btn("🏠 說明", function () { qeSel("home"); }), btn("🔄 重新整理", function () { qeAsk(function () { qeLoad(true); }); })]));
+  c1.appendChild(hint("問卷、考試存在「問卷專用試算表」：按中間的「💾 儲存」才寫進去（不是手冊的自動存檔）。在試算表裡直接改過的話，按「🔄 重新整理」。"));
+}
+function qeNewZ(kind) {
+  qeAsk(function () {
+    QE.sel = { k: "z", id: "" }; QE.b = null; QE.bDirty = false;
+    QE.z = kind === "x" ? { id: "", kind: "x", title: "", note: "", st: "draft", from: "", to: "", named: true, qs: [], x: { n: 10, diff: ["中"], scope: [], pass: 60, retake: true } }
+      : { id: "", kind: "q", title: "", note: "", st: "draft", from: "", to: "", named: true, qs: [qeQNew("one")], x: null };
+    QE.dirty = true;
+    qeRender();
+    var t = $("#edc2 [data-qk=title]"); if (t) try { t.focus(); } catch (e) { /* 沒關係 */ }
+  });
+}
+function qeQNew(t) { return { id: "", t: t || "one", q: "", opts: [], raw: t === "one" || t === "many" ? "\n\n" : "", req: true }; }
+function qeZIn(z) {   // 後端來的 → 編輯用（選項放成「一行一個」的字）
+  var c = clone(z);
+  c.qs = (c.qs || []).map(function (q) { q.raw = (q.opts || []).join("\n"); return q; });
+  if (c.kind === "x" && !c.x) c.x = { n: 10, diff: ["中"], scope: [], pass: 60, retake: true };
+  return c;
+}
+function qeOptsOf(raw) { return String(raw || "").split(/\r?\n/).map(function (s) { return s.replace(/\s+/g, " ").trim(); }).filter(Boolean); }
+function qeZOut(z) {   // 編輯用 → 送給後端
+  var o = { id: z.id, kind: z.kind, title: String(z.title || "").trim(), note: String(z.note || "").trim(), st: z.st, from: z.from || "", to: z.to || "", named: z.kind === "x" ? true : z.named !== false };
+  if (z.kind === "q") o.qs = z.qs.map(function (q) { return { id: q.id || "", t: q.t, q: String(q.q || "").trim(), opts: q.t === "one" || q.t === "many" ? qeOptsOf(q.raw).slice(0, QE_MAXO) : [], req: q.req !== false }; });
+  else o.x = { n: z.x.n, diff: z.x.diff.slice(), scope: z.x.scope.slice(), pass: z.x.pass, retake: z.x.retake !== false };
+  return o;
+}
+function qeCheckZ(z) {   // 存之前檢查：哪裡沒寫好（後端會把不完整的題目丟掉，所以先講）
+  var out = [];
+  if (!String(z.title || "").trim()) out.push("還沒寫標題");
+  if (z.from && z.to && z.from > z.to) out.push("開始日比結束日晚");
+  if (z.kind === "q") {
+    if (!z.qs.length && z.st === "open") out.push("要「開放」至少要有 1 題");
+    z.qs.forEach(function (q, i) {
+      if (!String(q.q || "").trim()) out.push("第 " + (i + 1) + " 題：還沒寫題目");
+      if ((q.t === "one" || q.t === "many") && qeOptsOf(q.raw).length < 2) out.push("第 " + (i + 1) + " 題：選項至少要 2 個（一行一個）");
+      if ((q.t === "one" || q.t === "many") && qeOptsOf(q.raw).length > QE_MAXO) out.push("第 " + (i + 1) + " 題：選項最多 " + QE_MAXO + " 個");
+    });
+  } else {
+    if (!(z.x.n >= 1 && z.x.n <= 50)) out.push("題數要是 1～50");
+    if (!(z.x.pass >= 0 && z.x.pass <= 100)) out.push("及格分數要是 0～100");
+    if (!z.x.diff.length) out.push("難度至少選一個");
+  }
+  return out;
+}
+function qeDate(v) { var m = /^(\d{4})[\/-](\d{2})[\/-](\d{2})$/.exec(String(v || "")); return m ? m[1] + "-" + m[2] + "-" + m[3] : ""; }
+
+/* ── 中間 ── */
+function qeForm(f) {
+  if (!QE) QE = qeNew();
+  qeLoad();
+  if (!QE.loaded) {
+    f.appendChild(h("h3", { style: "font-size:16px" }, ["📋 問卷、考試"]));
+    f.appendChild(QE.err ? h("div", { class: "qebox warn" }, ["⚠ " + QE.err]) : hint("問卷試算表讀取中…"));
+    if (QE.err) f.appendChild(btn("🔄 再試一次", function () { QE.err = ""; qeLoad(true); qeRender(); }, "pri"));
+    return;
+  }
+  if (QE.none) return qeSetupForm(f);
+  if (QE.sel.k === "z" && QE.z) return qeZForm(f, QE.z);
+  if (QE.sel.k === "bank") return qeBankForm(f);
+  if (QE.sel.k === "ai") return qeAiForm(f);
+  if (QE.sel.k === "res") return qeResForm(f);
+  qeHome(f);
+}
+function qeSetupForm(f) {
+  f.appendChild(h("h3", { style: "font-size:16px" }, ["📋 問卷、考試：第一次用要先建立問卷試算表"]));
+  f.appendChild(h("div", { class: "qebox" }, [
+    h("p", {}, ["問卷、考試放在另外一個「問卷專用試算表」（跟手冊分開）。按下面的按鈕，LINE 專案會幫你建好四個分頁：問卷、題目、題庫、作答。"]),
+    h("p", {}, ["試算表的位置會加密存在 LINE 專案的指令碼屬性（YZ_QZ_ID），網頁上不會出現。建好以後，在雲端硬碟搜尋「藥戰手冊問卷」找得到（只有你看得到，請不要分享）。"])
+  ]));
+  var b = btn("建立問卷試算表", function () {
+    b.disabled = true; b.textContent = "建立中…";
+    qeCall("setup", "", "", 90000).then(function (r) {
+      toast(r.old ? "問卷試算表之前就建好了" : "✅ 建好了問卷試算表");
+      QE.loaded = false; QE.none = false; qeLoad(true, true);
+    }, function (e) { b.disabled = false; b.textContent = "建立問卷試算表"; toast("❌ " + qeErr(e)); });
+  }, "pri");
+  f.appendChild(h("div", { style: "margin:10px 0" }, [b]));
+  f.appendChild(hint("要先把 LINE 專案（05）和網頁專案（03）都換成第 32 批、部署新版本。"));
+}
+function qeHome(f) {
+  var nq = QE.zs.filter(function (z) { return z.kind === "q"; }).length, nx = QE.zs.length - nq, open = QE.zs.filter(function (z) { return z.st === "open"; }).length;
+  f.appendChild(h("h3", { style: "font-size:16px" }, ["📋 問卷、考試"]));
+  f.appendChild(h("div", { class: "qegrid" }, [
+    h("div", { class: "qecard" }, [h("b", {}, ["📋 問卷 " + nq + " 份"]), h("span", {}, ["單選、複選、簡答、評分 1～5"]), btn("＋新增問卷", function () { qeNewZ("q"); }, "pri")]),
+    h("div", { class: "qecard" }, [h("b", {}, ["📝 考試 " + nx + " 份"]), h("span", {}, ["從題庫抽題；難度、題數、範圍、及格分數"]), btn("＋新增考試", function () { qeNewZ("x"); }, "pri")]),
+    h("div", { class: "qecard" }, [h("b", {}, ["🗂 題庫 " + QE.bank.length + " 題"]), h("span", {}, ["自己出題，或看 AI 出的（待審）"]), btn("打開題庫", function () { qeSel("bank"); })]),
+    h("div", { class: "qecard" }, [h("b", {}, ["✨ AI 出題"]), h("span", {}, ["選範圍、難度、題數；只用 3.8 Flash"]), btn("AI 出題", function () { qeSel("ai"); })])
+  ]));
+  f.appendChild(lbl("", "怎麼用"));
+  f.appendChild(h("ol", { class: "qeol" }, [
+    h("li", {}, ["新增問卷（或考試）→ 填好 → 狀態改成「開放」→ 按「💾 儲存」。現在開放中：" + open + " 份。"]),
+    h("li", {}, ["藥師在 LINE（打「問卷」、或按下面那排的「📋 問卷」）或網頁（首頁的「📋 問卷」）填。可以按「📣 LINE 通知大家」推一張卡片。"]),
+    h("li", {}, ["考試：題目從題庫抽（「採用」的才會考到）。交卷後藥師馬上看到分數、正確答案和詳解。"]),
+    h("li", {}, ["「📊 看結果」看統計；每一份作答也在問卷試算表的「作答」分頁。"])
+  ]));
+}
+
+// 一份問卷／考試
+function qeZForm(f, z) {
+  var exam = z.kind === "x", saved = !!z.id && !!qeZ(z.id), n = saved ? QE.cnt[z.id] || 0 : 0;
+  f.appendChild(h("div", { class: "qehd" }, [h("h3", { style: "font-size:16px;margin:0" }, [(exam ? "📝 考試：" : "📋 問卷：") + (z.title || "（還沒有標題）")]), h("span", { class: "qedirty" + (QE.dirty ? " on" : ""), "aria-live": "polite" }, [""])]));
+  var probs = [];
+  f.appendChild(lbl("一", "標題（藥師在清單上看到的）"));
+  f.appendChild(qeIn(z.title, "title", function (v) { z.title = v; qeDirty(); }, { maxlength: "60", placeholder: exam ? "例：錠劑調劑測驗" : "例：調劑台使用滿意度" }));
+  f.appendChild(lbl("二", "說明（開始前看到的；可以不寫）"));
+  f.appendChild(qeTa(z.note, "note", function (v) { z.note = v; qeDirty(); }, 2, { maxlength: "500", placeholder: exam ? "例：考第 4 章；交卷後看得到詳解" : "例：大約 3 分鐘，謝謝大家" }));
+  f.appendChild(lbl("三", "狀態"));
+  f.appendChild(qeSeg([["draft", "草稿"], ["open", "開放"], ["end", "結束"]], z.st, function (v) { z.st = v; qeDirty(); qeRender(); }));
+  var today = QE.today || "", out = z.st === "open" && today && ((z.from && today < z.from) || (z.to && today > z.to));
+  f.appendChild(hint(z.st === "draft" ? "草稿：藥師看不到，可以慢慢改。" : z.st === "open" ? (out ? "⚠ 開放，但今天不在日期內：藥師現在還看不到。" : "開放：藥師現在看得到、可以填（存好就生效）。") : "結束：藥師看不到了，結果留著。"));
+  f.appendChild(lbl("四", "日期（可以不填：不填＝狀態是「開放」就一直開著）"));
+  var d1 = h("input", { class: "in qedt", type: "date", "data-qk": "from", value: qeDate(z.from), "aria-label": "開始日" }), d2 = h("input", { class: "in qedt", type: "date", "data-qk": "to", value: qeDate(z.to), "aria-label": "結束日" });
+  d1.onchange = function () { z.from = d1.value.replace(/-/g, "/"); qeDirty(); }; d2.onchange = function () { z.to = d2.value.replace(/-/g, "/"); qeDirty(); };
+  f.appendChild(h("div", { class: "qerow" }, [h("span", {}, ["從"]), d1, h("span", {}, ["到"]), d2, h("span", { class: "muted" }, ["（含那一天）"])]));
+  if (exam) {
+    qeExamSet(f, z);
+  } else {
+    f.appendChild(lbl("五", "記名嗎"));
+    f.appendChild(qeSeg([["1", "具名（記名字、員工代號）"], ["0", "不記名"]], z.named === false ? "0" : "1", function (v) { z.named = v === "1"; qeDirty(); qeRender(); }));
+    f.appendChild(hint(z.named === false ? "不記名：試算表不記名字、員工代號（只用一串亂碼擋重複填）。" : "具名：結果看得到誰填了什麼。"));
+    if (n) f.appendChild(h("div", { class: "qebox warn" }, ["⚠ 已經有 " + n + " 份作答：改題目的順序、刪掉題目，之前的結果會對不起來（答案是照第幾題記的）。要大改的話，建議新增一份。"]));
+    f.appendChild(lbl("六", "題目（" + z.qs.length + " 題，最多 " + QE_MAXQ + " 題）"));
+    z.qs.forEach(function (q, i) { f.appendChild(qeQEl(z, q, i)); });
+    var addRow = h("div", { class: "qerow" }, [h("span", { class: "muted" }, ["＋新增一題："])]);
+    [["one", "單選"], ["many", "複選"], ["text", "簡答"], ["rate", "評分 1～5"]].forEach(function (p) {
+      var ab = btn("＋" + p[1], function () { if (z.qs.length >= QE_MAXQ) { toast("最多 " + QE_MAXQ + " 題"); return; } z.qs.push(qeQNew(p[0])); qeDirty(); qeRender(); var t = $$("#edc2 .qeq textarea[data-qk^=q]"); if (t.length) try { t[t.length - 1].focus(); } catch (e) { /* 沒關係 */ } });
+      if (z.qs.length >= QE_MAXQ) ab.disabled = true;
+      addRow.appendChild(ab);
+    });
+    f.appendChild(addRow);
+  }
+  probs = qeCheckZ(z);
+  if (probs.length) f.appendChild(h("div", { class: "qebox warn" }, [h("b", {}, ["還沒好的地方："]), h("ul", {}, probs.map(function (p) { return h("li", {}, [p]); }))]));
+  // 按鈕
+  var sv = btn("💾 儲存", function () { qeSaveZ(); }, "pri"); sv.id = "qeSave";
+  var acts = h("div", { class: "qeacts" }, [sv]);
+  if (QE.dirty && saved) acts.appendChild(btn("放棄修改", function () { modal({ title: "放棄還沒存的修改？", lines: ["回到上一次存的樣子。"], buttons: [{ label: "不要", cls: "sm" }, { label: "放棄修改", cls: "sm bad", fn: function () { QE.z = qeZIn(qeZ(z.id)); QE.dirty = false; qeRender(); } }] }); }));
+  if (saved) {
+    acts.appendChild(btn("📊 看結果（" + n + " 份）", function () { qeSel("res", z.id); }));
+    if (z.st === "open") acts.appendChild(btn("📣 LINE 通知大家", function () { qeNotify(z); }));
+    acts.appendChild(confirmBtn("🗑 刪除這一份", function () { qeDelZ(z); }, "sm bad"));
+  } else acts.appendChild(btn("不要這一份了", function () { QE.dirty = false; QE.z = null; QE.sel = { k: "home", id: "" }; qeRender(); }));
+  f.appendChild(acts);
+  f.appendChild(hint("右邊的預覽視窗（「網頁」／「LINE 卡片」）是藥師看到的樣子。"));
+  setTimeout(qeDirtyPaint, 0);
+}
+function qeIn(v, key, on, attrs) {
+  var a = Object.assign({ class: "in", "data-qk": key, value: v || "" }, attrs || {});
+  var el = h("input", a); el.oninput = function () { on(el.value); };
+  return el;
+}
+function qeTa(v, key, on, rows, attrs) {
+  var el = h("textarea", Object.assign({ class: "ta", "data-qk": key, rows: String(rows || 2) }, attrs || {})); el.value = v || "";
+  el.oninput = function () { on(el.value); };
+  return el;
+}
+function qeSeg(opts, cur, on) {
+  var seg = h("div", { class: "seg qeseg", role: "group" });
+  opts.forEach(function (p) {
+    var b = h("button", { type: "button", class: p[0] === cur ? "on" : "", "aria-pressed": p[0] === cur ? "true" : "false" }, [p[1]]);
+    b.onclick = function () { if (p[0] === cur) return; on(p[0]); };
+    seg.appendChild(b);
+  });
+  return seg;
+}
+function qeNum(v, key, lo, hi, on) {
+  var el = h("input", { class: "in qenum", type: "number", inputmode: "numeric", min: String(lo), max: String(hi), step: "1", "data-qk": key, value: String(v) });
+  el.oninput = function () { var n = Math.round(+el.value); if (el.value !== "" && isFinite(n)) on(Math.max(lo, Math.min(hi, n))); };
+  el.onblur = function () { var n = Math.round(+el.value); if (el.value === "" || !isFinite(n) || n < lo || n > hi) { el.value = String(Math.max(lo, Math.min(hi, isFinite(n) ? n : v))); on(+el.value); } };
+  return el;
+}
+// 問卷的一題
+function qeQEl(z, q, i) {
+  var n = z.qs.length, k = "q" + i;
+  var ty = h("select", { class: "in qety", "aria-label": "第 " + (i + 1) + " 題的題型", "data-qk": k + "t" });
+  [["one", "單選"], ["many", "複選（可以選好幾個）"], ["text", "簡答（打字）"], ["rate", "評分 1～5"]].forEach(function (p) { ty.appendChild(h("option", { value: p[0] }, [p[1]])); });
+  ty.value = q.t;
+  ty.onchange = function () { var was = q.t; q.t = ty.value; if ((q.t === "one" || q.t === "many") && !(was === "one" || was === "many") && !qeOptsOf(q.raw).length) q.raw = "\n\n"; qeDirty(); qeRender(); };
+  var req = h("input", { type: "checkbox", "data-qk": k + "r" }); req.checked = q.req !== false; req.onchange = function () { q.req = req.checked; qeDirty(); };
+  var mv = function (d) { var j = i + d; if (j < 0 || j >= n) return; z.qs.splice(j, 0, z.qs.splice(i, 1)[0]); qeDirty(); qeRender(); };
+  var up = btn("↑", function () { mv(-1); }), dn = btn("↓", function () { mv(1); });
+  up.title = "往上移"; dn.title = "往下移"; up.setAttribute("aria-label", "第 " + (i + 1) + " 題往上移"); dn.setAttribute("aria-label", "第 " + (i + 1) + " 題往下移");
+  if (i === 0) up.disabled = true; if (i === n - 1) dn.disabled = true;
+  var del = confirmBtn("🗑", function () { z.qs.splice(i, 1); qeDirty(); qeRender(); }, "sm bad"); del.title = "刪掉這一題"; del.setAttribute("aria-label", "刪掉第 " + (i + 1) + " 題");
+  var box = h("div", { class: "qeq" }, [
+    h("div", { class: "qeq-h" }, [h("b", {}, ["第 " + (i + 1) + " 題"]), ty, h("label", { class: "qereq" }, [req, " 必填"]), h("span", { class: "sp" }), up, dn, del]),
+    qeTa(q.q, k, function (v) { q.q = v; qeDirty(); }, 2, { maxlength: "300", placeholder: "題目（例：你覺得新的調劑台好用嗎？）", "aria-label": "第 " + (i + 1) + " 題的題目" })
+  ]);
+  if (q.t === "one" || q.t === "many") {
+    var cnt = h("div", { class: "hint" }, [""]);
+    var paint = function () { var o = qeOptsOf(q.raw); cnt.textContent = "選項：一行一個（2～" + QE_MAXO + " 個），現在 " + o.length + " 個" + (o.length > QE_MAXO ? "　⚠ 太多了" : o.length < 2 ? "　⚠ 至少要 2 個" : "") + "。藥師看到的是 A、B、C…"; };
+    box.appendChild(qeTa(q.raw, k + "o", function (v) { q.raw = v; paint(); qeDirty(); }, Math.max(3, Math.min(7, qeOptsOf(q.raw).length + 1)), { placeholder: "很好用\n普通\n不好用", "aria-label": "第 " + (i + 1) + " 題的選項（一行一個）" }));
+    paint(); box.appendChild(cnt);
+  } else box.appendChild(hint(q.t === "rate" ? "藥師選 1～5 分（1 最低、5 最高）；結果看得到平均幾分。" : "藥師直接打字回答（最多 1000 字；LINE 上是直接打一句話）。"));
+  return box;
+}
+// 考試的設定：難度、題數、範圍、及格、重考
+function qeExamSet(f, z) {
+  var x = z.x;
+  var box = h("div", { class: "qeset" });
+  box.appendChild(h("div", { class: "qeset-h" }, ["五、考試的設定"]));
+  box.appendChild(lbl("", "難度（可以選好幾個；從這些難度的題目裡抽）"));
+  var dr = h("div", { class: "qechips" });
+  QE_DIFF.forEach(function (d) {
+    var on = x.diff.indexOf(d) >= 0;
+    var b = h("button", { type: "button", class: "qechip" + (on ? " on" : ""), "aria-pressed": on ? "true" : "false", title: QE_DIFF_TIP[d] }, [(on ? "✓ " : "") + d]);
+    b.onclick = function () { var at = x.diff.indexOf(d); if (at >= 0) { if (x.diff.length === 1) { toast("難度至少要選一個"); return; } x.diff.splice(at, 1); } else x.diff.push(d); x.diff.sort(function (a, c) { return QE_DIFF.indexOf(a) - QE_DIFF.indexOf(c); }); qeDirty(); qeRender(); };
+    dr.appendChild(b);
+  });
+  box.appendChild(dr);
+  box.appendChild(hint(x.diff.map(function (d) { return d + "：" + QE_DIFF_TIP[d]; }).join("　")));
+  box.appendChild(h("div", { class: "qerow" }, [h("span", {}, ["考幾題"]), qeNum(x.n, "xn", 1, 50, function (v) { x.n = v; qeDirty(); qePoolPaint(z); }), h("span", { class: "muted" }, ["題（每個人從符合的題目裡隨機抽，順序也打亂）"])]));
+  box.appendChild(lbl("", "範圍（不選＝整本手冊；選了章＝那一章的標題都算）"));
+  box.appendChild(qeScopeEl(x.scope, function () { qeDirty(); qePoolPaint(z); }));
+  box.appendChild(h("div", { class: "qerow" }, [h("span", {}, ["及格"]), qeNum(x.pass, "xp", 0, 100, function (v) { x.pass = v; qeDirty(); }), h("span", { class: "muted" }, ["分（滿分 100）"])]));
+  box.appendChild(lbl("", "可以重考嗎"));
+  box.appendChild(qeSeg([["1", "可以重考（每次重新抽題）"], ["0", "只能考一次"]], x.retake === false ? "0" : "1", function (v) { x.retake = v === "1"; qeDirty(); qeRender(); }));
+  box.appendChild(h("div", { class: "qepool", id: "qepool" }));
+  box.appendChild(h("div", { class: "qerow" }, [btn("🗂 看符合的題目", function () { qeAsk(function () { QE.bf = { st: "", diff: "", ch: "", by: "", q: "", zx: z.id || "" }; if (!z.id) toast("先存好這一份，題庫才篩得出來"); qeSel("bank"); }); }), btn("✨ 用這個範圍叫 AI 出題", function () { qeAsk(function () { QE.ai.scope = x.scope.slice(); QE.ai.diff = x.diff[0] || "中"; qeSel("ai"); }); })]));
+  f.appendChild(box);
+  setTimeout(function () { qePoolPaint(z); }, 0);
+}
+function qeInScope(b, scope, hb) {   // 跟後端 _yzQzInScope_ 一樣
+  if (!scope || !scope.length) return true;
+  return (b.scope || []).some(function (c) {
+    if (scope.indexOf(c) >= 0) return true;
+    var m = /^t:(.+)$/.exec(c), f = m && hb ? _yzQzEdFindT_(hb, m[1]) : null;
+    return !!(f && scope.indexOf("c:" + f.ch.id) >= 0);
+  });
+}
+function _yzQzEdFindT_(hb, tid) {
+  var r = null;
+  (hb.chapters || []).forEach(function (c) { ((hb.titles || {})[c.id] || []).forEach(function (t) { if (!r && t.id === tid) r = { ch: c, t: t }; }); });
+  return r;
+}
+function qePool(z) { var hb = qeHb(); return QE.bank.filter(function (b) { return b.st === "ok" && z.x.diff.indexOf(b.diff) >= 0 && qeInScope(b, z.x.scope, hb); }); }
+function qePoolPaint(z) {
+  var el = $("#qepool"); if (!el || !z.x) return;
+  var p = qePool(z), by = {};
+  p.forEach(function (b) { by[b.diff] = (by[b.diff] || 0) + 1; });
+  var wait = QE.bank.filter(function (b) { return b.st === "wait" && z.x.diff.indexOf(b.diff) >= 0 && qeInScope(b, z.x.scope, qeHb()); }).length;
+  el.className = "qepool" + (!p.length ? " bad" : p.length < z.x.n ? " warn" : " ok");
+  el.textContent = (p.length ? "符合的題目（採用的、難度和範圍都對）：" + p.length + " 題（" + QE_DIFF.filter(function (d) { return by[d]; }).map(function (d) { return d + " " + by[d]; }).join("、") + "）。" : "⚠ 題庫裡還沒有符合的題目（採用的、難度和範圍都對）：藥師現在開始不了。") +
+    (p.length && p.length < z.x.n ? "比題數 " + z.x.n + " 少：每次都考這 " + p.length + " 題。" : p.length ? "每次抽 " + z.x.n + " 題。" : "") + (wait ? "　另外有 " + wait + " 題「待審」（採用了才會考到）。" : "");
+}
+// 範圍：章（打勾＝整章），點「▸」打開看標題
+function qeScopeEl(sel, onChange) {
+  var hb = qeHb(), wrap = h("div", { class: "qescope" }), opened = {};
+  var draw = function () {
+    wrap.innerHTML = "";
+    var chs = hb.chapters || [];
+    if (!chs.length) { wrap.appendChild(hint("手冊還沒有章。")); return; }
+    var top = h("div", { class: "qescope-top" }, [h("span", {}, [sel.length ? "選了 " + sel.length + " 個" : "沒選＝整本手冊"]), sel.length ? btn("全部取消", function () { sel.splice(0, sel.length); onChange(); draw(); }) : null]);
+    wrap.appendChild(top);
+    chs.forEach(function (c) {
+      var ts = (hb.titles || {})[c.id] || [], cc = "c:" + c.id, onC = sel.indexOf(cc) >= 0, nT = ts.filter(function (t) { return sel.indexOf("t:" + t.id) >= 0; }).length;
+      var open = !!opened[c.id] || nT > 0;
+      var ck = h("input", { type: "checkbox", "aria-label": "整章：" + c.name }); ck.checked = onC;
+      ck.onchange = function () {
+        var at = sel.indexOf(cc); if (ck.checked && at < 0) sel.push(cc); if (!ck.checked && at >= 0) sel.splice(at, 1);
+        ts.forEach(function (t) { var a2 = sel.indexOf("t:" + t.id); if (a2 >= 0) sel.splice(a2, 1); });   // 整章選了：標題不用另外選
+        onChange(); draw();
+      };
+      var tog = ts.length ? h("button", { type: "button", class: "btn sm qetog", "aria-expanded": open ? "true" : "false", "aria-label": (open ? "收起" : "打開") + "「" + c.name + "」的標題" }, [open ? "▾" : "▸"]) : null;
+      if (tog) tog.onclick = function () { opened[c.id] = !open; if (open && nT) toast("這一章有選標題，會一直打開"); draw(); };
+      wrap.appendChild(h("div", { class: "qesc" }, [tog || h("span", { class: "qetog0" }), h("label", {}, [ck, " " + (c.name || "（沒有章名）"), h("span", { class: "muted" }, ["（" + ts.length + " 個標題）"])])]));
+      if (open) ts.forEach(function (t) {
+        var tc = "t:" + t.id, ck2 = h("input", { type: "checkbox", "aria-label": "標題：" + t.name }); ck2.checked = onC || sel.indexOf(tc) >= 0; ck2.disabled = onC;
+        ck2.onchange = function () { var at = sel.indexOf(tc); if (ck2.checked && at < 0) sel.push(tc); if (!ck2.checked && at >= 0) sel.splice(at, 1); onChange(); draw(); };
+        wrap.appendChild(h("div", { class: "qest2" }, [h("label", {}, [ck2, " " + (t.name || "（沒有標題）")])]));
+      });
+    });
+  };
+  draw();
+  return wrap;
+}
+function qeScopeName(codes) { var hb = qeHb(); return (codes || []).map(function (c) { return _yzMapToInfo_(c, hb).short || ""; }).filter(Boolean).join("；"); }
+
+function qeSaveZ(then) {
+  var z = QE.z; if (!z || QE.saving) return;
+  var probs = qeCheckZ(z);
+  if (probs.length) { modal({ title: "還不能存", lines: probs, buttons: [{ label: "好", cls: "sm pri" }] }); return; }
+  QE.saving = true; qeDirtyPaint();
+  var b = $("#qeSave"); if (b) b.disabled = true;
+  var sent = JSON.stringify(qeZOut(z));
+  qeCall("save", sent).then(function (r) {
+    QE.saving = false;
+    var sz = r.z, at = -1;
+    QE.zs.forEach(function (x, i) { if (x.id === sz.id) at = i; });
+    if (at >= 0) QE.zs[at] = sz; else QE.zs.push(sz);
+    var still = QE.z === z && JSON.stringify(qeZOut(QE.z)) !== sent;   // 存的時候又改了：那些修改留著（還沒存）
+    if (!still) { QE.z = qeZIn(sz); QE.dirty = false; } else { QE.z.id = sz.id; }
+    QE.sel = { k: "z", id: sz.id };
+    toast("✅ 存好了" + (sz.st === "open" ? "：藥師現在就看得到" : "（狀態是「" + QE_ST[sz.st] + "」：藥師看不到）"));
+    QZ.peekAt = 0;   // 看的那邊：左下角的「📋 問卷」重新問
+    qeRender();
+    if (then) then();
+  }, function (e) { QE.saving = false; qeDirtyPaint(); var b2 = $("#qeSave"); if (b2) b2.disabled = false; toast("❌ 沒有存：" + qeErr(e)); });
+}
+function qeDelZ(z) {
+  qeCall("del", z.id).then(function () {
+    QE.zs = QE.zs.filter(function (x) { return x.id !== z.id; });
+    QE.z = null; QE.dirty = false; QE.sel = { k: "home", id: "" };
+    toast("已刪掉「" + z.title + "」（已經交的作答留在試算表）");
+    QZ.peekAt = 0; qeRender();
+  }, function (e) { toast("❌ " + qeErr(e)); });
+}
+function qeNotify(z) {
+  if (QE.dirty) { toast("先按「💾 儲存」，再通知"); return; }
+  qeCall("push", z.id, true).then(function (r) {
+    if (!r.n) { modal({ title: "沒有人可以通知", lines: ["核可名單上還沒有人。"], buttons: [{ label: "好", cls: "sm pri" }] }); return; }
+    modal({ title: "用 LINE 通知 " + r.n + " 個人？", lines: ["推一張「" + (z.kind === "x" ? "📝 新的考試" : "📋 新的問卷") + "：" + z.title + "」的卡片給核可名單上的人（一次最多 100 人" + (r.all > r.n ? "，這次只推前 100 人" : "") + "）。", "會用掉 " + r.n + " 則 LINE 推播額度（每個月有上限）。預覽視窗的「LINE 卡片」看得到那張卡片。"],
+      buttons: [{ label: "先不要", cls: "sm" }, { label: "📣 推給 " + r.n + " 個人", cls: "sm pri", fn: function () {
+        qeCall("push", z.id, false, 120000).then(function (r2) { toast("📣 已經通知 " + (r2.sent || 0) + " 個人" + (r2.sent < r.n ? "（有 " + (r.n - r2.sent) + " 個人沒推到）" : "")); }, function (e) { toast("❌ " + qeErr(e)); });
+      } }] });
+  }, function (e) { toast("❌ " + qeErr(e)); });
+}
+
+/* ── 題庫 ── */
+function qeBankList() {
+  var f = QE.bf, zx = f.zx ? qeZ(f.zx) : null, hb = qeHb(), q = String(f.q || "").trim().toLowerCase();
+  return QE.bank.filter(function (b) {
+    if (zx && zx.x && !(b.st === "ok" && zx.x.diff.indexOf(b.diff) >= 0 && qeInScope(b, zx.x.scope, hb))) return false;
+    if (f.st && b.st !== f.st) return false;
+    if (f.diff && b.diff !== f.diff) return false;
+    if (f.by && b.by !== f.by) return false;
+    if (f.ch && !qeInScope(b, ["c:" + f.ch], hb)) return false;
+    if (q && (b.q + "\n" + b.opts.join("\n") + "\n" + b.ex).toLowerCase().indexOf(q) < 0) return false;
+    return true;
+  }).sort(function (a, c) { return (a.st === "wait" ? 0 : 1) - (c.st === "wait" ? 0 : 1) || String(c.mt || "").localeCompare(String(a.mt || "")); });
+}
+function qeBankForm(f) {
+  var bf = QE.bf;
+  f.appendChild(h("div", { class: "qehd" }, [h("h3", { style: "font-size:16px;margin:0" }, ["🗂 題庫（" + QE.bank.length + " 題）"]), h("span", { class: "sp" }), btn("＋新增一題", function () { qeBEditOpen(null); }, "pri")]));
+  f.appendChild(hint("考試的題目從這裡抽：狀態是「採用」的才會考到。AI 出的題目先放「待審」，看過按「採用」。"));
+  if (QE.b && !QE.b.id) f.appendChild(qeBEditEl());
+  var sel = function (key, opts, label) {
+    var s = h("select", { class: "in qef", "aria-label": label });
+    opts.forEach(function (p) { s.appendChild(h("option", { value: p[0] }, [p[1]])); });
+    s.value = bf[key] || ""; s.onchange = function () { bf[key] = s.value; QE.bShow = 40; qeRender(); };
+    return s;
+  };
+  var hb = qeHb();
+  var zxOpts = [["", "全部的題目"]].concat(QE.zs.filter(function (z) { return z.kind === "x"; }).map(function (z) { return [z.id, "符合考試：" + z.title]; }));
+  var qin = h("input", { class: "in qef", type: "search", placeholder: "找題目、選項、詳解裡的字", "aria-label": "找題目", "data-qk": "bq", value: bf.q || "" });
+  var qt = 0; qin.oninput = function () { clearTimeout(qt); qt = setTimeout(function () { bf.q = qin.value; QE.bShow = 40; qeRender(); }, 300); };
+  f.appendChild(h("div", { class: "qefilter" }, [
+    sel("st", [["", "全部狀態"], ["wait", "待審"], ["ok", "採用"], ["off", "停用"]], "狀態"),
+    sel("diff", [["", "全部難度"]].concat(QE_DIFF.map(function (d) { return [d, d]; })), "難度"),
+    sel("ch", [["", "全部的章"]].concat((hb.chapters || []).map(function (c) { return [c.id, c.name]; })), "章"),
+    sel("by", [["", "誰出的：全部"], ["dev", "開發者出的"], ["ai", "AI 出的"]], "誰出的"),
+    zxOpts.length > 1 ? sel("zx", zxOpts, "符合哪個考試") : null,
+    qin
+  ]));
+  var list = qeBankList(), waits = list.filter(function (b) { return b.st === "wait"; });
+  var info = h("div", { class: "qerow" }, [h("span", {}, ["顯示 " + list.length + " 題" + (waits.length ? "（待審 " + waits.length + " 題）" : "")])]);
+  if (waits.length) info.appendChild(btn("✅ 這 " + waits.length + " 題待審的全部採用", function () { qeBankSet(waits, "ok"); }));
+  if (bf.st || bf.diff || bf.ch || bf.by || bf.q || bf.zx) info.appendChild(btn("清掉篩選", function () { QE.bf = { st: "", diff: "", ch: "", by: "", q: "", zx: "" }; qeRender(); }));
+  f.appendChild(info);
+  if (!list.length) f.appendChild(h("div", { class: "qebox" }, [QE.bank.length ? "沒有符合篩選的題目。" : "題庫還是空的：按「＋新增一題」自己出，或到「✨ AI 出題」。"]));
+  list.slice(0, QE.bShow).forEach(function (b) { f.appendChild(QE.b && QE.b.id === b.id ? qeBEditEl() : qeBItemEl(b)); });
+  if (list.length > QE.bShow) f.appendChild(h("div", { style: "text-align:center;margin:8px 0" }, [btn("顯示更多（還有 " + (list.length - QE.bShow) + " 題）", function () { QE.bShow += 60; qeRender(); })]));
+}
+function qeBItemEl(b, o) {
+  o = o || {};
+  var hb = qeHb();
+  var chips = h("div", { class: "qechips sm" }, [h("span", { class: "qest " + b.st }, [QE_BST[b.st]]), h("span", { class: "qetag" }, [b.by === "ai" ? "✨ AI" : "開發者"]), h("span", { class: "qetag" }, [b.diff]), h("span", { class: "qetag" }, [YZ_QZ_T[b.t]]),
+    b.scope && b.scope.length ? h("span", { class: "qetag sc" }, [qeScopeName(b.scope) || "（範圍找不到了）"]) : h("span", { class: "qetag sc" }, ["沒有範圍（整本都算）"])]);
+  var opts = h("ol", { class: "qebo" + (b.t === "tf" ? " tf" : "") });
+  b.opts.forEach(function (op, k) { opts.appendChild(h("li", { class: b.ans.indexOf(k) >= 0 ? "ok" : "" }, [h("b", {}, [b.t === "tf" ? "" : YZ_QZ_LET.charAt(k) + ". "]), op, b.ans.indexOf(k) >= 0 ? h("span", { class: "qeok" }, [" ✓ 正確"]) : null])); });
+  var acts = h("div", { class: "qeacts sm" }, [btn("✏️ 編輯", function () { qeBEditOpen(b); })]);
+  if (b.st === "wait") acts.appendChild(btn("✅ 採用", function () { qeBankSet([b], "ok"); }, "pri"));
+  if (b.st === "ok") acts.appendChild(btn("停用", function () { qeBankSet([b], "off"); }));
+  if (b.st === "off") acts.appendChild(btn("恢復採用", function () { qeBankSet([b], "ok"); }));
+  acts.appendChild(confirmBtn("🗑 刪除", function () { qeBankDel([b]); }, "sm bad"));
+  return h("div", { class: "qeb" + (b.st === "wait" ? " wait" : b.st === "off" ? " off" : "") + (o.cls ? " " + o.cls : "") }, [chips, h("div", { class: "qebq" }, [b.q]), opts, b.ex ? h("div", { class: "qebx" }, [h("b", {}, ["詳解："]), b.ex]) : h("div", { class: "qebx none" }, ["（沒有詳解：藥師交卷後只看得到正確答案）"]), acts]);
+}
+function qeBEditOpen(b) {
+  qeAsk(function () {
+    QE.b = b ? clone(b) : { id: "", t: "one", q: "", opts: ["", "", "", ""], ans: [], ex: "", diff: "中", scope: [], st: "ok", by: "dev" };
+    if (QE.b.t !== "tf") while (QE.b.opts.length < 2) QE.b.opts.push("");
+    QE.bDirty = !b; if (QE.sel.k !== "ai" || !b) QE.sel = { k: "bank", id: "" };   // AI 出的那幾題：留在「✨ AI 出題」那一頁改
+    qeRender();
+    var t = $("#edc2 [data-qk=bq0]"); if (t) try { t.scrollIntoView({ block: "center" }); t.focus({ preventScroll: true }); } catch (e) { /* 沒關係 */ }
+  });
+}
+function qeBEditEl() {
+  var b = QE.b, hb = qeHb();
+  var set = function () { QE.bDirty = true; qePv(); };
+  var box = h("div", { class: "qeb qeedit" });
+  box.appendChild(h("div", { class: "qehd" }, [h("b", {}, [b.id ? "✏️ 改這一題" : "＋新的題目"]), b.by === "ai" ? h("span", { class: "qetag" }, ["✨ AI 出的"]) : null]));
+  box.appendChild(lbl("", "題型"));
+  box.appendChild(qeSeg([["one", "單選"], ["many", "複選"], ["tf", "是非"]], b.t, function (v) {
+    var was = b.t; b.t = v;
+    if (v === "tf") { b.opts = ["對", "錯"]; b.ans = b.ans.length && was === "tf" ? b.ans : []; }
+    else { if (was === "tf") { b.opts = ["", "", "", ""]; b.ans = []; } if (v === "one" && b.ans.length > 1) b.ans = b.ans.slice(0, 1); }
+    set(); qeRender();
+  }));
+  box.appendChild(lbl("", "題目"));
+  box.appendChild(qeTa(b.q, "bq0", function (v) { b.q = v; set(); }, 3, { maxlength: "500", placeholder: "例：高警訊藥品調劑時，下面哪一個做法正確？" }));
+  box.appendChild(lbl("", b.t === "tf" ? "正確答案" : "選項（左邊勾正確答案" + (b.t === "many" ? "，可以勾好幾個" : "") + "）"));
+  var ol = h("div", { class: "qebopts" });
+  if (b.t === "tf") {
+    ["對", "錯"].forEach(function (lab, k) {
+      var r = h("input", { type: "radio", name: "qetf", "data-qk": "bt" + k }); r.checked = b.ans[0] === k;
+      r.onchange = function () { b.ans = [k]; set(); };
+      ol.appendChild(h("label", { class: "qebopt" }, [r, " " + (k === 0 ? "⭕ 對" : "❌ 錯")]));
+    });
+  } else {
+    b.opts.forEach(function (op, k) {
+      var ck = h("input", { type: b.t === "many" ? "checkbox" : "radio", name: "qeans", "aria-label": "選項 " + YZ_QZ_LET.charAt(k) + " 是正確答案" }); ck.checked = b.ans.indexOf(k) >= 0;
+      ck.onchange = function () { if (b.t === "many") { var at = b.ans.indexOf(k); if (ck.checked && at < 0) b.ans.push(k); if (!ck.checked && at >= 0) b.ans.splice(at, 1); b.ans.sort(); } else b.ans = [k]; set(); };
+      var inp = qeIn(op, "bo" + k, function (v) { b.opts[k] = v; set(); }, { maxlength: "120", placeholder: "選項 " + YZ_QZ_LET.charAt(k), "aria-label": "選項 " + YZ_QZ_LET.charAt(k) });
+      var del = btn("✕", function () { if (b.opts.length <= 2) { toast("至少要 2 個選項"); return; } b.opts.splice(k, 1); b.ans = b.ans.filter(function (a) { return a !== k; }).map(function (a) { return a > k ? a - 1 : a; }); set(); qeRender(); });
+      del.setAttribute("aria-label", "刪掉選項 " + YZ_QZ_LET.charAt(k));
+      ol.appendChild(h("div", { class: "qebopt" }, [ck, h("b", {}, [YZ_QZ_LET.charAt(k)]), inp, del]));
+    });
+    if (b.opts.length < QE_MAXO) ol.appendChild(btn("＋選項", function () { b.opts.push(""); set(); qeRender(); var ins = $$("#edc2 [data-qk^=bo]"); if (ins.length) try { ins[ins.length - 1].focus(); } catch (e) { /* 沒關係 */ } }));
+  }
+  box.appendChild(ol);
+  box.appendChild(lbl("", "詳解（交卷後藥師看得到；寫為什麼、根據哪一個標題）"));
+  box.appendChild(qeTa(b.ex, "bx", function (v) { b.ex = v; set(); }, 3, { maxlength: "1000", placeholder: "例：手冊「高警訊藥品」：要兩個人核對。" }));
+  box.appendChild(lbl("", "難度"));
+  box.appendChild(qeSeg(QE_DIFF.map(function (d) { return [d, d]; }), b.diff, function (v) { b.diff = v; set(); qeRender(); }));
+  box.appendChild(hint(QE_DIFF_TIP[b.diff]));
+  box.appendChild(lbl("", "範圍（這一題是手冊哪裡的；考試照這個篩）"));
+  var chips = h("div", { class: "qechips sm" });
+  (b.scope || []).forEach(function (c, i) {
+    var x = btn("✕", function () { b.scope.splice(i, 1); set(); qeRender(); }); x.setAttribute("aria-label", "拿掉範圍「" + qeScopeName([c]) + "」");
+    chips.appendChild(h("span", { class: "qetag sc" }, [qeScopeName([c]) || "（找不到了）", x]));
+  });
+  var add = h("select", { class: "in qef", "aria-label": "加一個範圍" });
+  add.appendChild(h("option", { value: "" }, [(b.scope || []).length ? "＋再加一個…" : "＋選章或標題…"]));
+  (hb.chapters || []).forEach(function (c) {
+    var g = h("optgroup", { label: c.name });
+    g.appendChild(h("option", { value: "c:" + c.id }, ["整章：" + c.name]));
+    ((hb.titles || {})[c.id] || []).forEach(function (t) { g.appendChild(h("option", { value: "t:" + t.id }, [t.name])); });
+    add.appendChild(g);
+  });
+  add.onchange = function () { if (add.value && b.scope.indexOf(add.value) < 0) { b.scope.push(add.value); set(); qeRender(); } };
+  chips.appendChild(add);
+  box.appendChild(chips);
+  if (!(b.scope || []).length) box.appendChild(hint("沒有範圍＝整本手冊的考試都可能抽到這一題。"));
+  box.appendChild(lbl("", "狀態"));
+  box.appendChild(qeSeg([["ok", "採用"], ["wait", "待審"], ["off", "停用"]], b.st, function (v) { b.st = v; set(); qeRender(); }));
+  var probs = qeCheckB(b);
+  if (probs.length) box.appendChild(h("div", { class: "qebox warn" }, [probs.join("　")]));
+  var sv = btn("💾 存這一題", function () { qeSaveB(); }, "pri"); sv.id = "qeBSave";
+  box.appendChild(h("div", { class: "qeacts" }, [sv, btn("取消", function () { if (QE.bDirty) { modal({ title: "不存這一題？", lines: ["剛剛改的會不見。"], buttons: [{ label: "繼續改", cls: "sm" }, { label: "不存了", cls: "sm bad", fn: function () { QE.b = null; QE.bDirty = false; qeRender(); } }] }); return; } QE.b = null; qeRender(); })]));
+  return box;
+}
+function qeBOut(b) {   // 空的選項拿掉、正確答案跟著換位置
+  var opts = [], ans = [];
+  if (b.t === "tf") { opts = ["對", "錯"]; ans = b.ans.slice(0, 1); }
+  else b.opts.forEach(function (op, k) { var s = String(op || "").replace(/\s+/g, " ").trim(); if (!s) return; if (b.ans.indexOf(k) >= 0) ans.push(opts.length); opts.push(s); });
+  return { id: b.id || "", t: b.t, q: String(b.q || "").trim(), opts: opts, ans: b.t === "one" || b.t === "tf" ? ans.slice(0, 1) : ans, ex: String(b.ex || "").trim(), diff: b.diff, scope: (b.scope || []).slice(), st: b.st, by: b.by };
+}
+function qeCheckB(b) {
+  var o = qeBOut(b), out = [];
+  if (!o.q) out.push("⚠ 還沒寫題目");
+  if (o.opts.length < 2) out.push("⚠ 選項至少要 2 個");
+  if (!o.ans.length) out.push("⚠ 還沒勾正確答案");
+  return out;
+}
+function qeSaveB(then) {
+  var b = QE.b; if (!b) return;
+  var probs = qeCheckB(b);
+  if (probs.length) { modal({ title: "還不能存", lines: probs, buttons: [{ label: "好", cls: "sm pri" }] }); return; }
+  var sb = $("#qeBSave"); if (sb) { sb.disabled = true; sb.textContent = "儲存中…"; }
+  qeCall("bsave", JSON.stringify([qeBOut(b)])).then(function (r) {
+    qeBankMerge(r.saved || []);
+    QE.b = null; QE.bDirty = false;
+    toast("✅ 存好了這一題" + ((r.saved || [])[0] && r.saved[0].st !== "ok" ? "（狀態是「" + QE_BST[r.saved[0].st] + "」：還不會考到）" : ""));
+    qeRender();
+    if (then) then();
+  }, function (e) { var s2 = $("#qeBSave"); if (s2) { s2.disabled = false; s2.textContent = "💾 存這一題"; } toast("❌ 沒有存：" + qeErr(e)); });
+}
+function qeBankMerge(list) {
+  (list || []).forEach(function (b) { var at = -1; QE.bank.forEach(function (x, i) { if (x.id === b.id) at = i; }); if (at >= 0) QE.bank[at] = b; else QE.bank.push(b); });
+  if (QE.aiRes) QE.aiRes.list = QE.aiRes.list.map(function (b) { return qeB(b.id) || b; });   // AI 那一頁的清單也換成新的
+}
+function qeBankSet(items, st) {
+  var out = items.map(function (b) { var c = clone(b); c.st = st; return c; });
+  qeCall("bsave", JSON.stringify(out)).then(function (r) {
+    qeBankMerge(r.saved || []);
+    toast((st === "ok" ? "✅ 採用了 " : st === "off" ? "已停用 " : "已改好 ") + (r.saved || []).length + " 題");
+    qeRender();
+  }, function (e) { toast("❌ " + qeErr(e)); });
+}
+function qeBankDel(items) {
+  var ids = items.map(function (b) { return b.id; });
+  qeCall("bdel", JSON.stringify(ids)).then(function (r) {
+    QE.bank = QE.bank.filter(function (b) { return ids.indexOf(b.id) < 0; });
+    if (QE.aiRes) QE.aiRes.list = QE.aiRes.list.filter(function (b) { return ids.indexOf(b.id) < 0; });
+    if (QE.b && ids.indexOf(QE.b.id) >= 0) { QE.b = null; QE.bDirty = false; }
+    toast("已刪掉 " + (r.n || ids.length) + " 題");
+    qeRender();
+  }, function (e) { toast("❌ " + qeErr(e)); });
+}
+
+/* ── AI 出題 ── */
+function qeAiForm(f) {
+  var a = QE.ai;
+  f.appendChild(h("h3", { style: "font-size:16px" }, ["✨ AI 出題（Gemini 3.8 Flash）"]));
+  f.appendChild(h("div", { class: "qebox" }, [h("p", {}, ["AI 只讀你選的範圍裡的手冊文字（照片裡辨識出來的字也算），一次最多送 3 萬字。送出前，「遮字清單」裡的字會換成「本院」。"]), h("p", {}, ["出好的題目先放在題庫的「待審」：你看過、按「採用」才會被考到。AI 可能出錯，一定要看過。"])]));
+  f.appendChild(lbl("一", "範圍（不選＝整本手冊）"));
+  f.appendChild(qeScopeEl(a.scope, function () { qeAiChars(); }));
+  f.appendChild(h("div", { class: "hint", id: "qeaichars" }, [""]));
+  f.appendChild(lbl("二", "難度"));
+  f.appendChild(qeSeg(QE_DIFF.map(function (d) { return [d, d]; }), a.diff, function (v) { a.diff = v; qeRender(); }));
+  f.appendChild(hint(QE_DIFF_TIP[a.diff]));
+  f.appendChild(lbl("三", "出幾題"));
+  f.appendChild(h("div", { class: "qerow" }, [qeNum(a.n, "an", 1, 20, function (v) { a.n = v; }), h("span", { class: "muted" }, ["題（一次最多 20 題）"])]));
+  f.appendChild(lbl("四", "題型（可以選好幾個）"));
+  var tr = h("div", { class: "qechips" });
+  [["one", "單選"], ["many", "複選"], ["tf", "是非"]].forEach(function (p) {
+    var on = a.types.indexOf(p[0]) >= 0;
+    var b = h("button", { type: "button", class: "qechip" + (on ? " on" : ""), "aria-pressed": on ? "true" : "false" }, [(on ? "✓ " : "") + p[1]]);
+    b.onclick = function () { var at = a.types.indexOf(p[0]); if (at >= 0) { if (a.types.length === 1) { toast("至少要選一種題型"); return; } a.types.splice(at, 1); } else a.types.push(p[0]); qeRender(); };
+    tr.appendChild(b);
+  });
+  f.appendChild(tr);
+  f.appendChild(lbl("五", "給 AI 的要求（可以不寫）"));
+  f.appendChild(qeIn(a.hint, "ah", function (v) { a.hint = v; }, { maxlength: "200", placeholder: "例：多出跟冷藏、管制藥品有關的；不要出頁數" }));
+  var go = btn(QE.aiBusy ? "AI 出題中…（大約 10～60 秒）" : "✨ 開始出題", qeAiGo, "pri"); go.id = "qeAiGo"; if (QE.aiBusy) go.disabled = true;
+  f.appendChild(h("div", { class: "qeacts" }, [go]));
+  if (QE.aiRes) {
+    var R = QE.aiRes, list = R.list;
+    f.appendChild(h("div", { class: "qebox ok" }, ["✅ 出好了 " + list.length + " 題（送出 " + R.chars + " 字" + (R.masked ? "，遮字清單 " + R.masked + " 個字詞都換成「本院」" : "，遮字清單是空的") + "）。都放在題庫的「待審」："]));
+    var wait = list.filter(function (b) { return b.st === "wait"; });
+    if (wait.length) f.appendChild(h("div", { class: "qerow" }, [btn("✅ 這 " + wait.length + " 題全部採用", function () { qeBankSet(wait, "ok"); }, "pri"), btn("到題庫看", function () { QE.bf = { st: "wait", diff: "", ch: "", by: "ai", q: "", zx: "" }; qeSel("bank"); })]));
+    list.forEach(function (b) { f.appendChild(QE.b && QE.b.id === b.id ? qeBEditEl() : qeBItemEl(b)); });
+  }
+  // 遮字清單
+  f.appendChild(h("div", { class: "qeset" }, [
+    h("div", { class: "qeset-h" }, ["🙈 遮字清單（送給 AI 之前，換成「本院」）"]),
+    hint("一行一個：醫院的名字、簡稱、英文縮寫、院區、人名…（長的先換）。清單加密存在網頁專案的指令碼屬性，不會出現在試算表。現在 " + QE.mask + " 個。"),
+    QE.words === null ? btn("顯示／修改遮字清單", function () {
+      qeCall("maskget").then(function (r) { QE.words = (r.words || []).join("\n"); qeRender(); var t = $("#edc2 [data-qk=mask]"); if (t) try { t.focus(); } catch (e) { /* 沒關係 */ } }, function (e) { toast("❌ " + qeErr(e)); });
+    }) : h("div", {}, [
+      qeTa(QE.words, "mask", function (v) { QE.words = v; }, 6, { placeholder: "一行一個", "aria-label": "遮字清單（一行一個）" }),
+      h("div", { class: "qeacts" }, [btn("💾 存遮字清單", function () {
+        var words = String(QE.words || "").split(/\r?\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+        qeCall("mask", JSON.stringify(words)).then(function (r) { QE.mask = (r.words || []).length; QE.words = null; toast("✅ 遮字清單存好了（" + QE.mask + " 個）"); qeRender(); }, function (e) { toast("❌ " + qeErr(e)); });
+      }, "pri"), btn("收起來", function () { QE.words = null; qeRender(); })])
+    ])
+  ]));
+  setTimeout(qeAiChars, 0);
+}
+function qeAiChars() {   // 範圍裡大約有多少字（照前端的手冊估；後端會一樣算）
+  var el = $("#qeaichars"); if (!el) return;
+  var hb = qeHb(), sel = QE.ai.scope, n = 0, nt = 0;
+  (hb.chapters || []).forEach(function (c) {
+    ((hb.titles || {})[c.id] || []).forEach(function (t) {
+      if (sel.length && sel.indexOf("c:" + c.id) < 0 && sel.indexOf("t:" + t.id) < 0) return;
+      nt++; n += JSON.stringify(t.blocks || []).length * 0.55 + String(t.note || "").length;
+    });
+  });
+  el.textContent = nt ? "範圍裡有 " + nt + " 個標題（大約 " + Math.round(n / 100) * 100 + " 字" + (n > 30000 ? "，超過 3 萬字：後面的會送不到，範圍選小一點比較好" : "") + "）。" : "⚠ 範圍裡沒有標題。";
+}
+function qeAiGo() {
+  if (QE.aiBusy) return;
+  var a = QE.ai;
+  QE.aiBusy = true; QE.aiRes = null; qeRender();
+  qeCall("ai", JSON.stringify({ scope: a.scope, diff: a.diff, n: a.n, types: a.types, hint: a.hint }), "", 170000).then(function (r) {
+    QE.aiBusy = false;
+    qeBankMerge(r.list || []);
+    QE.aiRes = { list: r.list || [], chars: r.chars || 0, masked: r.masked || 0 };
+    toast("✨ AI 出好了 " + QE.aiRes.list.length + " 題（待審）");
+    qeRender();
+  }, function (e) { QE.aiBusy = false; toast("❌ " + qeErr(e)); qeRender(); });
+}
+
+/* ── 結果 ── */
+function qeResForm(f) {
+  var z = qeZ(QE.sel.id);
+  if (!z) { f.appendChild(hint("找不到這一份（可能被刪了）。")); return; }
+  f.appendChild(h("div", { class: "qehd" }, [h("h3", { style: "font-size:16px;margin:0" }, ["📊 結果：" + z.title]), h("span", { class: "sp" }), btn("🔄 重新整理", function () { QE.res = null; qeRender(); }), btn("‹ 回到這一份", function () { qeSel("z", z.id); })]));
+  if (!QE.res || QE.res.z.id !== z.id) {
+    f.appendChild(hint("讀取中…"));
+    if (!QE.resBusy) {
+      QE.resBusy = true;
+      qeCall("res", z.id).then(function (r) { QE.resBusy = false; QE.res = r; qeRender(); }, function (e) { QE.resBusy = false; QE.res = { z: z, err: qeErr(e) }; qeRender(); });
+    }
+    return;
+  }
+  var R = QE.res;
+  if (R.err) { f.appendChild(h("div", { class: "qebox warn" }, ["⚠ " + R.err])); return; }
+  if (!R.n) { f.appendChild(h("div", { class: "qebox" }, ["還沒有人" + (z.kind === "x" ? "考" : "填") + "。" + (z.st !== "open" ? "（狀態是「" + QE_ST[z.st] + "」：藥師看不到）" : "")])); return; }
+  var bar = function (label, n, all, cls) { var p = all ? Math.round(n / all * 100) : 0; return h("div", { class: "qebar" + (cls ? " " + cls : "") }, [h("span", { class: "qebl" }, [label]), h("span", { class: "qebt" }, [h("i", { style: "width:" + p + "%" })]), h("span", { class: "qebn" }, [n + "（" + p + "%）"])]); };
+  if (z.kind === "q") {
+    f.appendChild(h("div", { class: "qebox" }, ["共 " + R.n + " 份" + (z.named ? "（具名）" : "（不記名）") + "。完整的每一份在問卷試算表的「作答」分頁。"]));
+    (R.qs || []).forEach(function (s, i) {
+      var box = h("div", { class: "qeq" }, [h("div", { class: "qeq-h" }, [h("b", {}, ["第 " + (i + 1) + " 題"]), h("span", { class: "muted" }, [YZ_QZ_T[s.t] + "・" + s.n + " 人回答"])]), h("div", { class: "qebq" }, [s.q])]);
+      if (s.t === "one" || s.t === "many") s.opts.forEach(function (op, k) { box.appendChild(bar(YZ_QZ_LET.charAt(k) + ". " + op, s.cnt[k] || 0, s.t === "many" ? R.n : s.n)); });
+      if (s.t === "rate") { box.appendChild(h("div", { class: "qeavg" }, ["平均 " + (s.avg === null ? "—" : s.avg) + " 分"])); [5, 4, 3, 2, 1].forEach(function (v) { box.appendChild(bar(v + " 分", s.cnt[v - 1] || 0, s.n)); }); }
+      if (s.t === "text") {
+        var tl = h("ul", { class: "qetexts" });
+        (s.texts || []).slice(0, 100).forEach(function (x) { tl.appendChild(h("li", {}, [x.who ? h("b", {}, [x.who + "："]) : null, x.v])); });
+        if (!(s.texts || []).length) tl.appendChild(h("li", { class: "muted" }, ["（沒有人寫）"]));
+        box.appendChild(tl);
+        if ((s.texts || []).length > 100) box.appendChild(hint("還有 " + (s.texts.length - 100) + " 則：看問卷試算表的「作答」分頁。"));
+      }
+      f.appendChild(box);
+    });
+    if (R.who && R.who.length) {
+      f.appendChild(lbl("", "誰填了（" + R.who.length + "）"));
+      f.appendChild(qeTable(["名字", "員工代號", "時間", "從哪裡"], R.who.map(function (w) { return [w.name || "", w.emp || "", w.at || "", w.from || ""]; })));
+    }
+    return;
+  }
+  f.appendChild(h("div", { class: "qegrid sm" }, [
+    h("div", { class: "qecard" }, [h("b", {}, [String(R.n)]), h("span", {}, ["次作答"])]),
+    h("div", { class: "qecard" }, [h("b", {}, [String((R.people || []).length)]), h("span", {}, ["個人"])]),
+    h("div", { class: "qecard" }, [h("b", {}, [R.avg === null ? "—" : R.avg + " 分"]), h("span", {}, ["平均"])]),
+    h("div", { class: "qecard" }, [h("b", {}, [R.passRate === null ? "—" : R.passRate + "%"]), h("span", {}, ["及格的人（" + (z.x ? z.x.pass : 60) + " 分及格）"])])
+  ]));
+  f.appendChild(lbl("", "每個人（最高分排前面）"));
+  f.appendChild(qeTable(["名字", "員工代號", "考了幾次", "最高分", "最近一次", "及格", "最近考的時間"], (R.people || []).map(function (p) { return [p.name || "", p.emp || "", String(p.times), p.best === null ? "—" : String(p.best), p.last === null ? "—" : String(p.last), p.pass ? "✅" : "—", p.at || ""]; })));
+  f.appendChild(lbl("", "每一題的答對率（最難的排前面；照題庫現在的答案算）"));
+  (R.qs || []).forEach(function (s) { f.appendChild(bar(s.q.length > 40 ? s.q.slice(0, 39) + "…" : s.q, s.ok, s.n, s.rate < 50 ? "low" : "")); });
+}
+function qeTable(head, rows) {
+  var t = h("table", { class: "qetbl" }, [h("thead", {}, [h("tr", {}, head.map(function (x) { return h("th", { scope: "col" }, [x]); }))])]), tb = h("tbody");
+  rows.forEach(function (r) { tb.appendChild(h("tr", {}, r.map(function (x) { return h("td", {}, [x]); }))); });
+  t.appendChild(tb);
+  return h("div", { class: "qetblw" }, [t]);
+}
+
+/* ── 預覽視窗：網頁（藥師作答的樣子）、LINE 卡片 ── */
+function qePreview(body, meter) {
+  if (!QE || !QE.loaded || QE.none) { body.appendChild(h("div", { class: "pvempty" }, ["問卷：建好問卷試算表、選左邊的一份，這裡就會顯示藥師看到的樣子。"])); return; }
+  var z = QE.sel.k === "z" ? QE.z : null, b = QE.sel.k === "bank" || QE.sel.k === "ai" ? QE.b : null;
+  if (!z && !b) { body.appendChild(h("div", { class: "pvempty" }, ["選左邊的一份問卷或考試（或在題庫裡改一題），這裡會顯示藥師看到的樣子。"])); return; }
+  var exam = z ? z.kind === "x" : true, pz, qs, note = "";
+  if (z) {
+    var o = qeZOut(z);
+    pz = { id: o.id || "preview", kind: o.kind, title: o.title || "（還沒有標題）", note: o.note, to: o.to ? o.to.replace(/-/g, "/") : "", named: o.named, pass: exam ? z.x.pass : null, retake: exam ? z.x.retake : false };
+    if (exam) {
+      var pool = qePool(z);
+      qs = pool.slice(0, Math.min(3, z.x.n)).map(function (x) { return { id: x.id, t: x.t, q: x.q, opts: x.opts, req: false }; });
+      note = pool.length ? "（預覽：從符合的 " + pool.length + " 題裡拿前 " + qs.length + " 題給你看；藥師是隨機抽 " + Math.min(z.x.n, pool.length) + " 題）" : "（題庫裡還沒有符合的題目）";
+    } else qs = o.qs.filter(function (q) { return q.q && (q.t === "text" || q.t === "rate" || q.opts.length >= 2); });
+  } else {
+    var ob = qeBOut(b);
+    pz = { id: "preview", kind: "x", title: "（題庫的一題）", note: "", to: "", named: true, pass: 60, retake: true };
+    qs = [{ id: "p", t: ob.t, q: ob.q || "（還沒寫題目）", opts: ob.opts.length ? ob.opts : ["（選項）", "（選項）"], req: false }];
+  }
+  if (ED.view === "line") {
+    var st = h("div", { class: "pvstack" }), add = function (label, bubble) {
+      st.appendChild(h("div", { class: "qepvl" }, [label]));
+      st.appendChild(FlexView.render(bubble, {}));
+      meter.appendChild(meterRow(label, _yzBytes_(bubble), YZ_BUBBLE_SAFE));
+    };
+    if (z) add("藥師打「問卷」看到的清單", _yzQzListBubble_([{ id: pz.id, kind: pz.kind, title: pz.title, note: pz.note, to: pz.to, named: pz.named, n: exam ? z.x.n : qs.length, pass: pz.pass, retake: pz.retake, mine: null }]));
+    if (qs.length) add("第 1 題的卡片（按按鈕回答）", _yzQzCard_({ z: pz, qs: qs, a: qs.map(function () { return null; }), i: 0 }));
+    if (z) add("「📣 LINE 通知大家」推的卡片", _yzQzPushCard_({ id: pz.id, kind: pz.kind, title: pz.title, note: pz.note, to: pz.to, qs: qs, x: exam ? z.x : null }));
+    body.appendChild(h("div", { class: "pvwrap" }, [st]));
+    meter.appendChild(hint("LINE 上是一題一張卡片：按按鈕回答（複選可以按好幾個再按「選好了」；簡答直接打字）。最後一張可以看全部的答案、按「送出」或「交卷」。" + note));
+    return;
+  }
+  var box = h("div", { class: "qzpv" }, [qzFormEl(pz, qs, [], { px: "qzp", preview: true })]);
+  body.appendChild(h("div", { class: "pvwebwrap" }, [box]));
+  meter.appendChild(hint("網頁上是一頁全部的題目，最後按「" + (exam ? "交卷" : "送出") + "」。這裡可以點點看（不會送出）。" + note));
+}
+
 /* ════════ admin.js ════════ */
 /* ═══════════════ admin.js：管理（開發者）：誰可以看（核可名單）、看過紀錄、保密設定 ═══════════════ */
 var AD = { users: null, devs: 0, log: null, busy: false };
@@ -7638,6 +9134,8 @@ function drawSettings() {
   }
   function row(k, title, desc) { box.appendChild(settingRow(title, desc, tog(c[k] !== false, function (v, el) { var p = {}; p[k] = v; if (k === "empReview" && !v) { modal({ title: "關掉「員工代號＋核可」？", lines: ["關掉以後，只要有補藥神器的人（登入過補藥神器網頁、或在 LINE 用補藥神器）都看得到藥戰手冊。保密會大幅降低。"], buttons: [{ label: "不要", cls: "sm" }, { label: "關掉", cls: "sm bad", fn: function () { save(p, el); } }] }); return; } save(p, el); }, title))); }
   row("empReview", "需要員工代號＋開發者核可", "關掉＝有補藥神器的人都看得到（不建議）");
+  // 第 32 批：網頁登入＝代號＋驗證碼（跟補藥神器網頁一樣）；員工編號＋姓名：預設只有第一次（申請）打
+  box.appendChild(settingRow("網頁每次登入都要打員工編號＋姓名", "關著（預設）＝只有第一次（申請）時打，之後登入只要代號＋驗證碼（跟補藥神器網頁一樣）。打開＝每次登入都要打，而且要跟名單上的一樣", tog(!!c.idEvery, function (v, el) { save({ idEvery: v }, el); }, "網頁每次登入都要打員工編號＋姓名")));
   row("showAll", "所有藥師都看得到「📘 藥戰手冊」按鍵", "LINE 下面那排每個人都有這顆；還沒核可的人按了是「申請」（填員工代號），內容一樣要核可＋驗證才看得到。關掉＝只有可以看的人才有這顆");
   var idle = h("input", { class: "in", type: "number", min: "5", max: "240", value: String(c.idle || 30), style: "width:80px", "aria-label": "閒置幾分鐘自動退出" });
   idle.onchange = function () { var v = Math.max(5, Math.min(240, parseInt(idle.value, 10) || 30)); idle.value = String(v); save({ idle: v }, idle); };
