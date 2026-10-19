@@ -1,6 +1,6 @@
-/* hb.js — 藥戰手冊網頁（beta22）。補藥神器 GitHub 網頁的一頁：hb.html。
- * 給：核可名單上的同事看手冊；開發者在這裡編輯、管理。
- * 登入：跟補藥神器網頁同一把鑰匙；看之前還要「手冊驗證」（從 LINE 手冊按「🌐 網頁」開，或在 LINE 打網頁上出的「手冊 1234」）。
+/* hb.js — 藥戰手冊網頁（藥戰手冊 12）。放在 GitHub 網站上的一頁：hb.html（後端是藥戰手冊自己的 Apps Script 專案）。
+ * 給：核可名單上的同事看手冊；開發者在這裡編輯、管理（核可名單、員工名單、設定）。
+ * 登入：從 LINE「藥戰手冊」按「🌐 網頁」開，或代號登入（網頁出代號 → 貼到 LINE「藥戰手冊」→ 回 6 位數驗證碼）。
  * 閒置超過設定的分鐘數：自動登出、內容從畫面上拿掉。手冊內容只放在記憶體，不存進瀏覽器、不留在網址列。
  * 這個檔裡沒有任何手冊內容（章名、標題、內文、圖片都要登入、驗證後才向後端要）。
  * 原始碼在分支的 yz/（shared/rt.js、shared/cards.js、front/*.js），用 yz/build_front.py 組成這一個檔。 */
@@ -2054,24 +2054,26 @@ function _yzNoticeBubble_(title, lines, kind) {
   };
 }
 
-// ── 「手冊申請」的回覆（給要加入的同事）：說明＋一顆打開申請網頁的按鈕（url 空的＝不放按鈕）──
+// ── 申請的說明（給要加入的同事）：說明＋一顆打開申請網頁的按鈕（url 空的＝不放按鈕）──
 function _yzJoinBubble_(lines, url, label) {
   var b = {
     type: "bubble", size: "mega",
-    header: _yzHead_("📘 藥戰手冊", "申請看藥戰手冊", "要員工編號＋姓名、開發者核可"),
+    header: _yzHead_("📘 藥戰手冊", "申請看藥戰手冊", "員工編號＋姓名（對得上員工名單的馬上可以看）"),
     body: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "13px", contents: lines.map(function (l) { return { type: "text", text: l, size: "sm", wrap: true, color: "#1F1F1F" }; }) }
   };
   if (url) b.footer = { type: "box", layout: "vertical", paddingAll: "10px", contents: [{ type: "button", style: "primary", color: YZ_ACCENT, height: "sm", action: { type: "uri", label: label || "📝 填申請", uri: url } }] };
   return b;
 }
 
-// ── 申請審核卡（給開發者）──
+// ── 申請審核卡（給開發者）。第 34 批：多一塊「員工名單比對」（為什麼沒有自動核可）──
 function _yzApprovalBubble_(rq) {
   var row = function (k, v) { return { type: "box", layout: "baseline", spacing: "sm", contents: [{ type: "text", text: k, size: "xs", color: "#7B8696", flex: 2 }, { type: "text", text: v, size: "sm", color: "#1F1F1F", flex: 5, wrap: true, weight: "bold" }] }; };
+  var c = [row("姓名", rq.name), row("員工編號", rq.emp), row("申請時間", rq.at)];
+  if (rq.why) c.push({ type: "box", layout: "vertical", spacing: "xs", backgroundColor: "#FFF4E5", cornerRadius: "8px", paddingAll: "8px", margin: "md", contents: [{ type: "text", text: "員工名單比對", size: "xxs", weight: "bold", color: "#8A5A00" }, { type: "text", text: String(rq.why).substring(0, 300), size: "sm", wrap: true, color: "#5C3D00" }] });
   return {
     type: "bubble", size: "mega",
     header: _yzHead_("📘 藥戰手冊", "新的使用申請", "請確認是院內同事再核可"),
-    body: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "13px", contents: [row("LINE 名稱", rq.name), row("員工代號", rq.emp), row("申請時間", rq.at)] },
+    body: { type: "box", layout: "vertical", spacing: "sm", paddingAll: "13px", contents: c },
     footer: { type: "box", layout: "horizontal", spacing: "sm", paddingAll: "10px", contents: [
       { type: "button", style: "primary", color: YZ_ACCENT, height: "sm", flex: 1, action: _yzPB_("yz=ok&u=" + rq.id, "✅ 核可") },
       { type: "button", style: "secondary", height: "sm", flex: 1, action: _yzPB_("yz=no&u=" + rq.id, "✖ 拒絕") }
@@ -2093,18 +2095,17 @@ function _yzDiffBubble_(what, before, after) {
   };
 }
 
-// ── 輸入框上面那排「釘住的按鈕」──
+// ── 輸入框上面那排「釘住的按鈕」（第 34 批：藥戰手冊自己的帳號）──
 function _yzQuickBar_(mode, o) {
   o = o || {};
   var m = function (label, text) { return { label: label, text: text }; };
-  if (mode === "yz") {
-    var a = [m("💊 補藥神器", "補藥神器"), m("🏠 首頁", "首頁"), { label: "🌐 網頁", web: "yz" }];
-    if (o.dev) a.push(m("🔧 開發者", "藥戰開發者"));
-    return a;
-  }
-  var base = [{ label: "🌐 網頁", web: "app" }, m("📖 教學", "教學"), m("📢 藥品通知", "公告"), m("🛠 BUG", "bug"), m("👥 加入補藥神器", "加入補藥神器")];
-  if (o.dev) base.push(m("🔧 開發者", "開發者"));
-  return o.approved ? [m("📘 藥戰手冊", "藥戰手冊")].concat(base) : base;
+  if (!o.approved && !o.dev) return [m("📝 申請", "手冊申請")];
+  var a = [m("🏠 首頁", "首頁")];
+  if (o.qz) a.push(m("📋 問卷", "問卷"));
+  a.push({ label: "🌐 網頁", web: "yz" });
+  if (o.buyao) a.push({ label: "💊 補藥神器", uri: o.buyao });
+  if (o.dev) a.push(m("🔧 開發者", "藥戰開發者"));
+  return a;
 }
 
 /* ════════ qzcards.js ════════ */
@@ -2487,8 +2488,8 @@ var FlexView = (function () {
 
 /* ════════ core.js ════════ */
 /* ═══════════════ core.js：手冊網頁的骨架（登入、驗證、跟後端講話、閒置登出、浮水印、頁籤）═══════════════
- * 登入：跟補藥神器網頁同一把鑰匙（這台瀏覽器登入過補藥神器網頁、或從 LINE 的連結開）。
- * 手冊驗證（每一台各自算）：從 LINE 手冊裡按「🌐 網頁」開（連結上有一次性的通行證），或在 LINE 打網頁上出的「手冊 1234」。
+ * 第 34 批：藥戰手冊是自己的 LINE 帳號＋自己的後端（不再跟補藥神器網頁共用鑰匙；這台記住的是 hbk、hbx）。
+ * 登入：從 LINE「藥戰手冊」按「🌐 網頁」開（連結上有一次性的通行證），或代號登入（網頁出代號 → 貼到 LINE「藥戰手冊」→ 回 6 位數驗證碼）。
  * 閒置超過設定的分鐘數：自動登出，內容從畫面上拿掉，要再驗證一次。
  * 手冊內容只放在記憶體：不存進瀏覽器、不留在網址列。 */
 
@@ -2551,12 +2552,13 @@ function hashParams() { var o = {}; String(location.hash || "").replace(/^#/, ""
 var HP = hashParams(), XRE = /^[A-Za-z0-9_-]{20,120}$/, TRE = /^[0-9a-f]{32}$/;
 var X = HP.x || "", T = HP.dev || HP.app || "", FROMLINK = !!T, FROMSAVED = false;
 var TICKET = /^[0-9a-z]{6,11}\.[0-9a-f]{24}$/.test(HP.k || "") ? HP.k : "";
-// 跟補藥神器網頁共用：這台記住的鑰匙（bk）、後端（bx）、裝置碼（bdk）
-function keyLoad() { try { var o = JSON.parse(localStorage.getItem("bk") || "null"); if (o && XRE.test(String(o.x || "")) && TRE.test(String(o.t || ""))) return o; } catch (e) { /* 沒有 */ } return null; }
-function bxLoad() { try { var v = localStorage.getItem("bx"); if (XRE.test(v || "")) return v; } catch (e) { /* 沒有 */ } return ""; }
-function keySave() { if (!XRE.test(X) || !TRE.test(T)) return; try { localStorage.setItem("bk", JSON.stringify({ x: X, t: T })); localStorage.setItem("bx", X); } catch (e) { /* 記不住就算了 */ } }
-function keyDrop() { try { var o = keyLoad(); if (o && o.x === X && o.t === T) localStorage.removeItem("bk"); } catch (e) { /* 沒關係 */ } }
-var CFGX = ""; try { if (typeof window.BUYAO_X === "string" && XRE.test(window.BUYAO_X)) CFGX = window.BUYAO_X; } catch (e) { /* cfg.js 沒放 */ }
+// 第 34 批：這台記住的鑰匙（hbk）、後端（hbx）：藥戰手冊自己的（補藥神器網頁的 bk、bx 不碰）；裝置碼（bdk）共用（兩邊算出來的不一樣）
+function keyLoad() { try { var o = JSON.parse(localStorage.getItem("hbk") || "null"); if (o && XRE.test(String(o.x || "")) && TRE.test(String(o.t || ""))) return o; } catch (e) { /* 沒有 */ } return null; }
+function bxLoad() { try { var v = localStorage.getItem("hbx"); if (XRE.test(v || "")) return v; } catch (e) { /* 沒有 */ } return ""; }
+function keySave() { if (!XRE.test(X) || !TRE.test(T)) return; try { localStorage.setItem("hbk", JSON.stringify({ x: X, t: T })); localStorage.setItem("hbx", X); } catch (e) { /* 記不住就算了 */ } }
+function keyDrop() { try { var o = keyLoad(); if (o && o.x === X && o.t === T) localStorage.removeItem("hbk"); } catch (e) { /* 沒關係 */ } }
+function bxDrop() { try { if (localStorage.getItem("hbx") === X) localStorage.removeItem("hbx"); var o = keyLoad(); if (o && o.x === X) localStorage.removeItem("hbk"); } catch (e) { /* 沒關係 */ } }
+var CFGX = ""; try { if (typeof window.HB_X === "string" && XRE.test(window.HB_X)) CFGX = window.HB_X; } catch (e) { /* cfg.js 沒放（可以不放） */ }
 var SAVED = keyLoad();
 if (!T && SAVED && (!X || SAVED.x === X) && (!CFGX || SAVED.x === CFGX)) { X = SAVED.x; T = SAVED.t; FROMSAVED = true; }
 if (!X && !T) X = CFGX || bxLoad();
@@ -2572,7 +2574,7 @@ var DK = (function () {
 var DKX = "", API = "", SESS = 0;
 function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (x) { return ("0" + x.toString(16)).slice(-2); }).join(""); }
 
-/* ── 跟後端講話（網頁專案的 API；跟補藥神器網頁一樣的格式）── */
+/* ── 跟後端講話（藥戰手冊專案的 API）── */
 function post(fn, a, ms, bg) {
   var ctl = window.AbortController ? new AbortController() : null, tm = 0;
   if (ctl && ms) tm = setTimeout(function () { try { ctl.abort(); } catch (e) { /* 沒關係 */ } }, ms);
@@ -2597,6 +2599,7 @@ function call(fn, args, opt) {
           if (code === "tok" || code === "bind" || code === "down" || code === "moved") { stop(msg, code, j.need); return; }
           var e = new Error(msg || "後端沒有回應"); e.code = code; bad(e); return;
         }
+        if (j.r && j.r.moved) { stop(String(j.r.err || ""), "moved"); return; }   // 第 34 批：舊的連結（打到補藥神器的網頁專案）：搬家了
         ok(j.r);
       }, function (err) {
         if (sid !== SESS) return;
@@ -2622,7 +2625,7 @@ function logo() { return h("div", { class: "scr-logo" }, [h("span", {}, ["📘"]
 function scrMsg(title, lines, buttons) {
   return screen([logo(), h("h2", {}, [title]), h("div", { class: "scr-p" }, (lines || []).map(function (l) { return h("p", {}, [l]); })), buttons && buttons.length ? h("div", { class: "scr-b" }, buttons) : null]);
 }
-var MSG_LINE = "回 LINE 打開「📘 藥戰手冊」，按下面那排的「🌐 網頁」。";
+var MSG_LINE = "回 LINE 的「藥戰手冊」帳號，按下面那排的「🌐 網頁」。";
 var MSG_NODK = "這個瀏覽器沒辦法記住這台裝置（可能是無痕模式、關掉了網站資料，或瀏覽器太舊），所以不能看藥戰手冊。請用一般模式開，或換最新的 Chrome、Safari。";
 function reloadBtn() { return btn("🔄 重新載入", function () { location.reload(); }, "pri"); }
 // 停下來：鑰匙不對、這台還沒綁定（開發者）、後端連不到
@@ -2631,6 +2634,7 @@ function stop(msg, code, need) {
   lockClean();
   if (code === "bind" && need) { scrBind(msg); return; }
   if (code === "tok") { keyDrop(); T = ""; if (canLogin()) { scrLogin("tok"); return; } scrMsg("連結過期了", [msg || "登入的鑰匙不對或過期了。", MSG_LINE]); return; }   // 第 32 批：可以直接用代號重新登入
+  if (code === "moved") { bxDrop(); scrMsg("藥戰手冊搬家了", [msg || "藥戰手冊搬到自己的 LINE 帳號了：到 LINE 加入「藥戰手冊」，從那裡按「🌐 網頁」打開。", "（這條連結是補藥神器以前給的舊連結。）"]); return; }
   scrMsg(code === "down" ? "現在連不到後端" : "沒辦法打開", [msg || "後端沒有回應。"], [reloadBtn()]);
 }
 // 開發者連結：這台還沒綁定 → 輸入 LINE「開發者網頁 綁定」給的 6 位數碼
@@ -2652,7 +2656,7 @@ function scrBind(msg) {
   try { inp.focus(); } catch (e) { /* 沒關係 */ }
 }
 
-/* ── 登入（第 32 批）：跟補藥神器網頁一樣——網頁出代號 → 貼到 LINE 補藥神器（一對一聊天室）→ LINE 回 6 位數驗證碼 → 打在這裡 ──
+/* ── 登入（第 32 批）：網頁出代號 → 貼到 LINE「藥戰手冊」帳號（一對一聊天室）→ LINE 回 6 位數驗證碼 → 打在這裡 ──
    第一次（名單上還沒有員工編號、姓名）：驗證完再打員工編號＋姓名（審核用；第一次＝送出申請，開發者核可才看得到）。
    閒置太久、按了登出：要重新取得代號、驗證碼。代號 5 分鐘內有效：倒數到 0 自動換新的（沒人理的分頁連續換 2 次就停）；
    記在這個分頁（sessionStorage），手機切去 LINE 再切回來，還是同一組。 */
@@ -2695,7 +2699,7 @@ function scrLogin(why, r) {
   screen([logo(), h("h2", {}, ["🔐 登入藥戰手冊"]),
     lines.length ? h("div", { class: "scr-p" }, lines.map(function (l) { return h("p", {}, [l]); })) : null,
     h("div", { class: "lggrid" }, [pair, wrap]),
-    h("p", { class: "lgfine" }, ["跟補藥神器網頁一樣：把代號貼到 LINE 補藥神器，換 6 位數驗證碼。第一次登入，還要打員工編號和姓名（審核用）。", h("br"), "代號、驗證碼只能在這個網頁用；代號 " + LG_MIN + " 分鐘內要完成登入（超過會自己換新的）；驗證碼只能用一次，不要傳給任何人。"]),
+    h("p", { class: "lgfine" }, ["把代號貼到 LINE 的「藥戰手冊」帳號，換 6 位數驗證碼。第一次登入，還要打員工編號和姓名（對得上員工名單的馬上可以看）。", h("br"), "代號、驗證碼只能在這個網頁用；代號 " + LG_MIN + " 分鐘內要完成登入（超過會自己換新的）；驗證碼只能用一次，不要傳給任何人。"]),
     KEEP_ED || (typeof KEEP_QE !== "undefined" && KEEP_QE) ? h("p", { class: "lockkeep" }, ["✏️ 你有還沒儲存的修改：登入以後會接著編輯（還沒存進去）。"]) : null,
     h("div", { class: "lgrolew" }, [role])], "lgscr");
   var my = ++LG.seq;
@@ -2720,7 +2724,7 @@ function scrLogin(why, r) {
     pair.innerHTML = "";
     if (dev) pair.appendChild(h("div", { class: "lgrole" }, ["🛠 開發者登入"]));
     if (LG.note) pair.appendChild(h("div", { class: "lgnote" }, [LG.note]));
-    pair.appendChild(h("div", { class: "lgst" }, ["① 打開 LINE 補藥神器（一對一，不是群組），把這組", h("b", {}, [dev ? "開發者代號" : "代號"]), dev ? "打進去" : "貼進去"]));
+    pair.appendChild(h("div", { class: "lgst" }, ["① 打開 LINE 的「藥戰手冊」（一對一，不是群組），把這組", h("b", {}, [dev ? "開發者代號" : "代號"]), dev ? "打進去" : "貼進去"]));
     pair.appendChild(h("div", { class: "lgcode" + (dev ? " num" : ""), id: "lgcode", role: "img", "aria-label": (dev ? "開發者代號 " : "代號 ") + c.split("").join(" ") }, [shown]));
     pair.appendChild(cb);
     pair.appendChild(h("div", { class: "lgmeta" }, [dev ? "" : "英文大小寫都可以　", "請在 ", h("b", { id: "lgcd" }, [""]), " 內完成登入", h("br"), again]));
@@ -2769,7 +2773,7 @@ function scrLogin(why, r) {
     var P = LG.sec;
     call("hbCodeLogin", [P, v, lgLabel()], { ms: 80000 }).then(function (x) {
       clearTimeout(slow); LG.busy = false; go.disabled = false; cin.readOnly = false;
-      if (x && TRE.test(String(x.t || ""))) {   // 驗證碼對了：這台記住鑰匙（跟補藥神器網頁共用），接著看要做什麼
+      if (x && TRE.test(String(x.t || ""))) {   // 驗證碼對了：這台記住鑰匙，接著看要做什麼
         LG.code = ""; LG.dead = true; lgSave(); lgStop();
         T = String(x.t); FROMSAVED = false; FROMLINK = false; keySave();
         onBoot(x); return;
@@ -2777,7 +2781,7 @@ function scrLogin(why, r) {
       if (!pair.isConnected || P !== LG.sec) return;
       if (x && x.dead) { gone("這組代號已經用不了了（打錯太多次）"); return; }
       if (x && x.gone) { if (x.full) gone(String(x.err || "開發者版名額滿了").replace(/^🔒\s*/, "")); else gone("這組代號已經不能用了（過期、用掉了，或已經作廢）"); return; }
-      if (x && x.wait) { msg.textContent = "⏳ LINE 還沒收到這組代號。到 LINE 補藥神器" + (LG.dev ? "打 " : "貼上 ") + LG.code + "，拿到驗證碼再回來輸入。"; return; }
+      if (x && x.wait) { msg.textContent = "⏳ LINE 還沒收到這組代號。到 LINE 的「藥戰手冊」" + (LG.dev ? "打 " : "貼上 ") + LG.code + "，拿到驗證碼再回來輸入。"; return; }
       if (x && x.bad) { msg.textContent = "❌ 驗證碼不對，再輸入一次。（要照 LINE 卡片上現在這一張；不確定就按「重新取得代號」換新的一組）"; cin.value = ""; try { cin.focus(); } catch (e) { /* 沒關係 */ } return; }
       msg.textContent = "❌ " + String(x && x.err || "沒登入成功，再試一次").slice(0, 200);
     }, function (e) {
@@ -2853,16 +2857,16 @@ function onBoot(r) {
   TICKET = "";   // 通行證只用一次
   if (!r) { scrMsg("沒辦法打開", ["後端沒有回應。"], [reloadBtn()]); return; }
   if (r.err) { stop(r.err, "tok"); return; }
-  if (FROMLINK && !FROMSAVED) keySave();   // 從 LINE 開的：這台記住鑰匙（跟補藥神器網頁一樣）
+  if (FROMLINK && !FROMSAVED) keySave();   // 從 LINE 開的：這台記住鑰匙
   var st = r.st;
   if (st === "closed") { scrMsg("藥戰手冊還沒開放", ["請等開發者通知。"]); return; }
-  if (st === "setup") { scrMsg("藥戰手冊還沒建立", ["在 LINE 專案的 Apps Script 編輯器，選 yzSetup → 執行一次。", "建好以後重新整理這一頁。"], [reloadBtn()]); return; }
+  if (st === "setup") { scrMsg("藥戰手冊還沒接上", ["在藥戰手冊的 Apps Script 編輯器，選 yzMoveIn → 執行一次（從補藥神器搬過來）。", "好了以後重新整理這一頁。"], [reloadBtn()]); return; }
   if (st === "need") { scrId(r); return; }   // 第 32 批：驗證過是本人了，第一次要打員工編號＋姓名
   if (st === "wait") { scrWait(r); return; }
   if (st === "no") { scrMsg("沒有通過審核", ["看不到藥戰手冊的內容。有疑問請找開發者。"]); return; }
   if (st === "off") { scrMsg("權限已經撤銷", ["你的藥戰手冊權限已經被撤銷，看不到內容了。有疑問請找開發者。"]); return; }
   if (st === "nodk") { scrMsg("這個瀏覽器不能用", [MSG_NODK]); return; }
-  if (st === "lock" || st === "none") { ME = r.me || ME; if (r.cfg) { CFG = r.cfg; applyCfg(); } scrLogin(r.bad ? "bad" : "", r); return; }   // 第 32 批：代號登入（跟補藥神器網頁一樣）
+  if (st === "lock" || st === "none") { ME = r.me || ME; if (r.cfg) { CFG = r.cfg; applyCfg(); } scrLogin(r.bad ? "bad" : "", r); return; }   // 第 32 批：代號登入
   if ((st === "ok" || st === "dev") && r.data) { enterMain(r); return; }
   scrMsg("沒辦法打開", ["看不懂後端的回應（" + String(st) + "）。"], [reloadBtn()]);
 }
@@ -3038,11 +3042,11 @@ function start() {
   backendCheck(function () {
     gate(function (g) {
       if (g === "ok") { API = "https://script.google.com/macros/s/" + X + "/exec"; screen([logo(), h("p", { class: "muted" }, ["載入中…"])]); boot(); return; }
-      if (g === "login") { API = "https://script.google.com/macros/s/" + X + "/exec"; scrLogin(""); return; }   // 第 32 批：沒有鑰匙 → 代號登入（跟補藥神器網頁一樣）
+      if (g === "login") { API = "https://script.google.com/macros/s/" + X + "/exec"; scrLogin(""); return; }   // 第 32 批：沒有鑰匙 → 代號登入
       if (g === "nodk") { scrMsg("這個瀏覽器不能用", [MSG_NODK]); return; }
       if (g === "old") { scrMsg("瀏覽器太舊", ["請改用最新的 Chrome 或 Safari。"]); return; }
       if (g === "bad") { scrMsg("連結不完整", [MSG_LINE]); return; }
-      scrMsg("請從 LINE 打開", [MSG_LINE, "（從 LINE 開過一次以後，這台瀏覽器直接打網址就會出現代號登入；登入過「補藥神器網頁」的也可以直接開。）"]);
+      scrMsg("請從 LINE 打開", [MSG_LINE, "（藥戰手冊是自己的 LINE 帳號：還沒加的話，補藥神器下面那排的「📘 藥戰手冊」就是加入的按鈕。從 LINE 開過一次以後，這台瀏覽器直接打網址就會出現代號登入。）"]);
     });
   });
 }
@@ -3321,7 +3325,7 @@ function drugFlush() {   // 一次最多拿 30 支（後端也是一次最多 30
   if (!q.length) return;
   if (DRUG_Q.length) DRUG_T = setTimeout(drugFlush, 0);
   call("hbDrugs", [q]).then(function (r) {
-    q.forEach(function (c) { var v = r && r.ok && r.rows ? r.rows[c] : undefined; if (v !== undefined) DRUG[c] = v; var w = DRUG_WAIT[c] || []; delete DRUG_WAIT[c]; w.forEach(function (f) { f(v); }); });
+    q.forEach(function (c) { var v = r && r.ok && r.rows ? r.rows[c] : undefined; if (v && v.down) v = undefined; if (v !== undefined) DRUG[c] = v; var w = DRUG_WAIT[c] || []; delete DRUG_WAIT[c]; w.forEach(function (f) { f(v); }); });   // 第 34 批：down＝補藥神器現在連不到（不記，下次再問）
   }, function () { q.forEach(function (c) { var w = DRUG_WAIT[c] || []; delete DRUG_WAIT[c]; w.forEach(function (f) { f(undefined); }); }); });
 }
 function drugKind(d) { if (d && (d.kind === "水" || d.kind === "錠")) return d.kind; return /水|液|漿|滴|注射|針/.test(String(d && d.form || "")) ? "水" : "錠"; }
@@ -3334,7 +3338,7 @@ function drugCard(d0, o) {   // d0：手冊裡存的（code、brand、chName）
       h("div", { class: "dt" }, [h("div", { class: "dcode" }, [x.code]), h("div", { class: "dbrand" }, [x.brand || "—"]), x.chName ? h("div", { class: "dzh" }, [x.chName]) : null, d && d.generic ? h("div", { class: "dgen" }, [d.generic]) : null]),
       h("div", { class: "dicon" }, [h("img", { src: DRUG_ICON[drugKind(d)], alt: drugKind(d) })])
     ]));
-    if (!d) { card.appendChild(h("div", { class: "dwait" }, [state === "gone" ? "⚠ 補藥神器裡找不到這一支藥（可能改了 CODE 或刪掉了）" : state === "fail" ? "⚠ 藥品資料拿不到（等一下重新整理）" : "藥品資料載入中…"])); return; }
+    if (!d) { card.appendChild(h("div", { class: "dwait" }, [state === "gone" ? "⚠ 補藥神器裡找不到這一支藥（可能改了 CODE 或刪掉了）" : state === "fail" ? "⚠ 藥品資料現在拿不到（在補藥神器那邊，等一下重新整理）" : "藥品資料載入中…"])); return; }
     if (d.notice) card.appendChild(h("div", { class: "dnotice" }, [h("span", {}, ["⚠️"]), h("span", {}, [d.notice])]));
     var hf = !!d.feat, info = [], hp = !!d.photo;
     if (d.pair) info.push(h("div", { class: "dpair" }, [h("b", {}, ["⚠️ 注意"]), h("div", {}, [d.pair])]));
@@ -3891,7 +3895,7 @@ var QZ = qzFresh();
 function qzFresh() { return { page: "list", list: null, none: false, busy: false, err: "", want: "", cur: null, ans: [], miss: [], res: null, peek: null, peekAt: 0, peekBusy: false, sending: false }; }
 function qzReset() { QZ = qzFresh(); }
 function qzEmpty(v) { return v === null || v === undefined || (typeof v === "string" && !v.trim()) || (Array.isArray(v) && !v.length); }
-function qzErrText(e) { return e && e.code === "bad" ? "網頁專案還沒換成第 32 批（03 要貼新版、部署新版本）" : String(e && e.message || e); }
+function qzErrText(e) { return e && e.code === "bad" ? "藥戰手冊的後端還不認得這個（Apps Script 要貼新版、部署新版本）" : String(e && e.message || e); }
 function qzCall(act, a, b) {
   return call("hbQz", [act, a === undefined ? "" : a, b === undefined ? "" : b], { ms: 60000 }).then(function (r) {
     if (r && r.st === "lock") { logout("expired"); throw new Error("驗證過期了"); }
@@ -5876,7 +5880,7 @@ function dirtyPaint() {
     else txt = AS.on ? "● 有修改：停手 3 秒就自動儲存" : "● 有還沒儲存的修改";
     if (ED_OCR_RUN && !cls) txt += "（背景辨識圖片裡的字中…）";
   } else if (todo) txt = "● 有 " + todo + "還沒做：按「儲存」就會做好";
-  else if (ED_OCR_OFF && no) { txt = "⚠ 圖片裡的字還不能辨識：網頁專案要加「Drive API」服務（加好按「儲存」）"; cls = "warn"; }
+  else if (ED_OCR_OFF && no) { txt = "⚠ 圖片裡的字還不能辨識：藥戰手冊的 Apps Script 專案要加「Drive API」服務（加好按「儲存」）"; cls = "warn"; }
   else if (ED_OCR_RUN || (no && !ED_OCR_OFF)) txt = "🔍 背景辨識圖片裡的字（還有 " + Math.max(no, ED_OCR_RUN) + " 張）…";
   else if (ED.savedAt) txt = "✅ 已" + (ED.auto ? "自動" : "") + "儲存（" + hhmm(ED.savedAt) + "，花了 " + (ED.saveMs / 1000).toFixed(1) + " 秒）";
   d.textContent = txt; d.className = "dirty" + (cls ? " " + cls : "");
@@ -6268,7 +6272,7 @@ function ocrStat(p) {   // 這張圖的「圖片裡的字」狀態：{ t: 文字
   if (typeof p.ocr === "string") return p.ocr ? { t: "🔍 圖片裡的字（搜尋找得到）：" + p.ocr.replace(/\s+/g, " ").slice(0, 60) + (p.ocr.length > 60 ? "…" : ""), c: "ok", retry: true, edit: "✏️ 看全部／改字" } : { t: "🔍 圖片裡的字：辨識過了，沒有讀到字（有字的話：按「重新辨識」，或自己打）", c: "", retry: true, edit: "✏️ 自己打字" };
   if (ED_OCR[p.fid]) return { t: ED_OCR_STAGE[p.fid] === "boost" ? "🔍 圖片裡的字：讀到的字太少，用加強版（放大、轉黑白）再讀一次…" : ED_OCR_STAGE[p.fid] === "pic" ? "🔍 圖片裡的字：用原圖的清楚版辨識中…" : "🔍 圖片裡的字：辨識中…", c: "" };
   if (ED_OCR_BAD[p.fid]) return { t: "⚠ 圖片裡的字讀不到：" + ED_OCR_BAD[p.fid], c: "warn", retry: true, edit: "✏️ 自己打字" };
-  if (ED_OCR_OFF) return { t: "⚠ 圖片裡的字：還不能辨識（網頁專案要加「Drive API」服務）", c: "warn", retry: true };
+  if (ED_OCR_OFF) return { t: "⚠ 圖片裡的字：還不能辨識（藥戰手冊的 Apps Script 專案要加「Drive API」服務）", c: "warn", retry: true };
   return { t: "🔍 圖片裡的字：還沒辨識（馬上會在背景做）", c: "" };
 }
 function ocrLine(p) {   // 每張圖下面那一行（辨識好了會自己更新）
@@ -6524,7 +6528,7 @@ function saveSend(force, auto, t0) {
     if (still) { AS.first = 0; markDirty(); if (!auto) toast("已儲存（存的時候你又改了一些，那些還沒存）"); }
     else if (auto && !wasRestore) { ED.dirty = false; AS.first = 0; dirtyPaint(); }   // 自動存檔：不重畫（不打斷正在打字的人）
     else { edReset(); edPick(cur, mode); ED.savedAt = Date.now(); ED.saveMs = Date.now() - t0; renderEdit(); toast(wasRestore ? "✅ 已換成那一版（換之前的樣子也留了一份）" : "✅ 已儲存：LINE 和網頁都會看到新的內容"); }
-    if (r.line === 0 && !ED.lineWarned) { ED.lineWarned = true; toast("⚠ 存好了，但 LINE 那邊沒有收到通知：LINE 最晚 30 分鐘後才會看到（網頁專案的 LINE_APP_URL 對嗎？）"); }
+    if (r.line === 0 && !ED.lineWarned) { ED.lineWarned = true; toast("⚠ 存好了，但 LINE 那邊還是舊的：最晚 30 分鐘後才會看到"); }
     if (TAB !== "edit") drawWeb();
     edOcrPump();
   }, function (e) { if (!ED) return; ED.saving = false; asFail(e.message, auto); });
@@ -8474,7 +8478,7 @@ function qeNew() {
     b: null, bDirty: false, bf: { st: "", diff: "", ch: "", by: "", q: "", zx: "" }, bShow: 40, ai: { scope: [], diff: "中", n: 5, types: ["one"], hint: "" }, aiBusy: false, aiRes: null, words: null, res: null, resBusy: false };
 }
 function qeDrop() { QE = null; }
-function qeErr(e) { return e && e.code === "bad" ? "網頁專案還沒換成第 32 批（03 要貼新版、部署新版本）" : String(e && e.message || e); }
+function qeErr(e) { return e && e.code === "bad" ? "藥戰手冊的後端還不認得這個（Apps Script 要貼新版、部署新版本）" : String(e && e.message || e); }
 function qeCall(act, a, b, ms) {
   return call("hbQzEd", [act, a === undefined ? "" : a, b === undefined ? "" : b], { ms: ms || 60000 }).then(function (r) {
     if (r && r.st === "lock") { logout("expired"); throw new Error("驗證過期了"); }
@@ -8635,8 +8639,8 @@ function qeForm(f) {
 function qeSetupForm(f) {
   f.appendChild(h("h3", { style: "font-size:16px" }, ["📋 問卷、考試：第一次用要先建立問卷試算表"]));
   f.appendChild(h("div", { class: "qebox" }, [
-    h("p", {}, ["問卷、考試放在另外一個「問卷專用試算表」（跟手冊分開）。按下面的按鈕，LINE 專案會幫你建好四個分頁：問卷、題目、題庫、作答。"]),
-    h("p", {}, ["試算表的位置會加密存在 LINE 專案的指令碼屬性（YZ_QZ_ID），網頁上不會出現。建好以後，在雲端硬碟搜尋「藥戰手冊問卷」找得到（只有你看得到，請不要分享）。"])
+    h("p", {}, ["問卷、考試放在另外一個「問卷專用試算表」（跟手冊分開）。按下面的按鈕，會幫你建好四個分頁：問卷、題目、題庫、作答。"]),
+    h("p", {}, ["試算表的位置會加密存在藥戰手冊專案的指令碼屬性（YZ_QZ_ID），網頁上不會出現。建好以後，在雲端硬碟搜尋「藥戰手冊問卷」找得到（只有你看得到，請不要分享）。"])
   ]));
   var b = btn("建立問卷試算表", function () {
     b.disabled = true; b.textContent = "建立中…";
@@ -8646,7 +8650,6 @@ function qeSetupForm(f) {
     }, function (e) { b.disabled = false; b.textContent = "建立問卷試算表"; toast("❌ " + qeErr(e)); });
   }, "pri");
   f.appendChild(h("div", { style: "margin:10px 0" }, [b]));
-  f.appendChild(hint("要先把 LINE 專案（05）和網頁專案（03）都換成第 32 批、部署新版本。"));
 }
 function qeHome(f) {
   var nq = QE.zs.filter(function (z) { return z.kind === "q"; }).length, nx = QE.zs.length - nq, open = QE.zs.filter(function (z) { return z.st === "open"; }).length;
@@ -9105,7 +9108,7 @@ function qeAiForm(f) {
   // 遮字清單
   f.appendChild(h("div", { class: "qeset" }, [
     h("div", { class: "qeset-h" }, ["🙈 遮字清單（送給 AI 之前，換成「本院」）"]),
-    hint("一行一個：醫院的名字、簡稱、英文縮寫、院區、人名…（長的先換）。清單加密存在網頁專案的指令碼屬性，不會出現在試算表。現在 " + QE.mask + " 個。"),
+    hint("一行一個：醫院的名字、簡稱、英文縮寫、院區、人名…（長的先換）。清單加密存在藥戰手冊專案的指令碼屬性，不會出現在試算表。現在 " + QE.mask + " 個。"),
     QE.words === null ? btn("顯示／修改遮字清單", function () {
       qeCall("maskget").then(function (r) { QE.words = (r.words || []).join("\n"); qeRender(); var t = $("#edc2 [data-qk=mask]"); if (t) try { t.focus(); } catch (e) { /* 沒關係 */ } }, function (e) { toast("❌ " + qeErr(e)); });
     }) : h("div", {}, [
@@ -9236,22 +9239,24 @@ function qePreview(body, meter) {
 }
 
 /* ════════ admin.js ════════ */
-/* ═══════════════ admin.js：管理（開發者）：誰可以看（核可名單）、看過紀錄、保密設定 ═══════════════ */
-var AD = { users: null, devs: 0, log: null, busy: false };
+/* ═══════════════ admin.js：管理（開發者）：誰可以看（核可名單）、保密設定、員工名單（第 34 批，roster.js）、看過紀錄 ═══════════════ */
+var AD = { users: null, devs: 0, log: null, busy: false, rs: null, rsn: null };
 function buildAdminPane() {
-  AD = { users: null, devs: 0, log: null, busy: false };
+  AD = { users: null, devs: 0, log: null, busy: false, rs: null, rsn: null };
   var pane = $("#pane-admin");
   pane.innerHTML = "";
-  pane.appendChild(h("p", { class: "sub" }, ["誰可以看、誰看過什麼、保密開關，都在這一頁（只有開發者看得到）。也可以直接在 LINE 的審核卡按「核可」。"]));
+  pane.appendChild(h("p", { class: "sub" }, ["誰可以看、員工名單、誰看過什麼、保密開關，都在這一頁（只有開發者看得到）。也可以直接在 LINE 的審核卡按「核可」。"]));
   pane.appendChild(h("div", { class: "row" }, [
     h("section", { class: "card adm" }, [h("h2", {}, ["① 誰可以看（核可名單）"]), h("div", { id: "userBox" }, [h("div", { class: "muted" }, ["載入中…"])])]),
     h("section", { class: "card adm" }, [h("h2", {}, ["② 保密設定"]), h("div", { id: "cfgBox" })])
   ]));
-  pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px" }, [h("h2", {}, ["③ 看過紀錄（最新的在最上面）"]), h("div", { id: "logBox" }, [h("div", { class: "muted" }, ["載入中…"])])]));
+  pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px" }, [h("h2", {}, ["③ 員工名單（申請時比對：對得上的自動核可）"]), h("div", { id: "rsBox" }, [h("div", { class: "muted" }, ["載入中…"])])]));   // 第 34 批
+  pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px" }, [h("h2", {}, ["④ 看過紀錄（最新的在最上面）"]), h("div", { id: "logBox" }, [h("div", { class: "muted" }, ["載入中…"])])]));
 }
 function adminLoad() {
   drawSettings();
-  call("hbUsers", []).then(function (r) { if (!adOk(r)) return; AD.users = r.users || []; AD.devs = r.devs || 0; drawUsers(); }, function (e) { var b = $("#userBox"); if (b) b.textContent = "❌ " + e.message; });
+  call("hbUsers", []).then(function (r) { if (!adOk(r)) return; AD.users = r.users || []; AD.devs = r.devs || 0; AD.rsn = r.rs || null; drawUsers(); }, function (e) { var b = $("#userBox"); if (b) b.textContent = "❌ " + e.message; });
+  rsLoad();
   call("hbLog", [300]).then(function (r) { if (!adOk(r)) return; AD.log = r.rows || []; drawLog(); }, function (e) { var b = $("#logBox"); if (b) b.textContent = "❌ " + e.message; });
 }
 function adOk(r) {
@@ -9265,10 +9270,20 @@ function drawUsers() {
   var box = $("#userBox"); if (!box) return; box.innerHTML = "";
   var rows = (AD.users || []).slice().sort(function (a, b) { var o = { wait: 0, ok: 1, dev: 2, off: 3, no: 4 }; return (o[a.st] - o[b.st]) || String(b.at).localeCompare(String(a.at)); });
   var nOk = rows.filter(function (u) { return u.st === "ok"; }).length, nW = rows.filter(function (u) { return u.st === "wait"; }).length;
-  box.appendChild(h("div", { class: "hint" }, ["核可 " + nOk + " 人、等審核 " + nW + " 人；開發者 " + AD.devs + " 位（固定可以看，不在這裡改；名單在 LINE 專案的 DEV_USERS）。"]));
-  if (!rows.length) { box.appendChild(h("div", { class: "muted", style: "padding:8px 0" }, ["還沒有人申請。同事打開手冊網頁、填員工代號送出後，會出現在這裡。"])); return; }
-  var tb = h("table", { class: "tbl" });
-  tb.appendChild(h("tr", {}, ["名字", "員工代號", "狀態", "申請時間", "處理", "動作"].map(function (x) { return h("th", {}, [x]); })));
+  // 第 33 批：「🧹 清空」＝名單上除了開發者全部刪掉（開發者照舊）
+  var nDel = rows.filter(function (u) { return u.st !== "dev"; }).length, clr = btn("🧹 清空", adClear, "sm bad adclr");
+  if (!nDel) { clr.disabled = true; clr.title = "名單上沒有可以清的人（開發者不會清）"; }
+  box.appendChild(h("div", { style: "display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:6px" }, [
+    h("div", { class: "hint", style: "flex:1 1 240px;min-width:0;margin:0" }, ["核可 " + nOk + " 人、等審核 " + nW + " 人；開發者 " + AD.devs + " 位（固定可以看；不在這裡改，名單在藥戰手冊專案的指令碼屬性 DEV_USERS）。撤銷、拒絕＝從名單刪掉，要再看得重新申請。"]),
+    clr]));
+  // 第 34 批：等審核的人裡，跟員工名單對得上的 → 一次核可
+  var nMatch = rows.filter(function (u) { return u.st === "wait" && (u.ck === "ok" || u.ck === "near"); }).length;
+  if (nMatch) box.appendChild(h("div", { class: "acts", style: "margin:2px 0 8px" }, [btn("✅ 核可對得上員工名單的 " + nMatch + " 人", function (e) { adAuto(e.target, nMatch); }, "sm pri adauto")]));
+  if (!rows.length) { box.appendChild(h("div", { class: "muted", style: "padding:8px 0" }, ["還沒有人申請。同事在 LINE 的「藥戰手冊」打員工編號＋姓名（或在手冊網頁填），對不上員工名單的會出現在這裡等你核可。"])); return; }
+  // 第 33 批：手機（窄）＝一個人一塊（按鍵不用左右滑就看得到）；電腦（寬）＝照舊一張表
+  var narrow = (box.clientWidth || window.innerWidth) < 560;
+  var tb = narrow ? h("div", { class: "ulist" }) : h("table", { class: "tbl" });
+  if (!narrow) tb.appendChild(h("tr", {}, ["名字", "員工代號", "狀態", "申請時間", "處理", "動作"].map(function (x) { return h("th", {}, [x]); })));
   rows.forEach(function (u) {
     var acts = [], set = function (act, label) { return btn(label, function (e) { adSet(u, act, e.target); }, act === "off" || act === "no" ? "sm bad" : act === "ok" ? "sm pri" : "sm"); };
     if (u.st === "dev") acts.push(h("span", { class: "muted" }, ["固定可以看"]));
@@ -9276,10 +9291,42 @@ function drawUsers() {
     else if (u.st === "ok") acts.push(set("off", "撤銷"));
     else acts.push(set("ok", "重新核可"));
     var nm = (u.name || "（沒填）") + (u.lname ? "（LINE：" + u.lname + "）" : "");
-    var stt = ST_TXT[u.st] || ST_TXT.wait;
-    tb.appendChild(h("tr", {}, [h("td", {}, [nm]), h("td", {}, [u.emp || "—"]), h("td", {}, [h("span", { class: "st " + stt[0] }, [stt[1]])]), h("td", { class: "muted" }, [u.at || ""]), h("td", { class: "muted" }, [u.done ? u.done + (u.by ? "　" + u.by : "") : ""]), h("td", {}, [h("div", { class: "acts" }, acts)])]));
+    var stt = ST_TXT[u.st] || ST_TXT.wait, done = u.done ? u.done + (u.by ? "　" + u.by : "") : "";
+    var rmk = adRmk(u);   // 第 34 批：跟員工名單比的結果
+    if (narrow) {
+      tb.appendChild(h("div", { class: "urow", style: "display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap;padding:10px 2px;border-bottom:1px solid #E5E9EE" }, [
+        h("div", { style: "flex:1 1 180px;min-width:0" }, [
+          h("div", {}, [h("b", {}, [nm]), "　" + (u.emp || "—") + "　", h("span", { class: "st " + stt[0] }, [stt[1]])]),
+          rmk,
+          h("div", { class: "muted", style: "font-size:12.5px;margin-top:2px" }, ["申請 " + (u.at || "—") + (done ? "｜處理 " + done : "")])]),
+        h("div", { class: "acts" }, acts)]));
+    } else tb.appendChild(h("tr", {}, [h("td", {}, [nm, rmk]), h("td", {}, [u.emp || "—"]), h("td", {}, [h("span", { class: "st " + stt[0] }, [stt[1]])]), h("td", { class: "muted" }, [u.at || ""]), h("td", { class: "muted" }, [done]), h("td", {}, [h("div", { class: "acts" }, acts)])]));
   });
-  box.appendChild(h("div", { class: "tscroll" }, [tb]));
+  box.appendChild(narrow ? tb : h("div", { class: "tscroll" }, [tb]));
+}
+// 第 34 批：這個人跟員工名單比的結果（一小行字；沒有員工名單＝不顯示）
+function adRmk(u) {
+  if (u.st === "dev" || !u.ck) return null;
+  var ok = u.ck === "ok" || u.ck === "near", t = "", cls = "rmk";
+  if (u.st === "wait") { t = ok ? "✅ 對得上員工名單" + (u.ck === "near" ? "（姓名差一個字）" : "") : "⚠ " + (u.cw || u.rm || "跟員工名單對不上"); cls += ok ? " good" : " warn"; }
+  else if (u.st === "ok") {
+    if (ok) return u.by === "（員工名單自動核可）" ? h("div", { class: "rmk muted" }, ["員工名單自動核可"]) : null;
+    t = u.ck === "none" ? "⚠ 員工名單上沒有這個人（離職了？）" : u.ck === "used" ? "⚠ " + (u.cw || "員工編號跟別人重複") : "⚠ 跟員工名單對不上：" + (u.cw || "");
+    cls += " warn";
+  }
+  return t ? h("div", { class: cls, style: "font-size:12.5px;margin-top:2px;color:" + (/ good/.test(cls) ? "#0E7C66" : "#8A5A00") }, [t]) : null;
+}
+function adAuto(el, n) {
+  if (AD.busy) return;
+  modal({ title: "核可對得上員工名單的 " + n + " 人？", lines: ["等審核的人裡，員工編號、姓名跟員工名單對得上的（姓名差一個字也算），一次核可。每個人的 LINE 都會收到通知。", "對不上的不動，照樣等你看。"], buttons: [{ label: "不要", cls: "sm" }, { label: "核可 " + n + " 人", cls: "sm pri", fn: function () {
+    AD.busy = true; if (el) el.disabled = true;
+    call("hbUserAuto", []).then(function (r) {
+      AD.busy = false;
+      if (!adOk(r)) { if (el) el.disabled = false; return; }
+      AD.users = r.users || AD.users; AD.devs = r.devs || AD.devs; drawUsers();
+      toast("✅ 核可了 " + (r.auto || 0) + " 人（已通知他們的 LINE）");
+    }, function (e) { AD.busy = false; if (el) el.disabled = false; toast("❌ " + e.message); });
+  } }] });
 }
 function adSet(u, act, el) {
   if (AD.busy) return;
@@ -9289,11 +9336,34 @@ function adSet(u, act, el) {
       AD.busy = false;
       if (!adOk(r)) { if (el) el.disabled = false; return; }
       AD.users = r.users || AD.users; AD.devs = r.devs || AD.devs; drawUsers();
-      toast(act === "ok" ? "✅ 已核可（已通知對方的 LINE）" : act === "off" ? "已撤銷：對方下次開手冊就進不去" : "已拒絕（不會通知對方）");
+      toast(act === "ok" ? "✅ 已核可（已通知對方的 LINE）" : act === "off" ? "已撤銷：從名單刪掉了（要再看得重新申請）" : "已拒絕：從名單刪掉了（不會通知對方；他要的話可以重新申請）");
     }, function (e) { AD.busy = false; if (el) el.disabled = false; toast("❌ " + e.message); });
   };
-  if (act === "off") modal({ title: "撤銷「" + (u.name || u.lname || u.emp || "這位") + "」？", lines: ["撤銷後，對方的 LINE 和網頁都看不到藥戰手冊（正在看的也會被請出去）。之前送出去的 LINE 卡片會留在他的聊天室裡（機器人收不回來）。"], buttons: [{ label: "不要", cls: "sm" }, { label: "撤銷", cls: "sm bad", fn: go }] });
+  var who = "「" + (u.name || u.lname || u.emp || "這位") + "」";
+  // 第 33 批：撤銷、拒絕＝從名單刪掉（跟沒申請過一樣），刪了就救不回來 → 都先問一次（手機上「核可」「拒絕」很近，按錯也有機會反悔）
+  if (act === "off") modal({ title: "撤銷" + who + "？", lines: ["撤銷＝從名單刪掉（跟沒申請過一樣）。對方的 LINE 和網頁馬上看不到藥戰手冊（正在看的也會被請出去）。", "要再看，他得重新申請（打員工編號＋姓名），你核可了才看得到。", "之前送出去的 LINE 卡片會留在他的聊天室裡（機器人收不回來），按了也看不到內容。"], buttons: [{ label: "不要", cls: "sm" }, { label: "撤銷", cls: "sm bad", fn: go }] });
+  else if (act === "no") modal({ title: "拒絕" + who + "？", lines: ["拒絕＝從名單刪掉（不會通知對方）。", "他要的話可以重新申請，你會再收到審核卡。"], buttons: [{ label: "不要", cls: "sm" }, { label: "拒絕", cls: "sm bad", fn: go }] });
   else go();
+}
+// 第 33 批：「🧹 清空」：名單上除了開發者全部刪掉（先問一次，寫清楚幾個人）
+function adClear() {
+  if (AD.busy) return;
+  var rows = (AD.users || []).filter(function (u) { return u.st !== "dev"; });
+  if (!rows.length) { toast("名單上沒有可以清的人（開發者不會清）"); return; }
+  var nOk = rows.filter(function (u) { return u.st === "ok"; }).length, nW = rows.filter(function (u) { return u.st === "wait"; }).length;
+  modal({ title: "清空核可名單？", lines: [
+    "名單上 " + rows.length + " 個人（核可 " + nOk + "、等審核 " + nW + "）全部刪掉，刪了就救不回來。",
+    "開發者不會刪：開發者固定可以看。",
+    "刪掉的人 LINE 和網頁馬上看不到藥戰手冊（正在看的也會被請出去）；要再看得重新申請（打員工編號＋姓名），你核可了才看得到。"
+  ], buttons: [{ label: "不要", cls: "sm" }, { label: "🧹 清空（" + rows.length + " 人）", cls: "sm bad", fn: function () {
+    AD.busy = true;
+    call("hbUserClear", []).then(function (r) {
+      AD.busy = false;
+      if (!adOk(r)) return;
+      AD.users = r.users || AD.users; AD.devs = r.devs || AD.devs; drawUsers();
+      toast("🧹 清空了：刪掉 " + (r.cleared || 0) + " 個人（開發者不動）");
+    }, function (e) { AD.busy = false; toast("❌ " + e.message); });
+  } }] });
 }
 function drawLog() {
   var box = $("#logBox"); if (!box) return; box.innerHTML = "";
@@ -9324,19 +9394,14 @@ function drawSettings() {
       toast("✅ 設定存好了（LINE 和網頁都會用新的設定）");
     }, function (e) { if (el) el.disabled = false; toast("❌ " + e.message); drawSettings(); });
   }
-  function row(k, title, desc) { box.appendChild(settingRow(title, desc, tog(c[k] !== false, function (v, el) { var p = {}; p[k] = v; if (k === "empReview" && !v) { modal({ title: "關掉「員工代號＋核可」？", lines: ["關掉以後，只要有補藥神器的人（登入過補藥神器網頁、或在 LINE 用補藥神器）都看得到藥戰手冊。保密會大幅降低。"], buttons: [{ label: "不要", cls: "sm" }, { label: "關掉", cls: "sm bad", fn: function () { save(p, el); } }] }); return; } save(p, el); }, title))); }
-  row("empReview", "需要員工代號＋開發者核可", "關掉＝有補藥神器的人都看得到（不建議）");
-  // 第 32 批：網頁登入＝代號＋驗證碼（跟補藥神器網頁一樣）；員工編號＋姓名：預設只有第一次（申請）打
-  box.appendChild(settingRow("網頁每次登入都要打員工編號＋姓名", "關著（預設）＝只有第一次（申請）時打，之後登入只要代號＋驗證碼（跟補藥神器網頁一樣）。打開＝每次登入都要打，而且要跟名單上的一樣", tog(!!c.idEvery, function (v, el) { save({ idEvery: v }, el); }, "網頁每次登入都要打員工編號＋姓名")));
-  row("showAll", "所有藥師都看得到「📘 藥戰手冊」按鍵", "LINE 下面那排每個人都有這顆；還沒核可的人按了是「申請」（填員工代號），內容一樣要核可＋驗證才看得到。關掉＝只有可以看的人才有這顆");
+  function row(k, title, desc) { box.appendChild(settingRow(title, desc, tog(c[k] !== false, function (v, el) { var p = {}; p[k] = v; if (k === "empReview" && !v) { modal({ title: "關掉「員工編號＋核可」？", lines: ["關掉以後，只要加了「藥戰手冊」LINE 帳號的人（不用申請、不用核可）都看得到藥戰手冊。保密會大幅降低。"], buttons: [{ label: "不要", cls: "sm" }, { label: "關掉", cls: "sm bad", fn: function () { save(p, el); } }] }); return; } save(p, el); }, title))); }
+  row("empReview", "需要員工編號＋核可", "員工編號＋姓名對得上員工名單的自動核可，對不上的你來核可。關掉＝加了藥戰手冊 LINE 帳號的人都看得到（不建議）");
+  // 第 32 批：網頁登入＝代號＋驗證碼；員工編號＋姓名：預設只有第一次（申請）打
+  box.appendChild(settingRow("網頁每次登入都要打員工編號＋姓名", "關著（預設）＝只有第一次（申請）時打，之後登入只要代號＋驗證碼。打開＝每次登入都要打，而且要跟名單上的一樣", tog(!!c.idEvery, function (v, el) { save({ idEvery: v }, el); }, "網頁每次登入都要打員工編號＋姓名")));
+  row("showAll", "還沒核可的人也看得到申請的說明", "開著：沒核可的人跟藥戰手冊帳號說話，會收到申請的說明（直接打員工編號＋姓名）；補藥神器下面那排大家都有「📘 藥戰手冊」（加入的按鈕）。關掉：沒核可的人只看到「限核可的同仁使用」（打「手冊申請」才有說明）；補藥神器那排只有核可的人看得到 📘");
   var idle = h("input", { class: "in", type: "number", min: "5", max: "240", value: String(c.idle || 30), style: "width:80px", "aria-label": "閒置幾分鐘自動退出" });
   idle.onchange = function () { var v = Math.max(5, Math.min(240, parseInt(idle.value, 10) || 30)); idle.value = String(v); save({ idle: v }, idle); };
-  box.appendChild(settingRow("閒置自動退出（分鐘）", "LINE 和網頁都用這個時間：LINE 時間到了 1 分鐘內主動說一聲、換回補藥神器；網頁自動登出、要再驗證（5～240）", h("div", { class: "sw2" }, [idle, h("span", { class: "muted" }, ["分鐘"])])));
-  // 第 30 批：LINE 閒置到期主動通知（用 LINE 的推播額度）：每個月最多幾則；0＝不主動通知（照舊：下次一按才說）
-  var ipv = c.idlePush === undefined ? 100 : +c.idlePush || 0;
-  var ip = h("input", { class: "in", type: "number", min: "0", max: "1000", value: String(ipv), style: "width:80px", "aria-label": "LINE 閒置到期主動通知：每月最多幾則" });
-  ip.onchange = function () { var v = parseInt(ip.value, 10); v = isNaN(v) ? 100 : Math.max(0, Math.min(1000, v)); ip.value = String(v); save({ idlePush: v }, ip); };
-  box.appendChild(settingRow("LINE：閒置到期主動通知（每月最多）", "時間到了 1 分鐘內推一則「已自動離開藥戰手冊」，下面那排換回補藥神器。會用 LINE 的推播額度（輕用量方案每月 200 則，其他通知也要用）；用完了就改回「下次一按才說」。0＝不主動通知。這個月用了幾則：在 LINE 的手冊裡按「🔧 開發者」看", h("div", { class: "sw2" }, [ip, h("span", { class: "muted" }, ["則／月"])])));
+  box.appendChild(settingRow("閒置自動退出（分鐘）", "網頁：閒置這麼久自動登出、要再驗證。LINE：改到一半的字、作答到一半的問卷，閒置這麼久就取消（5～240）", h("div", { class: "sw2" }, [idle, h("span", { class: "muted" }, ["分鐘"])])));
   // 第 31 批：舊版本留幾天（過了自動丟到雲端硬碟的垃圾桶；最新 3 份一定留）；0＝不自動清（只留最新 50 份）
   var vdv = c.verDays === undefined ? 3 : +c.verDays || 0;
   var vd = h("input", { class: "in", type: "number", min: "0", max: "30", value: String(vdv), style: "width:80px", "aria-label": "舊版本留幾天" });
@@ -9349,6 +9414,250 @@ function drawSettings() {
   row("animDirect", "動畫直接在 LINE 卡片上播放", "關掉＝只顯示第一格＋「▶ 在網頁看動畫」按鈕");
   row("webAnimAuto", "網頁動畫自動播放", "關掉＝一律先停住，按「▶ 播放」才動（手機開了「減少動態效果」的人，一律先停住）");
   row("lineSwipe", "LINE：好幾張卡片預設「左右滑」", "一個標題有 2 張以上卡片時，預設合成一則左右滑（關掉＝一頁一頁往下排）。每個標題可以在編輯器「📱 LINE：好幾張卡片怎麼排」自己選，自己選的優先");
+}
+
+/* ════════ roster.js ════════ */
+/* ═══════════════ roster.js：管理頁「③ 員工名單」（第 34 批）═══════════════
+ * 開發者上傳 Excel（.xlsx）、CSV，或直接貼上（從 Excel 複製、或一行「E10107 王小明」）→ 先在這台電腦裡讀出來給你看（不送任何地方）→
+ * 按「匯入」才送到藥戰手冊的後端，寫進手冊試算表的「員工名單」分頁。同事申請時打的員工編號＋姓名跟這份對得上，就自動核可。
+ * Excel 在瀏覽器裡自己解開（.xlsx 其實是一個壓縮檔，裡面是 XML）；CSV 自動認 UTF-8 或 Big5（Excel 存的中文 CSV 常是 Big5）。 */
+var RS = { prev: null, mode: "replace", listOn: false, q: "" };
+var RS_EMP = /員工(編號|代號|號碼)|員編|工號|職員編號|人員代號|^編號$|^代號$|^id$|^emp/i, RS_NAME = /姓名|名字|^名稱$|^name$|中文名/i, RS_MEMO = /備註|部門|單位|職稱|科別|組別|^dept|^note/i;
+function rsEmp(v) { var e = String(v === null || v === undefined ? "" : v).replace(/[Ａ-Ｚａ-ｚ０-９－]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 65248); }).replace(/\s+/g, "").toUpperCase().replace(/^(\d+)\.0+$/, "$1"); return /^[A-Z0-9-]{2,20}$/.test(e) ? e : ""; }
+function rsName(v) { var n = String(v === null || v === undefined ? "" : v).replace(/[<>]/g, "").replace(/\s+/g, " ").trim(); return n && n.length <= 20 ? n : ""; }
+function rsKey(e) { return /^\d+$/.test(e) ? e.replace(/^0+(?=\d)/, "") : e; }
+function rsLoad() {
+  call("hbRoster", ["get"]).then(function (r) { if (!adOk(r)) return; AD.rs = r; drawRoster(); }, function (e) { var b = $("#rsBox"); if (b) b.textContent = "❌ " + e.message; });
+}
+function rsMsg(t) { var m = $("#rsMsg"); if (m) m.textContent = t || ""; }
+function drawRoster() {
+  var box = $("#rsBox"); if (!box) return; box.innerHTML = "";
+  var rs = AD.rs || { n: 0, rows: [] }, meta = rs.meta || {};
+  box.appendChild(h("div", { class: "hint", style: "margin:0 0 8px" }, [rs.n ? "名單上 " + rs.n + " 人" + (meta.at && (meta.n === undefined || meta.n === rs.n) ? "（" + meta.at + (meta.by ? "　" + meta.by : "") + " 匯入）" : "") + "。同事申請時打的員工編號＋姓名跟這份對得上，就自動核可（姓名差一個字也算；一個員工編號只給一個 LINE 帳號）。對不上的照樣交給你審核。"
+    : "還沒匯入。匯入以後，同事申請時打的員工編號＋姓名跟這份對得上，就自動核可，不用你一個一個按。"]));
+  var file = h("input", { type: "file", accept: ".xlsx,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", hidden: true, "aria-label": "選員工名單的檔案" });
+  file.onchange = function () { var f = file.files && file.files[0]; file.value = ""; if (f) rsReadFile(f); };
+  var pasteBox = h("div", { class: "rspaste", hidden: true });
+  var ta = h("textarea", { class: "in", rows: "6", placeholder: "從 Excel 選員工編號、姓名兩欄複製，貼在這裡；\n或一行一個人：E10107 王小明", "aria-label": "貼上員工名單", style: "width:100%;box-sizing:border-box;font-size:14px" });
+  pasteBox.appendChild(ta);
+  pasteBox.appendChild(h("div", { class: "acts", style: "margin-top:6px" }, [btn("👀 看一下", function () { if (!ta.value.trim()) { rsMsg("先貼上名單"); return; } rsPreview(rsPaste(ta.value), "貼上的"); }, "sm pri")]));
+  var acts = [btn("📤 上傳 Excel／CSV", function () { file.click(); }, "sm pri"), btn("📋 貼上", function () { pasteBox.hidden = !pasteBox.hidden; if (!pasteBox.hidden) try { ta.focus(); } catch (e) { /* 沒關係 */ } }, "sm")];
+  if (rs.n) acts.push(btn(RS.listOn ? "收起名單" : "👀 看名單", function () { RS.listOn = !RS.listOn; drawRoster(); }, "sm"), btn("🧹 清空員工名單", rsClear, "sm bad"));
+  box.appendChild(h("div", { class: "acts rsacts", style: "flex-wrap:wrap" }, acts));
+  box.appendChild(file);
+  box.appendChild(pasteBox);
+  box.appendChild(h("div", { id: "rsMsg", class: "scr-m", role: "status" }));
+  box.appendChild(h("div", { id: "rsPrev" }));
+  if (RS.listOn && rs.n) box.appendChild(rsList(rs.rows || []));
+  box.appendChild(h("p", { class: "muted", style: "font-size:12.5px;margin:8px 0 0" }, ["Excel 的第一列可以是欄名（員工編號、姓名、備註…會自己認）；沒有欄名也可以（看內容猜：有數字的是員工編號）。舊的 .xls 請先另存成 .xlsx 或 CSV。比對只在藥戰手冊自己的後端做，不送給 AI。"]));
+}
+function rsList(rows) {
+  var wrap = h("div", { class: "rslist", style: "margin-top:10px" });
+  var q = h("input", { class: "in", type: "search", placeholder: "找員工編號或姓名", value: RS.q, "aria-label": "找員工編號或姓名", style: "width:100%;max-width:280px;box-sizing:border-box" });
+  var body = h("div");
+  var paint = function () {
+    body.innerHTML = "";
+    var k = String(q.value || "").replace(/\s+/g, "").toUpperCase(), hit = rows.filter(function (r) { return !k || String(r[0]).toUpperCase().indexOf(k) >= 0 || String(r[1]).replace(/\s+/g, "").toUpperCase().indexOf(k) >= 0; });
+    var tb = h("table", { class: "tbl" });
+    tb.appendChild(h("tr", {}, ["員工編號", "姓名", "備註"].map(function (x) { return h("th", {}, [x]); })));
+    hit.slice(0, 200).forEach(function (r) { tb.appendChild(h("tr", {}, [h("td", {}, [r[0]]), h("td", {}, [r[1]]), h("td", { class: "muted" }, [r[2] || ""])])); });
+    body.appendChild(h("div", { class: "tscroll logscroll" }, [tb]));
+    body.appendChild(h("div", { class: "muted", style: "font-size:12.5px" }, [hit.length > 200 ? "找到 " + hit.length + " 人，只列前 200 個（打字縮小範圍）" : "找到 " + hit.length + " 人"]));
+  };
+  q.oninput = function () { RS.q = q.value; paint(); };
+  wrap.appendChild(q); wrap.appendChild(body); paint();
+  return wrap;
+}
+// ── 讀檔：Excel（.xlsx）或 CSV → [{ n: 第幾列, c: [每一格] }] ──
+function rsReadFile(file) {
+  if (file.size > 8e6) { rsMsg("❌ 檔案太大（8 MB 以內）"); return; }
+  var name = String(file.name || "");
+  if (/\.xls$/i.test(name)) { rsMsg("這是舊的 Excel（.xls）：請在 Excel「另存新檔」選 .xlsx 或 CSV，再上傳。"); return; }
+  rsMsg("讀檔中…");
+  var fr = new FileReader();
+  fr.onload = function () {
+    var b = new Uint8Array(fr.result);
+    if (b[0] === 0x50 && b[1] === 0x4B) { rsXlsx(b).then(function (rows) { rsPreview(rows, name); }, function (e) { rsMsg("❌ 這個 Excel 讀不出來（" + (e && e.message || e) + "）：請另存成 CSV 再試。"); }); return; }
+    rsPreview(rsCsv(rsDecode(b)), name);
+  };
+  fr.onerror = function () { rsMsg("❌ 檔案讀不出來"); };
+  fr.readAsArrayBuffer(file);
+}
+function rsDecode(b) {
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(b).replace(/^﻿/, ""); } catch (e) { /* 不是 UTF-8 */ }
+  try { return new TextDecoder("big5").decode(b); } catch (e) { /* 瀏覽器不認得 Big5 */ }
+  return new TextDecoder("utf-8").decode(b);
+}
+function rsCsv(text) {   // 逗號、Tab、分號都可以；有引號的照 CSV 的規矩
+  var t = String(text || "").replace(/\r\n?/g, "\n"), first = t.split("\n")[0] || "";
+  var d = first.indexOf("\t") >= 0 ? "\t" : first.split(";").length > first.split(",").length ? ";" : ",";
+  var rows = [], row = [], cell = "", q = false;
+  for (var i = 0; i < t.length; i++) {
+    var ch = t.charAt(i);
+    if (q) { if (ch === '"') { if (t.charAt(i + 1) === '"') { cell += '"'; i++; } else q = false; } else cell += ch; continue; }
+    if (ch === '"' && cell === "") { q = true; continue; }
+    if (ch === d) { row.push(cell); cell = ""; continue; }
+    if (ch === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; continue; }
+    cell += ch;
+  }
+  if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+  return rows.map(function (c, i) { return { n: i + 1, c: c }; });
+}
+function rsPaste(text) {   // 從 Excel 複製（Tab 分開）、逗號分開，或一行「E10107 王小明」
+  var t = String(text || "").replace(/\r\n?/g, "\n");
+  if (t.indexOf("\t") >= 0) return rsCsv(t);
+  return t.split("\n").map(function (l, i) {
+    l = l.trim();
+    if (!l) return { n: i + 1, c: [] };
+    if (/[,，]/.test(l)) return { n: i + 1, c: l.split(/[,，]/).map(function (x) { return x.trim(); }) };
+    var p = l.split(/\s+/), e = "", rest = [];
+    p.forEach(function (x) { if (!e && /\d/.test(x) && rsEmp(x)) e = x; else rest.push(x); });
+    return { n: i + 1, c: e ? [e, rest.join(" ")] : [l] };
+  });
+}
+function rsU16(b, o) { return b[o] | (b[o + 1] << 8); }
+function rsU32(b, o) { return (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0; }
+function rsZip(b) {   // .xlsx 是壓縮檔：找出裡面每個檔在哪裡 → { 檔名: { m: 壓縮方式, off: 資料開始, n: 大小 } }
+  var e = -1, i;
+  for (i = b.length - 22; i >= Math.max(0, b.length - 70000); i--) if (rsU32(b, i) === 0x06054b50) { e = i; break; }
+  if (e < 0) throw new Error("不是 Excel 檔");
+  var cnt = rsU16(b, e + 10), off = rsU32(b, e + 16), out = {}, td = new TextDecoder("utf-8");
+  for (var k = 0; k < cnt && off + 46 <= b.length; k++) {
+    if (rsU32(b, off) !== 0x02014b50) break;
+    var nl = rsU16(b, off + 28), lo = rsU32(b, off + 42);
+    out[td.decode(b.subarray(off + 46, off + 46 + nl))] = { m: rsU16(b, off + 10), off: lo + 30 + rsU16(b, lo + 26) + rsU16(b, lo + 28), n: rsU32(b, off + 20) };
+    off += 46 + nl + rsU16(b, off + 30) + rsU16(b, off + 32);
+  }
+  return out;
+}
+function rsUnzip(b, f) {   // → Promise（文字）
+  if (!f) return Promise.resolve("");
+  var data = b.subarray(f.off, f.off + f.n);
+  if (f.m === 0) return Promise.resolve(new TextDecoder("utf-8").decode(data));
+  if (f.m !== 8 || typeof DecompressionStream === "undefined") return Promise.reject(new Error("瀏覽器太舊，解不開 Excel"));
+  return new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).text();
+}
+function rsTxt(el) {   // 一格的字：一格分好幾段（粗體、顏色）的接起來；注音、拼音標示（rPh）不算
+  var ts = el.getElementsByTagNameNS("*", "t"), s = "";
+  for (var k = 0; k < ts.length; k++) { var p = ts[k].parentNode; if (!(p && (p.localName || p.nodeName) === "rPh")) s += ts[k].textContent; }
+  return s;
+}
+function rsCol(ref) { var m = /^([A-Z]+)\d+$/.exec(ref || ""); if (!m) return -1; var n = 0; for (var i = 0; i < m[1].length; i++) n = n * 26 + (m[1].charCodeAt(i) - 64); return n - 1; }
+function rsXlsx(b) {   // 第一個工作表 → [{ n, c }]
+  var z;
+  try { z = rsZip(b); } catch (e) { return Promise.reject(e); }
+  var P = new DOMParser(), xml = function (t) { return P.parseFromString(t || "<x/>", "application/xml"); };
+  return Promise.all([rsUnzip(b, z["xl/workbook.xml"]), rsUnzip(b, z["xl/_rels/workbook.xml.rels"]), rsUnzip(b, z["xl/sharedStrings.xml"])]).then(function (a) {
+    var sheet = "";
+    try {
+      var s1 = xml(a[0]).getElementsByTagNameNS("*", "sheet")[0], rid = s1 ? s1.getAttribute("r:id") || s1.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id") : "";
+      var rels = xml(a[1]).getElementsByTagNameNS("*", "Relationship");
+      for (var i = 0; i < rels.length; i++) if (rels[i].getAttribute("Id") === rid) { var t = rels[i].getAttribute("Target") || ""; sheet = t.charAt(0) === "/" ? t.slice(1) : "xl/" + t.replace(/^\.\//, ""); }
+    } catch (e) { sheet = ""; }
+    if (!z[sheet]) sheet = Object.keys(z).filter(function (n) { return /^xl\/worksheets\/sheet\d+\.xml$/.test(n); }).sort()[0] || "";
+    if (!z[sheet]) throw new Error("找不到工作表");
+    var ss = [];
+    if (a[2]) { var sis = xml(a[2]).getElementsByTagNameNS("*", "si"); for (var j = 0; j < sis.length; j++) ss.push(rsTxt(sis[j])); }
+    return rsUnzip(b, z[sheet]).then(function (t) {
+      var rows = [], rs = xml(t).getElementsByTagNameNS("*", "row");
+      for (var i = 0; i < rs.length && rows.length < 6000; i++) {
+        var cs = rs[i].getElementsByTagNameNS("*", "c"), row = [];
+        for (var j = 0; j < cs.length; j++) {
+          var c = cs[j], col = rsCol(c.getAttribute("r")), tp = c.getAttribute("t") || "", v = c.getElementsByTagNameNS("*", "v")[0], val = "";
+          if (tp === "s") val = ss[+(v ? v.textContent : -1)] || "";
+          else if (tp === "inlineStr") val = rsTxt(c);
+          else val = v ? v.textContent : "";
+          if (col < 0) col = row.length;
+          while (row.length < col) row.push("");
+          row[col] = val;
+        }
+        rows.push({ n: +(rs[i].getAttribute("r") || i + 1), c: row });
+      }
+      return rows;
+    });
+  });
+}
+// 哪一欄是員工編號、姓名、備註：先找欄名；沒有欄名就看內容猜（有數字的＝員工編號，沒數字的字＝姓名）
+function rsMap(rows) {
+  var i, j;
+  for (i = 0; i < Math.min(rows.length, 6); i++) {
+    var c = rows[i].c, e = -1, n = -1, m = -1;
+    for (j = 0; j < c.length; j++) { var t = String(c[j] || "").replace(/\s+/g, ""); if (!t) continue; if (n < 0 && RS_NAME.test(t)) n = j; else if (e < 0 && RS_EMP.test(t)) e = j; else if (m < 0 && RS_MEMO.test(t)) m = j; }
+    if (e >= 0 && n >= 0) return { head: i, e: e, n: n, m: m };
+  }
+  var w = 0, sample = rows.slice(0, 60);
+  sample.forEach(function (r) { w = Math.max(w, r.c.length); });
+  var se = [], sn = [];
+  for (j = 0; j < w; j++) { se[j] = 0; sn[j] = 0; sample.forEach(function (r) { var t = String(r.c[j] || "").trim(); if (/\d/.test(t) && rsEmp(t)) se[j]++; else if (t && !/\d/.test(t) && t.length <= 20) sn[j]++; }); }
+  var ce = -1, cn = -1;
+  for (j = 0; j < w; j++) if (se[j] && (ce < 0 || se[j] > se[ce])) ce = j;
+  for (j = 0; j < w; j++) if (j !== ce && sn[j] && (cn < 0 || sn[j] > sn[cn])) cn = j;
+  return { head: -1, e: ce, n: cn, m: -1 };
+}
+function rsColName(j) { var s = ""; j++; while (j > 0) { var r = (j - 1) % 26; s = String.fromCharCode(65 + r) + s; j = Math.floor((j - 1) / 26); } return s; }
+// 讀出來的 → 先給開發者看（還沒送出去）
+function rsPreview(rows, src) {
+  var box = $("#rsPrev"); if (!box) return;
+  box.innerHTML = ""; rsMsg("");
+  rows = (rows || []).filter(function (r) { return r.c.some(function (x) { return String(x || "").trim(); }); });
+  if (!rows.length) { rsMsg("❌ 裡面沒有東西"); return; }
+  var mp = rsMap(rows);
+  if (mp.e < 0 || mp.n < 0) { rsMsg("❌ 找不到員工編號、姓名是哪兩欄：第一列請寫欄名「員工編號」「姓名」，再試一次。"); return; }
+  var good = [], at = {}, dup = 0, bad = [];
+  rows.forEach(function (r, i) {
+    if (i <= mp.head) return;
+    var e = rsEmp(r.c[mp.e]), n = rsName(r.c[mp.n]), m = mp.m >= 0 ? String(r.c[mp.m] || "").replace(/\s+/g, " ").trim().slice(0, 60) : "";
+    if (!e || !n) { bad.push(r.n); return; }
+    var k = rsKey(e);
+    if (at[k] !== undefined) { good[at[k]] = [e, n, m]; dup++; return; }
+    at[k] = good.length; good.push([e, n, m]);
+  });
+  if (!good.length) { rsMsg("❌ 一個人都讀不出來（員工編號要是英文字母、數字；姓名不能空白）。"); return; }
+  if (good.length > 5000) { rsMsg("❌ 太多人了（一次最多 5000 人）"); return; }
+  RS.prev = good;
+  var cur = (AD.rs && AD.rs.n) || 0;
+  var lines = ["📄 " + src + "：讀到 " + good.length + " 個人。" + (dup ? "重複的員工編號 " + dup + " 個（用後面那一列）。" : ""),
+    "員工編號＝第 " + rsColName(mp.e) + " 欄、姓名＝第 " + rsColName(mp.n) + " 欄" + (mp.m >= 0 ? "、備註＝第 " + rsColName(mp.m) + " 欄" : "") + (mp.head >= 0 ? "（第 " + rows[mp.head].n + " 列是欄名）" : "（沒有欄名：照內容猜的，請看下面對不對）")];
+  if (bad.length) lines.push("⚠ 看不懂、跳過的列：" + bad.length + " 列（第 " + bad.slice(0, 12).join("、") + (bad.length > 12 ? "…" : "") + " 列；員工編號要是英文字母、數字，姓名不能空白）");
+  lines.forEach(function (l) { box.appendChild(h("p", { style: "margin:4px 0" }, [l])); });
+  var tb = h("table", { class: "tbl" });
+  tb.appendChild(h("tr", {}, ["員工編號", "姓名", "備註"].map(function (x) { return h("th", {}, [x]); })));
+  good.slice(0, 8).forEach(function (r) { tb.appendChild(h("tr", {}, [h("td", {}, [r[0]]), h("td", {}, [r[1]]), h("td", { class: "muted" }, [r[2]])])); });
+  box.appendChild(h("div", { class: "tscroll" }, [tb]));
+  if (good.length > 8) box.appendChild(h("div", { class: "muted", style: "font-size:12.5px" }, ["（只列前 8 個，其他的一起匯入）"]));
+  var radio = function (v, label) {
+    var r = h("input", { type: "radio", name: "rsmode", value: v, checked: RS.mode === v });
+    r.onchange = function () { RS.mode = v; };
+    return h("label", { style: "display:flex;gap:6px;align-items:flex-start;margin:4px 0" }, [r, h("span", {}, [label])]);
+  };
+  if (cur) box.appendChild(h("div", { style: "margin:8px 0" }, [radio("replace", "整份換掉：名單上原本的 " + cur + " 人，換成這 " + good.length + " 人"), radio("add", "加進去：原本的留著，同一個員工編號用新的")]));
+  else RS.mode = "replace";
+  box.appendChild(h("div", { class: "acts" }, [btn("✅ 匯入 " + good.length + " 人", function (ev) { rsImport(ev.target); }, "sm pri"), btn("取消", function () { RS.prev = null; box.innerHTML = ""; }, "sm")]));
+}
+function rsImport(el) {
+  if (!RS.prev || AD.busy) return;
+  var rows = RS.prev, mode = (AD.rs && AD.rs.n) ? RS.mode : "replace";
+  var go = function () {
+    AD.busy = true; if (el) el.disabled = true; rsMsg("匯入中…");
+    call("hbRoster", ["import", JSON.stringify(rows), mode], { ms: 120000 }).then(function (r) {
+      AD.busy = false;
+      if (!adOk(r)) { if (el) el.disabled = false; rsMsg(""); return; }
+      RS.prev = null;
+      toast("✅ 員工名單匯入好了：名單上現在 " + r.n + " 人" + (r.nbad ? "（跳過 " + r.nbad + " 列）" : ""));
+      rsLoad();
+      call("hbUsers", []).then(function (u) { if (!adOk(u)) return; AD.users = u.users || AD.users; AD.devs = u.devs || AD.devs; AD.rsn = u.rs; drawUsers(); }, function () { /* 下次再說 */ });
+    }, function (e) { AD.busy = false; if (el) el.disabled = false; rsMsg("❌ " + e.message); });
+  };
+  var cur = (AD.rs && AD.rs.n) || 0;
+  if (mode === "replace" && cur) modal({ title: "整份換掉員工名單？", lines: ["名單上原本的 " + cur + " 人會換成這 " + rows.length + " 人。", "已經核可的人不受影響（不會被撤銷）；之後申請的人照新的名單比對。"], buttons: [{ label: "不要", cls: "sm" }, { label: "換掉", cls: "sm pri", fn: go }] });
+  else go();
+}
+function rsClear() {
+  if (AD.busy) return;
+  modal({ title: "清空員工名單？", lines: ["員工名單上的 " + ((AD.rs && AD.rs.n) || 0) + " 人全部刪掉。", "已經核可的人不受影響；之後的申請就不會自動核可（全部交給你審核），直到再匯入一份。"], buttons: [{ label: "不要", cls: "sm" }, { label: "清空", cls: "sm bad", fn: function () {
+    AD.busy = true;
+    call("hbRoster", ["clear"]).then(function (r) { AD.busy = false; if (!adOk(r)) return; toast("🧹 員工名單清空了"); RS.listOn = false; rsLoad(); }, function (e) { AD.busy = false; toast("❌ " + e.message); });
+  } }] });
 }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
