@@ -1368,3 +1368,16 @@ body{min-height:100vh}
 .modal .dlg.cpdlg{max-width:560px;text-align:left}
 .cpdlg .cpin{font-size:16px;width:100%;font-family:var(--mono)}
 .cpdlg .cppv{min-height:56px;display:flex;align-items:center;justify-content:center;background:#FAFBFC;border:1px solid var(--line);border-radius:10px;margin:10px 0;padding:10px;overflow-x:auto}
+
+/* 第 34 批追加：開發者網頁「🔒 我的裝置」、綁滿 3 台時選一台換掉 */
+.dvlist{display:grid;gap:8px;margin:8px 0}
+.dvrow{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;text-align:left}
+.dvrow.me{border-color:var(--accent);background:#F4FBF9}
+.dvic{font-size:22px;line-height:1;flex:0 0 auto}
+.dvmain{flex:1 1 200px;min-width:0}
+.dvname{font-weight:700;overflow-wrap:anywhere}
+.dvname.unk{color:var(--ink2);font-weight:600}
+.dvmeta{font-size:12.5px;color:var(--ink2);margin-top:2px;font-variant-numeric:tabular-nums}
+.dvme{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;color:var(--ok);background:#E2F5E8;border-radius:999px;padding:1px 8px;vertical-align:1px}
+.dvacts{display:flex;gap:6px;flex:0 0 auto}
+.scr.swscr .scr-in{max-width:620px}
