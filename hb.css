@@ -858,6 +858,16 @@ body{min-height:100vh}
 .lgm{text-align:left}
 .lgfine{font-size:12.5px;color:var(--ink3);line-height:1.6;margin:10px 0 0}
 @media (max-width:700px){.lggrid{grid-template-columns:1fr}}
+/* 第 36 批：電腦登入（員工編號＋姓名；這台還沒記住你＝② LINE 驗證碼）、管理頁「電腦用的入口連結」 */
+.scr.pcscr .scr-in{max-width:520px}
+.pcbox{border:1.5px solid var(--line);border-radius:14px;padding:14px;background:#FAFBFC;margin-top:10px;min-width:0}
+.pcbox[hidden]{display:none}
+.pcbox .scr-b{margin-top:10px}
+.pc2{text-align:center}
+.pcrem{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:13.5px;color:var(--ink2);line-height:1.5;cursor:pointer}
+.pcrem input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--accent)}
+.pcurlrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.pcurl{flex:1 1 260px;min-width:0;font-family:var(--mono);font-size:12.5px}
 
 /* 上面一排 */
 .hdr{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--line);padding:8px 16px;box-shadow:0 1px 6px rgba(20,40,60,.05)}
@@ -1381,3 +1391,19 @@ body{min-height:100vh}
 .dvme{display:inline-block;margin-left:6px;font-size:12px;font-weight:700;color:var(--ok);background:#E2F5E8;border-radius:999px;padding:1px 8px;vertical-align:1px}
 .dvacts{display:flex;gap:6px;flex:0 0 auto}
 .scr.swscr .scr-in{max-width:620px}
+
+/* 第 37 批：管理頁「⑦ 📤 匯出給 Copilot」（進度條、結果、zip 裡的檔） */
+.exopts{display:flex;flex-wrap:wrap;gap:6px 18px;margin:4px 0 10px;font-size:14px}
+.exopts label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.exprog{margin:10px 0 4px}
+.exbar{height:10px;border-radius:999px;background:#E6ECEB;overflow:hidden}
+.exbar i{display:block;height:100%;width:2%;background:var(--accent);border-radius:999px;transition:width .3s}
+.exprog .hint{margin:6px 0 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.exsum{display:grid;gap:4px;margin:10px 0 6px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#F7FBFA;font-size:14px;overflow-wrap:anywhere}
+.exfiles{margin:6px 0;font-size:13px}
+.exfiles summary{cursor:pointer;color:var(--accent);font-weight:600}
+.exfiles ul{margin:6px 0 0;padding-left:1.2em;max-height:220px;overflow:auto;font-variant-numeric:tabular-nums}
+.exfiles li{overflow-wrap:anywhere}
+.exnext{margin:8px 0 0;padding-left:1.4em}
+.hint.warn{color:#8A5300}
+@media (prefers-reduced-motion: reduce){.exbar i{transition:none}}

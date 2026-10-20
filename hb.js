@@ -1085,7 +1085,7 @@ var YZ_MAP_GAP = 3;          // 標籤和圓點的間隔（px）
 var YZ_MAP_TAP = 44;         // 標籤方塊至少這麼高（px）：手指好點的大小
 var YZ_MAP_ICO = 14;         // 圖示寬（px，估計）
 var YZ_MAP_PILL_MAX = 96;    // 標籤寬超過這個（px）就提醒（太寬會擠到旁邊的標籤）
-var YZ_MAP_PILL_MAX_HALF = 124;   // 切成左右兩張時（一張只放一半的地點，比較不擠）的標準
+var YZ_MAP_PILL_MAX_HALF = 124;   // 切成好幾張時（一張只放一部分的地點，比較不擠）的標準
 var YZ_MAP_PILL_SEP = 6;     // 第 32 批：LINE 上兩個標籤至少隔幾 px；再近（或疊在一起）就自動換一個方向（網頁不變）
 var YZ_MAP_WARN_BYTES = 20e3;   // 目錄卡片超過這個大小就提醒（上限抓 27 KB）
 var YZ_MAP_LOCK_INK = "#6B7480", YZ_MAP_LOCK_DOT = "#8A94A0", YZ_MAP_NEW = "#E5484D";
@@ -1260,10 +1260,11 @@ function _yzMapButtons_(spots, hb) {
 // 目錄圖的卡片。「圖片直接顯示」關掉時，圖不放，改成「每個地點一個按鈕」（保密設定一樣管得到這張圖）。
 function _yzMapBubble_(cat, hb, o) {
   cat = cat || {}; o = o || {};
-  var spots = _yzMapSpots_(cat).slice(0, YZ_MAP_MAX), direct = YZ_CFG.imgDirect !== false && !!cat.img, foot = [], part = o.part === 0 || o.part === 1 ? o.part : -1;
+  var n = o.parts === 3 ? 3 : 2, part = typeof o.part === "number" && o.part >= 0 && o.part < n ? o.part : -1;   // 第 35 批：可以切成三張
+  var spots = _yzMapSpots_(cat).slice(0, YZ_MAP_MAX), direct = YZ_CFG.imgDirect !== false && !!cat.img, foot = [];
   var b = { type: "bubble", size: cat.size || "giga" };
   if (part < 0) b.header = _yzHead_("📘 藥戰手冊　目錄", cat.title || "目錄", cat.hint || "");
-  else b.header = _yzHead_("📘 藥戰手冊　目錄（" + (part + 1) + "／2）", cat.title || "目錄", part === 0 ? "👉 往左滑，還有右半邊" : "👈 往右滑，回到左半邊");
+  else b.header = _yzHead_("📘 藥戰手冊　目錄（" + (part + 1) + "／" + n + "）", cat.title || "目錄", _yzMapSwipe_(part, n));
   if (direct) {
     var cs = [{ type: "image", url: cat.img, size: "full", aspectMode: "cover", aspectRatio: cat.ar || _yzAR_(cat.w || 1000, cat.h || 650) }];
     spots.forEach(function (s) { cs.push(_yzMapHit_(s, hb)); });                                              // 先放物品框（在下面）
@@ -1279,37 +1280,69 @@ function _yzMapBubble_(cat, hb, o) {
   b.footer = { type: "box", layout: "vertical", spacing: "sm", paddingAll: "10px", contents: foot };
   return b;
 }
-// ── 很寬的目錄圖（像「圖一」那種環景）：LINE 一張卡片太矮、標籤會擠在一起，所以切成「左右兩張」，左右滑著看 ──
+// ── 很寬的目錄圖（像「圖一」那種環景）：LINE 一張卡片太矮、標籤會擠在一起，所以切成「左右兩張」（第 35 批：很寬的切成「左、中、右」三張），左右滑著看 ──
 // cat.parts ＝ [{ img, fname, x0, x1, w, h }, { … }]：切好的兩張圖（網頁編輯器換圖時自動切、自動上傳，檔名一樣是亂碼）；
 //   x0、x1 ＝ 這一張是原圖的「幾 % 到幾 %」。cat.split ＝ 要不要切（沒填＝要；圖不寬、或還沒切好，就照舊一張）。
-// 地點照「圓點在哪一半」分到左邊或右邊那張，位置換算成那一張的 %（物品框跨過切線的，超出的部分 LINE 不顯示，標籤和圓點還是在）。
-var YZ_MAP_WIDE = 1.8;                     // 寬是高的幾倍以上，算「很寬」
+// 地點照「圓點在哪一張」分（重疊的那一段從中間分開），位置換算成那一張的 %（物品框跨過切線的，超出的部分 LINE 不顯示，標籤和圓點還是在）。
+// 第 35 批：寬是高的 2.6 倍以上（像新的圖一，快 3 倍）切成三張，一張的東西放大約 1.5 倍、標籤不擠。以前切好兩張的，開發者打開「✏️ 編輯」時自動重切、自動存檔。
+//   切三張的放在 cat.parts3（cat.parts 放空的）：退回第 34 批的程式時，舊程式看不到三張、也沒有兩張 → LINE 照舊一整張（不會切錯）。用 _yzMapParts_ 拿現在用的那幾張。
+var YZ_MAP_WIDE = 1.8;                     // 寬是高的幾倍以上，算「很寬」（切成左右兩張）
+var YZ_MAP_WIDE3 = 2.6;                    // 第 35 批：寬是高的幾倍以上，切成三張（左、中、右）
 var YZ_MAP_CUTS = [[0, 52], [48, 100]];    // 左右兩張各佔原圖的幾 %（中間重疊 4 %，中間附近的東西兩張都看得到）
+var YZ_MAP_CUTS3 = [[0, 36], [32, 68], [64, 100]];   // 第 35 批：三張各佔原圖的幾 %（每兩張中間重疊 4 %）
+function _yzMapCutsFor_(ratio) { return ratio >= YZ_MAP_WIDE3 ? YZ_MAP_CUTS3 : ratio >= YZ_MAP_WIDE ? YZ_MAP_CUTS : []; }   // 第 35 批：這麼寬的圖要怎麼切（不用切＝[]）
+function _yzMapPartName_(i, n) { return n === 3 ? ["左邊那張", "中間那張", "右邊那張"][i] || "" : i ? "右半張" : "左半張"; }
+function _yzMapSwipe_(i, n) {   // 切成好幾張時，卡片最上面那一行：往哪邊滑還有
+  if (n === 3) return i === 0 ? "👉 往左滑，還有中間、右邊" : i === 1 ? "👈 👉 左右滑，左邊、右邊還有" : "👈 往右滑，回到中間、左邊";
+  return i === 0 ? "👉 往左滑，還有右半邊" : "👈 往右滑，回到左半邊";
+}
 function _yzMapRatio_(cat) {
   var a = String((cat && cat.ar) || "").split(":"), w = Number(a[0]), hh = Number(a[1]);
   if (w > 0 && hh > 0) return w / hh;
   return cat && cat.w > 0 && cat.h > 0 ? cat.w / cat.h : 0;
 }
 function _yzMapWide_(cat) { return _yzMapRatio_(cat) >= YZ_MAP_WIDE; }
-function _yzMapSplitOn_(cat) {
-  var p = (cat && cat.parts) || [];
-  return !!(cat && cat.split !== false && p.length === 2 && p[0] && p[0].img && p[1] && p[1].img && p[1].x0 < p[0].x1);
+// 第 35 批：LINE 現在用的那幾張：切三張的（parts3）優先，再來切兩張的（parts）；每一張都要有圖、相鄰的要有重疊，不然＝[]（不切，照舊一整張）
+function _yzMapParts_(cat) {
+  if (!cat || cat.split === false) return [];
+  var good = function (p, n) {
+    if (!Array.isArray(p) || p.length !== n) return false;
+    for (var i = 0; i < n; i++) if (!p[i] || !p[i].img || (i && !(Number(p[i].x0) < Number(p[i - 1].x1)))) return false;
+    return true;
+  };
+  return good(cat.parts3, 3) ? cat.parts3 : good(cat.parts, 2) ? cat.parts : [];
 }
-function _yzMapPartCat_(cat, i) {   // 左（0）／右（1）那一張：圖換成切好的那一半，地點換算成那一半的 %
-  var pt = cat.parts[i], span = Math.max(1, pt.x1 - pt.x0), mid = (cat.parts[0].x1 + cat.parts[1].x0) / 2;
+function _yzMapWithParts_(cat, list) {   // 第 35 批：換上切好的那幾張（三張放 parts3、兩張放 parts，另一個清空）→ 新的一份（不改原本的）
+  var a = Array.isArray(list) ? list : [];
+  return Object.assign({}, cat, a.length === 3 ? { parts: [], parts3: a } : { parts: a, parts3: [] });
+}
+function _yzMapSplitOn_(cat) { return _yzMapParts_(cat).length > 0; }   // 切好了（兩張或三張）
+// 第 35 批：切好的張數、位置跟現在的規則不一樣（例：以前切成兩張的很寬的圖，現在要切三張）→ 編輯器要重新切
+function _yzMapNeedCut_(cat) {
+  if (!cat || !cat.img || cat.split === false) return false;
+  var want = _yzMapCutsFor_(_yzMapRatio_(cat)), p = _yzMapParts_(cat);
+  if (!want.length) return false;
+  if (p.length !== want.length) return true;
+  for (var i = 0; i < want.length; i++) if (Number(p[i].x0) !== want[i][0] || Number(p[i].x1) !== want[i][1]) return true;
+  return false;
+}
+function _yzMapPartCat_(cat, i) {   // 第 i 張（左邊數來，0 起）：圖換成切好的那一張，地點換算成那一張的 %
+  var P = _yzMapParts_(cat), pt = P[i], span = Math.max(1, pt.x1 - pt.x0);
+  var lo = i > 0 ? (P[i - 1].x1 + pt.x0) / 2 : -Infinity, hi = i < P.length - 1 ? (pt.x1 + P[i + 1].x0) / 2 : Infinity;   // 重疊的那一段從中間分開
   var spots = (cat.spots || []).filter(function (s) { return s && isFinite(Number(s.x)) && isFinite(Number(s.w)); }).filter(function (s) {
-    var cx = Number(s.x) + Number(s.w) / 2; return i === 0 ? cx < mid : cx >= mid;
+    var cx = Number(s.x) + Number(s.w) / 2; return cx >= lo && cx < hi;
   }).map(function (s) {
     var x0 = (Number(s.x) - pt.x0) / span * 100, x1 = (Number(s.x) + Number(s.w) - pt.x0) / span * 100, cx = (x0 + x1) / 2, hw = (x1 - x0) / 2;
     hw = Math.min(hw, cx, 100 - cx);   // 跨過切線的物品框：以圓點為中心縮小，圓點位置不變
     var wi = Math.max(1, Math.round(hw * 2)), xi = Math.max(0, Math.min(100 - wi, Math.round(cx - wi / 2)));   // 換成整數 %（圓點最多偏 0.5 %）
     return Object.assign({}, s, { x: xi, w: wi });
   });
-  return Object.assign({}, cat, { img: pt.img, fname: pt.fname, ar: _yzAR_(pt.w || 1, pt.h || 1), w: pt.w, h: pt.h, spots: spots, parts: null, split: false });
+  return Object.assign({}, cat, { img: pt.img, fname: pt.fname, ar: _yzAR_(pt.w || 1, pt.h || 1), w: pt.w, h: pt.h, spots: spots, parts: null, parts3: null, split: false });
 }
-function _yzMapHome_(cat, hb) {   // 「🏠 首頁」（以前叫「📚 目錄」）回的那一則：切好了＝兩張一排（左右滑）；不然照舊一張
-  if (!_yzMapSplitOn_(cat) || YZ_CFG.imgDirect === false) return _yzMapBubble_(cat, hb);
-  return { type: "carousel", contents: [0, 1].map(function (i) { return _yzMapBubble_(_yzMapPartCat_(cat, i), hb, { part: i }); }) };
+function _yzMapHome_(cat, hb) {   // 「🏠 首頁」（以前叫「📚 目錄」）回的那一則：切好了＝兩張（或三張）一排（左右滑）；不然照舊一張
+  var P = _yzMapParts_(cat), n = P.length;
+  if (!n || YZ_CFG.imgDirect === false) return _yzMapBubble_(cat, hb);
+  return { type: "carousel", contents: P.map(function (pt, i) { return _yzMapBubble_(_yzMapPartCat_(cat, i), hb, { part: i, parts: n }); }) };
 }
 // 點了「🔒 尚未開放」的地方，機器人回的那一張小卡
 function _yzMapLockedBubble_(cat, pid) {
@@ -1331,25 +1364,26 @@ function _yzMapCovered_(cat, hb) {
 function _yzMapCps_(s) { var n = 0; for (var i = 0; i < s.length; i++) { var c = s.charCodeAt(i); if (c >= 0xDC00 && c <= 0xDFFF) continue; n++; } return n; }
 function _yzMapBox_(a, b) { var w = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0), h = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0); return w > 0 && h > 0 ? w * h : 0; }
 // 檢查（給編輯器、測試用）：每個地點的問題＋整張圖的問題。lv：bad（一定要改）／warn（建議改）
-// 圖切成左右兩張的時候：「位置、大小」的問題（標籤擠不擠、會不會超出邊）照 LINE 上實際那一張（左／右半張）檢查。
+// 圖切成好幾張的時候：「位置、大小」的問題（標籤擠不擠、會不會超出邊）照 LINE 上實際那一張（左／右半張；第 35 批：或左／中／右那張）檢查。
 function _yzMapCheck_(cat, hb) {
   cat = cat || {};
   if (!_yzMapSplitOn_(cat)) {
     var one = _yzMapCheck1_(cat, hb, { basic: true, geom: true });
-    if (cat.img && _yzMapWide_(cat)) { one.general.push({ lv: "warn", msg: "圖很寬（寬是高的 " + (Math.round(_yzMapRatio_(cat) * 10) / 10) + " 倍）：LINE 一張卡片會很矮、標籤擠在一起。建議打開「LINE 切成左右兩張」。" }); one.warn++; }
+    if (cat.img && _yzMapWide_(cat)) { one.general.push({ lv: "warn", msg: "圖很寬（寬是高的 " + (Math.round(_yzMapRatio_(cat) * 10) / 10) + " 倍）：LINE 一張卡片會很矮、標籤擠在一起。建議打開「LINE：很寬的圖切成好幾張」。" }); one.warn++; }
     return one;
   }
   var out = _yzMapCheck1_(cat, hb, { basic: true, geom: false });
   out.parts = [];
-  [0, 1].forEach(function (i) {
-    var r = _yzMapCheck1_(_yzMapPartCat_(cat, i), hb, { basic: false, geom: true, pmax: YZ_MAP_PILL_MAX_HALF, tag: i ? "（LINE 右半張）" : "（LINE 左半張）" });
+  var PP = _yzMapParts_(cat), np = PP.length;
+  PP.forEach(function (pt, i) {
+    var r = _yzMapCheck1_(_yzMapPartCat_(cat, i), hb, { basic: false, geom: true, pmax: YZ_MAP_PILL_MAX_HALF, tag: "（LINE " + _yzMapPartName_(i, np) + "）" });
     Object.keys(r.spots).forEach(function (id) { out.spots[id] = (out.spots[id] || []).concat(r.spots[id]); });
     out.bad += r.bad; out.warn += r.warn; out.parts.push({ px: r.px, ih: r.ih, n: r.n });
   });
   if (cat.img) {
-    var car = _yzMapHome_(Object.assign({}, cat, { img: YZ_MAP_URL_SAMPLE, parts: cat.parts.map(function (pt) { return Object.assign({}, pt, { img: YZ_MAP_URL_SAMPLE }); }) }), hb || {});
+    var car = _yzMapHome_(_yzMapWithParts_(Object.assign({}, cat, { img: YZ_MAP_URL_SAMPLE }), PP.map(function (pt) { return Object.assign({}, pt, { img: YZ_MAP_URL_SAMPLE }); })), hb || {});
     out.bytes = _yzBytes_(car);
-    if (out.bytes > YZ_MSG_SAFE) { out.general.push({ lv: "bad", msg: "左右兩張的目錄卡片一共約 " + Math.round(out.bytes / 100) / 10 + " KB，超過 LINE 一則訊息的上限（我們抓 " + Math.round(YZ_MSG_SAFE / 1000) + " KB）：減少地點，或關掉「圖下面加按鈕」。" }); out.bad++; }
+    if (out.bytes > YZ_MSG_SAFE) { out.general.push({ lv: "bad", msg: (np === 3 ? "左中右三張" : "左右兩張") + "的目錄卡片一共約 " + Math.round(out.bytes / 100) / 10 + " KB，超過 LINE 一則訊息的上限（我們抓 " + Math.round(YZ_MSG_SAFE / 1000) + " KB）：減少地點，或關掉「圖下面加按鈕」。" }); out.bad++; }
   }
   return out;
 }
@@ -2490,6 +2524,7 @@ var FlexView = (function () {
 /* ═══════════════ core.js：手冊網頁的骨架（登入、驗證、跟後端講話、閒置登出、浮水印、頁籤）═══════════════
  * 第 34 批：藥戰手冊是自己的 LINE 帳號＋自己的後端（不再跟補藥神器網頁共用鑰匙；這台記住的是 hbk、hbx）。
  * 登入：從 LINE「藥戰手冊」按「🌐 網頁」開（連結上有一次性的通行證），或代號登入（網頁出代號 → 貼到 LINE「藥戰手冊」→ 回 6 位數驗證碼）。
+ * 第 36 批：電腦登入＝電腦用的入口連結（管理頁拿）打開 → 員工編號＋姓名（這台記住你：直接進去；這台第一次、無痕視窗：再加 LINE 傳「登入」拿的 6 位數）。
  * 閒置超過設定的分鐘數：自動登出，內容從畫面上拿掉，要再驗證一次。
  * 手冊內容只放在記憶體：不存進瀏覽器、不留在網址列。 */
 
@@ -2563,7 +2598,10 @@ var SAVED = keyLoad();
 if (!T && SAVED && (!X || SAVED.x === X) && (!CFGX || SAVED.x === CFGX)) { X = SAVED.x; T = SAVED.t; FROMSAVED = true; }
 if (!X && !T) X = CFGX || bxLoad();
 // 網址列只留短的（鑰匙、通行證不留在網址列；分享網址也不會帶出去）
-try { if (/(^|[#&])(x|app|dev|k)=/.test(location.hash || "")) history.replaceState(null, "", location.pathname); } catch (e) { /* 沒關係 */ }
+try {
+  if (/(^|[#&])(app|dev|k)=/.test(location.hash || "")) history.replaceState(null, "", location.pathname);
+  else if (/(^|[#&])x=/.test(location.hash || "")) history.replaceState(null, "", location.pathname + (XRE.test(HP.x || "") && HP.x === X ? "#x=" + HP.x : ""));   // 第 36 批：電腦用的入口連結（只有後端位置、沒有鑰匙）：網址列留著（重新整理、存成書籤都找得到後端）
+} catch (e) { /* 沒關係 */ }
 
 var DK = (function () {
   var k = ""; try { k = localStorage.getItem("bdk") || ""; } catch (e) { k = ""; }
@@ -2585,13 +2623,14 @@ function post(fn, a, ms, bg) {
     .then(function (j) { clearTimeout(tm); return j; }, function (e) { clearTimeout(tm); throw (e && e.name === "AbortError") ? new Error("等太久沒回應") : e; });
 }
 // 只是「讀」的，斷線、等太久會自己再試（最多 3 次）；會改資料的只送一次
-var SAFE = { hbBoot: 1, hbData: 1, hbPing: 1, hbLog: 1, hbUsers: 1, hbCatImg: 1, hbDevices: 1 };
+var SAFE = { hbBoot: 1, hbData: 1, hbPing: 1, hbLog: 1, hbUsers: 1, hbCatImg: 1, hbDevices: 1, hbExportPics: 1, hbExportDrugs: 1 };   // 第 37 批：匯出拿圖、拿藥品資料也是只有讀
 function call(fn, args, opt) {
   opt = opt || {};
   var sid = SESS, tries = SAFE[fn] ? 3 : 1, n = 0;
   return new Promise(function (ok, bad) {
     function go() {
       n++;
+      if (opt.onTry) try { opt.onTry(n); } catch (e) { /* 沒關係 */ }   // 第 35 批：開場的畫面寫「第幾次」
       post(fn, args, opt.ms || (fn === "hbImg" || fn === "hbSave" || fn === "hbCatImg" ? 120000 : 40000)).then(function (j) {
         if (sid !== SESS) return;
         if (!j || j.ok !== 1) {
@@ -2614,9 +2653,10 @@ function call(fn, args, opt) {
 
 /* ── 整頁的畫面 ── */
 var APP = null;
+var BOOT = { on: false, t0: 0, n: 1, step: "", again: false };   // 第 35 批：開場（載入中）的狀態：見 scrLoad
 function screen(kids, cls) {
   stopPolls();
-  MAIN = false;
+  MAIN = false; BOOT.on = false;
   APP.className = "app"; APP.innerHTML = "";
   var box = h("div", { class: "scr " + (cls || "") }, [h("div", { class: "scr-in" }, kids)]);
   APP.appendChild(box);
@@ -2629,6 +2669,7 @@ function scrMsg(title, lines, buttons) {
 var MSG_LINE = "回 LINE 的「藥戰手冊」帳號，按下面那排的「🌐 網頁」。";
 var MSG_NODK = "這個瀏覽器沒辦法記住這台裝置（可能是無痕模式、關掉了網站資料，或瀏覽器太舊），所以不能看藥戰手冊。請用一般模式開，或換最新的 Chrome、Safari。";
 function reloadBtn() { return btn("🔄 重新載入", function () { location.reload(); }, "pri"); }
+function retryBtn() { return btn("🔄 再試一次", function () { SESS++; boot(); }, "pri"); }   // 第 35 批：開場沒成功：網頁裡再問一次後端（不重新載入：連結上的鑰匙還記在這一頁）
 // 停下來：鑰匙不對、這台還沒綁定（開發者）、後端連不到
 function stop(msg, code, need) {
   SESS++;
@@ -2663,7 +2704,7 @@ function scrBind(msg) {
    閒置太久、按了登出：要重新取得代號、驗證碼。代號 5 分鐘內有效：倒數到 0 自動換新的（沒人理的分頁連續換 2 次就停）；
    記在這個分頁（sessionStorage），手機切去 LINE 再切回來，還是同一組。 */
 var KEEP_ED = null;   // 閒置登出時還沒存的修改（只在記憶體，重新登入後接著編輯）
-var LG = { code: "", sec: "", ex: 0, dev: false, dead: false, seq: 0, tm: 0, busy: false, auto: 0, role: "", note: "" };
+var LG = { code: "", sec: "", ex: 0, dev: false, dead: false, seq: 0, tm: 0, busy: false, auto: 0, role: "", note: "", mode: "" };   // mode：第 36 批（"code"＝藥師按了「改用代號登入」）
 var LG_MIN = 5, LG_AUTO = 2, LG_AN = /^[A-HJ-NP-Za-kmnp-z2-9]{9}$/, LG_NUM = /^\d{6}$/;
 function canLogin() { return !!(X && XRE.test(X) && DKX && window.fetch); }
 function lgLabel() {   // 這台叫什麼（LINE 的驗證碼卡片上會寫：「網頁自己報的名稱」）
@@ -2737,9 +2778,14 @@ function lgLoad() {
   return null;
 }
 function lgStop() { clearInterval(LG.tm); LG.tm = 0; }
+// 第 36 批：登入畫面：藥師＝員工編號＋姓名（電腦登入，scrLoginPc）；開發者、按了「改用代號登入」＝代號登入（scrLoginCode）
 function scrLogin(why, r) {
+  if (LG.role === "dev" || LG.mode === "code") { scrLoginCode(why, r); return; }
+  scrLoginPc(why, r);
+}
+function scrLoginCode(why, r) {
   r = r || {};
-  lgStop();
+  lgStop(); pcStop();
   var lines = [];
   if (why === "idle") lines.push("閒置超過 " + Math.round(IDLE_MS / 6e4) + " 分鐘，已自動登出，手冊內容已經從畫面上拿掉。要再看：重新取得代號、驗證碼登入。");
   else if (why === "out") lines.push("已登出，手冊內容已經從畫面上拿掉。");
@@ -2754,12 +2800,13 @@ function scrLogin(why, r) {
   var msg = h("div", { class: "scr-m lgm", role: "status" });
   var wrap = h("div", { class: "lgwrap", hidden: true }, [h("div", { class: "lgst2" }, ["② LINE 會回你 6 位數的", h("b", {}, ["驗證碼"]), "，打在這裡"]), h("div", { class: "lgrow" }, [cin, go]), msg]);
   var role = h("button", { class: "lglink", type: "button" }, [LG.role === "dev" ? "← 回藥師登入" : "開發者登入"]);
+  var back = LG.role === "dev" ? null : h("button", { class: "lglink", type: "button", onclick: function () { LG.mode = ""; scrLogin(why, r); } }, ["← 改用員工編號＋姓名登入"]);   // 第 36 批
   screen([logo(), h("h2", {}, ["🔐 登入藥戰手冊"]),
     lines.length ? h("div", { class: "scr-p" }, lines.map(function (l) { return h("p", {}, [l]); })) : null,
     h("div", { class: "lggrid" }, [pair, wrap]),
     h("p", { class: "lgfine" }, ["把代號貼到 LINE 的「藥戰手冊」帳號，換 6 位數驗證碼。第一次登入，還要打員工編號和姓名（對得上員工名單的馬上可以看）。", h("br"), "代號、驗證碼只能在這個網頁用；代號 " + LG_MIN + " 分鐘內要完成登入（超過會自己換新的）；驗證碼只能用一次，不要傳給任何人。"]),
     KEEP_ED || (typeof KEEP_QE !== "undefined" && KEEP_QE) ? h("p", { class: "lockkeep" }, ["✏️ 你有還沒儲存的修改：登入以後會接著編輯（還沒存進去）。"]) : null,
-    h("div", { class: "lgrolew" }, [role])], "lgscr");
+    h("div", { class: "lgrolew" }, [role, back])], "lgscr");
   var my = ++LG.seq;
   var alive = function () { return my === LG.seq && pair.isConnected; };
   var fmt = function (s) { return Math.floor(s / 60) + ":" + ("0" + s % 60).slice(-2); };
@@ -2855,12 +2902,145 @@ function scrLogin(why, r) {
   go.onclick = submit;
   cin.onkeydown = function (e) { if (e.key === "Enter") submit(); };
   cin.oninput = function () { LG.auto = 0; };
-  role.onclick = function () { LG.role = LG.role === "dev" ? "" : "dev"; role.textContent = LG.role === "dev" ? "← 回藥師登入" : "開發者登入"; LG.auto = 0; start(""); };
+  role.onclick = function () {
+    if (LG.role === "dev") { LG.role = ""; LG.auto = 0; scrLogin(why, r); return; }   // 第 36 批：回藥師登入＝員工編號＋姓名（按過「改用代號登入」的照舊是代號）
+    LG.role = "dev"; role.textContent = "← 回藥師登入"; if (back) back.hidden = true; LG.auto = 0; start("");
+  };
   var p = lgLoad();
   if (p && (p.dev ? "dev" : "") === LG.role) { LG.code = p.code; LG.sec = p.sec; LG.ex = +p.ex; LG.dev = !!p.dev; LG.dead = false; LG.note = ""; live(); try { cin.focus({ preventScroll: true }); } catch (e) { /* 沒關係 */ } }
   else start("");
 }
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") LG.auto = 0; });
+
+/* ── 第 36 批：電腦登入（員工編號＋姓名）──
+   用「電腦用的入口連結」（開發者網頁「管理」拿，存成書籤）打開 → 打員工編號＋姓名 →
+   ① 這台記住你（以前在這台用 LINE 驗證碼登入過、勾了「記住這台電腦」）：直接進去；
+   ② 沒記住（這台第一次、無痕視窗、清掉了網站資料）：手機 LINE 的「藥戰手冊」傳「登入」→ LINE 回 6 位數 → 打在這裡。
+   等驗證碼的那一組記在這個分頁（sessionStorage）：切去別的分頁再回來，還是同一組（10 分鐘內）。 */
+var PC = { sec: "", ex: 0, busy: false, tm: 0, seq: 0 };
+var MSG_PC = "在電腦上：請開發者給你「電腦用的入口連結」，存成書籤；用書籤打開，就能打員工編號＋姓名登入。";
+function pcStop() { clearInterval(PC.tm); PC.tm = 0; }
+function pcSave() { try { if (PC.sec) sessionStorage.setItem("hbpc", JSON.stringify({ x: X, sec: PC.sec, ex: PC.ex })); else sessionStorage.removeItem("hbpc"); } catch (e) { /* 記不住就算了 */ } }
+function pcLoad() {
+  try {
+    var o = JSON.parse(sessionStorage.getItem("hbpc") || "null"), now = Date.now();
+    if (o && o.x === X && TRE.test(String(o.sec || "")) && +o.ex > now + 3000 && +o.ex <= now + 960000) return o;
+  } catch (e) { /* 沒有 */ }
+  return null;
+}
+function pcRemGet() { try { return localStorage.getItem("pcrem") !== "0"; } catch (e) { return true; } }   // 「記住這台電腦」上次勾了沒（共用電腦取消過，下次預設也不勾）
+function pcRemSet(v) { try { localStorage.setItem("pcrem", v ? "1" : "0"); } catch (e) { /* 記不住就算了 */ } }
+function loginWhy(why, r, pc) {   // 登入畫面最上面那一句（為什麼要登入）
+  var again = pc ? "重新登入" : "重新取得代號、驗證碼登入";
+  if (why === "idle") return "閒置超過 " + Math.round(IDLE_MS / 6e4) + " 分鐘，已自動登出，手冊內容已經從畫面上拿掉。要再看：" + again + "。";
+  if (why === "out") return "已登出，手冊內容已經從畫面上拿掉。";
+  if (why === "expired") return "太久沒動作，這一台的登入過期了：" + again + "。";
+  if (why === "bad") return pc ? "這條連結用過了、或已經過期（從 LINE 按下去之後太久才開）。在下面打員工編號＋姓名登入，或回 LINE 再按一次「🌐 網頁」。" : "這條連結用過了、或已經過期（從 LINE 按下去之後太久才開）。用下面的代號登入，或回 LINE 再按一次「🌐 網頁」。";
+  if (why === "tok") return pc ? "這台記住的登入過期了：重新登入。" : "這台記住的登入過期了：用下面的代號重新登入。";
+  if (why === "again") return (r && r.err) || "太久沒完成：" + again + "。";
+  if (why === "forgot") return "✅ 這台電腦已經忘記你了：下次在這台登入，要再用 LINE 驗證碼。";
+  return "";
+}
+function scrLoginPc(why, r) {
+  r = r || {};
+  lgStop(); pcStop();
+  var w0 = loginWhy(why, r, true), lines = w0 ? [w0] : [];
+  if (!canLogin()) { scrMsg("請從 LINE 打開", lines.concat([MSG_LINE, MSG_PC])); return; }
+  var my = ++PC.seq, alive = function () { return my === PC.seq && box.isConnected; };
+  var emp = h("input", { class: "in", maxlength: "20", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", placeholder: "例：E10107", "aria-label": "員工編號", "aria-required": "true" });
+  var nm = h("input", { class: "in", maxlength: "20", autocomplete: "off", spellcheck: "false", placeholder: "例：王小明", "aria-label": "姓名", "aria-required": "true" });
+  var rem = h("input", { type: "checkbox", checked: pcRemGet(), id: "pcrem" });
+  var go = h("button", { class: "btn pri lggo", type: "button", id: "pcgo" }, ["登入"]);
+  var m = h("div", { class: "scr-m lgm", role: "status", "aria-live": "polite" });
+  var cin = h("input", { class: "in lgin", type: "text", inputmode: "numeric", autocomplete: "one-time-code", maxlength: "9", placeholder: "6 位數", "aria-label": "LINE 回的 6 位數驗證碼", id: "pccode" });
+  var go2 = h("button", { class: "btn pri lggo", type: "button", id: "pcgo2" }, ["確定"]);
+  var m2 = h("div", { class: "scr-m lgm", role: "status", "aria-live": "polite" });
+  var cd = h("b", { id: "pccd" }, [""]);
+  var restart = h("button", { class: "lglink", type: "button" }, ["重新開始"]);
+  var step1 = h("div", { class: "pcbox", id: "pcstep1" }, [
+    h("div", { class: "lgst" }, ["① 打你的", h("b", {}, ["員工編號"]), "和", h("b", {}, ["姓名"]), "（要跟申請時填的一樣）"]),
+    h("div", { class: "scr-form" }, [h("label", {}, [h("span", {}, ["員工編號"]), emp]), h("label", {}, [h("span", {}, ["姓名"]), nm])]),
+    h("label", { class: "pcrem", for: "pcrem" }, [rem, h("span", {}, ["記住這台電腦（下次只要打員工編號＋姓名）"])]),
+    h("div", { class: "scr-b" }, [go]), m]);
+  var step2 = h("div", { class: "pcbox pc2", id: "pcstep2", hidden: true }, [
+    h("div", { class: "lgst" }, ["② 這台電腦還沒記住你：拿出手機，打開 LINE 的「藥戰手冊」，傳「", h("b", {}, ["登入"]), "」兩個字（或按下面那排的「🌐 網頁」）"]),
+    h("div", { class: "lgst2" }, ["LINE 會回你 6 位數的", h("b", {}, ["驗證碼"]), "，打在這裡："]),
+    h("div", { class: "lgrow" }, [cin, go2]), m2,
+    h("div", { class: "lgmeta" }, ["請在 ", cd, " 內完成　", restart])]);
+  var forget = TRE.test(T) && why === "out" ? h("button", { class: "lglink", type: "button", id: "pcforget" }, ["🧹 讓這台電腦忘記我"]) : null;
+  var box = screen([logo(), h("h2", {}, ["🔐 登入藥戰手冊"]),
+    lines.length ? h("div", { class: "scr-p" }, lines.map(function (l) { return h("p", {}, [l]); })) : null,
+    step1, step2,
+    h("p", { class: "lgfine" }, ["這台電腦第一次用、或是無痕視窗：還要用手機 LINE 拿 6 位數驗證碼，確認是本人。共用的電腦可以不要勾「記住這台電腦」。", h("br"), "驗證碼只能在這個網頁用、只能用一次，不要傳給任何人。"]),
+    KEEP_ED || (typeof KEEP_QE !== "undefined" && KEEP_QE) ? h("p", { class: "lockkeep" }, ["✏️ 你有還沒儲存的修改：登入以後會接著編輯（還沒存進去）。"]) : null,
+    h("div", { class: "lgrolew" }, [
+      h("button", { class: "lglink", type: "button", onclick: function () { pcStop(); LG.mode = "code"; LG.role = ""; scrLogin(why, r); } }, ["改用代號登入"]),
+      h("button", { class: "lglink", type: "button", onclick: function () { pcStop(); LG.role = "dev"; scrLogin(why, r); } }, ["開發者登入"])]),
+    forget ? h("div", { class: "lgrolew" }, [forget]) : null], "lgscr pcscr");
+  var focus = function (el) { try { el.focus(); } catch (e) { /* 沒關係 */ } };
+  var tick = function () {
+    if (!alive() || !PC.sec) { pcStop(); return; }
+    var s = Math.ceil((PC.ex - Date.now()) / 1000);
+    if (s <= 0) { pcStop(); PC.sec = ""; pcSave(); m2.textContent = "⌛ 超過 10 分鐘了：按「重新開始」再登入一次。"; cd.textContent = "0:00"; go2.disabled = true; return; }
+    cd.textContent = Math.floor(s / 60) + ":" + ("0" + s % 60).slice(-2); cd.className = s <= 30 ? "low" : "";
+  };
+  var toStep2 = function () {   // 要 LINE 驗證碼
+    step1.hidden = true; step2.hidden = false; go2.disabled = false; cin.value = ""; m2.textContent = "";
+    pcStop(); tick(); PC.tm = setInterval(tick, 1000); focus(cin);
+  };
+  var toStep1 = function (msg) {
+    pcStop(); PC.sec = ""; pcSave();
+    step2.hidden = true; step1.hidden = false; go.disabled = false; m.textContent = msg || ""; focus(emp.value ? nm : emp);
+  };
+  var done = function (x) { pcStop(); PC.sec = ""; pcSave(); T = String(x.t); FROMSAVED = false; FROMLINK = false; keySave(); LG.mode = ""; onBoot(x); };
+  var slowMsg = function (el) { return setTimeout(function () { if (alive() && PC.busy) el.textContent = "確認中…後端剛睡醒的時候要等 30 秒左右，請先別關掉、也不用再按。"; }, 6000); };
+  var submit = function () {
+    if (PC.busy) return;
+    var e = String(emp.value || "").replace(/\s+/g, ""), n = String(nm.value || "").replace(/\s+/g, " ").trim();
+    if (!e) { m.textContent = "請打員工編號"; focus(emp); return; }
+    if (!/^[A-Za-z0-9Ａ-Ｚａ-ｚ０-９\-－]{2,20}$/.test(e)) { m.textContent = "員工編號只能是英文字母、數字（2～20 個字）"; focus(emp); return; }
+    if (!n) { m.textContent = "請打姓名"; focus(nm); return; }
+    PC.busy = true; go.disabled = true; m.textContent = "確認中…"; pcRemSet(rem.checked);
+    var slow = slowMsg(m);
+    call("hbPcLogin", [e, n, rem.checked ? 1 : 0], { ms: 80000 }).then(function (x) {
+      clearTimeout(slow); PC.busy = false; go.disabled = false;
+      if (!alive()) return;
+      if (x && TRE.test(String(x.t || ""))) { done(x); return; }
+      if (x && x.need === "line" && TRE.test(String(x.sec || ""))) { PC.sec = String(x.sec); PC.ex = Date.now() + Math.max(60, Math.min(900, +x.ttl || 600)) * 1000; pcSave(); m.textContent = ""; toStep2(); return; }
+      if (x && x.st && !x.err) { onBoot(x); return; }   // 被撤銷了、手冊關了…
+      m.textContent = "❌ " + String(x && x.err || "沒登入成功，再試一次").slice(0, 260);
+      if (x && x.field) focus(x.field === "name" ? nm : emp);
+    }, function (er) { clearTimeout(slow); PC.busy = false; go.disabled = false; if (alive()) m.textContent = /等太久/.test(String(er && er.message)) ? "❌ 等太久沒有回應，再按一次「登入」。" : "❌ 連不上後端，網路好了再試一次"; });
+  };
+  var submit2 = function () {
+    if (PC.busy) return;
+    var v = String(cin.value || "").replace(/[０-９]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 65248); }).replace(/[\s-]/g, "");
+    if (!PC.sec || PC.ex <= Date.now()) { toStep1("⌛ 超過 10 分鐘了：再按一次「登入」。"); return; }
+    if (!/^\d{6}$/.test(v)) { m2.textContent = "請打 LINE 回給你的 6 位數字"; focus(cin); return; }
+    PC.busy = true; go2.disabled = true; cin.readOnly = true; m2.textContent = "確認中…";
+    var slow = slowMsg(m2), P = PC.sec;
+    call("hbPcCode", [P, v], { ms: 80000 }).then(function (x) {
+      clearTimeout(slow); PC.busy = false; go2.disabled = false; cin.readOnly = false;
+      if (!alive() || P !== PC.sec) return;
+      if (x && TRE.test(String(x.t || ""))) { done(x); return; }
+      if (x && (x.gone || x.dead)) { toStep1("❌ " + String(x.err || "這次的登入已經不能用了") + ""); return; }
+      if (x && x.wait) { m2.textContent = "⏳ " + String(x.err || "LINE 還沒收到「登入」"); return; }
+      if (x && x.bad) { m2.textContent = "❌ " + String(x.err || "驗證碼不對") + (x.left ? "（還可以打 " + x.left + " 次）" : ""); cin.value = ""; focus(cin); return; }
+      if (x && x.st && !x.err) { pcStop(); PC.sec = ""; pcSave(); onBoot(x); return; }
+      m2.textContent = "❌ " + String(x && x.err || "沒登入成功，再試一次").slice(0, 260);
+    }, function (er) { clearTimeout(slow); PC.busy = false; go2.disabled = false; cin.readOnly = false; if (alive()) m2.textContent = /等太久/.test(String(er && er.message)) ? "❌ 等太久沒有回應，再按一次「確定」。" : "❌ 連不上後端，網路好了再試一次"; });
+  };
+  go.onclick = submit; go2.onclick = submit2;
+  [emp, nm].forEach(function (inp) { inp.onkeydown = function (ev) { if (ev.key === "Enter") submit(); }; });
+  cin.onkeydown = function (ev) { if (ev.key === "Enter") submit2(); };
+  restart.onclick = function () { toStep1(""); };
+  if (forget) forget.onclick = function () {
+    forget.disabled = true;
+    call("hbPcForget", []).then(function () { keyDrop(); T = ""; scrLogin("forgot"); }, function () { forget.disabled = false; toast("❌ 連不上後端，網路好了再試一次"); });
+  };
+  var p = pcLoad();
+  if (p) { PC.sec = p.sec; PC.ex = +p.ex; toStep2(); } else focus(emp);
+}
 
 /* ── 驗證過是本人了，第一次要打員工編號＋姓名（審核用）── */
 function scrId(r) {
@@ -2914,8 +3094,42 @@ function gate(cb) {
 }
 function boot() {
   stopPolls();
-  call("hbBoot", [TICKET]).then(onBoot, function (e) { scrMsg("沒辦法打開", [e.message], [reloadBtn()]); });   // 開發者這一台還沒綁定時，後端還沒看通行證：綁好再帶一次
+  scrLoad();
+  var tk = TICKET, sid = SESS;
+  call("hbBoot", [tk], { ms: 30000, onTry: function (n) { BOOT.n = n; } }).then(function (r) {   // 開發者這一台還沒綁定時，後端還沒看通行證：綁好再帶一次
+    // 第 35 批：自動再試過（第一次等太久沒回應）：第一次可能其實做完了、已經用掉 LINE 給的通行證 → 等 3 秒、不帶通行證再問一次（第一次做完的話，這一台已經驗證過了）
+    if (tk && BOOT.n > 1 && r && (r.st === "lock" || r.st === "none") && r.bad && !BOOT.again) {
+      BOOT.again = true; BOOT.step = "再確認一次";
+      setTimeout(function () { if (sid !== SESS) return; call("hbBoot", [""], { ms: 30000 }).then(onBoot, bootNo); }, 3000);
+      return;
+    }
+    onBoot(r);
+  }, bootNo);
 }
+function bootNo(e) { scrMsg("沒辦法打開", [e && e.message || "後端沒有回應。", "可以按「再試一次」；一直不行的話，把這個畫面截圖給開發者。"], [retryBtn()]); }
+/* ── 第 35 批：開場的「載入中…」：寫出現在在做什麼、等了幾秒；等太久出「再試一次」；網頁自己出錯也一定寫原因（不會一直停在載入中）── */
+function scrLoad() {
+  var msg = h("p", { class: "muted", id: "bootMsg", role: "status", "aria-live": "polite" }, ["載入中…"]);
+  var more = h("div", { class: "bootmore", hidden: true }, [
+    h("p", { class: "muted" }, ["比平常久：可能是網路比較慢，或藥戰手冊的後端剛睡醒（很久沒人用、剛部署完的第一次會比較久，最多大約半分鐘）。"]),
+    h("div", { class: "scr-b" }, [retryBtn()])]);
+  screen([logo(), msg, more], "bootscr");
+  BOOT.on = true; BOOT.t0 = Date.now(); BOOT.n = 1; BOOT.step = "等藥戰手冊的後端回應"; BOOT.again = false;
+  var tick = function () {
+    if (!BOOT.on) return;
+    var sec = Math.floor((Date.now() - BOOT.t0) / 1000);
+    msg.textContent = "載入中…" + (sec >= 2 ? "（" + BOOT.step + (BOOT.n > 1 ? "，第 " + BOOT.n + " 次" : "") + "，" + sec + " 秒）" : "");
+    if (sec >= 12) more.hidden = false;
+  };
+  tick(); POLL2 = setInterval(tick, 1000);
+}
+function bootErr(m) {   // 開場的時候網頁自己出錯（不是後端的錯）：寫原因、給「再試一次」
+  if (!BOOT.on) return;
+  BOOT.on = false;
+  scrMsg("沒辦法打開", ["網頁出錯了：" + String(m || "不知道的錯誤").slice(0, 160), "可以按「再試一次」；一直這樣的話，把這個畫面截圖給開發者。"], [retryBtn()]);
+}
+window.addEventListener("error", function (e) { if (e && /hb\.js/.test(String(e.filename || ""))) bootErr(e.message || (e.error && e.error.message)); });   // 只管這個網頁自己的程式（LINE 內建瀏覽器自己加的程式出錯不算）
+window.addEventListener("unhandledrejection", function (e) { var r = e && e.reason; if (r && /hb\.js/.test(String(r.stack || ""))) bootErr(r.message || String(r)); });
 function onBoot(r) {
   TICKET = "";   // 通行證只用一次
   if (!r) { scrMsg("沒辦法打開", ["後端沒有回應。"], [reloadBtn()]); return; }
@@ -2929,7 +3143,7 @@ function onBoot(r) {
   if (st === "no") { scrMsg("沒有通過審核", ["看不到藥戰手冊的內容。有疑問請找開發者。"]); return; }
   if (st === "off") { scrMsg("權限已經撤銷", ["你的藥戰手冊權限已經被撤銷，看不到內容了。有疑問請找開發者。"]); return; }
   if (st === "nodk") { scrMsg("這個瀏覽器不能用", [MSG_NODK]); return; }
-  if (st === "lock" || st === "none") { ME = r.me || ME; if (r.cfg) { CFG = r.cfg; applyCfg(); } scrLogin(r.bad ? "bad" : "", r); return; }   // 第 32 批：代號登入
+  if (st === "lock" || st === "none") { ME = r.me || ME; if (r.cfg) { CFG = r.cfg; applyCfg(); } if (r.me && r.me.dev) LG.role = "dev"; else if (st === "none" && T) LG.mode = "code"; scrLogin(r.bad ? "bad" : "", r); return; }   // 第 32 批：代號登入；第 36 批：藥師＝員工編號＋姓名，開發者的連結＝開發者代號
   if ((st === "ok" || st === "dev") && r.data) { enterMain(r); return; }
   scrMsg("沒辦法打開", ["看不懂後端的回應（" + String(st) + "）。"], [reloadBtn()]);
 }
@@ -3038,6 +3252,7 @@ function lockClean() {
   if (typeof qzReset === "function") qzReset();   // 第 32 批：還沒送出的問卷答案也丟掉
   if (typeof RTE !== "undefined") RTE.clip = null;   // 第 32 批：「📋 複製」的內容也丟掉（手冊內容只在記憶體）
   if (typeof ED_CLIP !== "undefined") ED_CLIP = null;
+  if (typeof exClear === "function") { exClear(); EXP = null; }   // 第 37 批：匯出的 zip（記憶體裡的）也收掉
   HB = null;
 }
 var OUTED = false;   // 這邊自己登出的（後端那邊也要確定作廢，才可以出驗證碼）
@@ -3094,7 +3309,7 @@ function backendCheck(cb) {
   var RX = CFGX || (SAVED ? SAVED.x : bxLoad());
   if (!RX || !HP.x || RX === HP.x || !XRE.test(HP.x)) { cb(); return; }
   scrMsg("⚠️ 這條連結要連到不同的後端", ["這台原本連的後端（…" + RX.slice(-6) + "），跟這條連結的（…" + HP.x.slice(-6) + "）不一樣。", "如果這條連結不是你自己從 LINE 按的，請直接關掉這個網頁。"], [
-    btn("用原本連的", function () { X = RX; if (SAVED && SAVED.x === RX) { T = SAVED.t; FROMSAVED = true; FROMLINK = false; } else { T = ""; } TICKET = ""; cb(); }, "pri"),
+    btn("用原本連的", function () { X = RX; try { history.replaceState(null, "", location.pathname); } catch (e) { /* 沒關係 */ } if (SAVED && SAVED.x === RX) { T = SAVED.t; FROMSAVED = true; FROMLINK = false; } else { T = ""; } TICKET = ""; cb(); }, "pri"),
     btn("用這條連結的", function () { cb(); })
   ]);
 }
@@ -3104,12 +3319,12 @@ function start() {
   if (window.top !== window.self) { try { document.documentElement.innerHTML = ""; } catch (e) { /* 沒關係 */ } return; }   // 不讓別的網站用框框包住
   backendCheck(function () {
     gate(function (g) {
-      if (g === "ok") { API = "https://script.google.com/macros/s/" + X + "/exec"; screen([logo(), h("p", { class: "muted" }, ["載入中…"])]); boot(); return; }
+      if (g === "ok") { API = "https://script.google.com/macros/s/" + X + "/exec"; boot(); return; }   // 第 35 批：「載入中…」由 boot() 畫（寫進度、秒數）
       if (g === "login") { API = "https://script.google.com/macros/s/" + X + "/exec"; scrLogin(""); return; }   // 第 32 批：沒有鑰匙 → 代號登入
       if (g === "nodk") { scrMsg("這個瀏覽器不能用", [MSG_NODK]); return; }
       if (g === "old") { scrMsg("瀏覽器太舊", ["請改用最新的 Chrome 或 Safari。"]); return; }
       if (g === "bad") { scrMsg("連結不完整", [MSG_LINE]); return; }
-      scrMsg("請從 LINE 打開", [MSG_LINE, "（藥戰手冊是自己的 LINE 帳號：還沒加的話，補藥神器下面那排的「📘 藥戰手冊」就是加入的按鈕。從 LINE 開過一次以後，這台瀏覽器直接打網址就會出現代號登入。）"]);
+      scrMsg("請從 LINE 打開", [MSG_LINE, MSG_PC, "（藥戰手冊是自己的 LINE 帳號：還沒加的話，補藥神器下面那排的「📘 藥戰手冊」就是加入的按鈕。從 LINE 開過一次以後，這台瀏覽器直接打網址就會出現登入畫面。）"]);   // 第 36 批：多一句電腦用的入口連結
     });
   });
 }
@@ -5918,7 +6133,7 @@ function edFirst(chs, tts) {   // 一開始選哪一個：第一個標題；沒�
 }
 function edReset(src) {   // src：從哪一本開始（沒給＝現在的手冊 HB；第 28 批：載入舊版本時給舊的那一本）
   src = src || HB;
-  var cat = clone(src.cat || {}); if (!Array.isArray(cat.spots)) cat.spots = []; if (!Array.isArray(cat.parts)) cat.parts = [];
+  var cat = clone(src.cat || {}); if (!Array.isArray(cat.spots)) cat.spots = []; if (!Array.isArray(cat.parts)) cat.parts = []; if (!Array.isArray(cat.parts3)) cat.parts3 = [];
   var titles = clone(src.titles || {}), chs = clone(src.chapters || []);
   chs.forEach(function (c) { if (!titles[c.id]) titles[c.id] = []; });
   var cur = edFirst(chs, titles);
@@ -5935,7 +6150,8 @@ function hhmm(t) { var d = new Date(t); return ("0" + d.getHours()).slice(-2) + 
 function dirtyPaint() {
   var d = $("#edDirty"); if (!d || !ED) return;
   var idle = !ED.dirty && !ED.saving && !UPL && !ED.bgMsg, nb = idle ? edBgNeed() : 0, ns = idle ? edShapeNeed() : 0, no = idle ? edOcrTodo().length : 0;
-  var todo = [nb ? nb + " 章的背景" : "", ns ? ns + " 個物品的形狀" : ""].filter(Boolean).join("、"), txt = "", cls = "";
+  var nc = idle && ED.cat && _yzMapNeedCut_(ED.cat) ? _yzMapCutsFor_(_yzMapRatio_(ED.cat)).length : 0;   // 第 35 批：LINE 用的目錄圖要重新切（很寬的圖改切三張）
+  var todo = [nb ? nb + " 章的背景" : "", ns ? ns + " 個物品的形狀" : "", nc ? "LINE 用的目錄圖（切成 " + nc + " 張）" : ""].filter(Boolean).join("、"), txt = "", cls = "";
   if (ED.bgMsg) txt = ED.bgMsg;
   else if (ED.saving) txt = ED.auto ? "自動儲存中…" : "儲存中…";
   else if (UPL) txt = "⏳ 圖片上傳中（" + UPL + "）…";
@@ -6565,12 +6781,22 @@ function saveEd(force, auto) {   // auto＝自動存檔（不跳小視窗、存�
       ED.bgMsg = ""; toast("⚠ 章元背景沒做好（" + e.message + "）：其他的照樣儲存，下次儲存會再試一次"); saveSend(force, auto, t0);
     });
   };
-  var nsh = edShapeNeed();   // 物品的形狀（滑到時只亮物品本身）：框或圖改了才重找
-  if (!nsh) { bgStep(); return; }
-  ED.bgMsg = "找物品的形狀（0／" + nsh + "）…"; dirtyPaint();
-  edShapeMake(function (i, n) { ED.bgMsg = "找物品的形狀（" + i + "／" + n + "）…"; dirtyPaint(); }).then(function () { ED.bgMsg = ""; bgStep(); }, function (e) {
-    ED.bgMsg = ""; toast("⚠ 物品的形狀沒找好（" + e.message + "）：先亮整個框，下次儲存會再試一次"); bgStep();
-  });
+  var shapeStep = function () {
+    var nsh = edShapeNeed();   // 物品的形狀（滑到時只亮物品本身）：框或圖改了才重找
+    if (!nsh) { bgStep(); return; }
+    ED.bgMsg = "找物品的形狀（0／" + nsh + "）…"; dirtyPaint();
+    edShapeMake(function (i, n) { ED.bgMsg = "找物品的形狀（" + i + "／" + n + "）…"; dirtyPaint(); }).then(function () { ED.bgMsg = ""; bgStep(); }, function (e) {
+      ED.bgMsg = ""; toast("⚠ 物品的形狀沒找好（" + e.message + "）：先亮整個框，下次儲存會再試一次"); bgStep();
+    });
+  };
+  // 第 35 批：LINE 用的切法跟現在的規則不一樣（很寬的圖改切三張）→ 先用原始檔重新切好、上傳（檔名一樣亂碼），再存
+  if (!_yzMapNeedCut_(ED.cat)) { shapeStep(); return; }
+  var c0 = ED.cat;
+  ED.bgMsg = "重新切目錄圖（LINE 用）…"; dirtyPaint();
+  catSrcP().then(function (src) { return catPartsUp(src, { w: c0.w, h: c0.h }); }).then(function (parts) {
+    if (ED && ED.cat === c0 && parts.length) catPartsSet(c0, parts);
+    ED.bgMsg = ""; shapeStep();
+  }, function (e) { ED.bgMsg = ""; toast("⚠ 目錄圖沒有重新切好（" + (e && e.message || "切圖失敗") + "）：LINE 先照舊的切法，下次儲存會再試一次"); shapeStep(); });
 }
 function saveSend(force, auto, t0) {
   if (!ED) return;
@@ -7953,9 +8179,12 @@ function refreshPreview() {
       var lm = lineMap(pcat, edHb(), {});
       body.appendChild(h("div", { class: "pvwrap" }, [FlexView.render(lm.bubble, {})]));
       if (lm.split) {
-        lm.each.forEach(function (by, k) { meter.appendChild(meterRow(k ? "右半張" : "左半張", by, YZ_BUBBLE_SAFE)); });
-        meter.appendChild(meterRow("兩張一排（一則）", lm.bytes, YZ_MSG_SAFE));
-        meter.appendChild(hint("圖很寬，所以 LINE 上切成左右兩張，左右滑著看（中間重疊一點，中間附近的東西兩張都看得到）。每個按鍵照「圓點在哪一半」放到那一張。切好的兩張圖是自動做的，檔名一樣亂碼。"));
+        var lmn = lm.each.length;
+        lm.each.forEach(function (by, k) { meter.appendChild(meterRow(_yzMapPartName_(k, lmn), by, YZ_BUBBLE_SAFE)); });
+        meter.appendChild(meterRow((lmn === 3 ? "三張" : "兩張") + "一排（一則）", lm.bytes, YZ_MSG_SAFE));
+        meter.appendChild(hint(lmn === 3 ? "圖很寬（寬是高的 " + YZ_MAP_WIDE3 + " 倍以上），所以 LINE 上切成左、中、右三張，左右滑著看（每兩張中間重疊一點）。每個按鍵照「圓點在哪一張」放到那一張；一張的東西放大約 1.5 倍，標籤比較不擠。切好的三張圖是自動做的，檔名一樣亂碼。"
+          : "圖很寬，所以 LINE 上切成左右兩張，左右滑著看（中間重疊一點，中間附近的東西兩張都看得到）。每個按鍵照「圓點在哪一半」放到那一張。切好的兩張圖是自動做的，檔名一樣亂碼。（寬是高的 " + YZ_MAP_WIDE3 + " 倍以上會切成三張。）"));
+        if (_yzMapNeedCut_(cat)) meter.appendChild(hint("⚠ 這張圖現在要切成 " + _yzMapCutsFor_(_yzMapRatio_(cat)).length + " 張，LINE 上還是舊的切法：按「儲存」（或等自動存檔）就會重新切好。"));
       } else meter.appendChild(meterRow("這一張", lm.bytes, YZ_BUBBLE_SAFE));
       meter.appendChild(hint("每個地點＝透明的「物品框」＋「標籤方塊」（圖示＋名稱＋圓點），兩個都點得到。是照 LINE 官方規格畫的；手機上實際長相要實機確認（待實機確認）。LINE 沒有「滑過」、也沒有 3D，滑過、說明卡、拖曳轉動只有網頁有（切到「網頁」看）。「圖片直接顯示」關掉時，圖不放，改成每個地點一個按鈕。"));
     } else if (panoOk(cat) && edCatSrc()) {
@@ -8055,12 +8284,13 @@ function buildEditPane() {
 }
 // 第 28 批：第一次打開「✏️ 編輯」（不是一進網頁就做；只看手冊的時候不會跳出提醒、不會存檔）：
 //   ① 還沒辨識的圖，在背景辨識；② 自動存檔開著、有章元背景或物品形狀還沒做（例如這一批「覆核」多亮電腦）：自動做好、存好（不用按「儲存」）
+//   第 35 批：③ LINE 用的目錄圖還是舊的切法（很寬的圖改切三張）：一樣自動切好、存好
 var ED_OPENED = false;
 function edOnShow() {
   if (!ED || ED_OPENED) return;
   ED_OPENED = true;
   edOcrPump();
-  setTimeout(function () { if (ED && TAB === "edit" && AS.on && !AS.pause && !ED.dirty && !ED.saving && !UPL && (edShapeNeed() || edBgTodo().length)) saveEd(false, true); }, 1500);
+  setTimeout(function () { if (ED && TAB === "edit" && AS.on && !AS.pause && !ED.dirty && !ED.saving && !UPL && (edShapeNeed() || edBgTodo().length || _yzMapNeedCut_(ED.cat))) saveEd(false, true); }, 1500);   // 第 35 批：LINE 目錄圖要改切三張的，也自動切好、存好
   setTimeout(edClean, 6000);
 }
 // 第 31 批：每天第一次打開編輯器：在背景清掉超過 N 天的舊版本、沒在用的舊圖（換過的目錄圖、重做過的章元背景…）→ 雲端硬碟的垃圾桶
@@ -8118,7 +8348,7 @@ function renderMapTree(c1) {
 function renderMapForm(f) {
   var cat = ED.cat, MIN = YZ_MAP_MIN_PCT, ui = { nums: null }; ED.mapUi = ui;
   f.appendChild(h("h3", { style: "font-size:16px" }, ["🖼 目錄圖", mkEl(25)]));
-  f.appendChild(hint("LINE 和網頁的「首頁」（目錄）可以是一張實景圖（像你的「圖一」）：在圖上框出每一樣東西，每樣東西會有一個「標籤（圖示＋名稱）＋圓點」，點標籤或點東西，就進到那一章（或某一個標題）。網頁的首頁是整個畫面的 3D 環景（可以拖曳轉動、縮放）；LINE 上圖很寬就切成左右兩張。還沒有標題的章，藥師看到的是🔒（寫好第一個標題就自動打開）。"));
+  f.appendChild(hint("LINE 和網頁的「首頁」（目錄）可以是一張實景圖（像你的「圖一」）：在圖上框出每一樣東西，每樣東西會有一個「標籤（圖示＋名稱）＋圓點」，點標籤或點東西，就進到那一章（或某一個標題）。網頁的首頁是整個畫面的 3D 環景（可以拖曳轉動、縮放）；LINE 上圖很寬就切成左右兩張（非常寬的切成左、中、右三張）。還沒有標題的章，藥師看到的是🔒（寫好第一個標題就自動打開）。"));
 
   // ① 圖
   f.appendChild(lbl("", "目錄圖片（圖片檔名自動換成亂碼）"));
@@ -8126,19 +8356,19 @@ function renderMapForm(f) {
     max: 2000,
     get: function () { return cat.img; }, info: function () { return cat.info; }, fname: function () { return cat.fname; },
     empty: "把目錄圖拖進來　／　點這裡之後按 Ctrl+V 貼上",
-    done: "目錄圖放好了（檔名換成亂碼；很寬的圖也切好了左右兩張給 LINE 用）。按「儲存」才會生效",
-    upload: function (uri, info) {   // 原圖（最長邊 2000）＋很寬的話切好的左右兩張，一起上傳
+    done: "目錄圖放好了（檔名換成亂碼；很寬的圖也切好了給 LINE 用：左右兩張，非常寬的左中右三張）。按「儲存」才會生效",
+    upload: function (uri, info) {   // 原圖（最長邊 2000）＋很寬的話切好的兩張（或三張），一起上傳
       var had = !!cat.img;
       return uploadUri(uri, "目錄圖").then(function (r) {
         return catPartsUp(uri, info).then(function (parts) {
-          cat.img = r.url; cat.fid = r.fid; cat.fname = r.fname; cat.info = info; cat.w = info.w; cat.h = info.h; cat.ar = _yzAR_(info.w, info.h); cat.parts = parts;
+          cat.img = r.url; cat.fid = r.fid; cat.fname = r.fname; cat.info = info; cat.w = info.w; cat.h = info.h; cat.ar = _yzAR_(info.w, info.h); catPartsSet(cat, parts);
           if (!had) cat.on = true;   // 第一次放圖：順便打開「開啟目錄圖」（不想用再取消勾選）
           ED.catLocal = { fid: r.fid, url: uri };
           syncOn(); markDirty(); drawCanvas(); changed(); renderTree(); queueShape(edSpot(ED.cur.id));
         });
       });
     },
-    clear: function () { cat.img = ""; cat.fid = ""; cat.info = null; cat.fname = ""; cat.parts = []; cat.on = false; syncOn(); markDirty(); drawCanvas(); changed(); renderTree(); }
+    clear: function () { cat.img = ""; cat.fid = ""; cat.info = null; cat.fname = ""; cat.parts = []; cat.parts3 = []; cat.on = false; syncOn(); markDirty(); drawCanvas(); changed(); renderTree(); }
   });
   var onBox = null;   // 「開啟目錄圖」那一格（放圖、移除圖的時候，勾勾跟著變）
   function syncOn() { var c = onBox && onBox.querySelector("input"); if (c) c.checked = !!cat.on; }
@@ -8156,7 +8386,7 @@ function renderMapForm(f) {
     onBox,
     chkBox("圖上顯示標籤（圖示＋名稱＋圓點）", function () { return cat.labels !== false; }, function (v) { cat.labels = v; }, "圖裡面已經有字的話，可以關掉（物品還是點得到）"),
     chkBox("網頁：3D 環景（拖曳轉動、上下看、縮放）", function () { return cat.p3d !== false; }, function (v) { cat.p3d = v; }, "圖很寬（像全景照）的時候最好看。電腦或手機不支援 3D 的時候，自動改回平面的圖"),
-    chkBox("LINE：很寬的圖切成左右兩張", function () { return cat.split !== false; }, function (v) { cat.split = v; if (v && !_yzMapSplitOn_(cat) && cat.img) catPartsAgain(); }, "一張卡片會太矮、標籤擠在一起；切成兩張，左右滑著看（中間重疊一點）。圖不寬的時候沒有作用"),
+    chkBox("LINE：很寬的圖切成好幾張", function () { return cat.split !== false; }, function (v) { cat.split = v; if (v && cat.img && (!_yzMapSplitOn_(cat) || _yzMapNeedCut_(cat))) catPartsAgain(); }, "一張卡片會太矮、標籤擠在一起；寬是高的 " + YZ_MAP_WIDE + " 倍以上切成左右兩張、" + YZ_MAP_WIDE3 + " 倍以上切成左中右三張，左右滑著看（每兩張中間重疊一點）。圖不寬的時候沒有作用"),
     chkBox("網頁：圖淡一點（有按鍵的物品比較亮）", function () { return cat.dim !== false; }, function (v) { cat.dim = v; }, "整張圖的顏色淡一點，看起來比較不亂；框起來的物品留一半顏色。還沒開放（🔒）的章一直是淡的。LINE 的圖不變"),
     chkBox("網頁：滑過的動態效果", function () { return cat.fx !== false; }, function (v) { cat.fx = v; }, "滑到哪個按鍵，圖上那個物品就亮起來（手機：點一下）；還有標籤變色、畫面靠過去、底下的說明卡、飄浮光點、圓點光圈。只有網頁有，LINE 沒有「滑過」"),
     chkBox("圖下面加按鈕（備用）", function () { return !!cat.btns; }, function (v) { cat.btns = v; }, "每個地點一個按鈕。LINE 圖上的方塊萬一點不了，還有按鈕可以按" )
@@ -8260,12 +8490,10 @@ function renderMapForm(f) {
     changed(); shapeSvg(); drawPanel(); queueShape(s, true);
   }, true);
 
-  // 很寬的圖：切好的左右兩張不見了（之前關掉過「切成左右兩張」）→ 用原始檔重新切、上傳
+  // 很寬的圖：切好的不見了（之前關掉過「切成好幾張」）、或切法換了（第 35 批：很寬的改切三張）→ 用原始檔重新切、上傳
   function catPartsAgain() {
-    var src = edCatSrc();
-    if (!src) { toast("要重新切圖：請重新放一次目錄圖"); return; }
     toast("切圖中…");
-    catPartsUp(src, { w: cat.w, h: cat.h }).then(function (parts) { cat.parts = parts; drawCanvas(); changed(); toast(parts.length ? "切好了（左右兩張）" : "圖不夠寬，不用切"); }, function (e) { toast("❌ " + e.message); });
+    catSrcP().then(function (src) { return catPartsUp(src, { w: cat.w, h: cat.h }); }).then(function (parts) { catPartsSet(cat, parts); markDirty(); drawCanvas(); changed(); toast(parts.length === 3 ? "切好了（左中右三張）" : parts.length ? "切好了（左右兩張）" : "圖不夠寬，不用切"); }, function (e) { toast("❌ " + (e && e.message || "切圖失敗") + "（要重新切圖：請重新放一次目錄圖）"); });
   }
 
   // 拖拉：移動、四個角放大縮小
@@ -8495,7 +8723,8 @@ function lineChapter(ch, n) {
 // 目錄圖卡片：算大小時圖片網址換成跟真的一樣長的 Drive 網址（預覽裡的圖是內嵌的，網址太長會誤判）
 function lineMap(cat, hb, over) {   // 很寬的圖切成左右兩張的時候，bubble 是「一排兩張」（carousel），bytes 是兩張合起來
   var c = Object.assign({}, cat, over || {});
-  var fake = Object.assign({}, c, { img: c.img ? fakeUrl(0) : "", parts: (c.parts || []).map(function (pt) { return Object.assign({}, pt, { img: pt.img ? fakeUrl(0) : "" }); }) });
+  var fk = function (pt) { return Object.assign({}, pt, { img: pt.img ? fakeUrl(0) : "" }); };
+  var fake = Object.assign({}, c, { img: c.img ? fakeUrl(0) : "", parts: (c.parts || []).map(fk), parts3: (c.parts3 || []).map(fk) });
   var home = _yzMapHome_(c, hb);
   return { bubble: home, bytes: _yzBytes_(_yzMapHome_(fake, hb)), split: home.type === "carousel", each: home.type === "carousel" ? _yzMapHome_(fake, hb).contents.map(_yzBytes_) : null };
 }
@@ -8505,8 +8734,10 @@ function chapterListBytes() {
 }
 
 
-/* ── 很寬的目錄圖：切成左右兩張（LINE 用；左 0～52 %、右 48～100 %），每張寬不超過 1024 px，上傳（檔名一樣亂碼）──
-   src 要是瀏覽器裡的圖（data: 或 blob: 網址）：Google 的圖片網址畫進畫布後讀不出像素 */
+// 第 35 批：切好的放回去：三張放 parts3、兩張放 parts（另一個清空；退回第 34 批的程式時，舊程式看不到三張 → LINE 照舊一整張，不會切錯）
+function catPartsSet(cat, list) { var o = _yzMapWithParts_(cat, list); cat.parts = o.parts; cat.parts3 = o.parts3; }
+/* ── 很寬的目錄圖：切成左右兩張（LINE 用；左 0～52 %、右 48～100 %）；第 35 批：寬是高的 2.6 倍以上切成三張（0～36、32～68、64～100 %）。
+   每張寬不超過 1024 px，上傳（檔名一樣亂碼）。src 要是瀏覽器裡的圖（data: 或 blob: 網址）：Google 的圖片網址畫進畫布後讀不出像素 */
 function catPartsUp(src, info) {
   var ar = info && info.w && info.h ? info.w / info.h : 0;
   if (ar && ar < YZ_MAP_WIDE) return Promise.resolve([]);
@@ -8516,7 +8747,7 @@ function catPartsUp(src, info) {
       var W = img.naturalWidth || 1, H = img.naturalHeight || 1;
       if (W / H < YZ_MAP_WIDE) { ok([]); return; }
       try {
-        var cuts = YZ_MAP_CUTS.map(function (c) {
+        var cuts = _yzMapCutsFor_(W / H).map(function (c) {
           var x0 = Math.round(W * c[0] / 100), x1 = Math.round(W * c[1] / 100), k = Math.min(1, 1024 / Math.max(1, x1 - x0)), cv = document.createElement("canvas");
           cv.width = Math.max(1, Math.round((x1 - x0) * k)); cv.height = Math.max(1, Math.round(H * k));
           var g = cv.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(img, x0, 0, x1 - x0, H, 0, 0, cv.width, cv.height);
@@ -9306,7 +9537,7 @@ function qePreview(body, meter) {
 }
 
 /* ════════ admin.js ════════ */
-/* ═══════════════ admin.js：管理（開發者）：誰可以看（核可名單）、保密設定、員工名單（第 34 批，roster.js）、看過紀錄、我的裝置（第 34 批追加）═══════════════ */
+/* ═══════════════ admin.js：管理（開發者）：誰可以看（核可名單）、保密設定、員工名單（第 34 批，roster.js）、看過紀錄、我的裝置（第 34 批追加）、電腦用的入口連結（第 36 批）、匯出給 Copilot（第 37 批，export.js）═══════════════ */
 var AD = { users: null, devs: 0, log: null, busy: false, rs: null, rsn: null, dv: null };
 function buildAdminPane() {
   AD = { users: null, devs: 0, log: null, busy: false, rs: null, rsn: null, dv: null };
@@ -9320,9 +9551,31 @@ function buildAdminPane() {
   pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px" }, [h("h2", {}, ["③ 員工名單（申請時比對：對得上的自動核可）"]), h("div", { id: "rsBox" }, [h("div", { class: "muted" }, ["載入中…"])])]));   // 第 34 批
   pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px" }, [h("h2", {}, ["④ 看過紀錄（最新的在最上面）"]), h("div", { id: "logBox" }, [h("div", { class: "muted" }, ["載入中…"])])]));
   pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px" }, [h("h2", {}, ["⑤ 🔒 我的裝置（開發者網頁綁定的）"]), h("div", { id: "devBox" }, [h("div", { class: "muted" }, ["載入中…"])])]));   // 第 34 批追加
+  pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px" }, [h("h2", {}, ["⑥ 🖥 電腦用的入口連結"]), h("div", { id: "pcBox" })]));   // 第 36 批
+  pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px" }, [h("h2", {}, ["⑦ 📤 匯出給 Copilot（SharePoint 用）"]), h("div", { id: "exBox" })]));   // 第 37 批：export.js
+}
+// 第 36 批：「⑥ 🖥 電腦用的入口連結」：在電腦上打開 → 員工編號＋姓名登入（這台第一次、無痕視窗：再加 LINE 驗證碼）。連結裡沒有任何人的鑰匙
+function pcEntryUrl() { return location.origin + location.pathname + "#x=" + X; }
+function drawPcLink() {
+  var box = $("#pcBox"); if (!box) return; box.innerHTML = "";
+  var u = pcEntryUrl();
+  var inp = h("input", { class: "in pcurl", readonly: true, value: u, "aria-label": "電腦用的入口連結", onclick: function () { try { this.select(); } catch (e) { /* 沒關係 */ } } });
+  var cb = btn("📋 複製", function () {
+    var done = function (ok) { cb.textContent = ok ? "已複製 ✓" : "複製不了：點一下連結、全選複製"; setTimeout(function () { if (cb.isConnected) cb.textContent = "📋 複製"; }, 2200); if (!ok) try { inp.focus(); inp.select(); } catch (e) { /* 沒關係 */ } };
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(u).then(function () { done(true); }, function () { done(false); }); return; } } catch (e) { /* 換下面的 */ }
+    done(false);
+  }, "sm pccopy");
+  box.appendChild(h("p", { class: "hint", style: "margin-top:0" }, ["在電腦上用這條連結打開，就是「員工編號＋姓名」的登入畫面。存成書籤（無痕視窗也看得到書籤），或貼在院內網站給同事用。"]));
+  box.appendChild(h("div", { class: "pcurlrow" }, [inp, cb]));
+  box.appendChild(h("ul", { class: "hint", style: "margin:4px 0 0;padding-left:1.2em" }, [
+    h("li", {}, ["這條連結裡沒有任何人的鑰匙：光有連結看不到內容。這台電腦第一次用、或是無痕視窗，還要用手機 LINE 傳「登入」拿 6 位數驗證碼。"]),
+    h("li", {}, ["勾了「記住這台電腦」的人，之後在同一台只要打員工編號＋姓名（30 天沒用就要再驗證一次）；名單上刪掉的人，記住的電腦也一起忘掉。"]),
+    h("li", {}, ["連結裡有藥戰手冊後端的位置（跟 LINE「🌐 網頁」的連結一樣）：只給院內的同事，不要貼到外面的網站。重新部署成新的「部署作業」（網址變了）的話，再來這裡複製新的。"])]));
 }
 function adminLoad() {
   drawSettings();
+  drawPcLink();   // 第 36 批
+  if (typeof drawExport === "function") drawExport();   // 第 37 批
   call("hbUsers", []).then(function (r) { if (!adOk(r)) return; AD.users = r.users || []; AD.devs = r.devs || 0; AD.dmax = r.dmax || 10; AD.rsn = r.rs || null; drawUsers(); }, function (e) { var b = $("#userBox"); if (b) b.textContent = "❌ " + e.message; });
   rsLoad();
   devLoad();
@@ -9844,6 +10097,700 @@ function rsClear() {
     call("hbRoster", ["clear"]).then(function (r) { AD.busy = false; if (!adOk(r)) return; toast("🧹 員工名單清空了"); RS.listOn = false; rsLoad(); }, function (e) { AD.busy = false; toast("❌ " + e.message); });
   } }] });
 }
+
+/* ════════ export.js ════════ */
+/* ═══════════════ export.js：第 37 批「⑦ 📤 匯出給 Copilot」（管理頁，只有開發者）═══════════════
+ * 按一下：整本手冊（每章一個 Word 檔，含圖片）＋補藥神器的藥品資料（依英文字母分檔，含藥局位置）→ 打包成一個 zip 下載。
+ * 用法：zip 解開，把裡面的 Word 檔放到院內 SharePoint「藥戰手冊」網站的「手冊匯出」資料夾；Copilot Studio 的知識來源接這個網站。
+ * Word 檔在這個瀏覽器裡做（不經過任何外面的網站）：圖片向手冊後端拿（hbExportPics），在這裡縮小成 JPEG；藥品資料向後端拿（hbExportDrugs）。
+ * 為什麼一章一個檔、太大再切（_1、_2…）：沒有 Microsoft 365 Copilot 授權時，Copilot Studio 只讀 SharePoint 上 7 MB 以下的檔。
+ * 匯出的是後端存好的那一本（編輯器裡還沒按儲存的不算）；還沒有內容的章不匯出。
+ * 做好的 zip 只在記憶體裡、直接下載，不存進瀏覽器（10 分鐘後連「再下載一次」也收掉）。 */
+var EX = { busy: false, url: "", tm: 0, sid: -1, t0: 0 }, EXP = null;
+function exBusy() { return EX.busy && EX.sid === SESS && MAIN; }   // 匯出中（中間登出、重新登入的話，上一次的就不算了）
+var EX_LIMIT = 6.5e6;                        // 一個 Word 檔最多多大（估的；超過就切成 _1、_2…）
+var EX_IMG_MAX = 1400, EX_IMG_Q = 0.82, EX_KEEP = 450e3;   // 圖：長邊最多 1400 px、JPEG 品質 0.82；本來就小的 JPEG、PNG（450 KB 以下、不用縮）直接放
+var EX_TW = 9638, EX_IND = 380;              // A4、左右各 2 公分：內文寬（twips）；縮排一層多少
+var EX_EMU_W = 5580000, EX_EMU_H = 6840000;  // 圖最大 15.5 × 19 公分
+var EX_SZ = { sm: 20, lg: 30, xl: 40 };      // 字的大小（半點）：小、大、特大（內文 12 點）
+var EX_W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main", EX_R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+var EX_ZONE_SEP = "、";
+
+/* ── 小工具 ── */
+function exX(s) {   // 放進 XML 的字：XML 不收的控制字元、落單的半個 emoji 拿掉；& < > " 換掉
+  return String(s === null || s === undefined ? "" : s)
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, "")
+    .replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(^|[^\uD800-\uDBFF])[\uDC00-\uDFFF]/g, "$1")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function exHex(c) { return String(c || "").replace(/^#/, "").toUpperCase(); }
+function exZ2(n) { return ("0" + n).slice(-2); }
+function exStampOf(d) { return d.getFullYear() + "/" + exZ2(d.getMonth() + 1) + "/" + exZ2(d.getDate()) + " " + exZ2(d.getHours()) + ":" + exZ2(d.getMinutes()); }
+function exMb(n) { return n >= 1e6 ? (n / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1e3)) + " KB"; }
+function exFname(s) {   // 檔名裡不能用的字（Windows、SharePoint）換成 _；最多 40 個字
+  s = String(s === null || s === undefined ? "" : s).replace(/[\\\/:*?"<>|#%{}~&\u0000-\u001F]/g, "_").replace(/\s+/g, " ").replace(/^[\s._]+|[\s.]+$/g, "");
+  return s.slice(0, 40).replace(/[\s.]+$/g, "");
+}
+function exFidOf(p) {   // 一張圖在雲端硬碟的檔案代號（手冊存的 fid；舊的從網址找）
+  if (!p) return "";
+  if (p.fid && /^[A-Za-z0-9_-]{10,80}$/.test(p.fid)) return p.fid;
+  var m = /(?:id=|\/d\/)([A-Za-z0-9_-]{10,80})/.exec(String(p.url || ""));
+  return m ? m[1] : "";
+}
+function exAnimPic(b) { return b.poster ? { url: b.poster, cap: b.cap } : { url: b.url, fid: b.fid, cap: b.cap }; }   // 動畫：Word 裡放第一格
+function exB64(b64) { var s = atob(b64), u = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+function exBlobBytes(b) {
+  if (b.arrayBuffer) return b.arrayBuffer().then(function (ab) { return new Uint8Array(ab); });
+  return new Promise(function (ok, bad) { var fr = new FileReader(); fr.onload = function () { ok(new Uint8Array(fr.result)); }; fr.onerror = function () { bad(new Error("讀不到")); }; fr.readAsArrayBuffer(b); });
+}
+
+/* ── zip（Word 檔本身就是 zip；最後整包也是 zip）：檔名用 UTF-8（中文檔名）；能壓的用瀏覽器內建的壓縮，不行就不壓 ── */
+var EX_CRC = null;
+function exCrc(u) {
+  if (!EX_CRC) { EX_CRC = []; for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; EX_CRC[n] = c >>> 0; } }
+  var x = 0xFFFFFFFF;
+  for (var i = 0; i < u.length; i++) x = EX_CRC[(x ^ u[i]) & 0xFF] ^ (x >>> 8);
+  return (x ^ 0xFFFFFFFF) >>> 0;
+}
+function exPipe(u, kind) {
+  var cs = new CompressionStream(kind);
+  return new Response(new Blob([u]).stream().pipeThrough(cs)).arrayBuffer().then(function (ab) { return new Uint8Array(ab); });
+}
+function exDeflate(u) {   // → Promise<Uint8Array 或 null（這個瀏覽器不會壓）>
+  if (typeof CompressionStream !== "function" || typeof Response !== "function") return Promise.resolve(null);
+  try { return exPipe(u, "deflate-raw").catch(function () { return null; }); } catch (e) { /* 舊一點的瀏覽器：只有 deflate（多 2 個字頭、4 個字尾） */ }
+  try { return exPipe(u, "deflate").then(function (z) { return z.length > 6 ? z.subarray(2, z.length - 4) : null; }, function () { return null; }); } catch (e2) { return Promise.resolve(null); }
+}
+function exZip(files, when) {   // files：[{ name, data(Uint8Array), z(要不要壓) }] → Promise<Uint8Array>
+  var enc = new TextEncoder(), loc = [], cen = [], off = 0, d = when || new Date();
+  var dt = ((d.getHours() << 11) | (d.getMinutes() << 5) | Math.floor(d.getSeconds() / 2)) & 0xFFFF;
+  var dd = ((Math.max(0, d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF;
+  return files.reduce(function (p, f) {
+    return p.then(function () { return f.z ? exDeflate(f.data) : null; }).then(function (zd) {
+      var use = !!(zd && zd.length < f.data.length), body = use ? zd : f.data, nm = enc.encode(f.name), crc = exCrc(f.data);
+      var a = new DataView(new ArrayBuffer(30));
+      a.setUint32(0, 0x04034b50, true); a.setUint16(4, 20, true); a.setUint16(6, 0x0800, true); a.setUint16(8, use ? 8 : 0, true);
+      a.setUint16(10, dt, true); a.setUint16(12, dd, true); a.setUint32(14, crc, true); a.setUint32(18, body.length, true); a.setUint32(22, f.data.length, true);
+      a.setUint16(26, nm.length, true); a.setUint16(28, 0, true);
+      var c = new DataView(new ArrayBuffer(46));
+      c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, use ? 8 : 0, true);
+      c.setUint16(12, dt, true); c.setUint16(14, dd, true); c.setUint32(16, crc, true); c.setUint32(20, body.length, true); c.setUint32(24, f.data.length, true);
+      c.setUint16(28, nm.length, true); c.setUint16(30, 0, true); c.setUint16(32, 0, true); c.setUint16(34, 0, true); c.setUint16(36, 0, true); c.setUint32(38, 0, true); c.setUint32(42, off, true);
+      loc.push(new Uint8Array(a.buffer), nm, body);
+      cen.push(new Uint8Array(c.buffer), nm);
+      off += 30 + nm.length + body.length;
+    });
+  }, Promise.resolve()).then(function () {
+    var cs = 0; cen.forEach(function (x) { cs += x.length; });
+    var e = new DataView(new ArrayBuffer(22));
+    e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, cs, true); e.setUint32(16, off, true);
+    var all = loc.concat(cen, [new Uint8Array(e.buffer)]), n = 0, k = 0;
+    all.forEach(function (x) { n += x.length; });
+    var out = new Uint8Array(n);
+    all.forEach(function (x) { out.set(x, k); k += x.length; });
+    return out;
+  });
+}
+
+/* ── Word 的一段一段（WordprocessingML）── */
+function exR(t, o) {   // 一段字（同一個格式）；換行＝<w:br/>
+  o = o || {};
+  var pr = "", body = "";
+  if (o.font) pr += '<w:rFonts w:ascii="' + o.font + '" w:hAnsi="' + o.font + '"/>';
+  if (o.b) pr += "<w:b/><w:bCs/>";
+  if (o.i) pr += "<w:i/><w:iCs/>";
+  if (o.s) pr += "<w:strike/>";
+  if (o.color) pr += '<w:color w:val="' + o.color + '"/>';
+  if (o.sz) pr += '<w:sz w:val="' + o.sz + '"/><w:szCs w:val="' + o.sz + '"/>';
+  if (o.u) pr += '<w:u w:val="single"/>';
+  if (o.shd) pr += '<w:shd w:val="clear" w:color="auto" w:fill="' + o.shd + '"/>';
+  String(t === null || t === undefined ? "" : t).replace(/\r\n?/g, "\n").replace(/\t/g, "    ").split("\n").forEach(function (seg, k) {
+    if (k) body += "<w:br/>";
+    if (seg) body += '<w:t xml:space="preserve">' + exX(seg) + "</w:t>";
+  });
+  return body ? "<w:r>" + (pr ? "<w:rPr>" + pr + "</w:rPr>" : "") + body + "</w:r>" : "";
+}
+var EX_TAB = "<w:r><w:tab/></w:r>";
+function exRuns(runs, base) {   // 格式文字（粗體、顏色、螢光筆、公式、反灰可複製…）→ Word 的字
+  var out = "";
+  (runs || []).forEach(function (r) {
+    if (!r || !r.t) return;
+    var o = Object.assign({}, base || {});
+    if (r.cp) { o.shd = "E5E7EB"; o.font = "Consolas"; out += exR(r.t, o); return; }
+    if (r.b) o.b = 1;
+    if (r.i) o.i = 1;
+    if (r.u) o.u = 1;
+    if (r.s) o.s = 1;
+    if (r.c && YZ_RT_COLORS[r.c]) o.color = exHex(YZ_RT_COLORS[r.c]);
+    if (r.z && EX_SZ[r.z]) o.sz = EX_SZ[r.z];
+    if (r.m && YZ_RT_MARKS[r.m]) o.shd = exHex(YZ_RT_MARKS[r.m].bg);
+    out += exR(r.fx ? _yzFxLinear_(r.t) : r.t, o);
+  });
+  return out;
+}
+function exP(inner, o) {   // 一個段落（屬性照 Word 規定的順序寫）
+  o = o || {};
+  var pr = "";
+  if (o.style) pr += '<w:pStyle w:val="' + o.style + '"/>';
+  if (o.keep) pr += "<w:keepNext/>";
+  if (o.bdr) pr += "<w:pBdr>" + o.bdr + "</w:pBdr>";
+  if (o.shd) pr += '<w:shd w:val="clear" w:color="auto" w:fill="' + o.shd + '"/>';
+  if (o.before !== undefined || o.after !== undefined) pr += "<w:spacing" + (o.before !== undefined ? ' w:before="' + o.before + '"' : "") + (o.after !== undefined ? ' w:after="' + o.after + '"' : "") + "/>";
+  if (o.ind || o.hang) pr += '<w:ind w:left="' + Math.round((o.ind || 0) + (o.hang || 0)) + '"' + (o.hang ? ' w:hanging="' + Math.round(o.hang) + '"' : "") + "/>";
+  if (o.jc) pr += '<w:jc w:val="' + o.jc + '"/>';
+  return "<w:p>" + (pr ? "<w:pPr>" + pr + "</w:pPr>" : "") + (inner || "") + "</w:p>";
+}
+function exBdr(sides, color, sz) { return sides.map(function (s) { return "<w:" + s + ' w:val="single" w:sz="' + (sz || 4) + '" w:space="4" w:color="' + color + '"/>'; }).join(""); }
+function exPic(k, cx, cy, alt) {   // 一張圖（r:embed、docPr 的編號先放記號，放進哪一個檔時才換：同一張圖在同一個檔只放一次）
+  return '<w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="' + cx + '" cy="' + cy + '"/><wp:effectExtent l="0" t="0" r="0" b="0"/>' +
+    '<wp:docPr id="@@ID@@" name="圖片" descr="' + exX(alt) + '"/><wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>' +
+    '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="0" name="圖片"/><pic:cNvPicPr/></pic:nvPicPr>' +
+    '<pic:blipFill><a:blip r:embed="@@IMG:' + k + '@@"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>' +
+    '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + cx + '" cy="' + cy + '"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>';
+}
+function exTable(tb, ind, kv) {   // 表格（合併儲存格照手冊的：左上角那一格代表整塊）。kv：左邊一欄是欄名（藥品卡片用）
+  var G = _yzTblGrid_(tb);
+  if (!G.nr || !G.nc) return "";
+  var W = EX_TW - (ind || 0), w = tb.w && tb.w.length === G.nc ? tb.w : null, sum = 0, cols = [], tot = 0, j, r;
+  if (w) w.forEach(function (x) { sum += +x || 0; });
+  for (j = 0; j < G.nc; j++) { cols.push(Math.max(300, Math.floor(w && sum ? W * (+w[j] || 0) / sum : W / G.nc))); tot += cols[j]; }
+  var head = !kv && tb.head !== false, bd = "A3A9B3";
+  var out = '<w:tbl><w:tblPr><w:tblW w:w="' + tot + '" w:type="dxa"/>' + (ind ? '<w:tblInd w:w="' + ind + '" w:type="dxa"/>' : "") +
+    "<w:tblBorders>" + ["top", "left", "bottom", "right", "insideH", "insideV"].map(function (s) { return "<w:" + s + ' w:val="single" w:sz="4" w:space="0" w:color="' + bd + '"/>'; }).join("") + "</w:tblBorders>" +
+    '<w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>' +
+    cols.map(function (x) { return '<w:gridCol w:w="' + x + '"/>'; }).join("") + "</w:tblGrid>";
+  for (r = 0; r < G.nr; r++) {
+    var hd = head && r === 0, row = "<w:tr>" + (hd ? "<w:trPr><w:tblHeader/></w:trPr>" : "");
+    for (var c = 0; c < G.nc;) {
+      var p = G.ps[G.at[r][c]], cs = Math.max(1, p.cs), ws = 0, k;
+      for (k = 0; k < cs && c + k < G.nc; k++) ws += cols[c + k];
+      var bold = hd || (kv && c === 0), pr = '<w:tcW w:w="' + ws + '" w:type="dxa"/>' + (cs > 1 ? '<w:gridSpan w:val="' + cs + '"/>' : "");
+      if (p.r === r) { if (p.rs > 1) pr += '<w:vMerge w:val="restart"/>'; } else pr += "<w:vMerge/>";
+      if (bold) pr += '<w:shd w:val="clear" w:color="auto" w:fill="F1F3F5"/>';
+      var txt = "";
+      if (p.r === r) String(p.v).replace(/\r\n?/g, "\n").split("\n").forEach(function (ln) { txt += exP(exR(ln, { b: bold }), { after: 0 }); });
+      row += "<w:tc><w:tcPr>" + pr + "</w:tcPr>" + (txt || "<w:p/>") + "</w:tc>";
+      c += cs;
+    }
+    out += row + "</w:tr>";
+  }
+  return out + "</w:tbl>" + exP("", { after: 60 });
+}
+
+/* ── 一個 Word 檔：內容一小塊一小塊（frag）放進去；太大就換下一個檔 ── */
+function exFrag(tname, cont) { return { xml: "", pics: [], tname: tname, cont: !!cont, glue: false }; }
+function exPut(F, xml) { F.xml += xml; }
+function exFragBytes(F) {
+  var n = F.xml.length * 3 * (EXP && EXP.zip ? 0.3 : 1);
+  F.pics.forEach(function (k) { var p = EXP.pics[k]; if (p) n += p.data.length; });
+  return n;
+}
+function exDoc(title, info) { return { title: title, info: info, body: [], imgs: [], ik: {}, bytes: 0, xlen: 0, pid: 0, n: 0 }; }
+function exDocSize(D) { return D.bytes + D.xlen * 3 * (EXP && EXP.zip ? 0.3 : 1) + 3e4; }
+function exAppend(D, F) {   // 一小塊放進這個檔：圖的記號換成這個檔的 rId（同一張圖只放一次）、docPr 的編號照順序
+  var xml = F.xml.replace(/@@IMG:([A-Za-z0-9_-]+)@@/g, function (m, k) {
+    if (D.ik[k]) return D.ik[k];
+    var P = EXP.pics[k], rid = "rIdImg" + (D.imgs.length + 1);
+    D.imgs.push({ rid: rid, name: "img" + (D.imgs.length + 1) + "." + P.ext, data: P.data, ext: P.ext });
+    D.bytes += P.data.length;
+    D.ik[k] = rid;
+    return rid;
+  }).replace(/@@ID@@/g, function () { return String(++D.pid); });
+  D.body.push(xml);
+  D.xlen += xml.length;
+}
+function exHeadXml(D, part) {   // 檔案最上面：標題＋（第幾部分）＋版本、匯出時間
+  return exP(exR(D.title + (part || "")), { style: "Title" }) + exP(exR(D.info), { style: "HbInfo" });
+}
+function exPack(units, mk, contHead) {   // units：一小塊一小塊 → 好幾個檔（每個估起來不超過 EX_LIMIT）。mk()＝新的一個檔
+  var docs = [], D = mk(0), i;
+  for (i = 0; i < units.length; i++) {
+    var F = units[i], est = exFragBytes(F) + (F.glue && units[i + 1] ? exFragBytes(units[i + 1]) : 0);
+    if (D.n > 0 && exDocSize(D) + est > EX_LIMIT) {
+      docs.push(D);
+      D = mk(docs.length);
+      if (F.cont && contHead) exAppend(D, contHead(F.tname));   // 從一個標題的中間切開：新的檔先寫「標題（續）」
+    }
+    exAppend(D, F);
+    D.n++;
+  }
+  if (D.n > 0 || !docs.length) docs.push(D);
+  return docs;
+}
+
+/* ── 手冊 → 一小塊一小塊 ── */
+function exPicFrag(F, p, ind) {   // 一張圖：圖＋圖說＋圖片裡的字（Copilot 讀得到的是字）
+  var k = exFidOf(p), P = k && EXP.pics[k], cap = String(p && p.cap || "").trim(), o = String(p && p.ocr || "").trim();
+  if (P) {
+    var sc = Math.min(1, (EX_EMU_W - (ind || 0) * 635) / (P.w * 9525), EX_EMU_H / (P.h * 9525));
+    var cx = Math.max(9525, Math.round(P.w * 9525 * sc)), cy = Math.max(9525, Math.round(P.h * 9525 * sc));
+    exPut(F, exP(exPic(k, cx, cy, cap || "手冊的圖"), { ind: ind, keep: !!(cap || o), after: cap ? 40 : 100 }));
+    F.pics.push(k);
+  } else exPut(F, exP(exR("［圖片" + (cap ? "：" + cap : "") + (EXP.noPics ? "" : "（這張圖這次沒有放進來）") + "］", { color: "6B7280" }), { ind: ind }));
+  if (cap) exPut(F, exP(exR(cap), { style: "Caption", ind: ind }));
+  if (o) exPut(F, exP(exR("🔍 圖片裡的字：", { b: 1 }) + exR(o), { style: "HbSmall", ind: ind }));
+}
+function exTextUnits(out, tname, b, hb, cid, bi) {   // 文字（可以有圖、表格）：一行一塊（標註、引用連在一起的算一塊）
+  var ls = _yzParseLines_(b.v), i = 0, j;
+  function base(L) { return bi + (L.lv || 0) * EX_IND; }
+  function add(xml, pics) { var F = exFrag(tname, true); F.xml = xml; if (pics) F.pics = pics; out.push(F); return F; }
+  while (i < ls.length) {
+    var L = ls[i];
+    if (L.k === "gap") { i++; continue; }
+    if (L.k === "hr") { add(exP("", { bdr: exBdr(["bottom"], "9CA3AF", 6), ind: base(L), after: 120 })); i++; continue; }
+    if (L.k === "go") {
+      var tg = _yzGoTarget_(hb, L.go, cid);
+      if (tg && tg.label) add(exP(exR("🔗 相關：", { b: 1, color: "0B5F8A" }) + exR(tg.label, { color: "0B5F8A" }), { ind: base(L) }));
+      i++; continue;
+    }
+    if (L.k === "tbl") { var TB = b.tbls && b.tbls[L.tbl]; if (TB) add(exTable(TB, base(L))); i++; continue; }
+    if (L.k === "img") { var P = b.pics && b.pics[L.img]; if (P && P.url) { var F = exFrag(tname, true); exPicFrag(F, P, base(L)); out.push(F); } i++; continue; }
+    if (L.k === "box") {
+      var T = YZ_RT_TONES[L.tone] || YZ_RT_TONES.info, xml = "";
+      for (j = i; j < ls.length && ls[j].k === "box" && ls[j].tone === L.tone && (ls[j].lv || 0) === (L.lv || 0); j++) {
+        xml += exP((j === i ? exR(T.icon + " " + T.label + "：", { b: 1 }) : "") + exRuns(ls[j].runs, { color: exHex(T.ink) }), { shd: exHex(T.bg), bdr: exBdr(["left"], exHex(T.bd), 18), ind: base(L), after: 0 });
+      }
+      add(xml + exP("", { after: 0 }));
+      i = j; continue;
+    }
+    if (L.k === "quote") {
+      var q = "";
+      for (j = i; j < ls.length && ls[j].k === "quote" && (ls[j].lv || 0) === (L.lv || 0); j++) q += exP(exRuns(ls[j].runs, { color: "4B5563" }), { bdr: exBdr(["left"], "9CA3AF", 12), ind: base(L) + 120, after: 40 });
+      add(q);
+      i = j; continue;
+    }
+    if (L.k === "head") add(exP(exRuns(L.runs), { style: "Heading" + Math.min(5, (L.h || 1) + 1), ind: base(L) }));
+    else if (L.k === "item") add(exP(exR(L.mark) + EX_TAB + exRuns(L.runs), { ind: base(L), hang: EX_IND }));
+    else add(exP(exRuns(L.runs), { ind: base(L) }));
+    i++;
+  }
+}
+function exLadderUnits(out, tname, b, bi) {   // 階梯式（法條…）：編號跟網頁、LINE 同一份程式算
+  var r = _yzLadderRows_(b), st = YZ_LADDER_STYLES[b.style] ? b.style : "law", mw = {};
+  r.items.forEach(function (it, i) { if (_yzLadderIsImg_(it) || !r.marks[i]) return; var w = _yzMarkW_(r.marks[i], 16) * 15; if (!mw[it.lv] || w > mw[it.lv]) mw[it.lv] = w; });
+  r.items.forEach(function (it, i) {
+    var F = exFrag(tname, true), ind = bi + (it.lv - 1) * 420;
+    if (_yzLadderIsImg_(it)) exPicFrag(F, it.img, ind + (mw[it.lv] ? mw[it.lv] + 120 : 0));
+    else {
+      var mk = r.marks[i], strong = st === "law" && it.lv === 1;
+      exPut(F, mk ? exP(exR(mk, { b: strong }) + EX_TAB + exR(it.v, { b: strong }), { ind: ind, hang: (mw[it.lv] || 300) + 120 }) : exP(exR(it.v), { ind: ind }));
+    }
+    out.push(F);
+  });
+}
+function exDrugRow(code) { return (EXP.drugs && EXP.drugs[code]) || EXP.dHb[code] || null; }
+function exDrugUnits(out, tname, b, bi) {   // 藥品卡片：一支藥一張小表（跟手冊網頁一樣不寫藥局位置；位置在「藥品資料」那幾個檔）
+  (b.items || []).forEach(function (d0) {
+    if (!d0 || !d0.code) return;
+    var d = exDrugRow(d0.code), rows = [["💊 藥品", [d0.code, (d && d.brand) || d0.brand, (d && d.chName) || d0.chName].filter(Boolean).join("｜")]];
+    if (d) {
+      if (d.generic) rows.push(["學名", d.generic]);
+      if (d.form) rows.push(["劑型", d.form]);
+      if (d.notice) rows.push(["⚠️ 公告", d.notice]);
+      if (d.feat) rows.push(["🔍 藥品特徵", d.feat]);
+      if (d.pair) rows.push(["⚠️ 注意", d.pair]);
+      if (d.note) rows.push(["適應症", d.note]);
+      if (d.old) rows.push(["曾用藥品", d.old]);
+    } else rows.push(["說明", "這次拿不到補藥神器裡這支藥的資料（只有名字）"]);
+    var F = exFrag(tname, true);
+    exPut(F, exTable({ rows: rows, w: [1, 3] }, bi, true));
+    out.push(F);
+  });
+}
+function exTitleUnits(hb, c, t) {   // 一個標題 → 一小塊一小塊（第一塊是標題，黏著下一塊）。沒有內容（沒有任何一塊、也沒有備註、頁數）＝[]
+  var tname = String(t.name || "").trim() || "（還沒有標題）", out = [], H = exFrag(tname, false);
+  exPut(H, exP(exR(tname), { style: "Heading1" }));
+  H.glue = true;
+  (t.blocks || []).forEach(function (b) {
+    if (!b) return;
+    var bi = _yzBlockInd_(b) * EX_IND;
+    if (b.t === "text") exTextUnits(out, tname, b, hb, c.id, bi);
+    else if (b.t === "ladder") exLadderUnits(out, tname, b, bi);
+    else if (b.t === "table") { var F = exFrag(tname, true); exPut(F, exTable(b, bi)); if (F.xml) out.push(F); }
+    else if (b.t === "img" && b.url) { var F2 = exFrag(tname, true); exPicFrag(F2, b, bi); out.push(F2); }
+    else if (b.t === "anim" && b.kind === "steps") {
+      var ss = (b.steps || []).filter(function (s) { return s && (s.url || String(s.cap || "").trim()); });
+      ss.forEach(function (s, k) {
+        var F3 = exFrag(tname, true);
+        exPut(F3, exP(exR("🎞 分步動畫　步驟 " + (k + 1) + "／" + ss.length, { b: 1 }) + (s.cap ? exR("　" + s.cap) : ""), { ind: bi, keep: !!s.url }));
+        if (s.url) exPicFrag(F3, { url: s.url, fid: s.fid, ocr: s.ocr }, bi);
+        out.push(F3);
+      });
+    } else if (b.t === "anim" && b.url) {
+      var F4 = exFrag(tname, true);
+      exPut(F4, exP(exR("🎞 動畫（Word 裡只放第一格）", { b: 1 }), { ind: bi, keep: true }));
+      exPicFrag(F4, exAnimPic(b), bi);
+      out.push(F4);
+    } else if (b.t === "drug") exDrugUnits(out, tname, b, bi);
+  });
+  var pg = _yzPageText_(t.page), nt = _yzNoteHas_(t.note) ? String(t.note).replace(/^(?:[ \t　\r]*\n)+|(?:\r?\n[ \t　\r]*)+$/g, "") : "";
+  if (nt || pg) {
+    var N = exFrag(tname, true), xml = "";
+    if (nt) xml += exP(exR("備註", { b: 1 }), { shd: "FFF8E1", bdr: exBdr(["left"], "F0D78A", 18), after: 0, keep: true }) + exP(exR(nt), { shd: "FFF8E1", bdr: exBdr(["left"], "F0D78A", 18), after: 0 });
+    if (pg) xml += exP(exR("📖 藥戰手冊頁數：" + pg, { color: "4B5563" }), { before: nt ? 60 : 0 });
+    exPut(N, xml);
+    out.push(N);
+  }
+  if (!out.length) return [];
+  return [H].concat(out);
+}
+function exChapterDocs(hb, c, ci) {   // 一章 → 一個（太大就好幾個）Word 檔：[{ name, D }]。沒有內容＝[]
+  var units = [];
+  (((hb.titles || {})[c.id]) || []).forEach(function (t) { if (t) units = units.concat(exTitleUnits(hb, c, t)); });
+  if (!units.length) return [];
+  var cname = String(c.name || "").trim() || "第 " + (ci + 1) + " 章", intro = String(c.intro || "").trim();
+  var docs = exPack(units, function (k) {
+    var D = exDoc("藥戰手冊｜" + cname, EXP.info);
+    if (!k && intro) { D.body.push(exP(exR(intro), { after: 160 })); D.xlen += intro.length; }
+    return D;
+  }, function (tname) { var F = exFrag(tname, false); exPut(F, exP(exR(tname + "（續）"), { style: "Heading1" })); return F; });
+  var base = "藥戰手冊_" + exZ2(ci + 1) + "_" + (exFname(cname) || "第" + (ci + 1) + "章");
+  return docs.map(function (D, k) { return { name: base + (docs.length > 1 ? "_" + (k + 1) : "") + ".docx", D: D, part: docs.length > 1 ? "（第 " + (k + 1) + "／" + docs.length + " 部分）" : "" }; });
+}
+
+/* ── 藥品資料 → 依英文字母分檔（一支藥一段：Copilot 一段一段找）── */
+var EX_TAG = /^(?:\s*(?:[(（\[【〔<〈「][^)）\]】〕>〉」]{0,10}[)）\]】〕>〉」]|[*＊#＃★☆※!！~～+＋\-－.．_]))+/;   // 商品名前面的標記：(管4)、【限】、*、★…
+function exDrugKey(d) {   // 依商品名的第一個英文字母分檔（前面的標記不算；全形英文也算）；不是英文字母開頭的＝「其他」
+  var s = String(d.brand || "").trim().replace(EX_TAG, "").trim(), c = s.charAt(0);
+  if (/[Ａ-Ｚａ-ｚ]/.test(c)) c = String.fromCharCode(c.charCodeAt(0) - 65248);
+  return /[A-Za-z]/.test(c) ? c.toUpperCase() : "其他";
+}
+function exDrugDocs(rows) {
+  var g = {}, keys = [];
+  rows.forEach(function (d) { var k = exDrugKey(d); if (!g[k]) { g[k] = []; keys.push(k); } g[k].push(d); });
+  keys.sort(function (a, b) { return a === "其他" ? 1 : b === "其他" ? -1 : a < b ? -1 : a > b ? 1 : 0; });
+  var out = [];
+  keys.forEach(function (k) {
+    var list = g[k].slice().sort(function (a, b) { var x = String(a.brand || "").toUpperCase(), y = String(b.brand || "").toUpperCase(); return x < y ? -1 : x > y ? 1 : String(a.code) < String(b.code) ? -1 : 1; });
+    var units = list.map(function (d) {
+      var nm = String(d.brand || d.chName || d.generic || d.code).trim(), F = exFrag(nm, false), xml = exP(exR(nm + (d.chName && d.chName !== nm ? "（" + d.chName + "）" : "")), { style: "Heading1" });
+      var kv = function (label, v, o) { v = String(v || "").trim(); if (v) xml += exP(exR(label + "：", Object.assign({ b: 1 }, o || {})) + exR(v), { after: 40 }); };
+      kv("藥品代碼", d.code);
+      kv("商品名", d.brand);
+      kv("中文名", d.chName);
+      kv("學名", d.generic);
+      kv("劑型", d.form);
+      kv("藥局位置", d.loc);
+      kv("各區位置", (d.zones || []).filter(function (z) { return z && z.p; }).map(function (z) { return z.n + " " + z.p; }).join(EX_ZONE_SEP));
+      kv("⚠️ 公告", d.notice, { color: "B91C1C" });
+      kv("🔍 藥品特徵", d.feat);
+      kv("適應症", d.note);
+      kv("⚠️ 注意", d.pair, { color: "B91C1C" });
+      kv("曾用藥品", d.old);
+      exPut(F, xml);
+      return F;
+    });
+    var docs = exPack(units, function () { return exDoc("藥品資料｜" + k, ""); }, null);
+    docs.forEach(function (D, i) { D.info = EXP.dinfo + "・這個檔 " + D.n + " 支"; out.push({ name: "藥品資料_" + k + (docs.length > 1 ? "_" + (i + 1) : "") + ".docx", D: D, part: docs.length > 1 ? "（第 " + (i + 1) + "／" + docs.length + " 部分）" : "", n: D.n }); });
+  });
+  return out;
+}
+
+/* ── 一個 Word 檔 → 檔案（zip） ── */
+function exStyle(id, name, o) {
+  return '<w:style w:type="paragraph" w:styleId="' + id + '"><w:name w:val="' + name + '"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/>' + (o.ui !== undefined ? '<w:uiPriority w:val="' + o.ui + '"/>' : "") + "<w:qFormat/>" +
+    "<w:pPr>" + (o.keep ? "<w:keepNext/><w:keepLines/>" : "") + '<w:spacing w:before="' + (o.before || 0) + '" w:after="' + (o.after || 0) + '"/>' + (o.lvl !== undefined ? '<w:outlineLvl w:val="' + o.lvl + '"/>' : "") + "</w:pPr>" +
+    "<w:rPr>" + (o.b ? "<w:b/><w:bCs/>" : "") + (o.color ? '<w:color w:val="' + o.color + '"/>' : "") + '<w:sz w:val="' + o.sz + '"/><w:szCs w:val="' + o.sz + '"/></w:rPr></w:style>';
+}
+var EX_HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+function exStylesXml() {
+  return EX_HEAD + '<w:styles xmlns:w="' + EX_W + '"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:eastAsia="Microsoft JhengHei" w:hAnsi="Calibri" w:cs="Calibri"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="en-US" w:eastAsia="zh-TW" w:bidi="ar-SA"/></w:rPr></w:rPrDefault>' +
+    '<w:pPrDefault><w:pPr><w:spacing w:after="100" w:line="312" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults>' +
+    '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/></w:style>' +
+    '<w:style w:type="character" w:default="1" w:styleId="DefaultParagraphFont"><w:name w:val="Default Paragraph Font"/><w:uiPriority w:val="1"/><w:semiHidden/><w:unhideWhenUsed/></w:style>' +
+    exStyle("Title", "Title", { ui: 10, b: 1, color: "0B5F8A", sz: 40, after: 60 }) +
+    exStyle("Heading1", "heading 1", { ui: 9, keep: 1, b: 1, color: "0B5F8A", sz: 32, before: 360, after: 120, lvl: 0 }) +
+    exStyle("Heading2", "heading 2", { ui: 9, keep: 1, b: 1, color: "1F1F1F", sz: 30, before: 240, after: 80, lvl: 1 }) +
+    exStyle("Heading3", "heading 3", { ui: 9, keep: 1, b: 1, color: "1F1F1F", sz: 27, before: 200, after: 60, lvl: 2 }) +
+    exStyle("Heading4", "heading 4", { ui: 9, keep: 1, b: 1, color: "0B7A75", sz: 25, before: 160, after: 60, lvl: 3 }) +
+    exStyle("Heading5", "heading 5", { ui: 9, keep: 1, b: 1, color: "4A5565", sz: 24, before: 120, after: 40, lvl: 4 }) +
+    exStyle("Caption", "caption", { ui: 35, color: "4B5563", sz: 20, after: 80 }) +
+    exStyle("HbInfo", "藥戰手冊 版本", { color: "6B7280", sz: 18, after: 240 }) +
+    exStyle("HbSmall", "藥戰手冊 小字", { color: "4B5563", sz: 19, after: 120 }) +
+    "</w:styles>";
+}
+function exDocXml(D, part) {
+  return EX_HEAD + '<w:document xmlns:w="' + EX_W + '" xmlns:r="' + EX_R + '" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>' +
+    exHeadXml(D, part) + D.body.join("") +
+    '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/></w:sectPr></w:body></w:document>';
+}
+function exDocx(D, part, when) {   // → Promise<Uint8Array>
+  var enc = new TextEncoder(), iso = when.toISOString().replace(/\.\d+Z$/, "Z"), exts = {};
+  D.imgs.forEach(function (m) { exts[m.ext] = 1; });
+  var ct = EX_HEAD + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>' +
+    (exts.jpeg ? '<Default Extension="jpeg" ContentType="image/jpeg"/>' : "") + (exts.png ? '<Default Extension="png" ContentType="image/png"/>' : "") +
+    '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+    '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+    '<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>' +
+    '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
+    '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/></Types>';
+  var rels = EX_HEAD + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
+    '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/></Relationships>';
+  var drels = EX_HEAD + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+    '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>' +
+    D.imgs.map(function (m) { return '<Relationship Id="' + m.rid + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/' + m.name + '"/>'; }).join("") + "</Relationships>";
+  var core = EX_HEAD + '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
+    "<dc:title>" + exX(D.title + (part || "")) + "</dc:title><dc:subject>藥戰手冊匯出</dc:subject><dc:creator>藥戰手冊</dc:creator><cp:keywords>藥戰手冊</cp:keywords><dc:description>院內資料，請勿外傳</dc:description><cp:lastModifiedBy>藥戰手冊</cp:lastModifiedBy>" +
+    '<dcterms:created xsi:type="dcterms:W3CDTF">' + iso + '</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">' + iso + "</dcterms:modified></cp:coreProperties>";
+  var app = EX_HEAD + '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>藥戰手冊</Application></Properties>';
+  var settings = EX_HEAD + '<w:settings xmlns:w="' + EX_W + '"><w:zoom w:percent="100"/><w:defaultTabStop w:val="' + EX_IND + '"/><w:characterSpacingControl w:val="compressPunctuation"/><w:compat><w:compatSetting w:name="compatibilityMode" w:uri="http://schemas.microsoft.com/office/word" w:val="15"/></w:compat></w:settings>';
+  var files = [
+    { name: "[Content_Types].xml", data: enc.encode(ct), z: true },
+    { name: "_rels/.rels", data: enc.encode(rels), z: true },
+    { name: "docProps/core.xml", data: enc.encode(core), z: true },
+    { name: "docProps/app.xml", data: enc.encode(app), z: true },
+    { name: "word/document.xml", data: enc.encode(exDocXml(D, part)), z: true },
+    { name: "word/styles.xml", data: enc.encode(exStylesXml()), z: true },
+    { name: "word/settings.xml", data: enc.encode(settings), z: true },
+    { name: "word/_rels/document.xml.rels", data: enc.encode(drels), z: true }
+  ].concat(D.imgs.map(function (m) { return { name: "word/media/" + m.name, data: m.data, z: false }; }));
+  return exZip(files, when);
+}
+
+/* ── 圖：向後端拿（一次好幾張）→ 在這裡縮小 ── */
+function exDecode(blob) {
+  function viaImg() {
+    return new Promise(function (ok, bad) {
+      var u = URL.createObjectURL(blob), im = new Image();
+      im.onload = function () { ok({ src: im, w: im.naturalWidth, h: im.naturalHeight, close: function () { URL.revokeObjectURL(u); } }); };
+      im.onerror = function () { URL.revokeObjectURL(u); bad(new Error("圖片打不開")); };
+      im.src = u;
+    });
+  }
+  if (typeof createImageBitmap === "function") return createImageBitmap(blob).then(function (bm) { return { src: bm, w: bm.width, h: bm.height, close: function () { try { bm.close(); } catch (e) { /* 沒關係 */ } } }; }, viaImg);
+  return viaImg();
+}
+function exPicPrep(fid, mime, b64) {   // → Promise<{ data, ext, w, h }>
+  var raw = exB64(b64);
+  return exDecode(new Blob([raw], { type: mime })).then(function (d) {
+    var w = d.w, ht = d.h;
+    if (!(w > 0 && ht > 0)) { d.close(); throw new Error("圖片打不開"); }
+    var big = Math.max(w, ht) > EX_IMG_MAX;
+    if (!big && raw.length <= EX_KEEP && (mime === "image/jpeg" || mime === "image/png")) { d.close(); return { data: raw, ext: mime === "image/png" ? "png" : "jpeg", w: w, h: ht }; }
+    var sc = big ? EX_IMG_MAX / Math.max(w, ht) : 1, cw = Math.max(1, Math.round(w * sc)), ch = Math.max(1, Math.round(ht * sc));
+    var cv = document.createElement("canvas");
+    cv.width = cw; cv.height = ch;
+    var g = cv.getContext("2d");
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, cw, ch);   // 透明的地方填白色（JPEG 沒有透明）
+    g.drawImage(d.src, 0, 0, cw, ch);
+    d.close();
+    return new Promise(function (ok, bad) {
+      cv.toBlob(function (bl) {
+        if (!bl) { bad(new Error("圖片轉不了")); return; }
+        exBlobBytes(bl).then(function (u) { cv.width = 0; cv.height = 0; ok({ data: u, ext: "jpeg", w: cw, h: ch }); }, bad);
+      }, "image/jpeg", EX_IMG_Q);
+    });
+  });
+}
+function exPicList(hb, chs) {   // 要放進 Word 的圖（照順序、不重複）
+  var out = [], seen = {};
+  function add(p) { var k = exFidOf(p); if (k && !seen[k]) { seen[k] = 1; out.push(k); } }
+  chs.forEach(function (c) {
+    (((hb.titles || {})[c.id]) || []).forEach(function (t) {
+      ((t && t.blocks) || []).forEach(function (b) {
+        if (!b) return;
+        if (b.t === "text" && b.pics) _yzImgIds_(b.v).forEach(function (id) { if (b.pics[id]) add(b.pics[id]); });
+        else if (b.t === "img") add(b);
+        else if (b.t === "ladder") (b.items || []).forEach(function (it) { if (it && it.img) add(it.img); });
+        else if (b.t === "anim" && b.kind === "steps") (b.steps || []).forEach(function (s) { if (s && s.url) add(s); });
+        else if (b.t === "anim" && b.url) add(exAnimPic(b));
+      });
+    });
+  });
+  return out;
+}
+function exPicsFetch(list, onStep) {   // 一批一批拿；拿不到的記在 EXP.bad
+  var i = 0;
+  function next() {
+    if (i >= list.length) return Promise.resolve();
+    var batch = list.slice(i, i + 12);
+    return call("hbExportPics", [batch], { ms: 120000 }).then(function (r) {
+      if (r && r.st === "lock") { logout("expired"); throw new Error("驗證過期了，請重新登入"); }
+      if (!r || !r.ok) throw new Error(r && r.err || "後端沒有給圖");
+      var done = Math.max(1, Math.min(batch.length, +r.done || 0)), got = r.pics || {};
+      Object.keys(r.bad || {}).forEach(function (k) { EXP.bad[k] = String(r.bad[k]); });
+      return batch.slice(0, done).reduce(function (p, k) {
+        return p.then(function () {
+          var g = got[k];
+          if (!g || !g.b64) { if (!EXP.bad[k]) EXP.bad[k] = "拿不到這張圖"; return; }
+          return exPicPrep(k, g.mime, g.b64).then(function (P) { EXP.pics[k] = P; EXP.picBytes += P.data.length; }, function (e) { EXP.bad[k] = e.message || "圖片打不開"; });
+        });
+      }, Promise.resolve()).then(function () { i += done; onStep(i, list.length); return next(); });
+    });
+  }
+  return next();
+}
+
+/* ── 藥品資料：向後端一頁一頁拿 ── */
+function exDrugsFetch(onStep) {   // → Promise（結果放在 EXP.drugs、EXP.drows；拿不到：EXP.dErr）
+  var rows = [], sig = "", again = 0;
+  function page(from) {
+    return call("hbExportDrugs", [from], { ms: 120000 }).then(function (r) {
+      if (r && r.st === "lock") { logout("expired"); throw new Error("驗證過期了，請重新登入"); }
+      if (!r || r.err || !r.ok) { EXP.dErr = (r && r.err) || "後端沒有給藥品資料"; return; }
+      if (!from) sig = r.sig;
+      else if (r.sig !== sig && again < 2) { again++; rows = []; sig = ""; return page(0); }   // 拿到一半，補藥神器的資料剛好換過：從頭再拿
+      rows = rows.concat(r.rows || []);
+      onStep(rows.length, r.total || rows.length);
+      if (r.next > from && rows.length < 2e4) return page(r.next);
+    });
+  }
+  return page(0).then(function () {
+    if (EXP.dErr) return;
+    EXP.drows = rows; EXP.drugs = {};
+    rows.forEach(function (d) { if (d && d.code) EXP.drugs[String(d.code).toUpperCase()] = d; });
+  }, function (e) { EXP.dErr = e.message || "拿不到藥品資料"; });
+}
+function exHbDrugCodes(hb, chs) {
+  var out = [];
+  chs.forEach(function (c) { (((hb.titles || {})[c.id]) || []).forEach(function (t) { ((t && t.blocks) || []).forEach(function (b) { if (b && b.t === "drug") (b.items || []).forEach(function (d) { if (d && d.code && out.indexOf(d.code) < 0) out.push(d.code); }); }); }); });
+  return out;
+}
+function exHbDrugsFetch(codes) {   // 手冊裡的藥品卡片：「藥品資料」沒拿到的那幾支，用看手冊的那一支（hbDrugs）補
+  var need = codes.filter(function (c) { return !(EXP.drugs && EXP.drugs[c]); }), i = 0;
+  function next() {
+    if (i >= need.length) return Promise.resolve();
+    var q = need.slice(i, i + 30);
+    i += 30;
+    return call("hbDrugs", [q]).then(function (r) {
+      q.forEach(function (c) { var v = r && r.ok && r.rows ? r.rows[c] : null; if (v && !v.down) EXP.dHb[c] = v; });
+      return next();
+    }, function () { return next(); });
+  }
+  return next();
+}
+
+/* ── 整個流程 ── */
+function exUi(pct, msg) {
+  var bar = $("#exBarI"), m = $("#exMsg"), pg = $("#exProg");
+  if (pg) pg.hidden = false;
+  if (bar) bar.style.width = Math.max(2, Math.min(100, Math.round(pct))) + "%";
+  if (m) m.textContent = msg + "（" + Math.round((Date.now() - EX.t0) / 1e3) + " 秒）";
+  if (typeof act === "function") act();   // 匯出中：一直有在動（不會被閒置登出）
+}
+function exportGo(opt) {
+  if (exBusy() || !MAIN || !IS_DEV) return;
+  EX.busy = true; EX.t0 = Date.now(); EX.sid = SESS;
+  exClear();
+  var go = $(".exgo"), out = $("#exOut"), when = new Date(), stamp = exStampOf(when), sid = SESS;
+  if (go) go.disabled = true;
+  if (out) out.innerHTML = "";
+  EXP = { hb: null, pics: {}, bad: {}, picBytes: 0, drugs: null, drows: null, dErr: "", dHb: {}, zip: typeof CompressionStream === "function", noPics: !opt.pics, info: "", dinfo: "" };
+  var files = [], nCh = 0, nPic = 0;
+  exUi(1, "讀手冊（後端存好的那一本）…");
+  call("hbData", []).then(function (r) {
+    if (r && r.st === "lock") { logout("expired"); throw new Error("驗證過期了，請重新登入"); }
+    if (!r || !r.data) throw new Error((r && r.err) || "拿不到手冊");
+    var hb = EXP.hb = JSON.parse(JSON.stringify(r.data));
+    _yzLadderNumberAll_(hb);   // 條文「接續上一段」的號碼
+    EXP.info = "藥戰手冊・內容第 " + (hb.rev || 0) + " 版・匯出時間 " + stamp + "・院內資料，請勿外傳";
+    EXP.dinfo = "補藥神器藥品資料・匯出時間 " + stamp + "・院內資料，請勿外傳";
+    EXP.chs = (hb.chapters || []).filter(function (c) { return c && (((hb.titles || {})[c.id]) || []).length; });
+    if (!opt.drugs) return;
+    exUi(4, "拿藥品資料（補藥神器）…");
+    return exDrugsFetch(function (n, tot) { exUi(4 + 14 * Math.min(1, n / Math.max(1, tot)), "拿藥品資料 " + n + "／" + tot + " 支…"); });
+  }).then(function () {
+    var codes = exHbDrugCodes(EXP.hb, EXP.chs);
+    if (!codes.length) return;
+    exUi(19, "拿手冊裡藥品卡片的資料…");
+    return exHbDrugsFetch(codes);
+  }).then(function () {
+    if (!opt.pics) return;
+    var list = exPicList(EXP.hb, EXP.chs);
+    nPic = list.length;
+    if (!list.length) return;
+    exUi(20, "拿手冊的圖 0／" + list.length + " 張…");
+    return exPicsFetch(list, function (n, tot) { exUi(20 + 55 * n / Math.max(1, tot), "拿手冊的圖 " + n + "／" + tot + " 張（縮小成 Word 用的大小）…"); });
+  }).then(function () {
+    var jobs = [];
+    EXP.chs.forEach(function (c) {
+      var ci = (EXP.hb.chapters || []).indexOf(c), ds = exChapterDocs(EXP.hb, c, ci);
+      if (ds.length) nCh++;
+      jobs = jobs.concat(ds.map(function (x) { x.kind = "hb"; return x; }));
+    });
+    if (EXP.drows && EXP.drows.length) jobs = jobs.concat(exDrugDocs(EXP.drows).map(function (x) { x.kind = "drug"; return x; }));
+    if (!jobs.length) throw new Error("沒有東西可以匯出：手冊還沒有內容" + (opt.drugs ? "，藥品資料也沒拿到（" + (EXP.dErr || "沒有藥") + "）" : ""));
+    return jobs.reduce(function (p, x, k) {
+      return p.then(function () {
+        exUi(76 + 20 * k / jobs.length, "做 Word 檔 " + (k + 1) + "／" + jobs.length + "：" + x.name);
+        return exDocx(x.D, x.part, when).then(function (u) { files.push({ name: x.name, data: u, z: false, kind: x.kind, imgs: x.D.imgs.length }); x.D = null; });
+      });
+    }, Promise.resolve());
+  }).then(function () {
+    exUi(97, "打包成 zip…");
+    return exZip(files, when);
+  }).then(function (zipU) {
+    if (sid !== SESS || !MAIN) return;   // 中間登出了：什麼都不給
+    var zname = "藥戰手冊匯出_" + when.getFullYear() + exZ2(when.getMonth() + 1) + exZ2(when.getDate()) + "-" + exZ2(when.getHours()) + exZ2(when.getMinutes()) + ".zip";
+    var blob = new Blob([zipU], { type: "application/zip" });
+    EX.url = URL.createObjectURL(blob);
+    EX.tm = setTimeout(exClear, 10 * 6e4);
+    exDownload(EX.url, zname);
+    exUi(100, "好了：已經下載 " + zname);
+    exSummary(files, zname, blob.size, nCh, nPic, opt);
+    var hbN = files.filter(function (f) { return f.kind === "hb"; }).length, dN = files.length - hbN;
+    call("hbExportLog", ["手冊 " + hbN + " 個檔、藥品資料 " + dN + " 個檔、" + exMb(blob.size)]).then(function () { /* 好了 */ }, function () { /* 記不到就算了 */ });
+  }).then(function () { EX.busy = false; EXP = null; if (go) go.disabled = false; }, function (e) {
+    EX.busy = false; EXP = null;
+    if (go) go.disabled = false;
+    var m = $("#exMsg");
+    if (m) m.textContent = "❌ 匯出沒有完成：" + (e && e.message || e) + "（可以再按一次）";
+  });
+}
+function exDownload(url, name) {
+  var a = h("a", { href: url, download: name, style: "display:none" });
+  document.body.appendChild(a);
+  try { a.click(); } catch (e) { /* 下面還有「再下載一次」 */ }
+  setTimeout(function () { a.remove(); }, 1000);
+}
+function exClear() {   // 收掉上一次的 zip（記憶體裡的）
+  clearTimeout(EX.tm);
+  if (EX.url) { try { URL.revokeObjectURL(EX.url); } catch (e) { /* 沒關係 */ } EX.url = ""; }
+  var a = $(".exagain");
+  if (a) a.replaceWith(h("span", { class: "muted" }, ["（zip 已經收掉了；要的話再匯出一次）"]));
+}
+function exSummary(files, zname, size, nCh, nPic, opt) {
+  var out = $("#exOut"); if (!out) return;
+  out.innerHTML = "";
+  var hbF = files.filter(function (f) { return f.kind === "hb"; }), dF = files.filter(function (f) { return f.kind === "drug"; });
+  var nImg = Object.keys(EXP.pics).length, nBad = Object.keys(EXP.bad).length, big = files.filter(function (f) { return f.data.length > 7e6; });
+  var lines = [
+    "✅ 手冊：" + nCh + " 章 → " + hbF.length + " 個 Word 檔" + (opt.pics ? "（圖 " + nImg + " 張" + (nBad ? "，" + nBad + " 張沒放進來" : "") + "）" : "（沒有放圖）"),
+    opt.drugs ? (EXP.dErr ? "⚠️ 藥品資料沒有匯出：" + EXP.dErr : "✅ 藥品資料：" + (EXP.drows || []).length + " 支 → " + dF.length + " 個 Word 檔（依英文字母分）") : "（這次沒有匯出藥品資料）",
+    "📦 " + zname + "（" + exMb(size) + "）"
+  ];
+  out.appendChild(h("div", { class: "exsum" }, lines.map(function (t) { return h("div", {}, [t]); })));
+  if (nBad) {
+    var why = {}; Object.keys(EXP.bad).forEach(function (k) { why[EXP.bad[k]] = (why[EXP.bad[k]] || 0) + 1; });
+    out.appendChild(h("p", { class: "hint" }, ["沒放進來的圖：" + Object.keys(why).map(function (w) { return w + " " + why[w] + " 張"; }).join("、") + "。Word 裡在那個位置寫了［圖片…］，圖片裡的字照樣有寫進去。可以到「✏️ 編輯」的圖片檢查看看是哪幾張。"]));
+  }
+  if (big.length) out.appendChild(h("p", { class: "hint warn" }, ["⚠️ 有 " + big.length + " 個檔超過 7 MB（" + big.map(function (f) { return f.name; }).join("、") + "）：沒有 Microsoft 365 Copilot 授權的話，Copilot 不會讀這幾個。"]));
+  out.appendChild(h("details", { class: "exfiles" }, [h("summary", {}, ["看 zip 裡的檔（" + files.length + " 個）"]), h("ul", {}, files.map(function (f) { return h("li", {}, [f.name + "　" + exMb(f.data.length)]); }))]));
+  out.appendChild(h("div", { class: "acts" }, [h("a", { class: "btn sm exagain", href: EX.url, download: zname }, ["⬇️ 沒有自動下載：按這裡"])]));
+  out.appendChild(h("ol", { class: "hint exnext" }, [
+    h("li", {}, ["把 zip 解壓縮（按右鍵 →「解壓縮全部」）。"]),
+    h("li", {}, ["打開 SharePoint 的「藥戰手冊」網站 →「文件」→「手冊匯出」資料夾：先把舊的 Word 檔全部刪掉，再把這次解開的 Word 檔全部拖進去。"]),
+    h("li", {}, ["放好以後，把電腦裡的 zip 和解開的資料夾刪掉（裡面是手冊的全部內容，不要寄給別人、不要留在公用電腦）。"])]));
+}
+function drawExport() {   // 管理頁「⑦ 📤 匯出給 Copilot」
+  var box = $("#exBox"); if (!box) return;
+  if (box.firstChild) { exDirtyNote(); return; }   // 畫過了：不要重畫（匯出中的進度、上一次的結果會不見）
+  box.appendChild(h("p", { class: "hint", style: "margin-top:0" }, ["把整本手冊（每章一個 Word 檔，含圖片）和補藥神器的藥品資料（依英文字母分檔，含藥局位置）打包成一個 zip 下載。放到院內 SharePoint「藥戰手冊」網站的「手冊匯出」資料夾，Copilot Studio 就讀得到。"]));
+  var cPic = h("input", { type: "checkbox", id: "exPic", checked: true }), cDrug = h("input", { type: "checkbox", id: "exDrug", checked: true });
+  box.appendChild(h("div", { class: "exopts" }, [h("label", {}, [cPic, " 含圖片（比較慢、檔案比較大）"]), h("label", {}, [cDrug, " 含藥品資料（補藥神器）"])]));
+  box.appendChild(h("p", { class: "hint warn", id: "exDirty", hidden: true }, ["⚠️ 編輯器裡有還沒儲存的修改：匯出的是已經儲存的內容。要一起匯出，先到「✏️ 編輯」按儲存。"]));
+  box.appendChild(h("div", { class: "acts" }, [btn("📤 開始匯出（下載 zip）", function () { exportGo({ pics: cPic.checked, drugs: cDrug.checked }); }, "pri exgo")]));
+  box.appendChild(h("div", { id: "exProg", class: "exprog", hidden: true }, [h("div", { class: "exbar", "aria-hidden": "true" }, [h("i", { id: "exBarI" })]), h("div", { id: "exMsg", class: "hint", role: "status", "aria-live": "polite" })]));
+  box.appendChild(h("div", { id: "exOut" }));
+  box.appendChild(h("ul", { class: "hint", style: "margin:8px 0 0;padding-left:1.2em" }, [
+    h("li", {}, ["匯出的是已經儲存的內容；還沒有內容的章不匯出。每個 Word 檔最上面寫了內容第幾版、匯出時間。"]),
+    h("li", {}, ["一個檔超過約 6.5 MB 會自動分成 _1、_2（沒有 Microsoft 365 Copilot 授權時，Copilot 只讀 7 MB 以下的檔）。"]),
+    h("li", {}, ["藥品資料要先把補藥神器 LINE 專案的 05 換成第 37 批的版本才拿得到；手冊照樣可以匯出。"]),
+    h("li", {}, ["之後手冊改了，再匯出一次：SharePoint 那邊先刪掉舊的 Word 檔，再放這次的。"])]));
+  exDirtyNote();
+}
+function exDirtyNote() { var n = $("#exDirty"); if (n) n.hidden = !(typeof ED !== "undefined" && ED && ED.dirty); }
 
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
