@@ -347,6 +347,8 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .art .rt-box.rows .rt-ic{position:absolute;left:11px;top:8px}
 .art .rt-box.rows .rt-bl{position:relative;margin:0;padding:8px 0}
 .art .rt-box.rows .rt-bl+.rt-bl::before{content:"";position:absolute;left:-36px;right:-11px;top:0;border-top:1px solid var(--bd)}
+.art .rt-box.rows.noic{padding-left:11px}
+.art .rt-box.rows.noic .rt-bl+.rt-bl::before{left:-11px}
 .art .rt-quote{border-left:3px solid #B8C2CC;padding:1px 0 1px 11px;margin:8px 0;color:#4A5565}
 .art .rt-go{display:flex;gap:8px;align-items:baseline;background:#F1F7F6;border-radius:8px;padding:8px 11px;margin:8px 0;color:var(--accent);text-decoration:none;cursor:pointer}
 .art .rt-go b{flex:1;min-width:0}
@@ -382,6 +384,22 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .rtsz-b{display:block;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:7px;padding:4px 14px;margin:3px 0;cursor:pointer;min-width:130px;font:inherit}
 .rtem{display:grid;grid-template-columns:repeat(8,34px);gap:3px}
 .rtem-b{border:1px solid transparent;background:#fff;border-radius:7px;height:34px;font-size:19px;cursor:pointer}
+/* 第 39 批：項目符號、編號樣式、標註框（顏色＋符號）的選單 */
+.rtem-b.on{border-color:var(--accent);background:var(--accent2)}
+.rtem.rtul{grid-template-columns:repeat(7,36px)}
+.rtem-b small{font-size:11px;color:var(--ink3);white-space:nowrap}
+.rtem.rtbox-i .rtem-b{padding:0}
+.rtol{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;width:min(420px,calc(100vw - 48px))}
+.rtol-b{border:1px solid var(--line);background:#fff;border-radius:7px;padding:5px 6px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rtol-b:hover{background:#F1F5F9}
+.rtol-b.on{border-color:var(--accent);background:var(--accent2);font-weight:700}
+.rtbox-c{display:grid;grid-template-columns:repeat(6,46px);gap:4px;margin:2px 0 8px}
+.rtbox-cb{border:1px solid;border-radius:7px;height:32px;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.rtbox-cb.on{outline:2px solid var(--accent);outline-offset:1px}
+.rtem.rtbox-i{grid-template-columns:repeat(9,34px)}
+.fb.fb-ul-pick,.fb.fb-ol-pick{min-width:18px;padding:0 4px;margin-left:-2px;color:var(--ink3)}
+.fb.fb-box-pick{padding:0 5px}
+@media (max-width:420px){.rtol{grid-template-columns:repeat(2,minmax(0,1fr))}.rtem.rtbox-i{grid-template-columns:repeat(6,34px)}.rtbox-c{grid-template-columns:repeat(3,46px)}}
 .rte [hidden]{display:none!important}
 .rtbody{min-height:84px;border:1px solid #C7CED7;border-radius:8px;padding:8px 10px;background:#fff;outline:none;line-height:1.7;white-space:pre-wrap;word-break:break-word;cursor:text}
 .rtbody:focus{border-color:var(--accent);box-shadow:0 0 0 2px #BFE3DF}
@@ -392,6 +410,7 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .rl-q{border-left:3px solid #B8C2CC;padding-left:11px;color:#4A5565}
 .rl-box{border:1px solid;border-radius:8px;padding:6px 10px 6px 36px;margin:4px 0}
 .rl-box::before{content:attr(data-ic);position:absolute;left:11px;top:6px;line-height:1.7}
+.rl-box[data-ic=""]{padding-left:10px}
 .rl-box[data-cont]{margin-top:0;border-top-left-radius:0;border-top-right-radius:0;border-top-color:transparent}
 .rl-box[data-cont]::before{display:none}
 .rl-box[data-more]{margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0}
