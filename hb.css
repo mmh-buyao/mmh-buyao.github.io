@@ -676,6 +676,83 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .fxdlg .fxex small{color:var(--ink3)}
 .fxdlg .fxph{font-size:14px}
 .fxdlg .dlg-b .fxsp{flex:1}
+/* ───────── 第 40 批：流程圖（編輯器自由畫；網頁：電腦整張、手機沒有說明框的那張＋說明框的字）───────── */
+.drw{border:1px solid var(--line);border-radius:10px;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px}
+.drw-bar{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
+.drw-bar .sp{flex:1}
+.drw-bar .btn.on{background:var(--accent2);border-color:var(--accent);color:var(--accent);font-weight:700}
+.drw-bar .in.sm{height:30px;padding:2px 6px;font-size:13px;width:auto}
+.drw-bar .drw-lt{width:13em}
+.drw-lab{font-size:12px;font-weight:700;color:var(--ink3);margin-right:2px}
+.drw-hint{font-size:12.5px;color:var(--ink3);line-height:1.5}
+.drw-ctx{min-height:32px;padding:4px 6px;background:#F6F8FA;border-radius:8px}
+.drw-cols{display:inline-flex;gap:3px}
+.drw-col{min-width:42px;padding:2px 6px;border:1.5px solid;font-size:12px;font-weight:700}
+.drw-col.on{outline:2px solid var(--accent);outline-offset:1px}
+.drw-z{font-size:12px;color:var(--ink3);min-width:3.2em;text-align:center}
+.drw-view{overflow:auto;max-height:72vh;border:1px solid #DCE3EA;border-radius:8px;background:#FBFCFD}
+.drw-stage{display:inline-block;outline:none;touch-action:none;user-select:none;-webkit-user-select:none}
+.drw-stage:focus-visible{box-shadow:inset 0 0 0 2px var(--accent)}
+.drw-svg{display:block}
+.drw-txt{border:1px solid var(--accent);border-radius:8px;padding:6px 8px;background:#F7FBFA}
+.drw-txth{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-bottom:6px;font-size:13px}
+.drw-txth .sp{flex:1}
+.drw-txt .rtbody{min-height:60px;max-height:34vh;overflow:auto}
+.drw-foot{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12.5px;align-items:center}
+.drw-st.ok{color:#1F7A4D}
+.drw-st.warn{color:#9A6700}
+.drw-st.bad{color:#B42318;font-weight:700}
+.drw.full{position:fixed;left:0;right:0;bottom:0;top:0;z-index:45;border-radius:0;border:0;box-shadow:0 -2px 10px rgba(0,0,0,.12);padding:8px 12px}
+.drw.full .drw-view{flex:1;max-height:none;min-height:0}
+.drw.full .drw-txt{max-height:38vh;overflow:auto}
+body.drw-noscroll{overflow:hidden}
+.drw-rec{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;font-size:12.5px}
+.drwait{padding:10px;border:1px dashed var(--line);border-radius:8px;text-align:center}
+.art figure.drawfig{max-width:100%}
+.art figure.drawfig img,.drawfig img{display:block;width:100%;height:auto;aspect-ratio:var(--ar1,auto);cursor:zoom-in;background:#fff}
+@media (max-width:640px){.art figure.drawfig img,.drawfig img{max-width:100%!important}}
+.drawfig .drnotes{display:none}
+.drnh{font-weight:700;font-size:.92em;color:#5F6B7A;margin:10px 0 4px}
+.drnote{border:1px solid;border-radius:8px;padding:8px 12px;margin-top:8px}
+@media (max-width:640px){.drawfig.two img{aspect-ratio:var(--ar2,auto)}.drawfig.two .drnotes{display:block}}
+/* ── 第 40 批：字型大小像 Word：[ 12 ▾ ] A▲ A▼ ── */
+.fsz{display:inline-flex;align-items:stretch;height:28px;border:1px solid var(--line);border-radius:7px;background:#fff;overflow:hidden}
+.fsz:focus-within{border-color:#7FB9B3;box-shadow:0 0 0 2px rgba(11,122,117,.15)}
+.fsz-in{width:38px;border:0;outline:0;padding:0 2px 0 7px;font:inherit;font-size:13px;color:var(--ink);background:transparent;text-align:left}
+.fsz-in:disabled{opacity:.38}
+.fsz .fb-szdd{border:0;border-left:1px solid var(--line);border-radius:0;min-width:18px;height:auto;padding:0 4px;font-size:10px;color:var(--ink3)}
+.fb.fb-szup,.fb.fb-szdn{min-width:26px;padding:0 5px;font-weight:700}
+.fb.fb-szup{font-size:15px}
+.fb.fb-szdn{font-size:11.5px}
+.fb.fb-szup sup,.fb.fb-szdn sup{font-size:7px;margin-left:1px;top:-.45em;position:relative;color:var(--ink3)}
+.rtszl{display:flex;flex-direction:column;max-height:300px;overflow-y:auto;min-width:96px;border:1px solid var(--line);border-radius:7px;margin:4px 0 6px}
+.rtszl-b{display:flex;align-items:baseline;justify-content:space-between;gap:10px;border:0;background:#fff;padding:5px 12px;text-align:left;font:inherit;font-size:13.5px;cursor:pointer;font-variant-numeric:tabular-nums}
+.rtszl-b:hover{background:#F1F5F9}
+.rtszl-b.on{background:var(--accent2);color:var(--accent);font-weight:700}
+.rtszl-b small{font-size:11px;color:var(--ink3);font-weight:400}
+/* ── 第 40 批（一起做的）：網址連結（外部網站）：一個連結一個小框；電腦點了開小視窗 ── */
+.xlinks{display:grid;gap:8px;margin:12px 0}
+.xlink{display:flex;align-items:center;gap:12px;min-width:0;padding:10px 14px;border:1px solid #A9C7E8;border-radius:10px;background:#F2F7FD;color:#174A84;text-decoration:none;max-width:640px}
+.xlink:hover{background:#E6F0FB;border-color:#7FA9D8}
+.xlink:focus-visible{outline:3px solid rgba(23,74,132,.35);outline-offset:2px}
+.xl-i{font-size:20px;flex:none}
+.xl-t{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.xl-t b{font-size:15px;line-height:1.35;overflow-wrap:anywhere}
+.xl-t small{font-size:12px;color:#5F6B7A;overflow-wrap:anywhere}
+.xl-o{flex:none;font-size:16px;font-weight:700}
+.lke{display:grid;gap:8px}
+.lkl{display:grid;gap:8px}
+.lkrw{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#F7FAFD}
+.lk-no{font-size:18px;line-height:34px;flex:none}
+.lk-f{display:grid;gap:6px;flex:1;min-width:0}
+.lk-r1{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:6px}
+.lk-r2{display:flex;gap:6px;align-items:center}
+.lk-r2 .lk-n{flex:1;min-width:0}
+.lk-m{font-size:12.5px;color:var(--ink3);min-height:1.2em}
+.lk-m.ok{color:#2E7D4F}
+.lk-m.bad{color:#B42318;font-weight:600}
+.lk-add{display:flex}
+@media (max-width:640px){.lk-r1{grid-template-columns:1fr}}
 
 /* ───────── 目錄圖 第 3 版：標籤（圖示＋名稱）＋圓點，網頁、編輯器共用 ─────────
  * 一個地點 ＝ 一個「物品框」（.mspot，位置大小用佔整張圖的 %）。圓點在框的正中間，標籤在圓點的上／下／左／右。
@@ -836,8 +913,41 @@ body{min-height:100vh}
 /* 登入、驗證、申請……（整頁一張卡片） */
 .scr{min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:max(6vh,24px) 16px 40px}
 .scr-in{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px 22px 18px;max-width:520px;width:100%;box-shadow:0 6px 24px rgba(20,40,60,.08)}
-.scr-logo{display:flex;align-items:center;gap:8px;color:var(--accent);font-size:17px;margin-bottom:6px}
+.scr-logo{display:flex;align-items:center;gap:8px;color:#064742;font-size:17px;margin-bottom:6px}
 .scr-logo span{font-size:24px}
+/* 第 40 批：藥戰手冊的 LOGO（使用者給的圖描成的向量）：登入畫面、上面那條、首頁、章的頁面 */
+.scr-logo img.lg{width:44px;height:44px;flex:none}
+.scr-logo b{font-size:19px;letter-spacing:.04em}
+.hlogo img.lg{width:24px;height:24px;vertical-align:-6px;margin-right:5px}
+.hlogo2 .lgb,.pglogo .lgb{display:inline-flex;align-items:center;justify-content:center;flex:none;background:#fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.35),0 0 0 3px rgba(255,255,255,.55);vertical-align:middle}
+.hlogo2 .lgb{width:clamp(48px,6vw,74px);height:clamp(48px,6vw,74px);margin-right:.22em}
+.hlogo2 .lgb img,.pglogo .lgb img{width:84%;height:84%}
+.pglogo{display:inline-flex;align-items:center;gap:.3em}
+.pglogo .lgb{width:clamp(30px,3.8vw,42px);height:clamp(30px,3.8vw,42px)}
+.hlogo2{display:flex;align-items:center}
+/* 第 40 批：開場的「載入中」：LOGO＋翻書動畫＋進度條（照真的步驟走） */
+.scr.bootscr{align-items:center;padding-top:0;padding-bottom:0}
+.scr-in.ld,.bootscr .scr-in{text-align:center;max-width:380px;padding:26px 22px 22px}
+.ld-logo svg,.ld-logo img{width:76px;height:76px;display:block;margin:0 auto}
+.ld-name{font-size:21px;font-weight:800;letter-spacing:.08em;color:#064742;margin:4px 0 2px}
+.bk{position:relative;width:136px;height:86px;margin:18px auto 22px;perspective:560px}
+.bk i{position:absolute;display:block}
+.bk-c{left:-7px;right:-7px;top:5px;bottom:-7px;background:#064742;border-radius:7px;box-shadow:0 6px 14px rgba(6,71,66,.28)}
+.bk-c::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:4px;margin-left:-2px;background:#A78448;border-radius:2px}
+.bk-l,.bk-r,.bk-p{top:0;bottom:0;width:50%;background-color:#FBF7EE;background-image:repeating-linear-gradient(to bottom,transparent 0 8px,rgba(6,71,66,.17) 8px 10px);background-size:calc(100% - 22px) 62%;background-position:11px 14px;background-repeat:no-repeat}
+.bk-l{left:0;border-radius:4px 0 0 4px;box-shadow:inset -10px 0 12px -8px rgba(0,0,0,.28)}
+.bk-r{right:0;border-radius:0 4px 4px 0;box-shadow:inset 10px 0 12px -8px rgba(0,0,0,.28)}
+.bk-p{right:0;border-radius:0 4px 4px 0;transform-origin:0 50%;animation:bkflip 2.7s cubic-bezier(.5,.05,.3,1) infinite;box-shadow:inset 10px 0 12px -8px rgba(0,0,0,.22)}
+.bk-p:nth-child(5){animation-delay:.9s}
+.bk-p:nth-child(6){animation-delay:1.8s}
+@keyframes bkflip{0%{transform:rotateY(0);background-color:#FBF7EE}40%{background-color:#EFE6D2}50%{transform:rotateY(-90deg)}60%{background-color:#F6F0E2}75%,100%{transform:rotateY(-180deg);background-color:#FBF7EE}}
+.ldbar{position:relative;width:min(240px,80%);height:8px;margin:0 auto;border-radius:99px;background:#E4ECEA;overflow:hidden}
+.ldbar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#064742,#0E7C66 65%,#A78448);transition:width .45s ease}
+.ldbar i.pre{animation:ldpre 7s cubic-bezier(.1,.75,.3,1) forwards}
+@keyframes ldpre{from{width:2%}to{width:16%}}
+.ldtx{margin:10px 0 0;font-size:13.5px;min-height:1.5em;font-variant-numeric:tabular-nums}
+.bootscr .bootmore{margin-top:10px}
+@media (prefers-reduced-motion:reduce){.bk-p{animation-duration:6s}.ldbar i{transition:none}}
 .scr h2{font-size:19px;margin:6px 0 8px;text-wrap:balance}
 .scr-p p{margin:6px 0;color:var(--ink2);line-height:1.6}
 .scr-b{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
