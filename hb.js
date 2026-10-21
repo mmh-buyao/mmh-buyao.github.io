@@ -89,7 +89,24 @@ var YZ_RT_MARKS = {
   orange: { label: "橘", bg: "#FFD7A8", ink: "#9A4A00" },
   purple: { label: "紫", bg: "#E1D2FF", ink: "#5B2FA6" }
 };
-var YZ_RT_ORDER = ["m", "b", "i", "u", "s", "c", "z"];   // 寫出標記時的固定順序（疊起來才會剛好蓋住；螢光筆包在最外面）
+var YZ_RT_ORDER = ["m", "x", "b", "i", "u", "s", "c", "z"];   // 寫出標記時的固定順序（疊起來才會剛好蓋住；螢光筆包在最外面，文字框其次）
+// 第 41 批：文字框（像 Word 的「字元框線」）：[x=樣式]…[/x]、[x=樣式-顏色]…[/x]。框裡的字照樣可以粗體、變色、改大小…
+//   樣式：solid 實線、dash 虛線、dot 點線、dbl 雙線、thick 粗線、round 圓角（像按鍵）；顏色：沒寫＝跟字一樣（9 種字的顏色都可以）
+//   網頁、編輯器、流程圖：真的框；LINE 不能幫一段字加框 → 前後加［］（雙線、粗線：【】）；Word：字元框線
+var YZ_RT_BOX_ORDER = ["solid", "dash", "dot", "dbl", "thick", "round"];
+var YZ_RT_BOX = {
+  solid: { label: "實線", css: "1px solid", word: "single", sz: 4 },
+  dash: { label: "虛線", css: "1px dashed", word: "dashed", sz: 4 },
+  dot: { label: "點線", css: "2px dotted", word: "dotted", sz: 6 },
+  dbl: { label: "雙線", css: "3px double", word: "double", sz: 4, heavy: 1 },
+  thick: { label: "粗線", css: "2px solid", word: "single", sz: 12, heavy: 1 },
+  round: { label: "圓角（像按鍵）", css: "1px solid", word: "single", sz: 4, round: 1 }
+};
+function _yzRtBox_(v) {   // "dash-red" → { st:"dash", c:"red", key:"dash-red", def }；不合格＝null
+  var m = /^([a-z]+)(?:-([a-z]+))?$/.exec(String(v === null || v === undefined ? "" : v));
+  if (!m || !Object.prototype.hasOwnProperty.call(YZ_RT_BOX, m[1]) || (m[2] && !Object.prototype.hasOwnProperty.call(YZ_RT_COLORS, m[2]))) return null;
+  return { st: m[1], c: m[2] || "", key: m[1] + (m[2] ? "-" + m[2] : ""), def: YZ_RT_BOX[m[1]] };
+}
 var YZ_RT_MAXLV = 3;                                 // 最多縮排 3 層
 var YZ_CP_MAX = 500;                                 // 第 32 批：反灰可複製一段最多幾個字（LINE 的「複製」最多 1000 字）
 function _yzCpClean_(s) { return String(s === null || s === undefined ? "" : s).replace(/\[\/cp\]/gi, "").replace(/[ \t]*[\r\n]+[ \t]*/g, " ").replace(/\t/g, " ").replace(/^\s+|\s+$/g, "").slice(0, YZ_CP_MAX); }   // 換行＝一個空白（路徑裡本來的空白不動）
@@ -148,13 +165,14 @@ function _yzRtInline_(s) {
         var ce = s.indexOf("[/cp]", i + 4), ct = ce > i + 4 ? _yzCpClean_(s.slice(i + 4, ce)) : "";
         if (ct) { flush(); var cr = { t: ct, cp: 1 }; for (var ck in cur) cr[ck] = cur[ck]; runs.push(cr); i = ce + 5; continue; }
       }
-      var m = /^\[(\/?)(b|i|u|s|c|z|m)(?:=([a-z0-9]+(?:\.5)?))?\]/.exec(s.substr(i, 16));
+      var m = /^\[(\/?)(b|i|u|s|c|z|m|x)(?:=([a-z0-9]+(?:\.5|-[a-z]+)?))?\]/.exec(s.substr(i, 24));
       if (m) {
         var close = m[1] === "/", key = m[2], val = m[3], ok = false;
         if (close) { if (!val) { flush(); delete cur[key]; ok = true; } }
         else if (key === "c") { if (val && YZ_RT_COLORS[val]) { flush(); cur.c = val; ok = true; } }
         else if (key === "z") { if (val && _yzRtSz_(val)) { flush(); cur.z = val; ok = true; } else if (val === "12") { flush(); delete cur.z; ok = true; } }   // 第 40 批：點數；12＝內文（不算大小）
         else if (key === "m") { if (val && YZ_RT_MARKS[val]) { flush(); cur.m = val; ok = true; } }
+        else if (key === "x") { var bx = _yzRtBox_(val); if (bx) { flush(); cur.x = bx.key; ok = true; } }   // 第 41 批：文字框
         else if (!val) { flush(); cur[key] = 1; ok = true; }
         if (ok) { i += m[0].length; continue; }
       }
@@ -194,13 +212,13 @@ function _yzRtParse_(text) {   // 一段字 → 一行一行（編輯器載入�
 
 // ── 一行的資料 → 字 ──
 function _yzRtEsc_(s) {   // 字本身長得像標記的，左括號寫成兩個；結尾的「[」也寫成兩個（後面可能接標記）
-  return String(s).replace(/\[(?=\[|$|\/?(?:b|i|u|s|fx|cp)\]|\/(?:c|z|m)\]|(?:c|z|m)=[a-z0-9]+(?:\.5)?\]|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?\])/g, "[[");
+  return String(s).replace(/\[(?=\[|$|\/?(?:b|i|u|s|fx|cp)\]|\/(?:c|z|m|x)\]|(?:c|z|m)=[a-z0-9]+(?:\.5)?\]|x=[a-z]+(?:-[a-z]+)?\]|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?\])/g, "[[");
 }
 function _yzRtSerRuns_(runs) {
   var out = "", stack = [], x;
   (runs || []).forEach(function (r) {
     var want = [];
-    YZ_RT_ORDER.forEach(function (k) { if (r[k]) want.push(k === "c" || k === "z" || k === "m" ? k + "=" + r[k] : k); });
+    YZ_RT_ORDER.forEach(function (k) { if (r[k]) want.push(k === "c" || k === "z" || k === "m" || k === "x" ? k + "=" + r[k] : k); });
     var j = 0; while (j < stack.length && j < want.length && stack[j] === want[j]) j++;
     for (x = stack.length - 1; x >= j; x--) out += "[/" + stack[x].charAt(0) + "]";
     stack = stack.slice(0, j);
@@ -235,7 +253,20 @@ function _yzRtPlainLines_(text) {
 }
 function _yzRtPlain_(text) { return _yzRtPlainLines_(text).join("\n"); }
 // 這段字有沒有用到格式標記（LINE 裡改字時，要提醒「請保留標記」）
-function _yzRtHas_(text) { return /\[(?:\/?(?:b|i|u|s|fx|cp)|\/(?:c|z|m)|(?:c|z|m)=[a-z0-9]+|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?)\]/.test(String(text === null || text === undefined ? "" : text)); }
+function _yzRtHas_(text) { return /\[(?:\/?(?:b|i|u|s|fx|cp)|\/(?:c|z|m|x)|(?:c|z|m)=[a-z0-9]+|x=[a-z]+(?:-[a-z]+)?|(?:h[1-4]|hr|q|box|go|img|tbl)(?:=[A-Za-z0-9_-]+)?)\]/.test(String(text === null || text === undefined ? "" : text)); }
+// 第 41 批：文字框的樣子（網頁、編輯器、流程圖：直接寫在元件上）。框沒選顏色：裡面的字都同一個顏色＝跟字一樣，不然跟著外面的字
+function _yzRtBoxCss_(x, runs) {
+  var bx = _yzRtBox_(x); if (!bx) return "";
+  var c = bx.c ? YZ_RT_COLORS[bx.c] : "";
+  if (!c && runs && runs.length) { var c0 = runs[0].c || ""; if (c0 && YZ_RT_COLORS[c0] && runs.every(function (r) { return (r.c || "") === c0; })) c = YZ_RT_COLORS[c0]; }
+  return "border:" + bx.def.css + (c ? " " + c : "") + ";padding:0 " + (bx.def.round ? ".5em" : ".22em") + ";margin:0 .12em;border-radius:" + (bx.def.round ? ".75em" : "2px") + ";-webkit-box-decoration-break:clone;box-decoration-break:clone";
+}
+// 第 41 批：文字框：一行裡連在一起、框一樣的那幾段 → 一組（畫成一個框）：[{ x:框（沒有＝""）, runs:[…] }]
+function _yzRtBoxGroups_(runs) {
+  var out = [];
+  (runs || []).forEach(function (r) { var k = r && r.x ? r.x : "", last = out[out.length - 1]; if (last && last.x === k) last.runs.push(r); else out.push({ x: k, runs: [r] }); });
+  return out;
+}
 // 第 30 批：這一行是不是「整行都畫了同一色螢光筆」（空白不算）→ 那個顏色；不是 → ""（LINE 整行的才能畫成底色）
 function _yzRtBand_(runs) {
   var m = "", any = false;
@@ -534,8 +565,24 @@ function _yzT_(text, o) {
 
 // 一行字（含格式）→ LINE 的一個 text。沒有格式就是一般的 text；有格式就拆成一小段一小段（span），每段都寫明字級和顏色，不靠「繼承」。
 // base.band：這一行整行畫了同一色螢光筆（外面會包一層底色）→ 螢光筆不用再改字色
+// 第 41 批：文字框（[x=…]）：LINE 不能幫一段字加框 → 框的前後加［］（雙線、粗線：【】），顏色跟框一樣（沒選顏色＝跟字一樣）
+function _yzRtBoxLine_(runs) {
+  if (!(runs || []).some(function (r) { return r && r.x; })) return runs;
+  var out = [];
+  _yzRtBoxGroups_(runs).forEach(function (g) {
+    var bx = g.x ? _yzRtBox_(g.x) : null;
+    if (!bx) { out = out.concat(g.runs); return; }
+    var br = bx.def.heavy ? ["【", "】"] : ["［", "］"];
+    var mk = function (t, ref) { var o = { t: t }; if (bx.c) o.c = bx.c; else if (ref.c) o.c = ref.c; if (ref.z) o.z = ref.z; if (ref.b) o.b = 1; return o; };
+    out.push(mk(br[0], g.runs[0]));
+    out = out.concat(g.runs);
+    out.push(mk(br[1], g.runs[g.runs.length - 1]));
+  });
+  return out;
+}
 function _yzRtTextNode_(runs, base) {
   base = base || {};
+  runs = _yzRtBoxLine_(runs);
   var simple = true, i;
   for (i = 0; i < (runs || []).length; i++) { var r0 = runs[i]; if (r0.b || r0.i || r0.u || r0.s || r0.c || r0.z || (r0.m && !base.band)) { simple = false; break; } }
   var node = { type: "text", wrap: true, size: base.size || "sm", color: base.color || "#1F1F1F" };
@@ -937,8 +984,9 @@ function _yzImage_(im, act, hid) {   // hid：保密（不直接顯示）時寫�
 // ── 流程圖（第 40 批：編輯器自由畫：框、箭頭、說明框）──
 // 存在「圖片」那一塊（t:"img"）裡：url／fid＝整張流程圖的 PNG（網頁、Word、退回舊版本的程式都當一般的圖看）；draw＝畫的資料：
 //   { v:1, W:畫布寬, H:畫布高, s:[框…], l:[箭頭…], h:畫成 PNG 時的資料指紋, line:{ url, fid, ar }（LINE 用的：沒有說明框的那一張；沒有說明框就沒有） }
-//   框：{ id, k:種類, x, y, w, h, c:顏色（不寫＝黑框白底）, al:字靠哪邊（c 置中、l 靠左、r 靠右）, v:框裡的字（格式文字：紅字、粗體、螢光筆、編號…） }
-//   箭頭：{ id, a:從哪個框, b:到哪個框, t:箭頭上的字（是／否…）, st:路線（auto 自動、line 直線、hv 先橫再直、vh 先直再橫）, ah:箭頭（end 指到 b、both 兩邊、none 沒有） }
+//   框：{ id, k:種類, x, y, w, h, c:顏色（不寫＝黑框白底）, al:字靠哪邊（c 置中、l 靠左、r 靠右）, v:框裡的字（格式文字：紅字、粗體、螢光筆、編號…）, ds:框線（第 41 批：不寫＝實線、dash 虛線、dot 點線、long 長虛線） }
+//   箭頭：{ id, a:從哪個框, b:到哪個框, t:箭頭上的字（是／否…）, st:路線（auto 自動、line 直線、hv 先橫再直、vh 先直再橫）, ah:箭頭（end 指到 b、start 指到 a、both 兩邊、none 沒有）,
+//          第 41 批：ds:線條（不寫＝實線、dash 虛線、dot 點線、long 長虛線）、lw:粗細（thin 細、不寫＝一般、thick 粗）、lc:顏色（不寫＝藍、black、gray、red、orange、green、purple） }
 // LINE：這一張放流程圖（有說明框的話放沒有說明框的那一張；點一下看大圖），往左滑下一張是說明框的字（照框的顏色）。
 var YZ_DRAW_KINDS = ["box", "round", "dia", "pill", "oval", "note", "txt"];
 var YZ_DRAW_KIND_NAME = { box: "方框", round: "圓角框", dia: "判斷（菱形）", pill: "開始／結束", oval: "橢圓", note: "說明框", txt: "只有字" };
@@ -953,6 +1001,14 @@ var YZ_DRAW_TONE = {
   gray: { bg: "#F1F3F5", bd: "#7D8894", ink: "#374151", label: "灰" }
 };
 function _yzDrawTone_(c) { return YZ_DRAW_TONE.hasOwnProperty(c || "") ? YZ_DRAW_TONE[c || ""] : YZ_DRAW_TONE[""]; }
+// 第 41 批：連線（箭頭）、框線的樣子
+var YZ_DRAW_DASH_ORDER = ["", "dash", "dot", "long"];
+var YZ_DRAW_DASH = { "": { label: "實線" }, dash: { label: "虛線", arr: [7, 5] }, dot: { label: "點線", arr: [0.1, 4.4], cap: "round" }, long: { label: "長虛線", arr: [16, 6] } };   // arr：線寬 2 的時候，線、空各多長（別的粗細照比例）
+var YZ_DRAW_LW_ORDER = ["thin", "", "thick"];
+var YZ_DRAW_LW = { thin: { label: "細", w: 1.4 }, "": { label: "一般", w: 2 }, thick: { label: "粗", w: 3.5 } };
+var YZ_DRAW_LC_ORDER = ["", "black", "gray", "red", "orange", "green", "purple"];
+var YZ_DRAW_LC = { "": { label: "藍", c: "#2F6FD6" }, black: { label: "黑", c: "#1F2328" }, gray: { label: "灰", c: "#7D8894" }, red: { label: "紅", c: "#D23F3F" }, orange: { label: "橘", c: "#D9822B" }, green: { label: "綠", c: "#2E8B57" }, purple: { label: "紫", c: "#7B5BC4" } };
+function _yzDrawOpt_(map, v) { return v && Object.prototype.hasOwnProperty.call(map, v) ? v : ""; }   // 不認得的＝""（預設）
 function _yzDrawHasText_(s) { return !!(s && _yzRtPlainLines_(s.v).length); }
 // 說明框（有字的）：照位置，上到下、左到右
 function _yzDrawNotes_(d) {
@@ -1966,6 +2022,10 @@ function _yzGapBefore_(nodes, m) {
 // blocks → 一則或多則訊息。回傳 {bubbles:[每則訊息（bubble 或 carousel）], bytes:[每則多大], parts:內容拆成幾段, cards:總共幾張卡片, kinds:["bubble"|"carousel"…], anim:n}
 // 文字、表格、圖片、階梯式、動畫檔：塞進同一張卡片，太長就拆成下一張；分步動畫：每一步一張。
 // 第 28 批：兩張以上的卡片合成一則「左右滑」的訊息（carousel）。
+// 第 41 批：每一塊可以只在 LINE（only:"line"）或只在網頁（only:"web"）顯示（編輯器每一塊上面的「顯示在」）；沒寫＝都顯示
+//   ch："line"／"web"：這一塊在那邊要不要藏起來（搜尋也照這個：LINE 搜不到只在網頁的字，反過來也一樣）
+var YZ_ONLY = { line: "只在 LINE", web: "只在網頁" };
+function _yzOnlyHide_(b, ch) { return !!(b && ch && (b.only === "line" || b.only === "web") && b.only !== ch); }
 // 第 29 批：LINE 好幾張卡片的排法：這個標題自己選的；沒選就照設定（lineSwipe：是＝滑動式，否＝一頁一頁）
 function _yzLayOf_(t, cfg) { return t && (t.lay === "page" || t.lay === "swipe") ? t.lay : cfg && cfg.lineSwipe === false ? "page" : "swipe"; }
 function _yzContentBubbles_(ch, ti, blocks, note, o) {
@@ -1980,8 +2040,11 @@ function _yzContentBubbles_(ch, ti, blocks, note, o) {
   // 「連結到標題」的行：用標題代號找到標題，按鈕上寫「章名　標題名」（同一章就只寫標題名）；找不到（被刪了）就不顯示
   var goFn = o.hb ? function (id) { return _yzGoTarget_(o.hb, id, ch.id); } : null;
   var back = o.hb ? _yzBacklinks_(o.hb, [ti.id, ch.id], ti.id).slice(0, 3) : [];   // 互相連結：有連到這裡（這個標題、這一章）的，放在最後一張下面
+  var pendBrk = false, hidN = 0;
   blocks.forEach(function (b, i) {
+    if (_yzOnlyHide_(b, "line")) { hidN++; if (b.brk && i > 0) pendBrk = true; return; }   // 第 41 批：只在網頁的這一塊：LINE 不放（它的「換下一張」留給下一塊；i 照原本的，「看大圖」才對得上）
     b = Object.assign({}, b, { i: i });
+    if (pendBrk) { b.brk = true; pendBrk = false; }
     if (cur().closed) segs.push({ nodes: [] });   // 第 40 批：前面是流程圖的說明框那一張：後面的內容從新的一張開始
     if (b.brk && i > 0 && cur().nodes && cur().nodes.length) segs.push({ nodes: [] });   // 編輯者指定「從這一塊開始放到下一張卡片」（只有 LINE；網頁照常一整頁）
     if (b.t === "anim" && b.kind === "steps") {
@@ -2013,6 +2076,7 @@ function _yzContentBubbles_(ch, ti, blocks, note, o) {
       cur().closed = true;
     }
   });
+  if (hidN && segs.length === 1 && !segs[0].nodes.length) segs[0].nodes = [{ type: "text", text: "🌐 這一篇的內容放在手冊網頁：請到網頁看（下面「🌐 網頁」）。", size: "sm", color: "#5F6B7A", wrap: true }];   // 第 41 批：全部都是只在網頁的
   // 最後一段是空的（動畫後面沒有別的內容）：有備註就放備註；沒有就放一句收尾，「上一個／下一個」按鈕才有地方放
   var last = cur();
   if (!last.nodes.length && segs.length > 1 && !hasNote) last.nodes = [{ type: "text", text: "（動畫到這裡結束）", size: "sm", color: "#7B8696", wrap: true }];
@@ -2178,9 +2242,10 @@ function _yzTableUnits_(u, tb, i) {   // 表格：一列一段（第 29 批：�
     if (s) u.push({ k: "table", v: s, b: i, h: ri === 0 && tb.head !== false });   // h＝這一列是表頭
   });
 }
-function _yzUnits_(t) {
+function _yzUnits_(t, ch) {   // ch（第 41 批）："line"／"web"：藏起來的那幾塊不算（沒給＝全部都算）
   var u = [{ k: "name", v: String(t.name || ""), b: -1 }];
   (t.blocks || []).forEach(function (b, i) {
+    if (!b || _yzOnlyHide_(b, ch)) return;
     if (b.t === "text") {
       _yzRtPlainLines_(b.v).forEach(function (ln) { u.push({ k: "text", v: ln, b: i }); });
       _yzTextPics_(b).forEach(function (p) { if (String(p.cap || "").trim()) u.push({ k: "img", v: String(p.cap).trim(), b: i }); _yzOcrUnits_(u, p, i); });   // 文字裡的圖：圖說、圖片裡的字
@@ -2203,8 +2268,8 @@ function _yzUnits_(t) {
   String(t.note || "").split("\n").forEach(function (ln) { if (ln.trim()) u.push({ k: "note", v: ln.trim(), b: -2 }); });
   return u;
 }
-function _yzSearchTitle_(t, toks) {
-  var us = _yzUnits_(t), ns = us.map(function (u) { var n = _yzNorm_(u.v); return u.sq ? _yzSq_(n) : { s: n, map: null }; }), score = 0, ok = true, i;
+function _yzSearchTitle_(t, toks, ch) {
+  var us = _yzUnits_(t, ch), ns = us.map(function (u) { var n = _yzNorm_(u.v); return u.sq ? _yzSq_(n) : { s: n, map: null }; }), score = 0, ok = true, i;
   toks.forEach(function (tk) {
     var found = false;
     for (i = 0; i < us.length; i++) if (ns[i].s.indexOf(tk) >= 0) { score += found ? 1 : (YZ_WEIGHT[us[i].k] || 5); found = true; }
@@ -2227,7 +2292,7 @@ function _yzSearchTitle_(t, toks) {
   var snip = (from > 0 ? "…" : "") + v.slice(from, to) + (to < v.length ? "…" : "");
   return { score: score, where: u0.k, snip: snip, segs: _yzHL_(snip, toks, !!u0.sq) };
 }
-function _yzSearch_(hb, q) {
+function _yzSearch_(hb, q, ch) {   // ch（第 41 批）："line"／"web"：只找那邊看得到的（只在 LINE、只在網頁的那幾塊）
   var toks = _yzTokens_(q), pg = _yzPageQuery_(q), res = { q: String(q), toks: toks, page: pg, kws: [], hits: [] };
   if (!toks.length) return res;
   _yzLadderNumberAll_(hb);   // 條文的編號（接續上一段的）先算好：找「第七條」才找得到
@@ -2235,7 +2300,7 @@ function _yzSearch_(hb, q) {
     ((hb.titles || {})[c.id] || []).forEach(function (t) {
       var hit = null;
       if (pg) { if (_yzPageHas_(t.page, pg)) { var tx = "藥戰手冊 " + _yzPageText_(t.page); hit = { score: 100, where: "page", snip: tx, segs: [{ t: tx, h: false }] }; } }
-      else hit = _yzSearchTitle_(t, toks);
+      else hit = _yzSearchTitle_(t, toks, ch);
       if (hit) { hit.ch = c; hit.t = t; hit.ord = res.hits.length; res.hits.push(hit); }
     });
   });
@@ -2768,6 +2833,11 @@ function mkEl() { return null; }
 
 /* ── 手冊資料（只在記憶體）── */
 var HB = null, CFG = null, ME = null, IS_DEV = false, MAIN = false, BACKV = "";   // BACKV：後端（藥戰手冊專案）的版本（第 40 批：流程圖要 12.7 以上）
+function backAtLeast(maj, min) { var m = /v(\d+)\.(\d+)/.exec(BACKV || ""); return !m || +m[1] > maj || (+m[1] === maj && +m[2] >= min); }   // 後端是這一版以上（看不出來就當作可以）
+function bk41Ok() { return backAtLeast(12, 8); }   // 第 41 批（12.8）：只在 LINE／只在網頁、連線樣式、文字框
+function bk41Warn(what) {
+  modal({ title: "⚠ 還不能用「" + what + "」", lines: ["藥戰手冊專案（Apps Script）的「02_藥戰手冊」還是舊的（第 41 批以前）：存了會不見，LINE 也顯示不出來。", "請先把第 41 批的 02 貼上，「部署 → 管理部署作業 → ✏️ → 版本選新版本 → 部署」，再重新整理這一頁。"], buttons: [{ label: "知道了", cls: "sm pri" }] });
+}
 function chapterOf(id) { return (HB.chapters || []).filter(function (c) { return c.id === id; })[0] || null; }
 function titleOf(id) { for (var k in HB.titles) { var r = HB.titles[k].filter(function (t) { return t.id === id; })[0]; if (r) return r; } return null; }
 function titlesOf(cid) { return HB.titles[cid] || []; }
@@ -3489,6 +3559,7 @@ function enterMain(r) {
   else { showTab("view"); if (HP.t && titleOf(HP.t)) openTitle(HP.t); }
   HP.t = HP.edit = "";
   idleTick();
+  guardSync();
 }
 function showTab(name) {
   if (!MAIN) return;
@@ -3501,16 +3572,104 @@ function showTab(name) {
   if (name === "edit") { renderEdit(); if (typeof edOnShow === "function") edOnShow(); } else if (typeof pvSync === "function") pvSync();
   if (name === "view") drawWeb();
   if (name === "admin") adminLoad();
+  guardSync();   // 第 41 批：看手冊＝不能複製、截圖遮住；編輯、管理（開發者）不擋
 }
 function syncTabsH() { var t = $("#hdr"); if (t) document.documentElement.style.setProperty("--tabsH", t.offsetHeight + "px"); }
 window.addEventListener("resize", syncTabsH);
 // 浮水印：名字＋員工代號＋時間（每分鐘換一次時間）
-function wmCss(text) {
-  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="340" height="210"><text x="170" y="110" font-size="15" font-family="sans-serif" fill="#000" text-anchor="middle" transform="rotate(-24 170 110)">' + esc(text) + "</text></svg>";
-  return 'url("data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '")';
+// 第 41 批：浮水印加重（怕用別的手機、平板拍）：兩行（姓名＋員工代號／日期時間＋「內部資料勿外傳」），字比較大、比較粗、比較密（兩層錯開）；
+//   深色字＋白邊：白底、深色底都看得到（拍下來也看得出是誰、什麼時候）。不能影響查閱：濃度 0.11（以前 0.075），內容的字照樣清楚
+var WM_W = 320, WM_H = 210;
+function wmCss(lines) {
+  var cx = WM_W / 2, cy = WM_H / 2;
+  var t = function (dy, s, sz, w) { return '<text x="' + cx + '" y="' + (cy + dy) + '" font-size="' + sz + '" font-weight="' + w + '" font-family="sans-serif" text-anchor="middle" fill="#0F172A" stroke="#fff" stroke-width="3" stroke-linejoin="round" paint-order="stroke">' + esc(s) + "</text>"; };
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + WM_W + '" height="' + WM_H + '"><g transform="rotate(-26 ' + cx + " " + cy + ')">' + t(-4, lines[0], 19, 700) + t(18, lines[1], 13.5, 600) + "</g></svg>";
+  var u = 'url("data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg) + '")';
+  return u + "," + u;   // 兩層錯開（hb.css 的 .wm：background-position）
 }
-function wmText() { return [ME && ME.name, ME && ME.emp, ME && !ME.emp && ME.tail ? "…" + ME.tail : "", stamp()].filter(Boolean).join("　"); }
+function wmText() {
+  var who = [ME && ME.name, ME && ME.emp, ME && !ME.emp && ME.tail ? "…" + ME.tail : ""].filter(Boolean).join("　");
+  return [who || "藥戰手冊", stamp() + "　內部資料勿外傳"];
+}
 function paintWm() { var w = $("#wm"); if (w) w.style.backgroundImage = wmCss(wmText()); }
+
+/* ── 第 41 批：看手冊的時候不能複製、盡量不能截圖（內部資料）──
+   網頁沒辦法 100% 擋住截圖（手機的截圖鍵、用另一支手機拍，網頁都不會知道）：所以浮水印加重（拍下來看得出是誰）；其他能擋的都擋：
+   ① 不能選字、不能複製（Ctrl+C）、不能右鍵／長按另存圖片、不能拖、不能列印（Ctrl+P）、不能存網頁（Ctrl+S）、不能看原始碼（Ctrl+U）、盡量不能開「開發人員工具」。
+      「反灰可複製」那幾條照樣可以按「📋 複製」；打字的框（搜尋…）照樣可以用；瀏覽器的「尋找」（Ctrl+F）照常。
+   ② 電腦上常見的截圖：按 PrintScreen → 剪貼簿裡的截圖換成一句「內部資料」、畫面遮住一下；按 ⊞／⌘＋Shift（Windows、Mac 截圖鍵的開頭）→ 畫面先遮住，
+      點一下、按任何鍵就顯示。切到別的分頁、縮到最小、手機切到別的 App（看不到這一頁的時候）→ 遮住（多工畫面看不到內容），一回來就顯示。
+   不能影響查閱：只是切到別的視窗（例如左右並排、一邊看手冊一邊打醫令）不遮，照常可以看；搜尋框、「反灰可複製」照常。
+   開發者在「✏️ 編輯」「👥 管理」時不擋（要複製、貼上）。 */
+var GUARD = { on: false, el: null, toastAt: 0, keyCover: false, t: 0 };
+function guardWant() { return !!(MAIN && (TAB === "view" || !IS_DEV)); }
+function guardSync() {
+  GUARD.on = guardWant();
+  document.body.classList.toggle("guard", GUARD.on);
+  if (GUARD.on) guardEl();   // 遮住的那一層先做好（LOGO 先載入）：按截圖鍵的那一下馬上遮得住
+  else { GUARD.keyCover = false; guardShow(false); }
+}
+function guardEl() {
+  if (!GUARD.el) {
+    GUARD.el = h("div", { class: "guardcv", "aria-hidden": "true" }, [h("div", { class: "gcv-in" }, [logoImg("gcv-lg"), h("b", {}, ["藥戰手冊　內部資料"]), h("p", { class: "gcv-m" }, [""])])]);
+    document.body.appendChild(GUARD.el);
+  }
+  return GUARD.el;
+}
+function guardSay(msg) { if (Date.now() - GUARD.toastAt > 2500) { GUARD.toastAt = Date.now(); toast(msg); } }
+function guardFree(t) {   // 這裡可以選字、複製：打字的框、反灰可複製
+  t = t && t.nodeType === 3 ? t.parentNode : t;
+  return !!(t && t.closest && t.closest("input, textarea, select, [contenteditable='true'], .ycp-t, .ycp-b"));
+}
+function guardSelFree() {   // 選起來的字都在可以複製的地方（沒選＝也算）
+  var s = window.getSelection ? getSelection() : null;
+  if (!s || !s.rangeCount || s.isCollapsed) return true;
+  return guardFree(s.anchorNode) && guardFree(s.focusNode);
+}
+function guardShow(on, why) {   // 遮住整個畫面（只是蓋住看不到；點一下、按任何鍵、回到這個視窗就拿掉）
+  if (on && (!GUARD.on || GUARD.bye)) return;   // bye：要離開這一頁了（換頁、重新整理）：不用遮
+  if (!GUARD.el && !on) return;
+  guardEl().classList.toggle("on", !!on);
+  if (on) GUARD.el.querySelector(".gcv-m").textContent = why || "畫面先遮住了：點一下、按任何鍵就會顯示。";
+}
+function guardBack() { GUARD.keyCover = false; clearTimeout(GUARD.t); guardShow(false); }   // 人回來了（點一下、按鍵、回到這個視窗）
+function guardShot() {   // 按了 PrintScreen：剪貼簿裡的截圖換成一句話、畫面遮住一下
+  guardShow(true, "內部資料：不能截圖。");
+  try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText("藥戰手冊：內部資料，不能截圖。").catch(function () { /* 換不掉也沒關係 */ }); } catch (x) { /* 沒關係 */ }
+  clearTimeout(GUARD.t); GUARD.t = setTimeout(function () { if (!GUARD.keyCover && (!document.hasFocus || document.hasFocus())) guardShow(false); }, 1500);
+}
+function guardCopy(e) {
+  if (!GUARD.on || guardSelFree() || guardFree(e.target)) return;
+  e.preventDefault();
+  try { if (e.clipboardData) e.clipboardData.setData("text/plain", "藥戰手冊：內部資料，不能複製。"); } catch (x) { /* 沒關係 */ }
+  guardSay("🔒 內部資料：不能複製");
+}
+document.addEventListener("copy", guardCopy, true);
+document.addEventListener("cut", guardCopy, true);
+document.addEventListener("contextmenu", function (e) { if (!GUARD.on || guardFree(e.target)) return; e.preventDefault(); guardSay("🔒 內部資料：不能另存、不能複製"); }, true);
+document.addEventListener("dragstart", function (e) { if (!GUARD.on || guardFree(e.target)) return; e.preventDefault(); }, true);
+document.addEventListener("selectstart", function (e) { if (!GUARD.on || guardFree(e.target)) return; e.preventDefault(); }, true);
+document.addEventListener("keydown", function (e) {
+  if (!GUARD.on) return;
+  var k = (e.key || "").toLowerCase(), mod = e.ctrlKey || e.metaKey;
+  if (k === "printscreen" || e.keyCode === 44) { guardShot(); return; }
+  if (e.metaKey && e.shiftKey) { GUARD.keyCover = true; clearTimeout(GUARD.t); guardShow(true, "按了截圖鍵（⊞／⌘＋Shift）：畫面先遮住了；點一下、按任何鍵就會顯示。"); return; }
+  if (!/^(shift|control|meta|alt|os)$/.test(k) && GUARD.el && GUARD.el.classList.contains("on")) guardBack();   // 按任何鍵＝回來了
+  if (k === "f12" || (mod && e.shiftKey && /^[ijc]$/.test(k)) || (e.metaKey && e.altKey && /^[ijcu]$/.test(k))) { e.preventDefault(); return; }   // 開發人員工具（盡量）
+  if (mod && !e.altKey && !e.shiftKey) {
+    if (k === "p") { e.preventDefault(); guardSay("🔒 內部資料：不能列印"); return; }
+    if (k === "s" || k === "u") { e.preventDefault(); guardSay("🔒 內部資料：不能存檔"); return; }
+    if (guardFree(e.target)) return;   // 打字的框：照常（全選、複製、貼上）
+    if ((k === "c" || k === "x") && !guardSelFree()) { e.preventDefault(); guardSay("🔒 內部資料：不能複製"); return; }
+    if (k === "a") { e.preventDefault(); return; }   // 全選
+  }
+}, true);
+document.addEventListener("keyup", function (e) { if (GUARD.on && (e.key === "PrintScreen" || e.keyCode === 44)) guardShot(); }, true);   // Windows 的 PrintScreen 通常只收得到放開的那一下
+window.addEventListener("focus", function () { if (GUARD.on) guardBack(); });
+window.addEventListener("pagehide", function () { GUARD.bye = true; });
+window.addEventListener("pageshow", function () { GUARD.bye = false; });
+window.addEventListener("pointerdown", function () { if (GUARD.on) guardBack(); }, true);
+document.addEventListener("visibilitychange", function () { if (!GUARD.on) return; if (document.visibilityState === "hidden") guardShow(true, "切到別的地方了：回到這一頁就會顯示。"); else guardBack(); });   // 只是切到別的視窗（還看得到這一頁）不遮：不影響查閱
 
 /* ── 閒置自動登出 ── */
 function act() {
@@ -3557,6 +3716,7 @@ function logout(why) {
   if (IS_DEV && typeof ED !== "undefined" && ED && ED.dirty) KEEP_ED = edKeep();
   if (IS_DEV && typeof qeKeep === "function") { KEEP_QE = qeKeep() || KEEP_QE; qeDrop(); }   // 還沒存的問卷：留在記憶體，驗證後接著改
   MAIN = false; OUTED = true;
+  guardSync();
   lockClean();
   if (typeof ED !== "undefined") ED = null;
   screen([logo(), h("h2", {}, [why === "idle" ? "閒置太久，登出中…" : "登出中…"])]);
@@ -3709,7 +3869,16 @@ function cpEl(text, hl) {
   return h("span", { class: "ycp", style: CPS.w }, [h("span", { class: "ycp-t", style: CPS.t }, hlNodes(text, hl)), b]);
 }
 // 一行字裡一小段一小段（各有自己的格式）→ 網頁上的 span。搜尋的字照樣用 <mark> 標出來
+// 第 41 批：文字框（[x=…]）：連在一起、框一樣的那幾段包成一個框（像 Word 的字元框線）
 function rtKids(runs, hl) {
+  var out = [];
+  _yzRtBoxGroups_(runs).forEach(function (g) {
+    var kids = rtKids1(g.runs, hl), css = g.x ? _yzRtBoxCss_(g.x, g.runs) : "";
+    if (css) out.push(h("span", { class: "rtx", "data-x": g.x, style: css }, kids)); else out = out.concat(kids);
+  });
+  return out;
+}
+function rtKids1(runs, hl) {
   var out = [];
   (runs || []).forEach(function (r) {
     if (r.cp) { out.push(cpEl(r.t, hl)); return; }   // 第 32 批：反灰可複製（自己的樣子，外面的粗體、顏色不套）
@@ -4003,7 +4172,9 @@ function webArticle(ch, t, o) {   // o.page：在「圖一」樣式的頁面裡�
   }
   var goFn = o.hb ? function (id) { return _yzGoTarget_(o.hb, id, ch.id); } : null;
   if (o.hb) _yzLadderNumberAll_(o.hb);   // 條文「接續上一段」：先算好這一章每一段從第幾號開始
+  var hidN = 0, shown = 0;
   (t.blocks || []).forEach(function (b) {
+    if (_yzOnlyHide_(b, "web")) { hidN++; return; }   // 第 41 批：只在 LINE 的這一塊：網頁不放
     var el = null;
     if (b.t === "text") el = webText(b.v, o.hl, { go: goFn, onTitle: o.onTitle, onChapter: o.onChapter, pics: b.pics, tbls: b.tbls, onImg: o.onImg });
     else if (b.t === "ladder") el = webLadder(b, o.hl, o);
@@ -4016,8 +4187,9 @@ function webArticle(ch, t, o) {   // o.page：在「圖一」樣式的頁面裡�
     if (!el) return;
     var bi = _yzBlockInd_(b);
     if (bi) { el.style.marginLeft = (bi * 1.6).toFixed(1) + "em"; el.classList.add("bind"); }   // 整塊縮排（第 27 批：圖片、表格、動畫、階梯式也能縮排）
-    a.appendChild(el);
+    a.appendChild(el); shown++;
   });
+  if (hidN && !shown) a.appendChild(h("p", { class: "muted onlyln" }, ["💬 這一篇的內容放在 LINE：請到 LINE 的「藥戰手冊」看。"]));   // 第 41 批：全部都是只在 LINE 的
   if (o.hb) { var bk = webBacklinks(_yzBacklinks_(o.hb, [t.id, ch.id], t.id), ch.id, o.onTitle); if (bk) a.appendChild(bk); }   // 互相連結：從別的標題連到這裡的
   var pg = _yzPageText_(t.page), nt = _yzNoteHas_(t.note) ? String(t.note).replace(/^(?:[ \t　\r]*\n)+|(?:\r?\n[ \t　\r]*)+$/g, "") : "";   // 沒填備註（空白、只有空行、看不見的字）：不顯示備註框；前後多打的空行也拿掉
   var pgEl = pg ? h("div", { class: "pgline" + (nt ? " gap" : " solo") }, [h("span", { class: "pgtag" }, [h("span", {}, ["📖 藥戰手冊頁數　"]), h("b", {}, [pg])])]) : null;
@@ -4281,6 +4453,7 @@ function pgCard(kids, o) {   // 一張粗黑框卡片；o.go：整張可以按
 function titleThumb(t) {   // 標題卡片上的小圖：內容裡的第一張圖（沒有就不放）
   var u = "";
   (t.blocks || []).some(function (b) {
+    if (_yzOnlyHide_(b, "web")) return false;   // 第 41 批：只在 LINE 的圖不拿來當網頁的小圖
     if (b.t === "img" && b.url) u = b.url;
     else if (b.t === "anim") u = b.kind === "steps" ? (((b.steps || []).filter(function (x) { return x && x.url; })[0] || {}).url || "") : (b.poster || "");
     else if (b.t === "ladder") { var im = _yzLadderImgs_(b)[0]; if (im) u = im.img.url; }
@@ -4489,7 +4662,7 @@ function homeDrawer(stage) {
   var f = $(".chI", list); if (f) try { f.focus(); } catch (e) { /* 沒關係 */ }
 }
 function drawSearchResults(col) {
-  var r = _yzSearch_(HB, WV.q);
+  var r = _yzSearch_(HB, WV.q, "web");   // 第 41 批：只在 LINE 的那幾塊不算
   col.appendChild(pgHead(r.page ? "手冊第 " + r.page + " 頁" : "搜尋「" + WV.q + "」", r.hits.length ? "找到 " + r.hits.length + " 個標題" : ""));
   var qin = h("input", { class: "in", type: "search", enterkeyhint: "search", placeholder: "搜尋手冊（打字，或打「第14頁」）", value: WV.qv, "aria-label": "搜尋手冊" });
   col.appendChild(pgCard([h("form", { class: "pgsearch", role: "search", onsubmit: function (e) { e.preventDefault(); qin.blur(); webSearch(qin.value); } }, [qin, h("button", { class: "pbtn dark", type: "submit" }, ["搜尋"])])], { cls: "slim" }));
@@ -4816,7 +4989,7 @@ function qzRevEl(x, i) {
  * 資料的單位是「一行」：{k:種類, lv:縮排, tone:標註顏色, go:連結的標題, img:圖的代號, runs:[{t:字, b,i,u,s,c,z}]}。
  * 第 28 批：一行也可以是一張圖（[img=代號]）：文字和圖片放在同一塊；圖的網址、圖說放在這一塊的 pics（o.pics() 拿得到），上傳交給編輯器（o.imgUp）。
  * 第 29 批：一行也可以是一張表格（[tbl=代號]，表格「併到上一塊」來的）：內容放在這一塊的 tbls（o.tbls()），按「✏️ 編輯表格」交給編輯器（o.tblEdit）。 */
-var RTE = { cur: null, pop: null, bar: null, lastColor: "red", lastMark: "yellow", clip: null, lastUl: "•", lastOl: "1." };   // 第 39 批：lastUl／lastOl＝上一次選的項目符號、編號樣式（按「• 項目符號」「1. 編號」就用這個）
+var RTE = { cur: null, pop: null, bar: null, lastColor: "red", lastMark: "yellow", clip: null, lastUl: "•", lastOl: "1.", lastFrame: "solid" };   // 第 41 批：lastFrame＝上一次選的文字框樣子   // 第 39 批：lastUl／lastOl＝上一次選的項目符號、編號樣式（按「• 項目符號」「1. 編號」就用這個）
 (function () { try { var u = localStorage.getItem("yz_rte_ul"), o = localStorage.getItem("yz_rte_ol"); if (u && YZ_RT_UL_MARKS.indexOf(u) >= 0) RTE.lastUl = u; if (o && YZ_RT_OL_STYLES.some(function (x) { return x[0] === o; })) RTE.lastOl = o; } catch (e) { /* 記不住就用預設 */ } })();
 function rteKeepList(type, m) { if (type === "ul") RTE.lastUl = m; else RTE.lastOl = m; try { localStorage.setItem(type === "ul" ? "yz_rte_ul" : "yz_rte_ol", m); } catch (e) { /* 記不住就算了 */ } }
 // 第 39 批：編號屬於哪一種樣式（I.、V.、X. 可能是字母也可能是羅馬數字：兩種都算）
@@ -5014,7 +5187,7 @@ function rteCreate(o) {
   var inst = {};
   var body = h("div", { class: "rtbody", contenteditable: "true", spellcheck: "false", autocapitalize: "off", autocorrect: "off", role: "textbox", "aria-multiline": "true", "aria-label": "文字內容（選取文字後，按最上面第二排的按鍵）" });
   var rawTa = h("textarea", { class: "ta rtraw", spellcheck: "false", "aria-label": "原始標記" });
-  var rawNote = h("div", { class: "hint rtrawnote" }, ["標記模式：這就是「LINE 裡改字」時看到的樣子。[b]…[/b] 粗體、[c=red]…[/c] 紅字、[m=yellow]…[/m] 黃色螢光筆、[fx]1/6[/fx] 公式、[cp]…[/cp] 反灰可複製、[h2] 標題。改完再按一次「</> 標記」回到一般模式。"]);
+  var rawNote = h("div", { class: "hint rtrawnote" }, ["標記模式：這就是「LINE 裡改字」時看到的樣子。[b]…[/b] 粗體、[c=red]…[/c] 紅字、[m=yellow]…[/m] 黃色螢光筆、[fx]1/6[/fx] 公式、[cp]…[/cp] 反灰可複製、[x=solid]…[/x] 文字框、[h2] 標題。改完再按一次「</> 標記」回到一般模式。"]);
   rawTa.hidden = true; rawNote.hidden = true;
   var el = h("div", { class: "rte" }, [body, rawNote, rawTa]);
   var lines = _yzRtParse_(o.value || "");
@@ -5118,7 +5291,13 @@ function rteCreate(o) {
       d.style.background = T.bg; d.style.borderColor = T.bd; d.style.color = T.ink;
     } else if (/^h[1-4]$/.test(L.k)) { var H = YZ_RT_HEAD[L.k]; d.style.fontSize = H.em + "em"; d.style.color = H.color; }
     if (!(L.runs || []).length) d.appendChild(h("br"));
-    else L.runs.forEach(function (r) { d.appendChild(runNode(r)); });
+    else _yzRtBoxGroups_(L.runs).forEach(function (g) {   // 第 41 批：文字框：連在一起、框一樣的那幾段包成一個框（裡面的字各有各的格式）
+      var css = g.x ? _yzRtBoxCss_(g.x, g.runs) : "";
+      if (!css) { g.runs.forEach(function (r) { d.appendChild(runNode(r)); }); return; }
+      var w = h("span", { class: "rt rt-x", "data-x": g.x, style: css });
+      g.runs.forEach(function (r) { w.appendChild(runNode(r)); });
+      d.appendChild(w);
+    });
     return d;
   }
   function render() {
@@ -5164,6 +5343,7 @@ function rteCreate(o) {
       if (n.hasAttribute("data-c") && YZ_RT_COLORS[n.getAttribute("data-c")]) a.c = n.getAttribute("data-c");
       if (n.hasAttribute("data-z") && _yzRtSz_(n.getAttribute("data-z"))) a.z = n.getAttribute("data-z");
       if (n.hasAttribute("data-m") && YZ_RT_MARKS[n.getAttribute("data-m")]) a.m = n.getAttribute("data-m");
+      if (n.hasAttribute("data-x") && _yzRtBox_(n.getAttribute("data-x"))) a.x = n.getAttribute("data-x");   // 第 41 批：文字框
       if (isFx(n)) { var fr = { t: _yzFxClean_(n.getAttribute("data-fx")), fx: 1 }; for (var k3 in a) fr[k3] = a[k3]; if (fr.t) runs.push(fr); return; }   // 第 31 批：公式（裡面畫出來的分數不算字）
       if (isCp(n)) { var cr = { t: _yzCpClean_(n.getAttribute("data-cp")), cp: 1 }; for (var k4 in a) cr[k4] = a[k4]; if (cr.t) runs.push(cr); return; }   // 第 32 批：反灰可複製（裡面的 📋 不算字）
       for (var c = n.firstChild; c; c = c.nextSibling) walk(c, a);
@@ -5397,7 +5577,7 @@ function rteCreate(o) {
       }
       if (!cov.length) return s;
       var on;
-      if (key === "c" || key === "z" || key === "m") on = val || 0;
+      if (key === "c" || key === "z" || key === "m" || key === "x") on = val || 0;
       else on = cov.every(function (c) { return _yzRtSlice_(c.L.runs, c.a, c.b).every(function (r) { return !!r[key]; }); }) ? 0 : 1;
       cov.forEach(function (c) {
         var len2 = rteLen(c.L);
@@ -5406,6 +5586,14 @@ function rteCreate(o) {
       });
       return s;
     });
+  }
+  function cmdFrame(v) {   // 第 41 批：文字框（像 Word 的「字元框線」）：v 沒給＝有框就拿掉、沒有就用上一次的樣子；""＝拿掉；"dash-red"＝改成這個樣子
+    if (v !== "" && typeof bk41Ok === "function" && !bk41Ok()) { bk41Warn("文字框"); return; }
+    var st0 = state();
+    if (v === undefined || v === null) { if (st0.x) cmdInline("x", null); else cmdInline("x", _yzRtBox_(RTE.lastFrame) ? RTE.lastFrame : "solid"); }
+    else if (!v) cmdInline("x", null);
+    else if (_yzRtBox_(v)) { RTE.lastFrame = v; cmdInline("x", v); }
+    rteBarSync();
   }
   function cmdMark(color) {   // 螢光筆：color 沒給＝用上一次的顏色；選到的字整段已經是這個顏色＝拿掉（再按一次取消）
     var c = color || RTE.lastMark || "yellow", st0 = state();
@@ -5669,7 +5857,7 @@ function rteCreate(o) {
 
   // ───────── 現在的狀態（給格式列用） ─────────
   function state() {
-    var ls = readLines(), s = getSel() || lastSel, st = { ok: !!s, kind: null, tone: null, list: null, b: 0, i: 0, u: 0, s: 0, c: null, z: null, m: null, cp: 0 };
+    var ls = readLines(), s = getSel() || lastSel, st = { ok: !!s, kind: null, tone: null, list: null, b: 0, i: 0, u: 0, s: 0, c: null, z: null, m: null, cp: 0, x: null };
     if (!s) return st;
     var first = ls[Math.min(s.a.li, ls.length - 1)];
     if (first) { st.kind = first.k; st.tone = first.tone || null; var it = rteIsBlock(first) || first.k !== "p" ? null : _yzRtItem_(rteTxt(first.runs)); st.list = it ? rteMarkClass(it.mark) : null; }
@@ -5689,6 +5877,8 @@ function rteCreate(o) {
       st.z = pieces.every(function (r) { return (r.z || null) === z0; }) ? (z0 || "") : null;
       var m0 = pieces[0].m || null;
       st.m = pieces.every(function (r) { return (r.m || null) === m0; }) ? (m0 || "") : null;
+      var x0 = pieces[0].x || null;   // 第 41 批：文字框
+      st.x = pieces.every(function (r) { return (r.x || null) === x0; }) ? (x0 || "") : null;
       st.cp = !isCollapsed(s) && pieces.length === 1 && pieces[0].cp ? 1 : 0;   // 第 32 批：選到的剛好是一段反灰可複製
     }
     return st;
@@ -5894,7 +6084,7 @@ function rteCreate(o) {
   inst.el = el; inst.body = body;
   inst.lite = !!o.lite;   // 第 40 批：流程圖框裡的字（不能放圖、連結、反灰可複製）
   inst.owns = function (n) { return !!n && el.contains(n); };
-  inst.cmd = { inline: cmdInline, size: cmdSize, clear: cmdClear, kind: cmdKind, list: cmdList, box: cmdBox, line: cmdInsertLine, indent: cmdIndent, text: cmdText, undo: undo, redo: redo, raw: function () { setRaw(!rawMode); }, img: cmdImg, mark: cmdMark, fx: function () { cmdFx(null); }, cp: function () { cmdCp(null); }, copy: cmdCopy, paste: cmdPaste };
+  inst.cmd = { inline: cmdInline, frame: cmdFrame, size: cmdSize, clear: cmdClear, kind: cmdKind, list: cmdList, box: cmdBox, line: cmdInsertLine, indent: cmdIndent, text: cmdText, undo: undo, redo: redo, raw: function () { setRaw(!rawMode); }, img: cmdImg, mark: cmdMark, fx: function () { cmdFx(null); }, cp: function () { cmdCp(null); }, copy: cmdCopy, paste: cmdPaste };
   inst.refresh = function () { lines = readLines(); render(); };   // 圖片裡的字辨識好了之類（畫面重畫，內容不變）
   inst.state = state; inst.value = function () { return rawMode ? rawTa.value.replace(/\n+$/, "") : value(); }; inst.isRaw = function () { return rawMode; };
   inst.splitAtCaret = function () { if (rawMode) setRaw(false); return splitAtCaret(); };
@@ -6015,6 +6205,8 @@ var RTE_BAR = [
     { id: "s", h: "<s>S</s>", tip: "刪除線（Ctrl+Shift+X）：先選取要改的字", a: ["inline", "s"] },
     { id: "color", h: '<span class="fbA">A</span><i class="fbcbar"></i><span class="fbcar">▾</span>', tip: "文字顏色：先選取要改的字", pop: "color" },
     { id: "mark", h: '<span class="fbM">🖍</span><i class="fbmbar"></i><span class="fbcar">▾</span>', tip: "螢光筆（黃、綠、藍、粉、橘、紫）：先選取要畫的字。Ctrl+Shift+H＝用上一次的顏色畫／再按一次拿掉", pop: "mark" },
+    { id: "frame", h: '<span class="fbX">字</span>', tip: "文字框（像 Word 的「字元框線」）：先選取要框起來的字，按一下＝加框，再按一次＝拿掉。旁邊 ▾ 選樣子（實線、虛線、點線、雙線、粗線、圓角）和顏色", a: ["frame"] },   // 第 41 批
+    { id: "frame-pick", h: "▾", tip: "文字框的樣子：實線、虛線、點線、雙線、粗線、圓角（像按鍵）；框的顏色", pop: "frame" },
     { id: "size", fsz: 1, tip: "字型大小（像 Word；內文 12）：先選取要改的字，再選大小，或在框裡打數字按 Enter" },   // 第 40 批：[ 12 ▾ ] A▲ A▼
     { id: "fx", h: "∑ 公式", tip: "數學公式（像 Word 一樣打）：1/6＝上下排的分數、m^2＝次方、C_max＝下標、√(…)＝根號。放好的公式點一下可以修改", a: ["fx"] },
     { id: "cp", h: "⧉ 反灰可複製", tip: "反灰可複製：選起來的字（例如檔案的路徑）變成灰底的一條，旁邊有「📋 複製」，藥師按一下就複製好、直接去貼上（網頁、LINE 都有）。放好的點一下可以改字或拿掉", a: ["cp"] },
@@ -6053,7 +6245,8 @@ var RTE_BAR = [
   ] }
 ];
 function rteClosePop() { if (RTE.pop) { RTE.pop.el.remove(); RTE.pop = null; } }
-function rteReopenBox(anchor) { rteClosePop(); setTimeout(function () { rteOpenPop(anchor, "box"); }, 0); }   // 第 39 批：選了顏色／符號：選單重畫（亮起現在選的），不關
+function rteReopenBox(anchor) { rteClosePop(); setTimeout(function () { rteOpenPop(anchor, "box"); }, 0); }
+function rteReopenPop(anchor, kind) { rteClosePop(); setTimeout(function () { rteOpenPop(anchor, kind); }, 0); }   // 第 41 批：選了樣子：選單重畫（亮起現在選的），不關   // 第 39 批：選了顏色／符號：選單重畫（亮起現在選的），不關
 function rteDo(a, arg2, arg3) {
   var c = RTE.cur; if (!c) { toast("先點一下要改的那一段文字"); return; }
   var f = c.cmd[a];
@@ -6087,6 +6280,26 @@ function rteOpenPop(anchor, kind) {
     mg.appendChild(h("button", { type: "button", class: "rtsw-b", title: "拿掉螢光筆", "data-m": "", onclick: function () { rteDo("inline", "m", null); rteClosePop(); } }, [h("span", { class: "rtmk-s" }, ["字"]), h("small", {}, ["拿掉"])]));
     pop.appendChild(mg);
     pop.appendChild(h("div", { class: "hint", style: "max-width:290px" }, ["網頁、編輯器：螢光底色。LINE 不能幫一段字加底色：整行都畫同一色＝那一行有底色；只畫一部分＝同色系的粗體字。快捷鍵 Ctrl+Shift+H（Mac：⌘+Shift+H）。"]));
+  } else if (kind === "frame") {   // 第 41 批：文字框（像 Word 的字元框線）：樣子＋顏色
+    var stf = RTE.cur && RTE.cur.state ? RTE.cur.state() : null, nowX = stf && stf.x ? _yzRtBox_(stf.x) : null, lastX = _yzRtBox_(RTE.lastFrame) || _yzRtBox_("solid");
+    var useSt = nowX ? nowX.st : lastX.st, useC = nowX ? nowX.c : lastX.c;
+    var frApply = function (st, c) { rteDo("frame", st + (c ? "-" + c : "")); rteReopenPop(anchor, "frame"); };
+    pop.appendChild(h("div", { class: "rtpop-t" }, ["文字框的樣子（先選取要框起來的字）"]));
+    var fg = h("div", { class: "rtfr" });
+    YZ_RT_BOX_ORDER.forEach(function (k) {
+      var on = !!nowX && nowX.st === k;
+      fg.appendChild(h("button", { type: "button", class: "rtfr-b" + (on ? " on" : ""), "data-x": k, title: "文字框：" + YZ_RT_BOX[k].label, "aria-pressed": on ? "true" : "false", onclick: function () { frApply(k, useC); } }, [h("span", { class: "rtfr-s", style: _yzRtBoxCss_(k) }, ["確認"]), h("small", {}, [YZ_RT_BOX[k].label])]));
+    });
+    pop.appendChild(fg);
+    pop.appendChild(h("div", { class: "rtpop-t" }, ["框的顏色"]));
+    var fc = h("div", { class: "rtsw rtfrc" });
+    [""].concat(YZ_RT_COLOR_ORDER).forEach(function (c) {
+      var on = !!nowX && nowX.c === c, nm = c ? YZ_RT_COLOR_LABEL[c] : "跟字一樣";
+      fc.appendChild(h("button", { type: "button", class: "rtsw-b" + (on ? " on" : ""), "data-fc": c, title: "框的顏色：" + nm, onclick: function () { frApply(useSt, c); } }, [h("span", { class: "rtfr-sw", style: c ? "border-color:" + YZ_RT_COLORS[c] : "" }, [""]), h("small", {}, [nm])]));
+    });
+    pop.appendChild(fc);
+    pop.appendChild(h("div", { class: "rtfr-row" }, [h("button", { type: "button", class: "btn sm rtfr-off", onclick: function () { rteDo("frame", ""); rteClosePop(); } }, ["拿掉文字框"])]));
+    pop.appendChild(h("div", { class: "hint", style: "max-width:310px" }, ["像 Word 的「字元框線」：框裡的字照樣可以粗體、變色、改大小。LINE 不能畫框：前後會加［］（雙線、粗線用【】）。Word 匯出＝Word 的字元框線。"]));
   } else if (kind === "size") {   // 第 40 批：像 Word 的字型大小清單（點；內文 12）
     var st1 = RTE.cur && RTE.cur.state ? RTE.cur.state() : null, now1 = st1 && st1.z !== null ? rtePtTxt(rtePtOf(st1.z)) : "";
     pop.appendChild(h("div", { class: "rtpop-t" }, ["字型大小（點）"]));
@@ -6202,6 +6415,7 @@ function rteBarSync() {
       else if (id === "ul" || id === "ol" || id === "todo") on = st.list === id;
       else if (id === "p") on = st.kind === "p" && !st.list;
       else if (id === "mark") on = !!st.m;   // 第 30 批：選到的字整段都是同一色螢光＝亮
+      else if (id === "frame") on = !!st.x;   // 第 41 批：選到的字整段都在同一個文字框裡＝亮
       else if (id === "cp") on = !!st.cp;   // 第 32 批：選到的剛好是一條反灰可複製
     }
     if (c && c.lite && (id === "img" || id === "go" || id === "cp")) { dis = true; on = false; }   // 第 40 批：流程圖框裡的字：不能放圖、連結、反灰可複製
@@ -7762,9 +7976,21 @@ function blockEditor(t, b, i) {
   // 第 28 批：「⤴ 併到上一塊」：文字、圖片併進上一塊文字（不用一塊一塊調；縮排照舊）
   var mrg = mergeOk(t, i) ? btn("⤴ 併到上一塊", function () { mergeUp(t, i); }, "sm mrgb") : null;
   if (mrg) mrg.title = mergeTip(t, i);
+  // 第 41 批：這一塊顯示在哪裡：LINE、網頁都顯示／只在 LINE／只在網頁（例如：照片只給 LINE、流程圖只給網頁）
+  var visSel = h("select", { class: "in sm visb", title: "這一塊顯示在哪裡：LINE、網頁都顯示／只在 LINE／只在網頁（例如照片只給 LINE 看、流程圖只給網頁看）。搜尋也一樣：LINE 搜不到只在網頁的字，反過來也是", "aria-label": "這一塊顯示在哪裡" },
+    [["", "💬🌐 LINE、網頁都顯示"], ["line", "💬 只在 LINE"], ["web", "🌐 只在網頁"]].map(function (x) { return h("option", { value: x[0] }, [x[1]]); }));
+  visSel.value = b.only === "line" || b.only === "web" ? b.only : "";
+  visSel.onchange = function () {
+    var v = visSel.value;
+    if (v && !bk41Ok()) { visSel.value = b.only === "line" || b.only === "web" ? b.only : ""; bk41Warn("只在 LINE／只在網頁"); return; }
+    if (v) b.only = v; else delete b.only;
+    renderForm(); changed();   // 重畫：顏色、「⤴ 併到上一塊」（顯示的地方不一樣就不能併）跟著變
+    toast(v === "line" ? "💬 這一塊只在 LINE 顯示：網頁看不到，網頁搜尋也找不到" : v === "web" ? "🌐 這一塊只在網頁顯示：LINE 看不到，LINE 搜尋也找不到" : "這一塊 LINE、網頁都顯示");
+  };
+  if (brkBtn && b.only === "web") brkBtn.hidden = true;
   var cpB = btn("📋 複製", function () { edClipBlocks(t, [i]); }, "sm cpb");   // 第 32 批：整塊複製 → 別的標題（或這一篇別的地方）按最上面的「📌 貼上整塊」
   cpB.title = "複製這一塊（文字、圖片、表格…格式都帶著）：到要放的標題，點一下某一塊，按最上面的「📌 貼上整塊」（會放在那一塊後面）";
-  var head = h("div", { class: "bh" }, [(b.t === "img" && b.draw ? "流程圖" : KIND_NAME[b.t]) + "　#" + (i + 1), (b.t === "img" && b.draw) || b.t === "link" ? h("span", { class: "newb" }, ["新"]) : null, h("span", { class: "sp" }),
+  var head = h("div", { class: "bh" }, [(b.t === "img" && b.draw ? "流程圖" : KIND_NAME[b.t]) + "　#" + (i + 1), visSel, h("span", { class: "sp" }),
     mrg, indLbl, decB, incB, brkBtn, cpB, btn("▲", function () { moveBlock(t, i, -1); }), btn("▼", function () { moveBlock(t, i, 1); }), delBtn]);
   var body = h("div", { class: "bb2" });
   var rte = null;
@@ -7803,7 +8029,7 @@ function blockEditor(t, b, i) {
       body.appendChild(h("div", { class: "drw-rec" }, [btn("🔀 還原成流程圖", function () { drRecover(b, function () { renderForm(); changed(); }); }, "sm"), h("span", { class: "muted" }, ["這張圖是流程圖畫的（退回舊版本時變成一般的圖）：按這裡就能再用流程圖改"])]));
     }
   }
-  var blk = h("div", { class: "blk" + (ED.ab === i ? " act" : "") + (b.brk && i > 0 ? " brk" : ""), "data-i": String(i), "data-ind": _yzBlockInd_(b) ? String(_yzBlockInd_(b)) : null }, [head, body]);
+  var blk = h("div", { class: "blk" + (ED.ab === i ? " act" : "") + (b.brk && i > 0 ? " brk" : "") + (b.only === "line" ? " only-line" : b.only === "web" ? " only-web" : ""), "data-i": String(i), "data-ind": _yzBlockInd_(b) ? String(_yzBlockInd_(b)) : null }, [head, body]);
   if (rte) blk._rte = rte;
   return blk;
 }
@@ -7836,6 +8062,7 @@ function edImgReady(b) { return !!(b && b.t === "img" && !b.draw && b.url && b.f
 function mergeKind(t, i) {   // ""＝不能併；"text"＝併進上一塊（上一塊是圖片、表格的話先變成文字塊）；"ladder"＝圖片變成上一塊階梯式內容的最後一行
   var b = t.blocks[i], pv = t.blocks[i - 1];
   if (!(i > 0 && pv && b) || !(b.t === "text" || edImgReady(b) || b.t === "table")) return "";
+  if ((b.only || "") !== (pv.only || "")) return "";   // 第 41 批：一個只在 LINE、一個只在網頁（或都顯示）：不能併（併了就分不出來）
   if (pv.t === "text" || edImgReady(pv) || pv.t === "table") return "text";
   if (pv.t === "ladder" && edImgReady(b)) return "ladder";
   return "";
@@ -9500,8 +9727,8 @@ function drNew() {   // 新的流程圖：先放「開始 → 第一步」（看
 function drState(d) { return JSON.stringify({ W: d.W, H: d.H, s: d.s, l: d.l }); }   // 復原／重做存的那一份
 function drSig(d) {   // 畫出來的樣子有關的（跟後端整理過的一樣：欄位順序、字數、頭尾空白都不影響）
   var tx = function (v, n) { return String(v === null || v === undefined ? "" : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").slice(0, n); };
-  return JSON.stringify([(d.s || []).map(function (s) { return [s.id, s.k, Math.round(s.x), Math.round(s.y), Math.round(s.w), Math.round(s.h), s.c || "", s.al || "", tx(s.v, 2000)]; }),
-    (d.l || []).map(function (l) { return [l.id, l.a, l.b, tx(l.t, 30).replace(/[\r\n]+/g, " ").trim(), l.st || "", l.ah || ""]; })]);
+  return JSON.stringify([(d.s || []).map(function (s) { var a = [s.id, s.k, Math.round(s.x), Math.round(s.y), Math.round(s.w), Math.round(s.h), s.c || "", s.al || "", tx(s.v, 2000)]; if (s.ds) a.push(s.ds); return a; }),   // 第 41 批的欄位有用到才放（以前畫好的指紋不變，不用重畫）
+    (d.l || []).map(function (l) { var a = [l.id, l.a, l.b, tx(l.t, 30).replace(/[\r\n]+/g, " ").trim(), l.st || "", l.ah || ""]; if (l.ds || l.lw || l.lc) a.push(l.ds || "", l.lw || "", l.lc || ""); return a; })]);
 }
 function drHash(d) { var s = drSig(d), x = 0x811c9dc5; for (var i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619) >>> 0; } return ("0000000" + x.toString(16)).slice(-8); }
 function drBackOk() { var m = /v(\d+)\.(\d+)/.exec(BACKV || ""); return !m || +m[1] > 12 || (+m[1] === 12 && +m[2] >= 7); }   // 後端是第 40 批（12.7）以上（看不出來就當作可以）
@@ -9513,7 +9740,13 @@ function drFit(d) {   // 畫布＝所有框的右下角再留一點空（最小 
 }
 
 /* ── 框裡的字：格式文字 → HTML（樣式都寫在裡面：畫成圖的時候網頁的 CSS 用不到）── */
-function drRunsHtml(runs) {
+function drRunsHtml(runs) {   // 第 41 批：文字框（[x=…]）：連在一起、框一樣的那幾段包成一個框
+  return _yzRtBoxGroups_(runs).map(function (g) {
+    var inner = drRunsHtml1(g.runs), css = g.x ? _yzRtBoxCss_(g.x, g.runs) : "";
+    return css ? '<span style="' + css + '">' + inner + "</span>" : inner;
+  }).join("");
+}
+function drRunsHtml1(runs) {
   return (runs || []).map(function (r) {
     var t = r.fx ? (_yzFxLinear_(r.t) || r.t) : r.t, st = [], dec = (r.u ? "underline " : "") + (r.s ? "line-through" : "");
     if (r.b) st.push("font-weight:700");
@@ -9603,9 +9836,17 @@ function drTextArea(s) {   // 框裡放字的範圍（菱形、橢圓、膠囊�
   else if (s.k === "pill") { var r = Math.min(s.h, s.w) / 2; x = s.x + r * 0.55; w = s.w - r * 1.1; }
   return { x: Math.round(x), y: Math.round(y), w: Math.max(10, Math.round(w)), h: Math.max(10, Math.round(hh)) };
 }
+function drDash(ds, w) {   // 第 41 批：虛線、點線、長虛線 → SVG 的 stroke-dasharray（照線的粗細等比例）
+  var D = YZ_DRAW_DASH[_yzDrawOpt_(YZ_DRAW_DASH, ds)];
+  return D && D.arr ? ' stroke-dasharray="' + D.arr.map(function (v) { return Math.round(v * w / 2 * 10) / 10; }).join(" ") + '"' + (D.cap ? ' stroke-linecap="' + D.cap + '"' : "") : "";
+}
+function drLineSt(l) {   // 第 41 批：一條箭頭的顏色、粗細、虛線、箭頭的頭多大
+  var w = YZ_DRAW_LW[_yzDrawOpt_(YZ_DRAW_LW, l.lw)].w;
+  return { w: w, c: YZ_DRAW_LC[_yzDrawOpt_(YZ_DRAW_LC, l.lc)].c, dash: drDash(l.ds, w), head: Math.round(7 + 2 * w) };
+}
 function drOutline(s, T) {
   if (s.k === "txt") return "";   // 只有字：沒有框
-  var a = ' fill="' + T.bg + '" stroke="' + T.bd + '" stroke-width="' + (s.k === "note" ? 1.5 : 2) + '"', cx = s.x + s.w / 2, cy = s.y + s.h / 2;
+  var sw = s.k === "note" ? 1.5 : 2, a = ' fill="' + T.bg + '" stroke="' + T.bd + '" stroke-width="' + sw + '"' + drDash(s.ds, sw), cx = s.x + s.w / 2, cy = s.y + s.h / 2;
   if (s.k === "dia") return '<polygon points="' + [cx, s.y, s.x + s.w, cy, cx, s.y + s.h, s.x, cy].join(" ") + '" stroke-linejoin="round"' + a + "/>";
   if (s.k === "oval") return '<ellipse cx="' + cx + '" cy="' + cy + '" rx="' + s.w / 2 + '" ry="' + s.h / 2 + '"' + a + "/>";
   var rx = s.k === "round" ? Math.min(14, s.h / 3) : s.k === "pill" ? Math.min(s.h, s.w) / 2 : s.k === "note" ? 3 : 0;
@@ -9637,12 +9878,13 @@ function drSvg(d, o) {
   if (!o.edit) out.push('<rect x="' + x0 + '" y="' + y0 + '" width="' + (x1 - x0) + '" height="' + (y1 - y0) + '" fill="#FFFFFF"/>');
   ls.forEach(function (l, i) {   // 箭頭（畫在框的下面）
     var p = routes[i]; if (!p) return;
-    var ah = l.ah || "end", sz = 11, pts = p.map(function (q) { return { x: q.x, y: q.y }; });
-    if (ah !== "none") pts[pts.length - 1] = drPull(p[p.length - 1], p[p.length - 2], sz * 0.8);
-    if (ah === "both") pts[0] = drPull(p[0], p[1], sz * 0.8);
-    out.push('<polyline data-l="' + drEsc(l.id) + '" points="' + pts.map(function (q) { return Math.round(q.x * 10) / 10 + "," + Math.round(q.y * 10) / 10; }).join(" ") + '" fill="none" stroke="' + DR_ARROW + '" stroke-width="2" stroke-linejoin="round"/>');
-    if (ah !== "none") out.push('<polygon points="' + drHead(p[p.length - 1], p[p.length - 2], sz) + '" fill="' + DR_ARROW + '"/>');
-    if (ah === "both") out.push('<polygon points="' + drHead(p[0], p[1], sz) + '" fill="' + DR_ARROW + '"/>');
+    var ah = l.ah || "end", L = drLineSt(l), sz = L.head, pts = p.map(function (q) { return { x: q.x, y: q.y }; });
+    var tip = ah === "end" || ah === "both", tail = ah === "start" || ah === "both";   // 第 41 批：start＝指到前面那個框
+    if (tip) pts[pts.length - 1] = drPull(p[p.length - 1], p[p.length - 2], sz * 0.8);
+    if (tail) pts[0] = drPull(p[0], p[1], sz * 0.8);
+    out.push('<polyline data-l="' + drEsc(l.id) + '" points="' + pts.map(function (q) { return Math.round(q.x * 10) / 10 + "," + Math.round(q.y * 10) / 10; }).join(" ") + '" fill="none" stroke="' + L.c + '" stroke-width="' + L.w + '"' + L.dash + ' stroke-linejoin="round"/>');
+    if (tip) out.push('<polygon points="' + drHead(p[p.length - 1], p[p.length - 2], sz) + '" fill="' + L.c + '"/>');
+    if (tail) out.push('<polygon points="' + drHead(p[0], p[1], sz) + '" fill="' + L.c + '"/>');
     var lb = drLabelBox(l, p); if (lb) labs.push(lb);
   });
   ss.forEach(function (s) { out.push('<g data-s="' + drEsc(s.id) + '">' + drOutline(s, _yzDrawTone_(s.c)) + drTextFo(s, o.edit) + "</g>"); });
@@ -10009,15 +10251,29 @@ function drawEditor(t, b) {
     var ss = S.sel.map(shape).filter(Boolean), l = S.ls ? link(S.ls) : null;
     if (S.linkMode) { bar2.appendChild(h("span", { class: "drw-hint" }, [S.linkFrom ? "🔗 再點要連到的那個框（點空白的地方取消）" : "🔗 先點箭頭從哪個框出發"])); return; }
     if (l) {
-      var rs = h("select", { class: "in sm", title: "箭頭怎麼走" }, [["", "自動（直的、橫的、轉一個彎）"], ["line", "直線（斜的也可以）"], ["hv", "先橫再直"], ["vh", "先直再橫"]].map(function (o) { return h("option", { value: o[0] }, [o[1]]); }));
+      var rs = h("select", { class: "in sm drw-rs", title: "箭頭怎麼走" }, [["", "自動（直的、橫的、轉一個彎）"], ["line", "直線（斜的也可以）"], ["hv", "先橫再直"], ["vh", "先直再橫"]].map(function (o) { return h("option", { value: o[0] }, [o[1]]); }));
       rs.value = l.st || ""; rs.onchange = function () { act(); if (rs.value) l.st = rs.value; else delete l.st; paintDia(); paintOv(); push(); };
-      var ah = h("select", { class: "in sm", title: "箭頭的頭" }, [["", "→ 指到後面那個框"], ["both", "↔ 兩邊都有"], ["none", "— 沒有箭頭"]].map(function (o) { return h("option", { value: o[0] }, [o[1]]); }));
-      ah.value = l.ah || ""; ah.onchange = function () { act(); if (ah.value) l.ah = ah.value; else delete l.ah; paintDia(); paintOv(); push(); };
+      var ah = h("select", { class: "in sm drw-ah", title: "箭頭的頭" }, [["", "→ 指到後面那個框"], ["start", "← 指到前面那個框"], ["both", "↔ 兩邊都有"], ["none", "— 沒有箭頭"]].map(function (o) { return h("option", { value: o[0] }, [o[1]]); }));
+      ah.value = l.ah || ""; ah.onchange = function () { if (ah.value === "start" && !bk41Ok()) { ah.value = l.ah || ""; bk41Warn("箭頭指到前面那個框"); return; } act(); if (ah.value) l.ah = ah.value; else delete l.ah; paintDia(); paintOv(); push(); };
+      // 第 41 批：線條（實線、虛線、點線、長虛線）、粗細、顏色（後端 02 還是舊的：存了會不見 → 先提醒）
+      var setL = function (k, v) { if (v && !bk41Ok()) { bk41Warn("連線的樣式（虛線、粗細、顏色）"); syncCtx(); return; } act(); if (v) l[k] = v; else delete l[k]; paintDia(); paintOv(); push(); syncCtx(); };
+      var ds = h("select", { class: "in sm drw-ds", title: "線條：實線、虛線、點線、長虛線", "aria-label": "線條" }, YZ_DRAW_DASH_ORDER.map(function (k) { return h("option", { value: k }, [{ "": "━ 實線", dash: "╍ 虛線", dot: "┈ 點線", long: "━ ━ 長虛線" }[k]]); }));
+      ds.value = _yzDrawOpt_(YZ_DRAW_DASH, l.ds); ds.onchange = function () { setL("ds", ds.value); };
+      var lw = h("select", { class: "in sm drw-lw", title: "線的粗細", "aria-label": "粗細" }, YZ_DRAW_LW_ORDER.map(function (k) { return h("option", { value: k }, [YZ_DRAW_LW[k].label + (k ? "" : "（預設）")]); }));
+      lw.value = _yzDrawOpt_(YZ_DRAW_LW, l.lw); lw.onchange = function () { setL("lw", lw.value); };
+      var lcw = h("span", { class: "drw-lcs", role: "group", "aria-label": "線的顏色" });
+      YZ_DRAW_LC_ORDER.forEach(function (k) {
+        var C = YZ_DRAW_LC[k], on = _yzDrawOpt_(YZ_DRAW_LC, l.lc) === k;
+        var x = tbtn("", "線的顏色：" + C.label + (k ? "" : "（預設）"), function () { setL("lc", k); }, "drw-lc" + (on ? " on" : ""));
+        x.setAttribute("data-lc", k); x.setAttribute("aria-label", "線的顏色：" + C.label); x.setAttribute("aria-pressed", on ? "true" : "false");
+        x.appendChild(h("i", { style: "background:" + C.c }));
+        lcw.appendChild(x);
+      });
       var lt = h("input", { class: "in sm drw-lt", value: l.t || "", maxlength: "30", placeholder: "箭頭上的字（例如：是、否）", "aria-label": "箭頭上的字" });
       lt.oninput = function () { act(); if (lt.value.trim()) l.t = lt.value; else delete l.t; paintDia(); paintOv(); };
       lt.onchange = function () { var v = lt.value.replace(/[\r\n]+/g, " ").trim().slice(0, 30); if (v) l.t = v; else delete l.t; lt.value = v; paintDia(); paintOv(); push(); };
       lt.onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); lt.blur(); } };
-      [h("span", { class: "drw-lab" }, ["箭頭"]), rs, ah, lt, tbtn("⇄ 反過來", "箭頭換方向", function () { var x = l.a; l.a = l.b; l.b = x; paintDia(); paintOv(); push(); }), tbtn("🗑 刪除", "刪掉這條箭頭（Delete）", delSel, "bad")].forEach(function (x) { bar2.appendChild(x); });
+      [h("span", { class: "drw-lab" }, ["箭頭"]), rs, ah, ds, lw, lcw, lt, tbtn("⇄ 反過來", "箭頭換方向", function () { var x = l.a; l.a = l.b; l.b = x; paintDia(); paintOv(); push(); }), tbtn("🗑 刪除", "刪掉這條箭頭（Delete）", delSel, "bad")].forEach(function (x) { bar2.appendChild(x); });
       return;
     }
     if (!ss.length) { bar2.appendChild(h("span", { class: "drw-hint" }, ["點一下框＝選起來；拖曳＝移動；拉右下角的白點＝改大小；滑到框上會有藍點，從藍點拉到另一個框＝箭頭；連點兩下＝打字；連點兩下空白的地方＝新增方框。Shift＋點＝多選。"])); return; }
@@ -10038,6 +10294,12 @@ function drawEditor(t, b) {
     al.value = ss[0].al || (ss[0].k === "note" ? "l" : "c");
     al.onchange = function () { act(); setOn(function (s) { s.al = al.value; }); };
     bar2.appendChild(al);
+    if (ss.some(function (s) { return s.k !== "txt"; })) {   // 第 41 批：框線（實線、虛線、點線、長虛線）；「只有字」沒有框
+      var fd = h("select", { class: "in sm drw-fds", title: "框線：實線、虛線、點線、長虛線", "aria-label": "框線" }, YZ_DRAW_DASH_ORDER.map(function (k) { return h("option", { value: k }, [{ "": "框線：實線", dash: "框線：虛線", dot: "框線：點線", long: "框線：長虛線" }[k]]); }));
+      fd.value = ss.every(function (s) { return _yzDrawOpt_(YZ_DRAW_DASH, s.ds) === _yzDrawOpt_(YZ_DRAW_DASH, ss[0].ds); }) ? _yzDrawOpt_(YZ_DRAW_DASH, ss[0].ds) : "";
+      fd.onchange = function () { if (fd.value && !bk41Ok()) { bk41Warn("框線（虛線、點線）"); syncCtx(); return; } act(); setOn(function (s) { if (fd.value && s.k !== "txt") s.ds = fd.value; else delete s.ds; }); };
+      bar2.appendChild(fd);
+    }
     if (ss.length === 1) bar2.appendChild(tbtn("✏️ 改字", "改框裡的字（也可以連點兩下框）", function () { openText(ss[0].id); }));
     if (ss.length > 1) {
       var am = h("select", { class: "in sm", title: "對齊、平均分配" }, [["", "對齊…"], ["c", "直的一排（置中對齊）"], ["l", "靠左對齊"], ["r", "靠右對齊"], ["m", "橫的一排（置中對齊）"], ["t", "靠上對齊"], ["b", "靠下對齊"], ["dv", "上下平均分配"], ["dh", "左右平均分配"]].map(function (o) { return h("option", { value: o[0] }, [o[1]]); }));
@@ -11655,6 +11917,7 @@ function exR(t, o) {   // 一段字（同一個格式）；換行＝<w:br/>
   if (o.color) pr += '<w:color w:val="' + o.color + '"/>';
   if (o.sz) pr += '<w:sz w:val="' + o.sz + '"/><w:szCs w:val="' + o.sz + '"/>';
   if (o.u) pr += '<w:u w:val="single"/>';
+  if (o.bdr) pr += o.bdr;   // 第 41 批：文字框＝Word 的字元框線（照 Word 規定的順序：u 後面、shd 前面）
   if (o.shd) pr += '<w:shd w:val="clear" w:color="auto" w:fill="' + o.shd + '"/>';
   String(t === null || t === undefined ? "" : t).replace(/\r\n?/g, "\n").replace(/\t/g, "    ").split("\n").forEach(function (seg, k) {
     if (k) body += "<w:br/>";
@@ -11681,6 +11944,8 @@ function exRuns(runs, base) {   // 格式文字（粗體、顏色、螢光筆、
       var zz = _yzRtSz_(r.z); if (zz) o.sz = EX_SZ[r.z] || Math.round(zz.pt * 2);   // 第 40 批：點數＝Word 的字型大小（一模一樣）
       if (r.m && YZ_RT_MARKS[r.m]) o.shd = exHex(YZ_RT_MARKS[r.m].bg);
     }
+    var bx = r.x ? _yzRtBox_(r.x) : null;   // 第 41 批：文字框（連在一起、一樣的框：Word 自己會畫成一個框）
+    if (bx) o.bdr = '<w:bdr w:val="' + bx.def.word + '" w:sz="' + bx.def.sz + '" w:space="0" w:color="' + (bx.c ? exHex(YZ_RT_COLORS[bx.c]) : "auto") + '"/>';
     out += exR(r.fx && !r.cp ? _yzFxLinear_(r.t) : r.t, o);
     if (del(r) && !del(rs[i + 1])) out += exR("）", Object.assign({}, base || {}, { b: 1 }));
   });

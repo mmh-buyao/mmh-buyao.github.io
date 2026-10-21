@@ -754,6 +754,32 @@ body.drw-noscroll{overflow:hidden}
 .lk-add{display:flex}
 @media (max-width:640px){.lk-r1{grid-template-columns:1fr}}
 
+/* 第 41 批：每一塊「顯示在哪裡」（LINE、網頁都顯示／只在 LINE／只在網頁） */
+.blk .bh .visb{width:auto;max-width:100%;font-size:12.5px;padding:2px 6px;height:auto;font-weight:600}
+.blk.only-line{border-color:#2BA45A}
+.blk.only-line>.bh{background:#E8F7EE}
+.blk.only-line .bh .visb{border-color:#2BA45A;color:#11683A;background:#fff}
+.blk.only-web{border-color:#3D7CC9}
+.blk.only-web>.bh{background:#EAF2FB}
+.blk.only-web .bh .visb{border-color:#3D7CC9;color:#1D4ED8;background:#fff}
+/* 第 41 批：文字框（像 Word 的字元框線） */
+.fb .fbX{display:inline-block;border:1.5px solid currentColor;border-radius:2px;padding:0 3px;font-weight:700;font-size:12.5px;line-height:1.25}
+.fb-frame-pick{min-width:18px;padding:0 3px;font-size:10px}
+.rtfr{display:grid;grid-template-columns:repeat(3,96px);gap:5px}
+.rtfr-b{border:1px solid var(--line);background:#fff;border-radius:7px;padding:6px 0 3px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font:inherit}
+.rtfr-b:hover{background:#F1F5F9}
+.rtfr-s{font-size:14px;color:#1F2937;line-height:1.35}
+.rtfr-b small{font-size:11px;color:var(--ink3)}
+.rtfr-sw{display:inline-block;width:20px;height:14px;border:2px solid currentColor;border-radius:2px;margin:3px 0 2px}
+.rtsw-b.on,.rtfr-b.on{outline:2px solid var(--accent);outline-offset:1px}
+.rtfr-row{display:flex;justify-content:flex-end;margin-top:6px}
+.rt-x{display:inline}
+/* 第 41 批：流程圖的連線：線條、粗細、顏色 */
+.drw-lcs{display:inline-flex;gap:3px;align-items:center}
+.drw-lc{min-width:30px;width:30px;padding:4px 0;display:inline-flex;align-items:center;justify-content:center}
+.drw-lc i{display:block;width:20px;height:6px;border-radius:3px}
+.drw-lc.on{outline:2px solid var(--accent);outline-offset:1px}
+
 /* ───────── 目錄圖 第 3 版：標籤（圖示＋名稱）＋圓點，網頁、編輯器共用 ─────────
  * 一個地點 ＝ 一個「物品框」（.mspot，位置大小用佔整張圖的 %）。圓點在框的正中間，標籤在圓點的上／下／左／右。
  * 網頁：看得到的東西放在「鏡頭層」（.catcam，滑過時會放大、移動）；點得到的按鈕放在不動的「點擊層」（.cathit），所以鏡頭一動，滑鼠不會因為東西跑掉而抖動。 */
@@ -1055,10 +1081,25 @@ body{min-height:100vh}
   .chhead img{width:84px}
 }
 
-/* 浮水印：蓋住整頁（包括放大的圖），不擋滑鼠 */
-.wm{position:fixed;inset:0;pointer-events:none;z-index:220;opacity:.075;background-repeat:repeat}
+/* 浮水印：蓋住整頁（包括放大的圖），不擋滑鼠。第 41 批：加重（字比較粗、比較密、兩層錯開），怕用別的手機、平板拍；濃度 .11（不影響查閱） */
+.wm{position:fixed;inset:0;pointer-events:none;z-index:220;opacity:.11;background-repeat:repeat;background-position:0 0,160px 105px}
+body:not(.guard) .wm{opacity:.07}   /* 開發者在「✏️ 編輯」「👥 管理」：淡一點（不擋編輯）；看手冊的時候都是 .11 */
+
+/* 第 41 批：看手冊＝內部資料：不能選字、不能長按另存圖片（打字的框、反灰可複製照常） */
+body.guard{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+body.guard img,body.guard svg,body.guard canvas,body.guard video{-webkit-user-drag:none;-webkit-touch-callout:none}
+body.guard input,body.guard textarea,body.guard select,body.guard [contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+body.guard .ycp-t{-webkit-user-select:all;user-select:all;-webkit-touch-callout:default}
+/* 按截圖鍵、切到別的分頁的時候：整個畫面先遮住（不擋滑鼠：點一下就回來） */
+.guardcv{position:fixed;inset:0;z-index:240;display:none;align-items:center;justify-content:center;padding:24px;background:#EEF2F6;pointer-events:none;text-align:center}
+.guardcv.on{display:flex}
+.gcv-in{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:420px;color:#1F2D3A}
+.gcv-in .gcv-lg{width:76px;height:76px;display:block}
+.gcv-in b{font-size:20px;letter-spacing:.06em}
+.gcv-m{margin:0;font-size:15px;line-height:1.6;color:#4B5B6B}
 .lightbox{z-index:150}
 .toast{z-index:210}
+body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area-inset-bottom, 0px))}   /* 第 41 批：下面有跑馬燈：提示放在跑馬燈上面（「🔒 內部資料：不能複製」看得清楚） */
 
 /* 小視窗（確認） */
 .modal{position:fixed;inset:0;background:rgba(15,23,32,.55);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
@@ -1080,7 +1121,7 @@ body{min-height:100vh}
 
 /* 不能列印（內部資料） */
 @media print{
-  .app,.wm,.lightbox,.modal,#pvwin,.toast{display:none!important}
+  .app,.wm,.lightbox,.modal,#pvwin,.toast,.guardcv{display:none!important}
   body::before{content:"藥戰手冊是內部資料，不能列印。";display:block;font-size:20px;padding:40px}
 }
 
