@@ -868,6 +868,7 @@ body{min-height:100vh}
 .pcrem input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--accent)}
 .pcurlrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
 .pcurl{flex:1 1 260px;min-width:0;font-family:var(--mono);font-size:12.5px}
+.pccfg{flex:1 1 260px;min-width:0;font-family:var(--mono);font-size:12px;line-height:1.4;resize:vertical;word-break:break-all}
 
 /* 上面一排 */
 .hdr{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--line);padding:8px 16px;box-shadow:0 1px 6px rgba(20,40,60,.05)}
