@@ -2866,16 +2866,36 @@ function keySave() { if (!XRE.test(X) || !TRE.test(T)) return; try { localStorag
 function keyDrop() { try { var o = keyLoad(); if (o && o.x === X && o.t === T) localStorage.removeItem("hbk"); } catch (e) { /* 沒關係 */ } }
 function bxDrop() { try { if (localStorage.getItem("hbx") === X) localStorage.removeItem("hbx"); var o = keyLoad(); if (o && o.x === X) localStorage.removeItem("hbk"); } catch (e) { /* 沒關係 */ } }
 var CFGX = ""; try { if (typeof window.HB_X === "string" && XRE.test(window.HB_X)) CFGX = window.HB_X; } catch (e) { /* cfg.js 沒放（可以不放） */ }
-// 第 38 批：電腦用的短連結「…/hb.html#短碼」（12 個小寫英文＋數字）：後端位置放在 GitHub 的 cfg.js（HB_XC），是用短碼加密過的，沒有短碼解不開
-var SCRE = /^[a-z0-9]{12}$/, SCODE = (function () { var v = String(location.hash || "").replace(/^#/, ""); return SCRE.test(v) ? v : ""; })(), SCERR = "";
+// 第 38 批：後端位置放在 GitHub 的 cfg.js（HB_XC），是加密過的，沒有鑰匙解不開。
+// 第 42 批：外部連結只有「…/hb.html」。這台第一次用：同事在 LINE 按「🔗 複製連結」，拿到「自己的連結」…/hb.html#28 碼（每個人、每次都不一樣）：
+//   前 16 碼＝這一條的號碼（後端認得是誰、什麼時候拿的：10 分鐘內第一次登入不用驗證碼），後 12 碼＝cfg.js 的鑰匙遮過（用前 16 碼拿掉遮的）。
+//   一打開就把短碼從網址列拿掉（只剩 …/hb.html），解出後端位置就記在這台（存成書籤、重新整理都可以）。
+//   以前管理頁給的「…/hb.html#12 碼」固定短連結停用了（用過的這台照常打開）。
+var PCL_RE = /^[a-z0-9]{28}$/, PCL_A = "abcdefghijklmnopqrstuvwxyz0123456789", LK_RE = /^[a-z0-9]{16}$/;
+var HASH0 = String(location.hash || "").replace(/^#/, "");
+var SCODE = PCL_RE.test(HASH0) ? HASH0 : "", SCOLD = /^[a-z0-9]{12}$/.test(HASH0), SCERR = "";
+function lkSave(v) { try { if (v) sessionStorage.setItem("hblk", JSON.stringify({ lk: v, at: Date.now() })); else sessionStorage.removeItem("hblk"); } catch (e) { /* 記不住就算了 */ } }
+function lkLoad() { try { var o = JSON.parse(sessionStorage.getItem("hblk") || "null"); if (o && LK_RE.test(String(o.lk || "")) && Date.now() - +o.at < 66e4) return String(o.lk); } catch (e) { /* 沒有 */ } return ""; }
+var PCLK = SCODE ? SCODE.slice(0, 16) : lkLoad();   // 這一頁是用 LINE 複製的連結打開的：電腦登入時帶給後端（重新整理還在：記在這個分頁，11 分鐘）
+if (SCODE) lkSave(PCLK);
 var SAVED = keyLoad();
-if (!T && !SCODE && SAVED && (!X || SAVED.x === X) && (!CFGX || SAVED.x === CFGX)) { X = SAVED.x; T = SAVED.t; FROMSAVED = true; }   // 短連結：先用短碼解出後端位置（scResolve），再看這台記住的
+if (!T && !SCODE && SAVED && (!X || SAVED.x === X) && (!CFGX || SAVED.x === CFGX)) { X = SAVED.x; T = SAVED.t; FROMSAVED = true; }   // 自己的連結：先解出後端位置（scResolve），再看這台記住的
 if (!X && !T && !SCODE) X = CFGX || bxLoad();
-// 網址列只留短的（鑰匙、通行證不留在網址列；分享網址也不會帶出去）
+// 網址列只留「…/hb.html」（鑰匙、通行證、短碼都不留在網址列；分享網址也不會帶出去）
 try {
   if (/(^|[#&])(app|dev|k)=/.test(location.hash || "")) history.replaceState(null, "", location.pathname);
-  else if (/(^|[#&])x=/.test(location.hash || "")) history.replaceState(null, "", location.pathname + (XRE.test(HP.x || "") && HP.x === X ? "#x=" + HP.x : ""));   // 第 36 批：電腦用的入口連結（只有後端位置、沒有鑰匙）：網址列留著（重新整理、存成書籤都找得到後端）
+  else if (/(^|[#&])x=/.test(location.hash || "")) {   // 第 36 批的入口連結（…#x＝後端位置）：照樣可以用；第 42 批：位置記在這台，網址列只留 …/hb.html
+    var RX0 = CFGX || (SAVED ? SAVED.x : bxLoad()), XOK = XRE.test(HP.x || "") && HP.x === X;
+    if (XOK && (!RX0 || RX0 === X)) { try { localStorage.setItem("hbx", X); } catch (e) { /* 記不住就算了 */ } history.replaceState(null, "", location.pathname); }
+    else history.replaceState(null, "", location.pathname + (XOK ? "#x=" + HP.x : ""));   // 這台原本連的跟這條不一樣：照舊留在網址列（backendCheck 會問用哪一個）
+  }
+  else if (SCODE || SCOLD || /[?&]openExternalBrowser=/.test(location.search || "")) history.replaceState(null, "", location.pathname);
 } catch (e) { /* 沒關係 */ }
+// 第 42 批：已經開著 …/hb.html 的分頁，在網址列貼上連結（只有 # 後面不一樣，瀏覽器不會重新載入）→ 自己重新載入，照新的連結開
+window.addEventListener("hashchange", function () {
+  var v = String(location.hash || "").replace(/^#/, "");
+  if (PCL_RE.test(v) || /^[a-z0-9]{12}$/.test(v)) { try { location.reload(); } catch (e) { /* 沒關係 */ } }
+});
 
 var DK = (function () {
   var k = ""; try { k = localStorage.getItem("bdk") || ""; } catch (e) { k = ""; }
@@ -2907,15 +2927,24 @@ function scSeal(code, x) {   // 後端位置 → HB_XC（管理頁「⑥」做 c
     var c = new Uint8Array(ct), raw = new Uint8Array(28 + c.length); raw.set(salt, 0); raw.set(iv, 16); raw.set(c, 28); return "1." + b64uEnc(raw);
   });
 }
-function scResolve(cb) {   // 開場：網址是 #短碼 → 用 cfg.js 解出後端位置；這台記住的鑰匙也是這個後端的，就直接用
+function pclKey(code) {   // 第 42 批：自己的連結（28 碼）→ cfg.js 的鑰匙（12 碼）：前 16 碼算 SHA-256，後 12 碼每一碼往回挪
+  var r = code.slice(0, 16), m = code.slice(16);
+  return crypto.subtle.digest("SHA-256", new TextEncoder().encode("hbk1|" + r)).then(function (b) {
+    var u = new Uint8Array(b), k = "";
+    for (var i = 0; i < 12; i++) k += PCL_A.charAt((PCL_A.indexOf(m.charAt(i)) - u[i] % 36 + 36) % 36);
+    return k;
+  });
+}
+function scResolve(cb) {   // 開場：網址是自己的連結（#28 碼）→ 用 cfg.js 解出後端位置；這台記住的鑰匙也是這個後端的，就直接用
   if (!SCODE || X) { cb(); return; }
   var blob = ""; try { if (typeof window.HB_XC === "string") blob = window.HB_XC; } catch (e) { blob = ""; }
   if (!blob) { SCERR = "nocfg"; cb(); return; }
-  if (!(window.crypto && crypto.subtle && typeof crypto.subtle.importKey === "function" && typeof crypto.subtle.deriveKey === "function" && window.TextEncoder && window.TextDecoder)) { cb(); return; }
-  var p; try { p = scOpen(SCODE, blob); } catch (e) { SCERR = "bad"; cb(); return; }
+  if (!(window.crypto && crypto.subtle && typeof crypto.subtle.importKey === "function" && typeof crypto.subtle.deriveKey === "function" && typeof crypto.subtle.digest === "function" && window.TextEncoder && window.TextDecoder)) { cb(); return; }
+  var p; try { p = pclKey(SCODE).then(function (k) { return scOpen(k, blob); }); } catch (e) { SCERR = "bad"; cb(); return; }
   p.then(function (x) {
     if (!XRE.test(x)) { SCERR = "bad"; cb(); return; }
-    X = x; var sv = keyLoad(); if (!T && sv && sv.x === X) { T = sv.t; FROMSAVED = true; SAVED = sv; }
+    X = x; try { localStorage.setItem("hbx", X); } catch (e) { /* 記不住就算了 */ }   // 第 42 批：網址列已經拿掉短碼了：記住後端位置（重新整理、存成書籤都打得開）
+    var sv = keyLoad(); if (!T && sv && sv.x === X) { T = sv.t; FROMSAVED = true; SAVED = sv; }
     cb();
   }, function () { SCERR = "bad"; cb(); });
 }
@@ -3238,12 +3267,36 @@ function scrLoginCode(why, r) {
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") LG.auto = 0; });
 
 /* ── 第 36 批：電腦登入（員工編號＋姓名）──
-   用「電腦用的入口連結」（開發者網頁「管理」拿，存成書籤）打開 → 打員工編號＋姓名 →
+   用「電腦用的入口連結」（…/hb.html，存成書籤）打開 → 打員工編號＋姓名 →
    ① 這台記住你（以前在這台用 LINE 驗證碼登入過、勾了「記住這台電腦」）：直接進去；
    ② 沒記住（這台第一次、無痕視窗、清掉了網站資料）：手機 LINE 的「藥戰手冊」傳「登入」→ LINE 回 6 位數 → 打在這裡。
+   第 42 批：用自己在 LINE 按「🔗 複製連結」拿的連結打開的（10 分鐘內、第一次用）：②不用做（連結本來就是從他的 LINE 拿的）。
    等驗證碼的那一組記在這個分頁（sessionStorage）：切去別的分頁再回來，還是同一組（10 分鐘內）。 */
 var PC = { sec: "", ex: 0, busy: false, tm: 0, seq: 0 };
-var MSG_PC = "在電腦上：請開發者給你「電腦用的入口連結」，存成書籤；用書籤打開，就能打員工編號＋姓名登入。";
+var MSG_PC = "在電腦（或別的瀏覽器）上：打開 LINE 的「藥戰手冊」，按下面那排的「🔗 複製連結」（電腦版 LINE 打「複製連結」），貼到瀏覽器的網址列打開。這台用過一次以後，直接打開「…/hb.html」（存成書籤）就是登入畫面。";
+/* ── 第 42 批：這台不知道後端在哪（第一次用、無痕視窗、清掉了網站資料）：請從 LINE 複製自己的連結（網址列、或貼在這裡都可以）──
+   why："old"＝打開的是以前的固定短連結（停用了）；"nocfg"／"bad"＝自己的連結打不開（cfg.js 還沒放好、對不上） */
+function scrFirst(why) {
+  var inp = h("input", { class: "in", id: "pclin", type: "text", autocomplete: "off", spellcheck: "false", placeholder: "貼上 LINE「🔗 複製連結」拿到的連結", "aria-label": "LINE 複製的連結" });
+  var m = h("div", { class: "scr-m", role: "status", "aria-live": "polite" });
+  var go = function () {
+    var v = String(inp.value || "").replace(/\s+/g, ""), mm = /#([a-z0-9]{28})$/.exec(v) || /^([a-z0-9]{28})$/.exec(v);
+    if (!mm) { m.textContent = /#[a-z0-9]{12}$/.test(v) ? "這是以前的固定短連結（已經停用）：請在 LINE 按「🔗 複製連結」，貼你自己的。" : "這不像 LINE「🔗 複製連結」拿到的連結：請在 LINE 再按一次，整條貼上來。"; try { inp.focus(); } catch (e) { /* 沒關係 */ } return; }
+    SCODE = mm[1]; SCOLD = false; SCERR = ""; PCLK = SCODE.slice(0, 16); lkSave(PCLK);
+    m.textContent = "打開中…";
+    start();
+  };
+  inp.onkeydown = function (e) { if (e.key === "Enter") go(); };
+  var t = why === "old" ? "這條入口連結已經停用" : why ? "連結打不開" : "請從 LINE 打開";
+  var lines = why === "old" ? ["以前管理頁給的「…/hb.html#12 碼」那一條已經停用了：現在每個人用自己的連結（每個人、每次都不一樣）。"] : [];
+  if (why === "nocfg") lines.push("網站上還沒有放好 cfg.js（剛上傳的話，等 1～2 分鐘再重新整理）。還是不行，請跟開發者說。");
+  if (why === "bad") lines.push("這條連結跟網站上的 cfg.js 對不上（可能開發者剛換過設定，或連結沒有複製完整）：請在 LINE 再按一次「🔗 複製連結」。");
+  lines.push(MSG_PC, "在手機上：" + MSG_LINE);
+  if (!why) lines.push("（藥戰手冊是自己的 LINE 帳號：還沒加的話，補藥神器下面那排的「📘 藥戰手冊」就是加入的按鈕。）");
+  screen([logo(), h("h2", {}, [t]), h("div", { class: "scr-p" }, lines.map(function (l) { return h("p", {}, [l]); })),
+    h("div", { class: "pclrow" }, [inp, btn("打開", go, "pri")]), m,
+    why ? h("div", { class: "scr-b" }, [reloadBtn()]) : null], "pclscr");
+}
 function pcStop() { clearInterval(PC.tm); PC.tm = 0; }
 function pcSave() { try { if (PC.sec) sessionStorage.setItem("hbpc", JSON.stringify({ x: X, sec: PC.sec, ex: PC.ex })); else sessionStorage.removeItem("hbpc"); } catch (e) { /* 記不住就算了 */ } }
 function pcLoad() {
@@ -3283,6 +3336,7 @@ function scrLoginPc(why, r) {
   var cd = h("b", { id: "pccd" }, [""]);
   var restart = h("button", { class: "lglink", type: "button" }, ["重新開始"]);
   var step1 = h("div", { class: "pcbox", id: "pcstep1" }, [
+    PCLK ? h("div", { class: "pclhint", id: "pclhint" }, ["🔗 這一頁是用你在 LINE 複製的連結打開的：10 分鐘內打員工編號＋姓名就能進去（不用驗證碼）。"]) : null,   // 第 42 批
     h("div", { class: "lgst" }, ["① 打你的", h("b", {}, ["員工編號"]), "和", h("b", {}, ["姓名"]), "（要跟申請時填的一樣）"]),
     h("div", { class: "scr-form" }, [h("label", {}, [h("span", {}, ["員工編號"]), emp]), h("label", {}, [h("span", {}, ["姓名"]), nm])]),
     h("label", { class: "pcrem", for: "pcrem" }, [rem, h("span", {}, ["記住這台電腦（下次只要打員工編號＋姓名）"])]),
@@ -3296,7 +3350,7 @@ function scrLoginPc(why, r) {
   var box = screen([logo(), h("h2", {}, ["🔐 登入藥戰手冊"]),
     lines.length ? h("div", { class: "scr-p" }, lines.map(function (l) { return h("p", {}, [l]); })) : null,
     step1, step2,
-    h("p", { class: "lgfine" }, ["這台電腦第一次用、或是無痕視窗：還要用手機 LINE 拿 6 位數驗證碼，確認是本人。共用的電腦可以不要勾「記住這台電腦」。", h("br"), "驗證碼只能在這個網頁用、只能用一次，不要傳給任何人。"]),
+    h("p", { class: "lgfine" }, ["這台電腦第一次用、或是無痕視窗：還要用手機 LINE 拿 6 位數驗證碼，確認是本人（用 LINE「🔗 複製連結」剛拿的連結打開的，10 分鐘內不用）。共用的電腦可以不要勾「記住這台電腦」。", h("br"), "驗證碼、自己的連結都只能自己用，不要傳給任何人。"]),
     KEEP_ED || (typeof KEEP_QE !== "undefined" && KEEP_QE) ? h("p", { class: "lockkeep" }, ["✏️ 你有還沒儲存的修改：登入以後會接著編輯（還沒存進去）。"]) : null,
     h("div", { class: "lgrolew" }, [
       h("button", { class: "lglink", type: "button", onclick: function () { pcStop(); LG.mode = "code"; LG.role = ""; scrLogin(why, r); } }, ["改用代號登入"]),
@@ -3317,7 +3371,7 @@ function scrLoginPc(why, r) {
     pcStop(); PC.sec = ""; pcSave();
     step2.hidden = true; step1.hidden = false; go.disabled = false; m.textContent = msg || ""; focus(emp.value ? nm : emp);
   };
-  var done = function (x) { pcStop(); PC.sec = ""; pcSave(); T = String(x.t); FROMSAVED = false; FROMLINK = false; keySave(); LG.mode = ""; onBoot(x); };
+  var done = function (x) { pcStop(); PC.sec = ""; pcSave(); PCLK = ""; lkSave(""); T = String(x.t); FROMSAVED = false; FROMLINK = false; keySave(); LG.mode = ""; onBoot(x); };
   var slowMsg = function (el) { return setTimeout(function () { if (alive() && PC.busy) el.textContent = "確認中…後端剛睡醒的時候要等 30 秒左右，請先別關掉、也不用再按。"; }, 6000); };
   var submit = function () {
     if (PC.busy) return;
@@ -3326,12 +3380,16 @@ function scrLoginPc(why, r) {
     if (!/^[A-Za-z0-9Ａ-Ｚａ-ｚ０-９\-－]{2,20}$/.test(e)) { m.textContent = "員工編號只能是英文字母、數字（2～20 個字）"; focus(emp); return; }
     if (!n) { m.textContent = "請打姓名"; focus(nm); return; }
     PC.busy = true; go.disabled = true; m.textContent = "確認中…"; pcRemSet(rem.checked);
-    var slow = slowMsg(m);
-    call("hbPcLogin", [e, n, rem.checked ? 1 : 0], { ms: 80000 }).then(function (x) {
+    var slow = slowMsg(m), lk = PCLK;
+    call("hbPcLogin", [e, n, rem.checked ? 1 : 0, lk || ""], { ms: 80000 }).then(function (x) {   // 第 42 批：帶這一頁的連結號碼（LINE 複製的；10 分鐘內第一次不用驗證碼）
       clearTimeout(slow); PC.busy = false; go.disabled = false;
       if (!alive()) return;
       if (x && TRE.test(String(x.t || ""))) { done(x); return; }
-      if (x && x.need === "line" && TRE.test(String(x.sec || ""))) { PC.sec = String(x.sec); PC.ex = Date.now() + Math.max(60, Math.min(900, +x.ttl || 600)) * 1000; pcSave(); m.textContent = ""; toStep2(); return; }
+      if (x && x.need === "line" && TRE.test(String(x.sec || ""))) {
+        PC.sec = String(x.sec); PC.ex = Date.now() + Math.max(60, Math.min(900, +x.ttl || 600)) * 1000; pcSave(); m.textContent = ""; toStep2();
+        if (lk) { PCLK = ""; lkSave(""); var hn = $("#pclhint"); if (hn) hn.remove(); m2.textContent = "這條連結已經用過、超過 10 分鐘，或不是你自己的：照上面拿 6 位數驗證碼。"; }   // 第 42 批
+        return;
+      }
       if (x && x.st && !x.err) { onBoot(x); return; }   // 被撤銷了、手冊關了…
       m.textContent = "❌ " + String(x && x.err || "沒登入成功，再試一次").slice(0, 260);
       if (x && x.field) focus(x.field === "name" ? nm : emp);
@@ -3779,8 +3837,8 @@ function start() {
       if (g === "nodk") { scrMsg("這個瀏覽器不能用", [MSG_NODK]); return; }
       if (g === "old") { scrMsg("瀏覽器太舊", ["請改用最新的 Chrome 或 Safari。"]); return; }
       if (g === "bad") { scrMsg("連結不完整", [MSG_LINE]); return; }
-      if (SCERR) { scrMsg("短連結打不開", [SCERR === "nocfg" ? "網站上還沒有放好 cfg.js（剛上傳的話，等 1～2 分鐘再重新整理）。還是不行，請跟開發者拿新的連結。" : "這條短連結跟網站上的 cfg.js 對不上（可能換過短碼，或連結少打了字）。請跟開發者拿新的連結。", "也可以從 LINE「藥戰手冊」按「🌐 網頁」打開。"], [reloadBtn()]); return; }   // 第 38 批
-      scrMsg("請從 LINE 打開", [MSG_LINE, MSG_PC, "（藥戰手冊是自己的 LINE 帳號：還沒加的話，補藥神器下面那排的「📘 藥戰手冊」就是加入的按鈕。從 LINE 開過一次以後，這台瀏覽器直接打網址就會出現登入畫面。）"]);   // 第 36 批：多一句電腦用的入口連結
+      if (SCERR) { scrFirst(SCERR); return; }   // 第 38 批；第 42 批：自己的連結打不開（cfg.js 還沒放、對不上）→ 寫原因，也可以貼一條新的
+      scrFirst(SCOLD ? "old" : "");   // 第 42 批：這台不知道後端在哪 → 請從 LINE 複製自己的連結（貼在這裡也可以）
     });
   }); });
 }
@@ -11229,7 +11287,7 @@ function qePreview(body, meter) {
 
 /* ════════ admin.js ════════ */
 /* ═══════════════ admin.js：管理（開發者）：誰可以看（核可名單）、保密設定、員工名單（第 34 批，roster.js）、看過紀錄、我的裝置（第 34 批追加）、電腦用的入口連結（第 36 批）、匯出給 Copilot（第 37 批，export.js）═══════════════ */
-var AD = { users: null, devs: 0, log: null, busy: false, rs: null, rsn: null, dv: null };
+var AD = { users: null, devs: 0, log: null, busy: false, rs: null, rsn: null, dv: null, cards: 0, cardN: 0 };   // 第 42 批：cards＝後端有「收審核卡」的設定；cardN＝收的開發者幾位
 function buildAdminPane() {
   AD = { users: null, devs: 0, log: null, busy: false, rs: null, rsn: null, dv: null };
   var pane = $("#pane-admin");
@@ -11247,6 +11305,7 @@ function buildAdminPane() {
 }
 // 第 36 批：「⑥ 🖥 電腦用的入口連結」：在電腦上打開 → 員工編號＋姓名登入（這台第一次、無痕視窗：再加 LINE 驗證碼）。連結裡沒有任何人的鑰匙
 // 第 38 批：連結縮短成「…/hb.html#短碼」。後端位置不再放在連結、也不放在 GitHub：改成加密的 cfg.js（HB_XC），只有短碼解得開。
+// 第 42 批：入口連結只有「…/hb.html」（後面不加短碼）。這台第一次用：同事在 LINE 按「🔗 複製連結」拿自己的連結（每個人、每次都不一樣）。
 function pcLinkBase() { return location.origin + location.pathname; }
 function pcCopyBtn(getText, label) {
   var b = btn(label || "📋 複製", function () {
@@ -11258,22 +11317,24 @@ function pcCopyBtn(getText, label) {
 }
 function drawPcLink() {
   var box = $("#pcBox"); if (!box) return; box.innerHTML = "";
-  box.appendChild(h("p", { class: "hint", style: "margin-top:0" }, ["做好了：短的入口連結（給同事）＋一個小檔 cfg.js（放到 GitHub，網站才知道後端在哪）。正在產生…"]));
+  box.appendChild(h("p", { class: "hint", style: "margin-top:0" }, ["入口連結（給同事）＋一個小檔 cfg.js（放到 GitHub，網站才知道後端在哪）。正在產生…"]));
   if (!(window.crypto && crypto.subtle && typeof crypto.subtle.importKey === "function" && typeof crypto.subtle.deriveKey === "function")) { box.innerHTML = ""; box.appendChild(h("p", { class: "hint" }, ["這裡做不出加密的連結（可能是在對話裡的小框框打開，或瀏覽器太舊）。請把網頁用電腦的 Chrome 或 Safari 從正式網址打開，再到這裡拿短連結。"])); return; }
   call("hbEntry", []).then(function (r) {
     if (!adOk(r)) return;
     if (!r.code || !XRE.test(r.x || X)) { box.innerHTML = ""; box.appendChild(h("p", { class: "hint" }, ["❌ 做不出來：拿不到後端位置。重新整理再試一次。"])); return; }
     var xx = XRE.test(r.x || "") ? r.x : X;
-    scSeal(r.code, xx).then(function (blob) { pcDraw(box, r.code, blob); }, function (e) { box.innerHTML = ""; box.appendChild(h("p", { class: "hint" }, ["❌ 加密沒成功：" + (e && e.message || e) + "。重新整理再試一次。"])); });
+    scSeal(r.code, xx).then(function (blob) { pcDraw(box, r.code, blob, !!r.pcl); }, function (e) { box.innerHTML = ""; box.appendChild(h("p", { class: "hint" }, ["❌ 加密沒成功：" + (e && e.message || e) + "。重新整理再試一次。"])); });
   }, function (e) { box.innerHTML = ""; box.appendChild(h("p", { class: "hint" }, ["❌ " + e.message])); });
 }
-function pcDraw(box, code, blob) {
+function pcDraw(box, code, blob, pcl) {
   box.innerHTML = "";
-  var url = pcLinkBase() + "#" + code;
+  var url = pcLinkBase();   // 第 42 批：後面不加短碼（短碼只拿來做 cfg.js；同事用 LINE「🔗 複製連結」拿自己的連結）
   var cfg = "// 藥戰手冊：後端位置（加密）。放在 hb.html 同一層。別人看不出位置；換部署再到管理頁「⑥」重做一次。\nwindow.HB_XC = \"" + blob + "\";\n";
   var inp = h("input", { class: "in pcurl", readonly: true, value: url, "aria-label": "電腦用的入口連結", onclick: function () { try { this.select(); } catch (e) { /* 沒關係 */ } } });
-  box.appendChild(h("p", { class: "hint", style: "margin-top:0" }, ["① 入口連結（給同事）：在電腦上打開就是「員工編號＋姓名」的登入畫面。存成書籤，或貼在院內網站。"]));
+  box.appendChild(h("p", { class: "hint", style: "margin-top:0" }, ["① 入口連結（給同事）：就是「…/hb.html」，後面什麼都不加。存成書籤，或貼在院內網站；用過的電腦打開就是「員工編號＋姓名」的登入畫面。"]));
   box.appendChild(h("div", { class: "pcurlrow" }, [inp, pcCopyBtn(function () { return url; })]));
+  box.appendChild(h("p", { class: "hint", style: "margin:4px 0 0" }, ["這台電腦第一次用（或無痕視窗）：在 LINE 的「藥戰手冊」按下面那排的「🔗 複製連結」（電腦版 LINE 打「複製連結」），貼到瀏覽器打開。每個人、每次按的連結都不一樣；打開以後網址列只剩「…/hb.html」。"]));
+  if (!pcl) box.appendChild(h("p", { class: "hint", style: "margin:4px 0 0;color:#8A5A00" }, ["⚠ 後端還是舊的（同事的 LINE 還沒有「🔗 複製連結」）：先把藥戰手冊專案的 02、03 換好、部署新版本。"]));
   var ta = h("textarea", { class: "in pccfg", readonly: true, rows: "3", "aria-label": "cfg.js 的內容", onclick: function () { try { this.select(); } catch (e) { /* 沒關係 */ } } });
   ta.value = cfg;
   var dl = btn("⬇️ 下載 cfg.js", function () {
@@ -11282,15 +11343,16 @@ function pcDraw(box, code, blob) {
   box.appendChild(h("p", { class: "hint", style: "margin:12px 0 2px" }, ["② 設定檔 cfg.js：上傳到 GitHub，跟 hb.html 放同一層（同名的蓋掉）。這裡面只有「加密過的後端位置」，別人看不出來。"]));
   box.appendChild(h("div", { class: "pcurlrow" }, [ta, h("div", { style: "display:flex;flex-direction:column;gap:6px" }, [dl, pcCopyBtn(function () { return cfg; }, "📋 複製內容")])]));
   box.appendChild(h("ul", { class: "hint", style: "margin:10px 0 0;padding-left:1.2em" }, [
-    h("li", {}, ["短連結裡沒有後端位置、也沒有任何人的鑰匙：光有連結看不到內容。這台電腦第一次用、或是無痕視窗，還要用手機 LINE 傳「登入」拿 6 位數驗證碼。"]),
-    h("li", {}, ["後端位置放在 cfg.js、而且是加密的：在 GitHub 上看不到位置（短碼才解得開）。短碼固定不會變——換部署（位置變了）只要回來這裡，重做一次 cfg.js 傳上去，連結不用換。"]),
+    h("li", {}, ["入口連結裡沒有後端位置、沒有短碼、也沒有任何人的鑰匙：光有連結看不到內容。同事自己的連結 10 分鐘內第一次登入不用驗證碼；其他時候，這台電腦第一次用、或是無痕視窗，還要用手機 LINE 傳「登入」拿 6 位數驗證碼。"]),
+    h("li", {}, ["後端位置放在 cfg.js、而且是加密的：在 GitHub 上看不到位置。解開用的鑰匙不給任何人看，只遮過藏在每個人自己的連結裡（每條都不一樣）。換部署（位置變了）只要回來這裡，重做一次 cfg.js 傳上去。"]),
+    h("li", {}, ["以前給過同事的「…/hb.html#12 碼」那一條停用了：用過的電腦照常打開（網址列會自己變成 …/hb.html）；沒用過的電腦會請他到 LINE 按「🔗 複製連結」。"]),
     h("li", {}, ["勾了「記住這台電腦」的人，之後在同一台只要打員工編號＋姓名（30 天沒用就要再驗證一次）；名單上刪掉的人，記住的電腦也一起忘掉。"])]));
 }
 function adminLoad() {
   drawSettings();
   drawPcLink();   // 第 36 批
   if (typeof drawExport === "function") drawExport();   // 第 37 批
-  call("hbUsers", []).then(function (r) { if (!adOk(r)) return; AD.users = r.users || []; AD.devs = r.devs || 0; AD.dmax = r.dmax || 10; AD.rsn = r.rs || null; drawUsers(); }, function (e) { var b = $("#userBox"); if (b) b.textContent = "❌ " + e.message; });
+  call("hbUsers", []).then(function (r) { if (!adOk(r)) return; AD.users = r.users || []; AD.devs = r.devs || 0; AD.dmax = r.dmax || 10; AD.rsn = r.rs || null; adCardsOf(r); drawUsers(); }, function (e) { var b = $("#userBox"); if (b) b.textContent = "❌ " + e.message; });
   rsLoad();
   devLoad();
   call("hbLog", [300]).then(function (r) { if (!adOk(r)) return; AD.log = r.rows || []; drawLog(); }, function (e) { var b = $("#logBox"); if (b) b.textContent = "❌ " + e.message; });
@@ -11311,7 +11373,8 @@ function drawUsers() {
   var nDel = rows.filter(function (u) { return u.st !== "dev"; }).length, clr = btn("🧹 清空", adClear, "sm bad adclr");
   if (!nDel) { clr.disabled = true; clr.title = "名單上沒有可以清的人（開發者不會清）"; }
   box.appendChild(h("div", { style: "display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:6px" }, [
-    h("div", { class: "hint", style: "flex:1 1 240px;min-width:0;margin:0" }, ["核可 " + nOk + " 人、等審核 " + nW + " 人；開發者 " + AD.devs + " 位（固定可以看；已核可的人可以按「👑 設為開發者」，開發者那一列可以「取消開發者」）" + (nOff ? "，其中 " + nOff + " 位不在名單上（要取消，改藥戰手冊專案的指令碼屬性 DEV_USERS）" : "") + "。撤銷、拒絕＝從名單刪掉，要再看得重新申請。"]),
+    h("div", { class: "hint", style: "flex:1 1 240px;min-width:0;margin:0" }, ["核可 " + nOk + " 人、等審核 " + nW + " 人；開發者 " + AD.devs + " 位（固定可以看；已核可的人可以按「👑 設為開發者」，開發者那一列可以「取消開發者」）" + (nOff ? "，其中 " + nOff + " 位不在名單上（要取消，改藥戰手冊專案的指令碼屬性 DEV_USERS）" : "") + "。撤銷、拒絕＝從名單刪掉，要再看得重新申請。" +
+      (AD.cards ? "審核卡（有人申請、對不上員工名單）：LINE 只送給「📩 收審核卡」的開發者（現在 " + AD.cardN + " 位）；開發者那一列按一下可以切換。" : "")]),
     clr]));
   // 第 34 批：等審核的人裡，跟員工名單對得上的 → 一次核可
   var nMatch = rows.filter(function (u) { return u.st === "wait" && (u.ck === "ok" || u.ck === "near"); }).length;
@@ -11328,6 +11391,13 @@ function drawUsers() {
     if (u.st === "dev") {
       if (u.me) acts.push(h("span", { class: "muted" }, ["你自己（固定可以看）"]));
       else { var ub = dv(false, "取消開發者"); if ((AD.devs || 0) <= 1) { ub.disabled = true; ub.title = "至少要留一位開發者"; } acts.push(ub); }
+      if (AD.cards) {   // 第 42 批：這位開發者的 LINE 收不收審核卡（按一下切換）
+        var cb = btn(u.nc ? "🔕 不收審核卡" : "📩 收審核卡", function (e) { adCard(u, !!u.nc, e.target); }, "sm adcard" + (u.nc ? " off" : " on"));
+        cb.title = u.nc ? "現在：這位開發者的 LINE 不收審核卡。按一下＝改成收" : "現在：有人申請（對不上員工名單）時，這位開發者的 LINE 會收到審核卡。按一下＝改成不收";
+        cb.setAttribute("aria-pressed", u.nc ? "false" : "true");
+        if (!u.nc && (AD.cardN || 0) <= 1) { cb.disabled = true; cb.title = "至少要留一位開發者收審核卡（不然新的申請沒人知道）"; }
+        acts.push(cb);
+      }
     }
     else if (u.st === "wait") { acts.push(set("ok", "核可")); acts.push(set("no", "拒絕")); }
     else if (u.st === "ok") { acts.push(set("off", "撤銷")); var mb = dv(true, "👑 設為開發者"); if ((AD.devs || 0) >= (AD.dmax || 10)) { mb.disabled = true; mb.title = "開發者最多 " + (AD.dmax || 10) + " 位"; } acts.push(mb); }
@@ -11365,7 +11435,7 @@ function adAuto(el, n) {
     call("hbUserAuto", []).then(function (r) {
       AD.busy = false;
       if (!adOk(r)) { if (el) el.disabled = false; return; }
-      AD.users = r.users || AD.users; AD.devs = r.devs || AD.devs; drawUsers();
+      AD.users = r.users || AD.users; AD.devs = r.devs || AD.devs; adCardsOf(r); drawUsers();
       toast("✅ 核可了 " + (r.auto || 0) + " 人（已通知他們的 LINE）");
     }, function (e) { AD.busy = false; if (el) el.disabled = false; toast("❌ " + e.message); });
   } }] });
@@ -11377,7 +11447,7 @@ function adSet(u, act, el) {
     call("hbUserSet", [u.uid, act]).then(function (r) {
       AD.busy = false;
       if (!adOk(r)) { if (el) el.disabled = false; return; }
-      AD.users = r.users || AD.users; AD.devs = r.devs || AD.devs; drawUsers();
+      AD.users = r.users || AD.users; AD.devs = r.devs || AD.devs; adCardsOf(r); drawUsers();
       toast(act === "ok" ? "✅ 已核可（已通知對方的 LINE）" : act === "off" ? "已撤銷：從名單刪掉了（要再看得重新申請）" : "已拒絕：從名單刪掉了（不會通知對方；他要的話可以重新申請）");
     }, function (e) { AD.busy = false; if (el) el.disabled = false; toast("❌ " + e.message); });
   };
@@ -11386,6 +11456,19 @@ function adSet(u, act, el) {
   if (act === "off") modal({ title: "撤銷" + who + "？", lines: ["撤銷＝從名單刪掉（跟沒申請過一樣）。對方的 LINE 和網頁馬上看不到藥戰手冊（正在看的也會被請出去）。", "要再看，他得重新申請（打員工編號＋姓名），你核可了才看得到。", "之前送出去的 LINE 卡片會留在他的聊天室裡（機器人收不回來），按了也看不到內容。"], buttons: [{ label: "不要", cls: "sm" }, { label: "撤銷", cls: "sm bad", fn: go }] });
   else if (act === "no") modal({ title: "拒絕" + who + "？", lines: ["拒絕＝從名單刪掉（不會通知對方）。", "他要的話可以重新申請，你會再收到審核卡。"], buttons: [{ label: "不要", cls: "sm" }, { label: "拒絕", cls: "sm bad", fn: go }] });
   else go();
+}
+// 第 42 批：「📩 收審核卡／🔕 不收審核卡」（每位開發者；不用先問：隨時可以改回來）
+function adCardsOf(r) { if (!r || !r.users) return; AD.cards = r.cards ? 1 : 0; AD.cardN = r.cardN !== undefined ? r.cardN : AD.cardN; }   // 回來的有整份名單才算
+function adCard(u, on, el) {
+  if (AD.busy) return;
+  AD.busy = true; if (el) el.disabled = true;
+  var who = "「" + (u.name || u.lname || u.emp || "這位") + "」";
+  call("hbDevCard", [u.uid, on ? 1 : 0]).then(function (r) {
+    AD.busy = false;
+    if (!adOk(r)) { if (el) el.disabled = false; return; }
+    AD.users = r.users || AD.users; AD.devs = r.devs || AD.devs; adCardsOf(r); drawUsers();
+    toast(r.same ? "沒有變（本來就是這樣）" : on ? "📩 " + who + "的 LINE 會收到審核卡" : "🔕 " + who + "的 LINE 不收審核卡了（申請照樣出現在這一頁）");
+  }, function (e) { AD.busy = false; if (el) el.disabled = false; toast("❌ " + e.message); });
 }
 // 第 34 批追加：「👑 設為開發者」「取消開發者」（只管藥戰手冊；先問一次，寫清楚開發者能做什麼）
 function adDev(u, on, el) {
@@ -11396,15 +11479,16 @@ function adDev(u, on, el) {
     call("hbDevSet", [u.uid, on ? 1 : 0]).then(function (r) {
       AD.busy = false;
       if (!adOk(r)) { if (el) el.disabled = false; return; }
-      AD.users = r.users || AD.users; AD.devs = r.devs || AD.devs; drawUsers();
+      AD.users = r.users || AD.users; AD.devs = r.devs || AD.devs; adCardsOf(r); drawUsers();
       toast(r.same ? (on ? "他本來就是開發者" : "他本來就不是開發者") : on ? "👑 已設為開發者（已通知他的 LINE）" : "已取消開發者（他還是可以看手冊；已通知他的 LINE）");
     }, function (e) { AD.busy = false; if (el) el.disabled = false; toast("❌ " + e.message); });
   };
   if (on) modal({ title: "把" + who + "設為開發者？", lines: [
     "開發者可以：核可、撤銷同事，改手冊內容，匯入員工名單（有個人資料），改設定，用 AI 出題。請只給信得過的同事。",
     "他的 LINE 會收到通知；要用開發者網頁，他在「藥戰手冊」打「開發者網頁」，再綁定自己的裝置。",
-    "只管藥戰手冊：補藥神器的開發者不會變。其他開發者也會收到一則通知。"
-  ], buttons: [{ label: "不要", cls: "sm" }, { label: "👑 設為開發者", cls: "sm pri", fn: go }] });
+    "只管藥戰手冊：補藥神器的開發者不會變。其他開發者也會收到一則通知。",
+    AD.cards ? "之後有人申請（對不上員工名單），他的 LINE 也會收到審核卡；不要的話，在他那一列按「📩 收審核卡」改成不收。" : ""   // 第 42 批
+  ].filter(Boolean), buttons: [{ label: "不要", cls: "sm" }, { label: "👑 設為開發者", cls: "sm pri", fn: go }] });
   else modal({ title: "取消" + who + "的開發者？", lines: [
     "取消以後他還是「已核可」，一樣看得到手冊；要讓他看不到，再按「撤銷」。",
     "他的開發者網頁連結馬上停用，也不會再收到審核卡。他的 LINE 會收到通知。"
@@ -11425,7 +11509,7 @@ function adClear() {
     call("hbUserClear", []).then(function (r) {
       AD.busy = false;
       if (!adOk(r)) return;
-      AD.users = r.users || AD.users; AD.devs = r.devs || AD.devs; drawUsers();
+      AD.users = r.users || AD.users; AD.devs = r.devs || AD.devs; adCardsOf(r); drawUsers();
       toast("🧹 清空了：刪掉 " + (r.cleared || 0) + " 個人（開發者不動）");
     }, function (e) { AD.busy = false; toast("❌ " + e.message); });
   } }] });

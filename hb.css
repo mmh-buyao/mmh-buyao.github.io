@@ -1022,6 +1022,9 @@ body{min-height:100vh}
 .pcrem{display:flex;gap:8px;align-items:flex-start;margin-top:12px;font-size:13.5px;color:var(--ink2);line-height:1.5;cursor:pointer}
 .pcrem input{width:20px;height:20px;margin:0;flex:none;accent-color:var(--accent)}
 .pcurlrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
+.pclrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.pclrow .in{flex:1 1 220px;min-width:0;font-family:var(--mono);font-size:13px}
+.pclhint{background:var(--accent2);color:#064B47;border-radius:10px;padding:8px 12px;margin:8px 0 2px;font-size:13.5px;line-height:1.5}
 .pcurl{flex:1 1 260px;min-width:0;font-family:var(--mono);font-size:12.5px}
 .pccfg{flex:1 1 260px;min-width:0;font-family:var(--mono);font-size:12px;line-height:1.4;resize:vertical;word-break:break-all}
 
@@ -1114,6 +1117,8 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .dirty{font-size:12.5px;color:#B26A00}
 
 /* 管理 */
+.acts .adcard.on{border-color:#9FD3CE;background:#EAF7F5;color:#0E6B65}   /* 第 42 批：📩 收審核卡 */
+.acts .adcard.off{border-color:#D5DBE2;background:#F3F5F8;color:#6B7684}  /* 🔕 不收審核卡 */
 #pane-admin .row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
 #pane-admin .adm{flex:1 1 420px;min-width:0}
 .acts{display:flex;gap:6px;flex-wrap:wrap}
