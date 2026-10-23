@@ -1154,7 +1154,7 @@ function _yzPageText_(p) {
   if (!raw) return "";
   var n = _yzNorm_(raw).replace(/\s+/g, ""), m = /^(?:p\.?|page|第)?(\d{1,4})(?:[-~–—至](\d{1,4}))?頁?$/.exec(n);
   if (m) return "第 " + m[1] + (m[2] ? "–" + m[2] : "") + " 頁";
-  if (/^\d{1,4}(?:[、,]\d{1,4})+$/.test(n)) return "第 " + n.split(/[、,]/).join("、") + " 頁";
+  if (/^\d{1,4}(?:[-~–—至]\d{1,4})?(?:[、,]\d{1,4}(?:[-~–—至]\d{1,4})?)+$/.test(n)) return "第 " + n.split(/[、,]/).map(function (x) { return x.replace(/[-~—至]/, "–"); }).join("、") + " 頁";   // 第 44 批：好幾段也可以有範圍（合併顯示的頁數：12–14、16）
   return raw;
 }
 function _yzPageShort_(p) {   // 清單裡用的短寫法：第 13–14 頁 → P.13–14
@@ -1690,6 +1690,106 @@ function _yzTKids_(ts, i, lvs) {   // 第 i 個標題底下有幾個（子標題
 }
 function _yzTDeep_(ts) { return _yzTLvs_(ts).some(function (v) { return v > 1; }); }   // 這一章有沒有分層
 
+// ── 第 44 批：標題「合併顯示」（兩個都留著，看的時候合在一起）──
+// 被併的那一篇記 mg：{ to：主標題的代號（同一章）, at："start"＝放在主標題內容的前面；沒寫＝接在後面 }。
+// 編輯器裡照舊是兩篇（各自改、各自存）；看的時候（網頁、LINE、搜尋、Word 匯出）：被併的那一篇不單獨出現
+// （清單、上面那一條、上一篇／下一篇都跳過），它的內容接在主標題裡：上面一行小標題＝它原本的名字（LINE 從新的一張卡片開始），
+// 頁數合在一起，備註接在主標題的備註後面（寫是哪一篇的）。併到被併的＝跟著到它的主標題；找不到主標題、併到自己＝當作沒合併。
+function _yzMgOf_(t) {
+  var m = t && t.mg;
+  if (!m || typeof m !== "object" || !m.to || m.to === t.id) return null;
+  return { to: String(m.to), at: m.at === "start" ? "start" : "end" };
+}
+function _yzMgHosts_(ts) {   // 一章的標題 → { 被併的代號: 主標題 }（只算有效的）
+  var by = {}, out = {};
+  (ts || []).forEach(function (t) { if (t && t.id) by[t.id] = t; });
+  (ts || []).forEach(function (t) {
+    if (!t || !_yzMgOf_(t)) return;
+    var cur = t, seen = {}, h = null;
+    for (var k = 0; k < 4; k++) {
+      var m = _yzMgOf_(cur);
+      if (!m) { h = cur === t ? null : cur; break; }
+      seen[cur.id] = 1;
+      var nx = by[m.to];
+      if (!nx || seen[nx.id]) break;   // 找不到、繞回來：當作沒合併
+      cur = nx;
+    }
+    if (h) out[t.id] = h;
+  });
+  return out;
+}
+function _yzPageJoin_(pages) {   // 好幾篇的頁數 → 一個（重複的拿掉、照順序；連在一起的寫成「12–14」）
+  var nums = [], raw = [];
+  (pages || []).forEach(function (p) {
+    var s = String(p === null || p === undefined ? "" : p).trim(); if (!s) return;
+    var n = _yzPageNums_(s);
+    if (n.length) nums = nums.concat(n); else if (raw.indexOf(s) < 0) raw.push(s);
+  });
+  var segs = [];
+  nums = nums.filter(function (v, i, a) { return a.indexOf(v) === i; }).sort(function (a, b) { return a - b; });
+  for (var i = 0; i < nums.length; i++) {
+    var a = nums[i], b = a;
+    while (i + 1 < nums.length && nums[i + 1] === b + 1) b = nums[++i];
+    segs.push(a === b ? String(a) : a + "–" + b);
+  }
+  return segs.concat(raw).join("、");
+}
+function _yzMergeView_(ts) {   // 一章的標題（編輯器的樣子）→ 看的樣子（沒有合併的＝原本那一份，不複製）
+  var H = _yzMgHosts_(ts);
+  if (!Object.keys(H).length) return ts;
+  var pre = {}, post = {};
+  ts.forEach(function (t) {
+    var hh = t && H[t.id]; if (!hh) return;
+    var g = _yzMgOf_(t).at === "start" ? pre : post;
+    (g[hh.id] = g[hh.id] || []).push(t);
+  });
+  var out = [];
+  ts.forEach(function (t) {
+    if (!t || H[t.id]) return;   // 被併的：不單獨出現
+    var a = pre[t.id] || [], b = post[t.id] || [];
+    if (!a.length && !b.length) { out.push(t); return; }
+    var o = {}; Object.keys(t).forEach(function (k) { o[k] = t[k]; });
+    var bl = [], notes = [], pages = [t.page];
+    var part = function (g) {
+      bl.push({ t: "text", v: "[h3] " + _yzRtEsc_(String(g.name || "（還沒有標題）").replace(/[\r\n]+/g, " ")), brk: true, mgh: g.id });   // 小標題＝原本的名字（網頁：連到這一篇的連結會捲到這裡）
+      (g.blocks || []).forEach(function (x) { bl.push(x); });
+      pages.push(g.page);
+      if (_yzNoteHas_(g.note)) notes.push("【" + String(g.name || "").trim() + "】" + String(g.note).trim());
+    };
+    a.forEach(part);
+    if (a.length && (t.blocks || []).length) bl.push({ t: "text", v: "[hr]" });   // 放在前面的：跟主標題自己的內容中間隔一條線
+    (t.blocks || []).forEach(function (x) { bl.push(x); });
+    b.forEach(part);
+    o.blocks = bl;
+    o.page = _yzPageJoin_(pages);
+    if (notes.length) o.note = (_yzNoteHas_(t.note) ? String(t.note).trim() + "\n\n" : "") + notes.join("\n\n");
+    o.mgs = a.concat(b).map(function (g) { return g.id; });   // 併進來的（連結、搜尋、看過紀錄用）
+    out.push(o);
+  });
+  return out;
+}
+var _YZ_MV = typeof WeakMap === "function" ? new WeakMap() : null, _YZ_MV1 = { src: null, hb: null };   // 算過的（一本一份）
+function _yzMvReset_() { if (_YZ_MV) _YZ_MV = new WeakMap(); _YZ_MV1.src = null; _YZ_MV1.hb = null; }   // 網頁：手冊可能改過了 → 下次重算
+function _yzMvGet_(hb) { return _YZ_MV ? _YZ_MV.get(hb) || null : _YZ_MV1.src === hb ? _YZ_MV1.hb : null; }
+function _yzMvPut_(hb, o) { if (_YZ_MV) _YZ_MV.set(hb, o); else { _YZ_MV1.src = hb; _YZ_MV1.hb = o; } }
+function _yzMergeHb_(hb) {   // 整本 → 看的樣子（titles 換成合併過的；_mg：被併的代號 → 主標題的代號）。同一本只算一次
+  if (!hb || !hb.titles) return hb;
+  var c0 = _yzMvGet_(hb); if (c0) return c0;
+  var any = Object.keys(hb.titles).some(function (k) { return (hb.titles[k] || []).some(function (t) { return t && t.mg; }); });
+  var o = hb;
+  if (any) {
+    o = {}; Object.keys(hb).forEach(function (k) { o[k] = hb[k]; });
+    o.titles = {}; o._mg = {};
+    Object.keys(hb.titles).forEach(function (k) {
+      var ts = hb.titles[k] || [], H = _yzMgHosts_(ts);
+      Object.keys(H).forEach(function (g) { o._mg[g] = H[g].id; });
+      o.titles[k] = _yzMergeView_(ts);
+    });
+  }
+  _yzMvPut_(hb, o);
+  return o;
+}
+
 // ── 標題清單：一章一張，每個標題一行，點了開內容（第 43 批：有分層的，往右縮；第 1 層有子標題的用粗體）──
 function _yzTitleListBubble_(ch, titles, o) {
   o = o || {};
@@ -2092,7 +2192,7 @@ function _yzContentBubbles_(ch, ti, blocks, note, o) {
   var bs = o.size || ti.size || "giga";
   // 「連結到標題」的行：用標題代號找到標題，按鈕上寫「章名　標題名」（同一章就只寫標題名）；找不到（被刪了）就不顯示
   var goFn = o.hb ? function (id) { return _yzGoTarget_(o.hb, id, ch.id); } : null;
-  var back = o.hb ? _yzBacklinks_(o.hb, [ti.id, ch.id], ti.id).slice(0, 3) : [];   // 互相連結：有連到這裡（這個標題、這一章）的，放在最後一張下面
+  var back = o.hb ? _yzBacklinks_(o.hb, [ti.id, ch.id].concat(ti.mgs || []), ti.id).slice(0, 3) : [];   // 互相連結：有連到這裡（這個標題、這一章；第 44 批：併進來的那幾篇）的，放在最後一張下面
   var pendBrk = false, hidN = 0;
   blocks.forEach(function (b, i) {
     if (_yzOnlyHide_(b, "line")) { hidN++; if (b.brk && i > 0) pendBrk = true; return; }   // 第 41 批：只在網頁的這一塊：LINE 不放（它的「換下一張」留給下一塊；i 照原本的，「看大圖」才對得上）
@@ -2231,6 +2331,7 @@ function _yzFindTitle_(hb, tid) {
     var ts = (hb.titles || {})[cs[i].id] || [];
     for (var j = 0; j < ts.length; j++) if (ts[j].id === tid) return { ch: cs[i], t: ts[j] };
   }
+  if (hb._mg && hb._mg[tid] && hb._mg[tid] !== tid) return _yzFindTitle_(hb, hb._mg[tid]);   // 第 44 批：被併的（看的樣子裡沒有它）＝它的主標題
   return null;
 }
 function _yzSrcLabel_(f) {   // 藥品補充　二、藥品請領…　｜藥戰手冊 第 14 頁
@@ -2892,8 +2993,10 @@ function bk41Warn(what) {
   modal({ title: "⚠ 還不能用「" + what + "」", lines: ["藥戰手冊專案（Apps Script）的「02_藥戰手冊」還是舊的（第 41 批以前）：存了會不見，LINE 也顯示不出來。", "請先把第 41 批的 02 貼上，「部署 → 管理部署作業 → ✏️ → 版本選新版本 → 部署」，再重新整理這一頁。"], buttons: [{ label: "知道了", cls: "sm pri" }] });
 }
 function chapterOf(id) { return (HB.chapters || []).filter(function (c) { return c.id === id; })[0] || null; }
-function titleOf(id) { for (var k in HB.titles) { var r = HB.titles[k].filter(function (t) { return t.id === id; })[0]; if (r) return r; } return null; }
-function titlesOf(cid) { return HB.titles[cid] || []; }
+// 第 44 批：看手冊用「合併顯示」以後的樣子（被併的那一篇接在主標題裡、清單裡沒有它）；編輯器照舊用 HB（兩篇各自改）
+function vhb() { return _yzMergeHb_(HB); }
+function titleOf(id) { var V = vhb(); for (var k in V.titles) { var r = V.titles[k].filter(function (t) { return t.id === id; })[0]; if (r) return r; } return V._mg && V._mg[id] && V._mg[id] !== id ? titleOf(V._mg[id]) : null; }
+function titlesOf(cid) { return vhb().titles[cid] || []; }
 function counts() { var o = {}; HB.chapters.forEach(function (c) { o[c.id] = titlesOf(c.id).length; }); return o; }
 function applyCfg() {
   YZ_CFG.imgDirect = CFG.imgDirect !== false; YZ_CFG.animDirect = CFG.animDirect !== false; YZ_CFG.footer = CFG.footer !== false;
@@ -3335,35 +3438,13 @@ function scrLoginCode(why, r) {
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") LG.auto = 0; });
 
 /* ── 第 36 批：電腦登入（員工編號＋姓名）──
-   用「電腦用的入口連結」（…/hb.html，存成書籤）打開 → 打員工編號＋姓名 → 手機 LINE 的「藥戰手冊」傳「登入」→ LINE 回 6 位數 → 打在這裡。
    第 43 批：拿掉「記住這台電腦」：每次都要驗證（共用電腦最安全）；員工編號的英文字母大小寫都可以。
-   第 42 批：用自己在 LINE 按「🔗 複製連結」拿的連結打開的（10 分鐘內、第一次用）：②不用做（連結本來就是從他的 LINE 拿的）。
-   等驗證碼的那一組記在這個分頁（sessionStorage）：切去別的分頁再回來，還是同一組（10 分鐘內）。 */
-var PC = { sec: "", ex: 0, busy: false, tm: 0, seq: 0 };
-var MSG_PC = "在電腦（或別的瀏覽器）上：打開 LINE 的「藥戰手冊」，按下面那排的「🔗 複製連結」（電腦版 LINE 打「複製連結」），貼到瀏覽器的網址列打開。這台用過一次以後，直接打開「…/hb.html」（存成書籤）就是登入畫面。";
-/* ── 第 42 批：這台不知道後端在哪（第一次用、無痕視窗、清掉了網站資料）：請從 LINE 複製自己的連結（網址列、或貼在這裡都可以）──
-   why："old"＝打開的是以前的固定短連結（停用了）；"nocfg"／"bad"＝自己的連結打不開（cfg.js 還沒放好、對不上） */
-function scrFirst(why) {
-  var inp = h("input", { class: "in", id: "pclin", type: "text", autocomplete: "off", spellcheck: "false", placeholder: "貼上 LINE「🔗 複製連結」拿到的連結", "aria-label": "LINE 複製的連結" });
-  var m = h("div", { class: "scr-m", role: "status", "aria-live": "polite" });
-  var go = function () {
-    var v = String(inp.value || "").replace(/\s+/g, ""), mm = /#([a-z0-9]{28}|[a-z0-9]{12})$/.exec(v) || /^([a-z0-9]{28}|[a-z0-9]{12})$/.exec(v);   // 第 43 批：12 碼的也收
-    if (!mm) { m.textContent = "這不像 LINE「🔗 複製連結」拿到的連結：請在 LINE 再按一次，整條貼上來。"; try { inp.focus(); } catch (e) { /* 沒關係 */ } return; }
-    SCODE = mm[1]; SCOLD = false; SCERR = ""; PCLK = lkOf(SCODE); lkSave(PCLK);
-    m.textContent = "打開中…";
-    start();
-  };
-  inp.onkeydown = function (e) { if (e.key === "Enter") go(); };
-  var t = why === "old" ? "這條連結打不開" : why ? "連結打不開" : "請從 LINE 打開";
-  var lines = why === "old" ? ["這條連結打不開：可能是以前管理頁給的固定短連結（已經停用），或沒有複製完整。現在每個人用自己的連結（每個人、每次都不一樣）。"] : [];
-  if (why === "nocfg") lines.push("網站上還沒有放好 cfg.js（剛上傳的話，等 1～2 分鐘再重新整理）。還是不行，請跟開發者說。");
-  if (why === "bad") lines.push("這條連結跟網站上的 cfg.js 對不上（可能開發者剛換過設定，或連結沒有複製完整）：請在 LINE 再按一次「🔗 複製連結」。");
-  lines.push(MSG_PC, "在手機上：" + MSG_LINE);
-  if (!why) lines.push("（藥戰手冊是自己的 LINE 帳號：還沒加的話，補藥神器下面那排的「📘 藥戰手冊」就是加入的按鈕。）");
-  screen([logo(), h("h2", {}, [t]), h("div", { class: "scr-p" }, lines.map(function (l) { return h("p", {}, [l]); })),
-    h("div", { class: "pclrow" }, [inp, btn("打開", go, "pri")]), m,
-    why ? h("div", { class: "scr-b" }, [reloadBtn()]) : null], "pclscr");
-}
+   第 44 批：電腦（外部瀏覽器）登入改成：① 先填「隨機驗證短碼」② 再打員工編號＋姓名 → 進去（不用 LINE 6 位數驗證碼了）。
+     短碼：LINE「藥戰手冊」按下面那排的「🔗 外部連結」→「🔑 12 碼短碼」（cfg.js 還沒換好以前是 28 碼）。10 分鐘內有效、用一次就失效。
+     ＝以前「自己的連結」# 後面那一段：前面幾碼給後端認人，後面幾碼解得開 cfg.js（這台還不知道後端在哪也找得到）。
+     用以前的「自己的連結」（…/hb.html#短碼）打開的：短碼已經填好了，直接第 ② 步。 */
+var PC = { sec: "", ex: 0, busy: false, tm: 0, seq: 0, e: "", n: "" };   // e、n：打過的員工編號、姓名（短碼要重拿的時候，回來不用再打）
+var MSG_PC = "在電腦（或別的瀏覽器）上：打開 LINE 的「藥戰手冊」，按下面那排的「🔗 外部連結」→「🌐 網址」，貼到瀏覽器打開；網頁會請你填「🔑 12 碼短碼」（也在那張卡片上），再打員工編號＋姓名。";
 function pcStop() { clearInterval(PC.tm); PC.tm = 0; }
 function pcSave() { try { if (PC.sec) sessionStorage.setItem("hbpc", JSON.stringify({ x: X, sec: PC.sec, ex: PC.ex })); else sessionStorage.removeItem("hbpc"); } catch (e) { /* 記不住就算了 */ } }
 function pcLoad() {
@@ -3385,56 +3466,84 @@ function loginWhy(why, r, pc) {   // 登入畫面最上面那一句（為什麼�
   if (why === "forgot") return "✅ 這台電腦已經忘記你了：下次在這台登入，要再用 LINE 驗證碼。";
   return "";
 }
+function pcCodeOf(v) {   // 貼上來的東西 → 短碼（12 碼；28 碼也收；整條連結 …/hb.html#短碼 也收）。不像＝""
+  v = String(v || "").replace(/[\s\u200b]+/g, "").toLowerCase();
+  var m = /#([a-z0-9]{28}|[a-z0-9]{12})$/.exec(v) || /^([a-z0-9]{28}|[a-z0-9]{12})$/.exec(v);
+  return m ? m[1] : "";
+}
+function pcFine() {
+  return h("p", { class: "lgfine" }, ["短碼 10 分鐘內有效、用一次就失效，只給你自己用，不要傳給任何人。這台電腦不會記住你，共用的電腦也可以放心用。", h("br"), "在手機上：" + MSG_LINE]);
+}
+function pcLinks(why, r) {   // 最下面：改用代號登入、開發者登入（要知道後端在哪才有）
+  if (!canLogin()) return null;
+  return h("div", { class: "lgrolew" }, [
+    h("button", { class: "lglink", type: "button", onclick: function () { pcStop(); LG.mode = "code"; LG.role = ""; scrLogin(why, r); } }, ["改用代號登入"]),
+    h("button", { class: "lglink", type: "button", onclick: function () { pcStop(); LG.role = "dev"; scrLogin(why, r); } }, ["開發者登入"])]);
+}
+// ① 隨機驗證短碼。why："old"＝以前的固定短連結（停用了）；"nocfg"／"bad"＝短碼解不開網站上的 cfg.js；msg＝上一步回來的原因（短碼過期、用過了…）
+function scrFirst(why, msg, r) {
+  lgStop(); pcStop();
+  var my = ++PC.seq;
+  var inp = h("input", { class: "in pccode", id: "pclin", type: "text", autocomplete: "off", autocapitalize: "off", spellcheck: "false", maxlength: "300", placeholder: "貼上 12 碼短碼", "aria-label": "隨機驗證短碼（12 碼）", "aria-describedby": "pclm" });
+  var m = h("div", { class: "scr-m lgm", id: "pclm", role: "status", "aria-live": "polite" }, [msg || ""]);
+  var go = h("button", { class: "btn pri lggo", type: "button", id: "pclgo" }, ["下一步"]);
+  var next = function () {
+    var code = pcCodeOf(inp.value);
+    if (!code) { m.textContent = "這不像 LINE 回的短碼：回 LINE 按「🔗 外部連結」→「🔑 12 碼短碼」，把那 12 碼整組貼上來。"; try { inp.focus(); } catch (e) { /* 沒關係 */ } return; }
+    PCLK = lkOf(code); lkSave(PCLK);
+    if (canLogin()) { SCODE = ""; scrLoginPc("", r); return; }   // 這台知道後端在哪：直接第 ② 步（短碼對不對，登入時後端看）
+    SCODE = code; SCOLD = false; SCERR = ""; X = ""; T = ""; FROMSAVED = false;   // 這台還不知道後端在哪：用短碼解開 cfg.js 找後端，再到第 ② 步
+    go.disabled = true; m.textContent = "確認中…";
+    start();
+  };
+  go.onclick = next;
+  inp.onkeydown = function (e) { if (e.key === "Enter") next(); };
+  var lines = [];
+  var w0 = r ? loginWhy(r.why || "", r, true) : "";
+  if (w0) lines.push(w0);
+  if (why === "old") lines.push("這個短碼（或連結）打不開：可能是以前的固定短連結（已經停用），或沒有複製完整。回 LINE 按「🔗 外部連結」→「🔑 12 碼短碼」，拿一組新的。");
+  if (why === "nocfg") lines.push("網站上還沒有放好 cfg.js（剛上傳的話，等 1～2 分鐘再重新整理）。還是不行，請跟開發者說。");
+  if (why === "bad") lines.push("這個短碼跟網站上的 cfg.js 對不上（可能開發者剛換過設定，或沒有複製完整）：回 LINE 拿一組新的。");
+  screen([logo(), h("h2", {}, ["🔐 登入藥戰手冊"]),
+    lines.length ? h("div", { class: "scr-p" }, lines.map(function (l) { return h("p", {}, [l]); })) : null,
+    h("div", { class: "pcbox", id: "pcstep0" }, [
+      h("div", { class: "lgst" }, ["① 填入", h("b", {}, ["隨機驗證短碼"]), "：在 LINE 的「藥戰手冊」按下面那排的「", h("b", {}, ["🔗 外部連結"]), "」→「", h("b", {}, ["🔑 12 碼短碼"]), "」，把 LINE 回的 12 碼貼在這裡"]),
+      h("div", { class: "pclrow" }, [inp, go]), m,
+      h("div", { class: "lgst2 pcnext" }, ["② 下一步：打你的員工編號和姓名"])]),
+    pcFine(),
+    !why && !canLogin() ? h("p", { class: "lgfine" }, ["（藥戰手冊是自己的 LINE 帳號：還沒加的話，補藥神器下面那排的「📘 藥戰手冊」就是加入的按鈕。）"]) : null,   // 這台第一次用：說怎麼加入（第 42 批就有）
+    KEEP_ED || (typeof KEEP_QE !== "undefined" && KEEP_QE) ? h("p", { class: "lockkeep" }, ["✏️ 你有還沒儲存的修改：登入以後會接著編輯（還沒存進去）。"]) : null,
+    pcLinks(why, r)], "lgscr pcscr pclscr");
+  setTimeout(function () { if (my === PC.seq) { try { inp.focus(); } catch (e) { /* 沒關係 */ } } }, 30);
+}
+// ② 員工編號＋姓名（短碼填好了才到這一步；沒有短碼＝先到第 ① 步）
 function scrLoginPc(why, r) {
   r = r || {};
   lgStop(); pcStop();
   var w0 = loginWhy(why, r, true), lines = w0 ? [w0] : [];
   if (!canLogin()) { scrMsg("請從 LINE 打開", lines.concat([MSG_LINE, MSG_PC])); return; }
+  if (!PCLK) { scrFirst("", "", Object.assign({}, r, { why: why })); return; }
   var my = ++PC.seq, alive = function () { return my === PC.seq && box.isConnected; };
-  var emp = h("input", { class: "in", maxlength: "20", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", placeholder: "例：E10107", "aria-label": "員工編號", "aria-required": "true" });
-  var nm = h("input", { class: "in", maxlength: "20", autocomplete: "off", spellcheck: "false", placeholder: "例：王小明", "aria-label": "姓名", "aria-required": "true" });
+  var emp = h("input", { class: "in", maxlength: "20", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", placeholder: "例：E10107", "aria-label": "員工編號", "aria-required": "true", value: PC.e || "" });
+  var nm = h("input", { class: "in", maxlength: "20", autocomplete: "off", spellcheck: "false", placeholder: "例：王小明", "aria-label": "姓名", "aria-required": "true", value: PC.n || "" });
   var go = h("button", { class: "btn pri lggo", type: "button", id: "pcgo" }, ["登入"]);
   pcRemDrop();
   var m = h("div", { class: "scr-m lgm", role: "status", "aria-live": "polite" });
-  var cin = h("input", { class: "in lgin", type: "text", inputmode: "numeric", autocomplete: "one-time-code", maxlength: "9", placeholder: "6 位數", "aria-label": "LINE 回的 6 位數驗證碼", id: "pccode" });
-  var go2 = h("button", { class: "btn pri lggo", type: "button", id: "pcgo2" }, ["確定"]);
-  var m2 = h("div", { class: "scr-m lgm", role: "status", "aria-live": "polite" });
-  var cd = h("b", { id: "pccd" }, [""]);
-  var restart = h("button", { class: "lglink", type: "button" }, ["重新開始"]);
+  var again = h("button", { class: "lglink", type: "button", id: "pcre" }, ["換一組短碼"]);
   var step1 = h("div", { class: "pcbox", id: "pcstep1" }, [
-    PCLK ? h("div", { class: "pclhint", id: "pclhint" }, ["🔗 這一頁是用你在 LINE 複製的連結打開的：10 分鐘內打員工編號＋姓名就能進去（不用驗證碼）。"]) : null,   // 第 42 批
-    h("div", { class: "lgst" }, ["① 打你的", h("b", {}, ["員工編號"]), "和", h("b", {}, ["姓名"]), "（要跟申請時填的一樣）"]),
+    h("div", { class: "pclhint", id: "pclhint" }, ["✅ 隨機驗證短碼填好了（10 分鐘內有效）　", again]),
+    h("div", { class: "lgst" }, ["② 打你的", h("b", {}, ["員工編號"]), "和", h("b", {}, ["姓名"]), "（要跟申請時填的一樣）"]),
     h("div", { class: "scr-form" }, [h("label", {}, [h("span", {}, ["員工編號", h("small", { class: "pcaa" }, ["（英文字母大小寫都可以）"])]), emp]), h("label", {}, [h("span", {}, ["姓名"]), nm])]),
     h("div", { class: "scr-b" }, [go]), m]);
-  var step2 = h("div", { class: "pcbox pc2", id: "pcstep2", hidden: true }, [
-    h("div", { class: "lgst" }, ["② 拿出手機，用", h("b", {}, ["申請藥戰手冊的那個 LINE 帳號"]), "，在「藥戰手冊」傳「", h("b", {}, ["登入"]), "」兩個字（或按下面那排的「🌐 網頁」）"]),
-    h("div", { class: "lgst2" }, ["LINE 會回你 6 位數的", h("b", {}, ["驗證碼"]), "，打在這裡："]),
-    h("div", { class: "lgrow" }, [cin, go2]), m2,
-    h("div", { class: "lgmeta" }, ["請在 ", cd, " 內完成　", restart])]);
   var box = screen([logo(), h("h2", {}, ["🔐 登入藥戰手冊"]),
     lines.length ? h("div", { class: "scr-p" }, lines.map(function (l) { return h("p", {}, [l]); })) : null,
-    step1, step2,
-    h("p", { class: "lgfine" }, ["每次登入都要用手機 LINE 拿 6 位數驗證碼，確認是本人（用 LINE「🔗 複製連結」剛拿的連結打開的，10 分鐘內不用）。這台電腦不會記住你，共用的電腦也可以放心用。", h("br"), "驗證碼、自己的連結都只能自己用，不要傳給任何人。"]),
+    step1, pcFine(),
     KEEP_ED || (typeof KEEP_QE !== "undefined" && KEEP_QE) ? h("p", { class: "lockkeep" }, ["✏️ 你有還沒儲存的修改：登入以後會接著編輯（還沒存進去）。"]) : null,
-    h("div", { class: "lgrolew" }, [
-      h("button", { class: "lglink", type: "button", onclick: function () { pcStop(); LG.mode = "code"; LG.role = ""; scrLogin(why, r); } }, ["改用代號登入"]),
-      h("button", { class: "lglink", type: "button", onclick: function () { pcStop(); LG.role = "dev"; scrLogin(why, r); } }, ["開發者登入"])])], "lgscr pcscr");
+    pcLinks(why, r)], "lgscr pcscr");
   var focus = function (el) { try { el.focus(); } catch (e) { /* 沒關係 */ } };
-  var tick = function () {
-    if (!alive() || !PC.sec) { pcStop(); return; }
-    var s = Math.ceil((PC.ex - Date.now()) / 1000);
-    if (s <= 0) { pcStop(); PC.sec = ""; pcSave(); m2.textContent = "⌛ 超過 10 分鐘了：按「重新開始」再登入一次。"; cd.textContent = "0:00"; go2.disabled = true; return; }
-    cd.textContent = Math.floor(s / 60) + ":" + ("0" + s % 60).slice(-2); cd.className = s <= 30 ? "low" : "";
-  };
-  var toStep2 = function () {   // 要 LINE 驗證碼
-    step1.hidden = true; step2.hidden = false; go2.disabled = false; cin.value = ""; m2.textContent = "";
-    pcStop(); tick(); PC.tm = setInterval(tick, 1000); focus(cin);
-  };
-  var toStep1 = function (msg) {
-    pcStop(); PC.sec = ""; pcSave();
-    step2.hidden = true; step1.hidden = false; go.disabled = false; m.textContent = msg || ""; focus(emp.value ? nm : emp);
-  };
-  var done = function (x) { pcStop(); PC.sec = ""; pcSave(); PCLK = ""; lkSave(""); T = String(x.t); FROMSAVED = false; FROMLINK = false; keySave(); LG.mode = ""; onBoot(x); };
+  var back = function (msg) { PCLK = ""; lkSave(""); scrFirst("", msg, Object.assign({}, r, { why: "" })); };   // 短碼不對、過期、用過了：回第 ① 步（員工編號、姓名記著）
+  again.onclick = function () { PC.e = emp.value; PC.n = nm.value; back(""); };
+  var done = function (x) { pcStop(); PC.sec = ""; pcSave(); PCLK = ""; lkSave(""); PC.e = PC.n = ""; T = String(x.t); FROMSAVED = false; FROMLINK = false; keySave(); LG.mode = ""; onBoot(x); };
   var slowMsg = function (el) { return setTimeout(function () { if (alive() && PC.busy) el.textContent = "確認中…後端剛睡醒的時候要等 30 秒左右，請先別關掉、也不用再按。"; }, 6000); };
   var submit = function () {
     if (PC.busy) return;
@@ -3442,46 +3551,24 @@ function scrLoginPc(why, r) {
     if (!e) { m.textContent = "請打員工編號"; focus(emp); return; }
     if (!/^[A-Za-z0-9Ａ-Ｚａ-ｚ０-９\-－]{2,20}$/.test(e)) { m.textContent = "員工編號只能是英文字母、數字（2～20 個字）"; focus(emp); return; }
     if (!n) { m.textContent = "請打姓名"; focus(nm); return; }
+    PC.e = e; PC.n = n;
     PC.busy = true; go.disabled = true; m.textContent = "確認中…";
     var slow = slowMsg(m), lk = PCLK;
-    call("hbPcLogin", [e, n, 0, lk || ""], { ms: 80000 }).then(function (x) {   // 第 42 批：帶這一頁的連結號碼（LINE 複製的；10 分鐘內第一次不用驗證碼）。第 43 批：不記住這台（第三個一律 0）
+    call("hbPcLogin", [e, n, 0, lk, 1], { ms: 80000 }).then(function (x) {   // 第 44 批：最後一個 1＝短碼登入（短碼不對不改成 6 位數那一條）
       clearTimeout(slow); PC.busy = false; go.disabled = false;
       if (!alive()) return;
       if (x && TRE.test(String(x.t || ""))) { done(x); return; }
-      if (x && x.need === "line" && TRE.test(String(x.sec || ""))) {
-        PC.sec = String(x.sec); PC.ex = Date.now() + Math.max(60, Math.min(900, +x.ttl || 600)) * 1000; pcSave(); m.textContent = ""; toStep2();
-        if (lk) { PCLK = ""; lkSave(""); var hn = $("#pclhint"); if (hn) hn.remove(); m2.textContent = "這條連結已經用過、超過 10 分鐘，或不是你自己的：照上面拿 6 位數驗證碼。"; }   // 第 42 批
-        return;
-      }
+      if (x && x.lk) { back("❌ " + String(x.err || "短碼不對、過期或用過了：回 LINE 拿一組新的。").slice(0, 260)); return; }
+      if (x && x.need === "line") { back("❌ 短碼不對、或已經過期（超過 10 分鐘）：回 LINE 按「🔗 外部連結」→「🔑 12 碼短碼」，拿一組新的。"); return; }   // 後端還是舊的（第 43 批）
       if (x && x.st && !x.err) { onBoot(x); return; }   // 被撤銷了、手冊關了…
       m.textContent = (x && x.wait ? "⏳ " : "❌ ") + String(x && x.err || "沒登入成功，再試一次").slice(0, 260);   // 第 43 批：還在等核可（不是打錯）
       if (x && x.field) focus(x.field === "name" ? nm : emp);
     }, function (er) { clearTimeout(slow); PC.busy = false; go.disabled = false; if (alive()) m.textContent = /等太久/.test(String(er && er.message)) ? "❌ 等太久沒有回應，再按一次「登入」。" : "❌ 連不上後端，網路好了再試一次"; });
   };
-  var submit2 = function () {
-    if (PC.busy) return;
-    var v = String(cin.value || "").replace(/[０-９]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 65248); }).replace(/[\s-]/g, "");
-    if (!PC.sec || PC.ex <= Date.now()) { toStep1("⌛ 超過 10 分鐘了：再按一次「登入」。"); return; }
-    if (!/^\d{6}$/.test(v)) { m2.textContent = "請打 LINE 回給你的 6 位數字"; focus(cin); return; }
-    PC.busy = true; go2.disabled = true; cin.readOnly = true; m2.textContent = "確認中…";
-    var slow = slowMsg(m2), P = PC.sec;
-    call("hbPcCode", [P, v], { ms: 80000 }).then(function (x) {
-      clearTimeout(slow); PC.busy = false; go2.disabled = false; cin.readOnly = false;
-      if (!alive() || P !== PC.sec) return;
-      if (x && TRE.test(String(x.t || ""))) { done(x); return; }
-      if (x && (x.gone || x.dead)) { toStep1("❌ " + String(x.err || "這次的登入已經不能用了") + ""); return; }
-      if (x && x.wait) { m2.textContent = "⏳ " + String(x.err || "LINE 還沒收到「登入」"); return; }
-      if (x && x.bad) { m2.textContent = "❌ " + String(x.err || "驗證碼不對") + (x.left ? "（還可以打 " + x.left + " 次）" : ""); cin.value = ""; focus(cin); return; }
-      if (x && x.st && !x.err) { pcStop(); PC.sec = ""; pcSave(); onBoot(x); return; }
-      m2.textContent = "❌ " + String(x && x.err || "沒登入成功，再試一次").slice(0, 260);
-    }, function (er) { clearTimeout(slow); PC.busy = false; go2.disabled = false; cin.readOnly = false; if (alive()) m2.textContent = /等太久/.test(String(er && er.message)) ? "❌ 等太久沒有回應，再按一次「確定」。" : "❌ 連不上後端，網路好了再試一次"; });
-  };
-  go.onclick = submit; go2.onclick = submit2;
+  go.onclick = submit;
   [emp, nm].forEach(function (inp) { inp.onkeydown = function (ev) { if (ev.key === "Enter") submit(); }; });
-  cin.onkeydown = function (ev) { if (ev.key === "Enter") submit2(); };
-  restart.onclick = function () { toStep1(""); };
-  var p = pcLoad();
-  if (p) { PC.sec = p.sec; PC.ex = +p.ex; toStep2(); } else focus(emp);
+  PC.sec = ""; pcSave();   // 第 44 批：不用 6 位數了（第 43 批的網頁等到一半的那一組丟掉）
+  focus(emp.value ? (nm.value ? go : nm) : emp);
 }
 
 /* ── 驗證過是本人了，第一次要打員工編號＋姓名（審核用）── */
@@ -3673,7 +3760,7 @@ function refreshData() {
     if (!x.data) return;
     HB = x.data; if (x.cfg) { CFG = x.cfg; applyCfg(); }
     if (typeof edBaseChanged === "function") edBaseChanged();
-    if (TAB === "view") drawWeb();
+    if (TAB === "view") { if (typeof bkSave === "function") bkSave(); drawWeb(); }   // 第 44 批：翻頁的：換成新的內容以後還在同一篇
     toast("手冊有更新，已經換成新的內容");
   }, function () { /* 下次再說 */ });
 }
@@ -3720,7 +3807,7 @@ function showTab(name) {
   $$(".pane").forEach(function (p) { p.classList.toggle("on", p.id === "pane-" + name); });
   syncTabsH();
   if (name === "edit") { renderEdit(); if (typeof edOnShow === "function") edOnShow(); } else if (typeof pvSync === "function") pvSync();
-  if (name === "view") drawWeb();
+  if (name === "view") { if (typeof bkSave === "function") bkSave(); drawWeb(); }   // 第 44 批：從編輯、管理回來：翻頁的還在同一頁
   if (name === "admin") adminLoad();
   guardSync();   // 第 41 批：看手冊＝不能複製、截圖遮住；編輯、管理（開發者）不擋
 }
@@ -3931,8 +4018,8 @@ function start() {
       if (g === "nodk") { scrMsg("這個瀏覽器不能用", [MSG_NODK]); return; }
       if (g === "old") { scrMsg("瀏覽器太舊", ["請改用最新的 Chrome 或 Safari。"]); return; }
       if (g === "bad") { scrMsg("連結不完整", [MSG_LINE]); return; }
-      if (SCERR) { scrFirst(SCERR); return; }   // 第 38 批；第 42 批：自己的連結打不開（cfg.js 還沒放、對不上）→ 寫原因，也可以貼一條新的
-      scrFirst(SCOLD ? "old" : "");   // 第 42 批：這台不知道後端在哪 → 請從 LINE 複製自己的連結（貼在這裡也可以）
+      if (SCERR) { scrFirst(SCERR); return; }   // 第 38 批；第 42 批：短碼（自己的連結）打不開（cfg.js 還沒放、對不上）→ 寫原因，也可以再填一組
+      scrFirst(SCOLD ? "old" : "");   // 第 42 批：這台不知道後端在哪；第 44 批：先填 LINE「🔗 外部連結」的 12 碼短碼（找得到後端），再打員工編號＋姓名
     });
   }); });
 }
@@ -4347,12 +4434,13 @@ function webArticle(ch, t, o) {   // o.page：在「圖一」樣式的頁面裡�
     else if (b.t === "drug") el = webDrugs(b, o);   // 第 29 批：藥品卡片（補藥神器的藥）
     else if (b.t === "link") el = webLinks(b, o.hl, { tid: t.id, bi: bIdx, pv: !!o.pv || !o.page });   // 第 40 批（一起做的）：網址連結；第 43 批：檔案在手冊裡的小視窗看（編輯器的預覽＝試開）
     if (!el) return;
+    if (b.mgh) { el.id = "mg-" + b.mgh; el.classList.add("mghd"); }   // 第 44 批：合併顯示：併進來的那一篇從這裡開始（連到它的、從 LINE 點進來的，捲到這裡）
     var bi = _yzBlockInd_(b);
     if (bi) { el.style.marginLeft = (bi * 1.6).toFixed(1) + "em"; el.classList.add("bind"); }   // 整塊縮排（第 27 批：圖片、表格、動畫、階梯式也能縮排）
     a.appendChild(el); shown++;
   });
   if (hidN && !shown) a.appendChild(h("p", { class: "muted onlyln" }, ["💬 這一篇的內容放在 LINE：請到 LINE 的「藥戰手冊」看。"]));   // 第 41 批：全部都是只在 LINE 的
-  if (o.hb) { var bk = webBacklinks(_yzBacklinks_(o.hb, [t.id, ch.id], t.id), ch.id, o.onTitle); if (bk) a.appendChild(bk); }   // 互相連結：從別的標題連到這裡的
+  if (o.hb) { var bk = webBacklinks(_yzBacklinks_(o.hb, [t.id, ch.id].concat(t.mgs || []), t.id), ch.id, o.onTitle); if (bk) a.appendChild(bk); }   // 互相連結：從別的標題連到這裡的（第 44 批：連到併進來的那幾篇的也算）
   var pg = _yzPageText_(t.page), nt = _yzNoteHas_(t.note) ? String(t.note).replace(/^(?:[ \t　\r]*\n)+|(?:\r?\n[ \t　\r]*)+$/g, "") : "";   // 沒填備註（空白、只有空行、看不見的字）：不顯示備註框；前後多打的空行也拿掉
   var pgEl = pg ? h("div", { class: "pgline" + (nt ? " gap" : " solo") }, [h("span", { class: "pgtag" }, [h("span", {}, ["📖 藥戰手冊頁數　"]), h("b", {}, [pg])])]) : null;
   if (nt) {
@@ -4568,8 +4656,12 @@ function openChapter(cid) {
 function openTitle(tid, hl) {
   var t = titleOf(tid); if (!t) { toast("找不到這個標題（可能被刪掉了）"); return; }
   var c = chapterOf(t.ch);
-  WV.cid = t.ch; WV.tid = tid; WV.view = ""; WV.hl = hl && hl.length ? hl : null; drawWeb();
-  var m = $("#pane-view mark, #pane-view figure.ocrhit"); if (m) { m.scrollIntoView({ block: "center" }); keepInView(m); } else topOfView();   // 第一個符合的字（或圖裡有那個字的那張圖）
+  WV.cid = t.ch; WV.tid = t.id; WV.view = ""; WV.hl = hl && hl.length ? hl : null; drawWeb();   // 第 44 批：被併的那一篇＝打開它的主標題（t.id）
+  var m = $("#pane-view mark, #pane-view figure.ocrhit");   // 第一個符合的字（或圖裡有那個字的那張圖）
+  if (!m && tid !== t.id) m = document.getElementById("mg-" + tid);   // 第 44 批：連到被併的那一篇：到它那一段（小標題）
+  if (BK.on) { if (m) bkShowEl(m); }   // 第 44 批：翻頁：翻到那一頁
+  else if (m && m.id && m.id.indexOf("mg-") === 0) { window.scrollTo(0, Math.max(0, m.getBoundingClientRect().top + window.pageYOffset - pwOff() - 8)); keepInView(m); }   // 小標題放在上面那一條的下面
+  else if (m) { m.scrollIntoView({ block: "center" }); keepInView(m); } else topOfView();
   seen("看標題", (c ? c.name + "　" : "") + t.name);
 }
 function webSearch(q) {
@@ -4583,11 +4675,14 @@ function homeName() { return homeMapOn() ? ((HB.cat && HB.cat.title) || "藥師�
 
 function drawWeb() {
   var root = $("#pane-view"); if (!root || !HB) return;
+  if (typeof _yzMvReset_ === "function") _yzMvReset_();   // 第 44 批：合併顯示：照現在的手冊重算（編輯器改的是同一份）
+  if (typeof bkStop === "function") bkStop();   // 第 44 批：翻頁的那一本先收掉（章、單篇的頁面會重新打開）
   if (WV.pano) { try { WV.pano.destroy(); } catch (e) { /* 沒關係 */ } WV.pano = null; }
   root.innerHTML = "";
   var atHome = !WV.cid && !WV.tid && !WV.view;
   if (atHome && homeMapOn()) drawHomeFull(root);   // 首頁＝滿版調劑台
   else { homeClass(true); drawPage(root, atHome); }   // 章、標題、搜尋、問卷（還有沒有目錄圖時的首頁）：也是整個畫面，上面那一排收起來
+  if (typeof BK !== "undefined") BK.keep = null;   // 第 44 批：記的「看到哪裡」只給這一次重畫用（沒用到就丟，免得以後打開同一章跳到舊的地方）
   qzPeek();   // 第 32 批：左下角「📋 問卷」要不要出現（5 分鐘問一次）
 }
 
@@ -4645,20 +4740,24 @@ function drawPage(root, atHome) {
   var mqOn = mqConf(HB.cat).on, mqName = c ? c.name : WV.view === "search" ? "搜尋" : isQz ? "問卷" : "";
   if (mqOn) pg.appendChild(marquee(mqWords(mqName))); else pg.style.setProperty("--mqh", "0px");
   var pwb = c && !other && titlesOf(c.id).length ? pwBar(c, t) : null;   // 第 43 批：現在讀到哪裡（這一章每一篇排一排，讀到的亮）
+  var book = !other && !atHome && !!c && titlesOf(c.id).length > 0 && bkWant(c) && BK.noFit !== bkKey();   // 第 44 批：翻頁閱讀（預設；可以切回捲動）
   if (pwb) pg.appendChild(pwb);
   var col = h("div", { class: "pgcol" });
   // 上：‹ 回上一層 ＋ 標誌
   var up = isQz ? qzBackBtn() : null;   // 問卷：作答、結果頁＝「‹ 問卷清單」
   if (!up && t && c && titlesOf(c.id).length > 1) up = h("button", { class: "pgback", type: "button", onclick: function () { openChapter(c.id); } }, ["‹ " + c.name]);
   else if (!up && !atHome) up = h("button", { class: "pgback", type: "button", onclick: goHome }, ["‹ " + homeName()]);
-  col.appendChild(h("div", { class: "pgtop" }, [up || h("span"), h("button", { class: "pglogo", type: "button", title: "回首頁", onclick: goHomeTab }, [h("span", { class: "lgb" }, [logoImg()]), "藥戰手冊"])]));
-  col.appendChild(pgStatus());
+  var topRow = h("div", { class: "pgtop" }, [up || h("span"), c && !other && titlesOf(c.id).length ? bkToggle() : null, h("button", { class: "pglogo", type: "button", title: "回首頁", onclick: goHomeTab }, [h("span", { class: "lgb" }, [logoImg()]), "藥戰手冊"])]);
+  if (book) col.appendChild(h("div", { class: "rbk-head" }, [topRow, pgStatus()]));   // 第 44 批：翻頁＝上面擠成一排（書可以大一點）
+  else { col.appendChild(topRow); col.appendChild(pgStatus()); }
+  var host = book ? h("div", { class: "rbk-flow" }) : col;   // 第 44 批：翻頁＝內容排進書裡（一欄＝一頁）
   if (WV.view === "search") drawSearchResults(col);
   else if (isQz) qzDraw(col);
-  else if (t) drawTitlePage(col, c, t);
-  else if (c) drawChapterPage(col, c, ico, bg);
+  else if (t) drawTitlePage(host, c, t);
+  else if (c) drawChapterPage(host, c, ico, bg);
   else drawHome(col);
-  if (YZ_CFG.footer) col.appendChild(h("div", { class: "pgfoot" }, [YZ_NOTICE]));
+  if (YZ_CFG.footer) host.appendChild(h("div", { class: "pgfoot" }, [YZ_NOTICE]));
+  if (book) { col.appendChild(bkShell(host)); pg.classList.add("book"); }
   pg.appendChild(col);
   if (mqOn) pg.appendChild(marquee(mqWords(mqName), "mqb"));
   pg.appendChild(h("div", { class: "pgdock" }, [
@@ -4668,16 +4767,15 @@ function drawPage(root, atHome) {
   ]));
   if (!atHome) pg.appendChild(h("button", { class: "hhome", type: "button", onclick: goHome, title: "回首頁" }, ["🏠 首頁"]));
   root.appendChild(pg);
-  if (WV.cid || WV.tid || WV.view) pg.style.setProperty("--colw", (t ? Math.min(1000, Math.max(680, (t.ww || 760) + 70)) : isQz ? 760 : 680) + "px");
-  if (pwb) { PW.cur = ""; if (t) pwSet(t.id); else pwScan(); }
+  if (WV.cid || WV.tid || WV.view) pg.style.setProperty("--colw", (book ? 1400 : t ? Math.min(1000, Math.max(680, (t.ww || 760) + 70)) : isQz ? 760 : 680) + "px");
+  if (pwb) { PW.cur = ""; PW.sub = ""; if (t) pwSet(t.id); else if (!book) pwScan(); }
+  if (book) bkStart();   // 量好尺寸、排好頁、翻到第一頁（太矮放不下：bkStart 會改成捲動的）
   idleTick();
 }
 /* ── 第 43 批：上面固定一條「現在讀到哪裡」：這一章第 1 層的標題排成一排（太多可以左右滑），讀到的那一篇亮（黃底）；
    有分層的章：下面一行寫現在這一篇（在子標題裡＝「└ 子標題 › 再下一層」）。章的頁面：捲到哪一篇就亮哪一篇；點了直接捲過去。
    單篇的頁面：亮這一篇（或它的上層），點了打開那一篇。高度固定（不會捲一捲就跳）。 */
-var PW = { raf: 0, cur: "", lock: 0 };   // lock：點了跳過去、還在捲的時候（上面那一條不跟著中間經過的篇跳）
-var YZ_NO_RE = /^\s*[（(]?\s*(?:[0-9０-９]+|[一二三四五六七八九十百]+|[壹貳參叁肆伍陸柒捌玖拾]+)\s*(?:[、.．:：)）]|\s)|^\s*[（(]?\s*[A-Za-zＡ-Ｚａ-ｚ]\s*[、.．:：)）]|^\s*第\s*[0-9０-９一二三四五六七八九十百]+\s*[章節篇條項部]/;
-function tocLabel(t, k, deep) { var n = t.name || "（還沒有標題）"; return deep || YZ_NO_RE.test(n) ? n : (k + 1) + ". " + n; }   // 照打的名字；沒分層、名字自己沒有編號的才在前面加「1.」
+var PW = { raf: 0, cur: "", lock: 0, sub: "" };   // sub：第二行現在排的是哪一篇（第 1 層）的子標題   // lock：點了跳過去、還在捲的時候（上面那一條不跟著中間經過的篇跳）
 function pwBar(c, t) {
   var ts = titlesOf(c.id), lvs = _yzTLvs_(ts), deep = lvs.some(function (v) { return v > 1; });
   var row = h("div", { class: "pw-l" });
@@ -4687,14 +4785,15 @@ function pwBar(c, t) {
     row.appendChild(h("button", { class: "pw-i", type: "button", "data-tid": x.id, onclick: function () { if (WV.tid) { if (x.id !== WV.tid) openTitle(x.id); } else pwJump(x.id); } }, [x.name || "（還沒有標題）"]));
   });
   var bar = h("nav", { class: "pgwhere" + (deep ? " deep" : ""), "aria-label": "現在讀到哪裡" }, [
-    h("div", { class: "pw-row" }, [h("button", { class: "pw-ch", type: "button", title: t ? "回到這一章" : "回到這一章最上面", onclick: function () { if (WV.tid) openChapter(c.id); else { topOfView(); pwScan(); } } }, [chIco(c) + " " + (c.name || "")]), row]),
-    deep ? h("div", { class: "pw-sub", "aria-live": "polite" }, [""]) : null
+    h("div", { class: "pw-row" }, [h("button", { class: "pw-ch", type: "button", title: t ? "回到這一章" : "回到這一章最上面", onclick: function () { if (WV.tid) openChapter(c.id); else if (BK.on) bkGo(0); else { topOfView(); pwScan(); } } }, [chIco(c) + " " + (c.name || "")]), row]),
+    deep ? h("div", { class: "pw-sub" }, [h("span", { class: "pw-sa", "aria-hidden": "true" }, ["└"]), h("div", { class: "pw-l2", role: "group", "aria-label": "子標題" })]) : null   // 第 44 批：子標題排一排（使用者說的「圖四有子標題需要顯示出來」）
   ]);
   bar._ts = ts; bar._lvs = lvs;
   return bar;
 }
 function pwSet(tid) {   // 讀到 tid 那一篇（可以是子標題）：亮它的第 1 層；有分層：下面那一行寫它
   var bar = $(".pgwhere"); if (!bar || !bar._ts) return;
+  PW.tid = tid;
   var ts = bar._ts, lvs = bar._lvs, i = 0;
   ts.some(function (x, k) { if (x.id === tid) { i = k; return true; } return false; });
   var top = i; while (top > 0 && lvs[top] > 1) top--;
@@ -4704,10 +4803,32 @@ function pwSet(tid) {   // 讀到 tid 那一篇（可以是子標題）：亮它
     b.classList.toggle("on", on);
     if (on) b.setAttribute("aria-current", "location"); else b.removeAttribute("aria-current");
   });
-  var sub = $(".pw-sub", bar);
-  if (sub && ts[i]) {
-    var p = lvs[i] > 1 ? _yzTPath_(ts, ts[i]).slice(1).concat([ts[i]]) : [];
-    sub.textContent = p.length ? "└ " + p.map(function (x) { return x.name || "（還沒有標題）"; }).join(" › ") : "▸ " + (ts[i].name || "（還沒有標題）");
+  var sub = $(".pw-sub", bar), l2 = sub && $(".pw-l2", sub);
+  if (l2 && ts[top]) {   // 第 44 批：第二行＝這一篇（第 1 層）底下的子標題排一排，讀到的亮；沒有子標題＝▸ 這一篇的名字
+    if (PW.sub !== topId) {
+      PW.sub = topId; l2.innerHTML = "";
+      var kids = [];
+      for (var j = top + 1; j < ts.length && lvs[j] > 1; j++) kids.push(j);
+      sub.classList.toggle("none", !kids.length);
+      if (!kids.length) l2.appendChild(h("span", { class: "pw-one" }, ["▸ " + (ts[top].name || "（還沒有標題）")]));
+      kids.forEach(function (j, n) {
+        var x = ts[j];
+        if (n) l2.appendChild(h("span", { class: "pw-sep", "aria-hidden": "true" }, ["｜"]));
+        l2.appendChild(h("button", { class: "pw-s lv" + lvs[j], type: "button", "data-tid": x.id, onclick: function () { if (WV.tid) { if (x.id !== WV.tid) openTitle(x.id); } else pwJump(x.id); } }, [x.name || "（還沒有標題）"]));
+      });
+      l2.scrollLeft = 0;
+    }
+    var sb = null;
+    $$(".pw-s", l2).forEach(function (b) {
+      var on = b.getAttribute("data-tid") === tid;
+      b.classList.toggle("on", on);
+      if (on) { b.setAttribute("aria-current", "location"); sb = b; } else b.removeAttribute("aria-current");
+    });
+    if (sb && l2.scrollWidth > l2.clientWidth + 2) {   // 亮的那一個滑到看得到的地方（只滑這一排）
+      l2.style.scrollBehavior = "auto";
+      l2.scrollLeft = Math.max(0, sb.offsetLeft - (l2.clientWidth - sb.offsetWidth) / 2);
+      l2.style.scrollBehavior = "";
+    }
   }
   if (PW.cur !== topId) {   // 亮的那一個滑到看得到的地方（只滑這一排，不動整頁；剛打開這一頁：直接到，不用滑過去）
     var first = !PW.cur;
@@ -4723,7 +4844,7 @@ function pwSet(tid) {   // 讀到 tid 那一篇（可以是子標題）：亮它
 function pwOff() { var mq = $(".pg>.mq:not(.mqb)"), bar = $(".pgwhere"); return (mq ? mq.offsetHeight : 0) + (bar ? bar.offsetHeight : 0); }
 function pwScan() {   // 章的頁面：現在讀到哪一篇（最上面那一條下面、最後一個捲過去的；捲到底＝最後一篇）
   PW.raf = 0;
-  var bar = $(".pgwhere"); if (!bar || WV.tid) return;
+  var bar = $(".pgwhere"); if (!bar || WV.tid || BK.on) return;
   var ss = $$(".chsec"); if (!ss.length) return;
   var lim = pwOff() + 14, cur = ss[0];
   ss.forEach(function (x) { if (x.getBoundingClientRect().top <= lim) cur = x; });
@@ -4732,6 +4853,7 @@ function pwScan() {   // 章的頁面：現在讀到哪一篇（最上面那一�
   pwSet(cur.getAttribute("data-tid") || "");
 }
 function pwJump(tid) {   // 捲到那一篇（扣掉上面固定的那兩條）
+  if (BK.on) { bkGoTid(tid); return; }   // 第 44 批：翻頁＝翻到那一篇開始的那一頁
   var el = document.getElementById("cht-" + tid); if (!el) return;
   var y = Math.max(0, el.getBoundingClientRect().top + window.pageYOffset - pwOff() - 8);
   try { window.scrollTo({ top: y, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches || window.__SHOT ? "auto" : "smooth" }); } catch (e) { window.scrollTo(0, y); }
@@ -4747,38 +4869,32 @@ window.addEventListener("resize", function () { if (!PW.raf && $(".pgwhere") && 
 function drawChapterPage(col, c, ico, bg) {
   var tts = titlesOf(c.id);
   col.appendChild(pgHead(ico + " " + c.name, c.intro || (tts.length ? tts.length + " 個標題" : "")));
+  if (tts.length) { var ca = chAnimEl(c); if (ca) col.appendChild(ca); }   // 第 44 批：每章的小動畫（章的頁面最上面）
   if (IS_DEV && !bg) col.appendChild(h("div", { class: "pgdev" }, [homeMapOn() || (HB.cat && HB.cat.img) ? "（開發者）這一章在目錄圖上沒有地點，所以沒有背景：到「✏️ 編輯」→「🖼 目錄圖」新增一個連到這一章的地點，按「儲存」就會自動做好。" : "（開發者）還沒有背景：先到「✏️ 編輯」→「🖼 目錄圖」放圖一，按「儲存」，每一章的背景就會自動做好。"]));
   if (!tts.length) {
     col.appendChild(pgCard([h("div", { class: "pc-t" }, [IS_DEV ? "這一章還沒有標題" : "🔒 這一章還在整理"]), h("div", { class: "pc-note" }, [IS_DEV ? "藥師在首頁看到的是🔒。到「✏️ 編輯」新增第一個標題，就會自動打開。" : "還沒有內容，開放以後就能看。"])]));
     return;
   }
-  // 第 28 批：整章的內容直接展開（不用一篇一篇點進去）；上面一排是標題清單，點了直接捲到那一篇
-  // 第 43 批：標題分層的章：清單改成直的一列（子標題往右縮，像目錄）；名字照打的（沒分層、名字沒有自己編號的才加「1.」）
-  var lvs = _yzTLvs_(tts), deep = lvs.some(function (v) { return v > 1; });
-  if (tts.length > 1) {
-    var toc = h("div", { class: "chtoc" + (deep ? " deep" : "") }, [h("div", { class: "chtoc-h" }, ["這一章有 " + tts.length + " 個標題（點了直接捲到那一篇）"])]), tl = h("div", { class: "chtoc-l" });
-    tts.forEach(function (tt, k) {
-      tl.appendChild(h("button", { class: "chtoc-b" + (deep ? " lv" + lvs[k] : ""), type: "button", onclick: function () { pwJump(tt.id); } }, [tocLabel(tt, k, deep)]));
-    });
-    toc.appendChild(tl);
-    col.appendChild(pgCard([toc], { cls: "slim" }));
-  }
+  // 第 28 批：整章的內容直接展開（不用一篇一篇點進去）
+  // 第 44 批：「這一章有 N 個標題」那張清單拿掉（使用者說的「圖一移除」）：要跳到哪一篇，用上面那一條（第 1 層一排、子標題一排）
+  var lvs = _yzTLvs_(tts);
   tts.forEach(function (tt, k) {
-    var lv = lvs[k], art = webArticle(c, tt, { width: tt.ww || 760, onImg: lightbox, hl: null, hb: HB, onTitle: openTitle, onChapter: openChapter, page: true });
+    var lv = lvs[k], art = webArticle(c, tt, { width: tt.ww || 760, onImg: lightbox, hl: null, hb: vhb(), onTitle: openTitle, onChapter: openChapter, page: true });
     art.insertBefore(h("div", { class: "chsec-h" }, [h(lv === 1 ? "h2" : lv === 2 ? "h3" : "h4", { class: "chsec-t" }, [tt.name || "（還沒有標題）"]), h("button", { class: "pbtn chsec-o", type: "button", onclick: function () { openTitle(tt.id); }, "aria-label": "單獨看「" + (tt.name || "") + "」" }, ["單獨看 ›"])]), art.firstChild);
     col.appendChild(h("section", { class: "chsec lv" + lv, id: "cht-" + tt.id, "data-tid": tt.id }, [h("div", { class: "pgart" }, [art])]));
   });
-  var bk = webBacklinks(_yzBacklinks_(HB, [c.id], null), c.id, openTitle);   // 互相連結：從別的標題連到這一章的
+  var bk = webBacklinks(_yzBacklinks_(vhb(), [c.id], null), c.id, openTitle);   // 互相連結：從別的標題連到這一章的
   if (bk) col.appendChild(pgCard([bk]));
 }
 function drawTitlePage(col, c, t) {
   var ts = titlesOf(c.id), i = ts.indexOf(t);
   col.appendChild(pgHead(t.name || "（還沒有標題）"));
+  if (ts.length === 1) { var ca = chAnimEl(c); if (ca) col.appendChild(ca); }   // 第 44 批：只有一個標題的章（打開章＝直接打開這一篇）：小動畫放這裡
   var up = _yzTPath_(ts, t);   // 第 43 批：子標題：章 › 上層 › 再上層（點了打開那一篇）
   col.appendChild(h("div", { class: "pgsub pgpath" }, [h("button", { class: "pgchip", type: "button", onclick: function () { openChapter(c.id); } }, [chIco(c) + " " + c.name])].concat(up.map(function (x) {
     return h("button", { class: "pgchip up", type: "button", onclick: function () { openTitle(x.id); } }, [x.name || "（還沒有標題）"]);
   }))));
-  var art = webArticle(c, t, { width: t.ww || 760, onImg: lightbox, hl: WV.hl, hb: HB, onTitle: openTitle, onChapter: openChapter, page: true });
+  var art = webArticle(c, t, { width: t.ww || 760, onImg: lightbox, hl: WV.hl, hb: vhb(), onTitle: openTitle, onChapter: openChapter, page: true });
   col.appendChild(h("div", { class: "pgart" }, [art]));
   col.appendChild(h("div", { class: "pgnav" }, [
     i > 0 ? h("button", { class: "pbtn nav", type: "button", onclick: function () { openTitle(ts[i - 1].id); } }, ["‹ " + ts[i - 1].name]) : h("span"),
@@ -4904,7 +5020,7 @@ function homeDrawer(stage) {
   var f = $(".chI", list); if (f) try { f.focus(); } catch (e) { /* 沒關係 */ }
 }
 function drawSearchResults(col) {
-  var r = _yzSearch_(HB, WV.q, "web");   // 第 41 批：只在 LINE 的那幾塊不算
+  var r = _yzSearch_(vhb(), WV.q, "web");   // 第 41 批：只在 LINE 的那幾塊不算；第 44 批：合併顯示以後的樣子（被併的那一篇算在主標題裡）
   col.appendChild(pgHead(r.page ? "手冊第 " + r.page + " 頁" : "搜尋「" + WV.q + "」", r.hits.length ? "找到 " + r.hits.length + " 個標題" : ""));
   var qin = h("input", { class: "in", type: "search", enterkeyhint: "search", placeholder: "搜尋手冊（打字，或打「第14頁」）", value: WV.qv, "aria-label": "搜尋手冊" });
   col.appendChild(pgCard([h("form", { class: "pgsearch", role: "search", onsubmit: function (e) { e.preventDefault(); qin.blur(); webSearch(qin.value); } }, [qin, h("button", { class: "pbtn dark", type: "submit" }, ["搜尋"])])], { cls: "slim" }));
@@ -5151,6 +5267,679 @@ function fvWhere() {   // 上面寫「第幾頁／幾頁」
   FV.pg.textContent = "第 " + cur + "／" + FV.n + " 頁";
 }
 window.addEventListener("resize", function () { if (FV.el && FV.fit) fvFit(); });
+
+/* ════════ book.js ════════ */
+/* ───────── 第 44 批：翻頁閱讀（預設）─────────
+   章的頁面、單篇的頁面：電腦（畫面夠寬）＝像一本書，左右兩頁，翻頁有動畫；手機＝一頁一頁，手指左右滑（像電子書）。
+   上面「📖 翻頁｜📜 捲動」切換（這台記住）。內容照分欄排（CSS 分欄）：一欄＝一頁；圖、表格、框盡量不切開。
+   翻頁動畫：翻過去的那一頁、背面的那一頁、還沒翻完以前要留著的那一頁，用「複製一份內容」畫（只在翻的那半秒，翻完就丟）。 */
+var BK = { on: false, mem: "", k: 0, n: 1, two: false, P: 0, PH: 0, X: 0, Y: 0, G: 0, pitch: 0, busy: false, wB: 0, wAcc: 0, wLast: 0, drag: null, keep: null, mt: 0, mo: null };
+
+function bkPref() {   // "book"＝翻頁（預設）；"scroll"＝捲動
+  if (BK.mem) return BK.mem;
+  try { return localStorage.getItem("yz_read") === "scroll" ? "scroll" : "book"; } catch (e) { return "book"; }
+}
+function bkSetPref(v) { BK.mem = v; try { localStorage.setItem("yz_read", v); } catch (e) { /* 記不住：這一次照用 */ } }
+function bkFits() { return window.innerHeight >= 430 && document.documentElement.clientWidth >= 300; }   // 太矮（例如手機橫放）：照捲動的看
+function bkWant(c) { return !!c && bkPref() === "book" && bkFits(); }
+
+// 上面那一排的「📖 翻頁｜📜 捲動」
+function bkToggle() {
+  var book = bkPref() === "book";
+  var mk = function (v, ico, lab, tip) {
+    var on = (v === "book") === book;
+    return h("button", { class: "rbkt-b" + (on ? " on" : ""), type: "button", "aria-pressed": on ? "true" : "false", title: tip, onclick: function () { if (!on) bkSwitch(v); } }, [h("span", { class: "rbkt-i", "aria-hidden": "true" }, [ico]), h("span", { class: "rbkt-l" }, [lab])]);
+  };
+  return h("div", { class: "rbkt", role: "group", "aria-label": "閱讀方式" }, [
+    mk("book", "📖", "翻頁", "像書一樣一頁一頁翻（電腦兩頁、手機一頁）"),
+    mk("scroll", "📜", "捲動", "整篇往下捲"),
+    h("span", { class: "rbkt-n", id: "rbkCnt", "aria-live": "polite" }, [""])
+  ]);
+}
+function bkSwitch(v) {   // 換閱讀方式：停在同一篇
+  var tid = bkSpot();
+  bkSetPref(v);
+  drawWeb();
+  if (v === "book") { if (tid && BK.on) bkGoTid(tid); }
+  else if (!bkScrollTo(tid)) topOfView();
+  toast(v === "book" ? "📖 翻頁：按左右兩邊、← →、或手指左右滑" : "📜 捲動：整篇往下捲");
+}
+function bkScrollTo(tid) {   // 捲動的看（章的頁面）：捲到那一篇；回 false＝沒捲
+  if (!tid || !WV.cid || WV.tid) return false;
+  var el = document.getElementById("cht-" + tid); if (!el) return false;
+  window.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + window.pageYOffset - pwOff() - 8)); pwSet(tid);
+  return true;
+}
+function bkFallback(tid) {   // 書放不下（太矮）：這一頁先照捲動的看，停在同一篇；畫面夠高了再自己換回翻頁（下面的 resize）
+  BK.noFit = bkKey(); BK.noFitH = window.innerHeight; bkStop(); drawWeb();
+  bkScrollTo(tid);
+}
+function bkSpot() {   // 現在讀到哪一篇（章的頁面）：翻頁＝這一頁的那一篇；捲動＝上面那一條記的
+  if (!WV.cid || WV.tid) return "";
+  return BK.on ? bkCurSec() : (PW.tid || "");
+}
+function bkCurSec() {   // 翻頁：現在在讀的那一篇＝錨點（剛跳過去的那一篇、這一頁最上面那個東西）所在的那一篇；沒有＝這一頁開始的那一篇
+  var a = BK.anc, el = a && a.el && a.el.isConnected ? a.el : null, s = el && el.closest ? el.closest(".chsec") : null;
+  if (s && BK.flow && BK.flow.contains(s)) { var c = bkColOf(s); if (c >= 0 && c <= BK.k + (BK.two ? 1 : 0)) return s.getAttribute("data-tid") || ""; }
+  return bkSecAt(BK.k);
+}
+
+// 書的骨架：兩張紙（電腦）／一張紙（手機）、中間的書背、看得到的那一塊（裡面是排好的內容）、翻頁動畫用的那一層、左右的箭頭
+function bkShell(flow) {
+  var vp = h("div", { class: "rbk-vp" }, [flow]);
+  var fx = h("div", { class: "rbk-fx", "aria-hidden": "true", inert: "" });   // 翻頁動畫用的複製品：不能按、不能 Tab 到
+  var pl = h("div", { class: "rbk-pp l" }, [h("span", { class: "rbk-no", "aria-hidden": "true" }, [""])]);
+  var pr = h("div", { class: "rbk-pp r" }, [h("span", { class: "rbk-no", "aria-hidden": "true" }, [""])]);
+  var prev = h("button", { class: "rbk-arw p", type: "button", "aria-label": "上一頁", title: "上一頁（←）", onclick: function (e) { e.stopPropagation(); bkTurn(-1); } }, ["‹"]);
+  var next = h("button", { class: "rbk-arw n", type: "button", "aria-label": "下一頁", title: "下一頁（→）", onclick: function (e) { e.stopPropagation(); bkTurn(1); } }, ["›"]);
+  var stage = h("div", { class: "rbk-stage" }, [pl, pr, h("div", { class: "rbk-spine", "aria-hidden": "true" }), vp, fx, prev, next]);
+  var el = h("div", { class: "rbk", role: "region", "aria-label": "手冊內容（翻頁）", tabindex: "-1" }, [stage]);
+  BK.el = el; BK.stage = stage; BK.vp = vp; BK.flow = flow; BK.fx = fx; BK.pl = pl; BK.pr = pr; BK.prev = prev; BK.next = next;
+  stage.addEventListener("click", bkClick);
+  stage.addEventListener("wheel", bkWheel, { passive: false });
+  stage.addEventListener("touchstart", bkTouchStart, { passive: true });
+  stage.addEventListener("touchmove", bkTouchMove, { passive: false });
+  stage.addEventListener("touchend", bkTouchEnd);
+  stage.addEventListener("touchcancel", bkTouchEnd);
+  vp.addEventListener("scroll", function () { if (vp.scrollLeft || vp.scrollTop) { vp.scrollLeft = 0; vp.scrollTop = 0; } });   // 不讓瀏覽器自己捲（例如 Tab 到別頁的按鍵）
+  flow.addEventListener("focusin", function (e) { if (BK.busy) return; var c = bkColOf(e.target); if (c >= 0 && !bkShown(c)) bkGo(c); });   // 用鍵盤 Tab 到別頁的按鍵：翻到那一頁
+  flow.addEventListener("load", function () { bkSoon(); }, true);   // 圖載好了：重算頁數（位置不跑掉）
+  return el;
+}
+
+// 打開章、單篇的頁面（drawPage 畫好以後）
+function bkStart() {
+  BK.on = true; BK.k = 0; BK.busy = false; BK.drag = null;
+  if (BK.mo) { try { BK.mo.disconnect(); } catch (e) { /* 沒關係 */ } }
+  if (window.MutationObserver) { BK.mo = new MutationObserver(function () { bkSoon(); }); BK.mo.observe(BK.flow, { childList: true, subtree: true }); }   // 藥品卡片這種晚一點才長出來的
+  if (BK.ro) { try { BK.ro.disconnect(); } catch (e) { /* 沒關係 */ } BK.ro = null; }
+  if (window.ResizeObserver) { BK.rw = ""; BK.ro = new ResizeObserver(function () { bkReflow(); }); BK.ro.observe(BK.el); }   // 書可以用的地方變了（上面那一排換行、轉方向）：重排
+  var keep = BK.keep; BK.keep = null;
+  if (keep && keep.key !== bkKey()) keep = null;
+  if (!bkLayout()) { bkFallback(keep ? keep.tid : ""); return; }   // 太矮放不下：這一頁先照捲動的看
+  if (keep) bkGoKeep(keep); else bkGo(0);
+}
+function bkKey() { return (WV.cid || "") + "|" + (WV.tid || ""); }
+function bkStop() {
+  BK.on = false;
+  if (BK.mo) { try { BK.mo.disconnect(); } catch (e) { /* 沒關係 */ } BK.mo = null; }
+  if (BK.ro) { try { BK.ro.disconnect(); } catch (e) { /* 沒關係 */ } BK.ro = null; }
+}
+var bkRfT = 0;
+function bkReflow() {   // 書的大小變了：重排，停在同一個地方（太矮了：改成捲動的看）
+  clearTimeout(bkRfT);
+  bkRfT = setTimeout(function () {
+    if (!BK.on || !BK.el || !BK.el.isConnected || BK.busy) return;
+    var r = BK.el.getBoundingClientRect(), sig = Math.round(r.width) + "x" + Math.round(r.height);
+    if (r.width < 2 || r.height < 2 || (typeof TAB !== "undefined" && TAB !== "view")) return;   // 看不到（開發者切到編輯、管理）：不用排
+    if (sig === BK.rw) return;
+    BK.rw = sig;
+    var a = BK.anc;
+    if (!bkLayout()) { bkFallback(bkCurSec()); return; }
+    var c = a && a.el && a.el.isConnected ? bkColOf(a.el) + a.d : BK.k;
+    bkGo(c, true);
+  }, 120);
+}
+function bkSave() {   // 手冊有新版本、從編輯回來，重畫以前：記住看到哪裡（哪一篇的第幾頁）
+  if (!BK.on) return;
+  var tid = bkCurSec(), c = tid ? bkColOf(document.getElementById("cht-" + tid)) : -1;
+  BK.keep = { key: bkKey(), k: BK.k, tid: tid, d: c >= 0 ? BK.k - c : 0 };
+}
+function bkGoKeep(keep) {   // 重畫以後：翻回同一篇的同一頁（那一篇變短了：翻到那一篇的最後一頁）
+  var c = keep.tid ? bkColOf(document.getElementById("cht-" + keep.tid)) : -1;
+  if (c < 0) { bkGo(keep.k); return; }
+  var end = BK.n - 1;
+  (BK.secs || []).some(function (x) { if (x.col > c) { end = Math.max(c, x.col - 1); return true; } return false; });
+  var d = keep.d || 0;   // 錨點記原本的差幾頁（圖還沒載好、這一篇看起來比較短：先翻到這一篇的最後一頁；圖載好以後照原本的頁數）
+  bkGo(Math.max(0, c + Math.min(d, end - c)), { el: document.getElementById("cht-" + keep.tid), d: d });
+}
+
+function bkClamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+// 量尺寸：一頁多寬多高、兩頁還是一頁；排好以後算有幾頁
+function bkLayout() {   // 回 false＝放不下（太矮）
+  if (!BK.on || !BK.stage || !BK.stage.isConnected) return false;
+  var vw = document.documentElement.clientWidth, st = BK.stage, br = BK.el.getBoundingClientRect();
+  var availW = Math.floor(br.width), PH = Math.floor(br.height);   // 書可以用的地方（上面那幾排以下、下面跑馬燈以上）
+  var two = availW >= 880;
+  var P = two ? Math.min(640, Math.floor(availW / 2)) : Math.min(availW, 680), W = two ? 2 * P : P;
+  var left = br.left + (availW - W) / 2;
+  // 左下「搜尋、章元」、右下「🏠 首頁」蓋到書的話：書矮一點（寬的螢幕，書兩旁夠寬就不用）
+  [$(".pg .pgdock"), $(".pg .hhome")].forEach(function (d) {
+    if (!d) return;
+    var r = d.getBoundingClientRect(); if (!r.width) return;
+    if (r.right > left - 6 && r.left < left + W + 6) PH = Math.min(PH, Math.floor(r.top - br.top - 10));
+  });
+  if (PH < 250) return false;
+  var X = Math.round(bkClamp(P * 0.07, 16, 42)), Y = Math.round(bkClamp(PH * 0.045, 14, 30)), NB = two ? 24 : 28, G = two ? 0 : 28;   // NB：最下面寫頁數的那一條（一頁的：還有左右箭頭）
+  BK.two = two; BK.P = P; BK.PH = PH; BK.X = X; BK.Y = Y; BK.G = G; BK.pitch = P + G;
+  st.style.setProperty("--P", P + "px"); st.style.setProperty("--PH", PH + "px");
+  st.style.width = W + "px"; st.style.height = PH + "px";
+  BK.el.classList.toggle("two", two); BK.el.classList.toggle("one", !two);
+  BK.el.classList.toggle("tight", two && (vw - W) / 2 < 60);   // 兩旁不夠放箭頭：箭頭放在書上面
+  var f = BK.flow, fw = P - 2 * X, fh = PH - 2 * Y - NB;
+  f.style.left = X + "px"; f.style.top = Y + "px"; f.style.width = fw + "px"; f.style.height = fh + "px";
+  f.style.columnWidth = fw + "px"; f.style.columnGap = (2 * X + G) + "px";
+  f.style.setProperty("--fh", fh + "px");
+  bkMeasure();
+  return true;
+}
+function bkMeasure() {
+  var f = BK.flow; if (!f) return;
+  BK.n = Math.max(1, Math.round((f.scrollWidth + 2 * BK.X + BK.G) / BK.pitch));
+  BK.secs = $$(".chsec", f).map(function (s) { return { tid: s.getAttribute("data-tid") || "", col: bkColOf(s) }; });   // 每一篇從第幾頁開始（上面那一條照這個亮）
+}
+function bkColOf(el) {   // 這個東西從第幾頁開始（0 起算）；不在書裡＝-1
+  if (!el || !BK.flow || !BK.flow.contains(el)) return -1;
+  var rs = el.getClientRects(); if (!rs.length) return -1;
+  var fr = BK.flow.getBoundingClientRect();
+  return Math.max(0, Math.floor((rs[0].left - fr.left + 4) / BK.pitch));
+}
+function bkShown(c) { return c === BK.k || (BK.two && c === BK.k + 1); }
+function bkSecAt(k) { var cur = ""; (BK.secs || []).forEach(function (s) { if (s.col >= 0 && s.col <= k) cur = s.tid; }); return cur || ((BK.secs || [])[0] || {}).tid || ""; }
+function bkAnchor(k) {   // 這一頁最上面的那個東西（圖載好、轉手機方向以後，還是翻到它）
+  var best = null, bt = 1e9, spanning = null;
+  $$(".rbk-flow > *, .rbk-flow .chsec, .rbk-flow .art > *", BK.el).some(function (el) {
+    var c = bkColOf(el); if (c < 0) return false;
+    if (c === k) { var t = el.getClientRects()[0].top; if (t < bt) { bt = t; best = el; } }
+    else if (c < k) spanning = el;
+    return c > k + 1;
+  });
+  return best ? { el: best, d: 0 } : spanning ? { el: spanning, d: k - bkColOf(spanning) } : null;
+}
+var bkSoonT = 0;
+function bkSoon() {   // 內容變了（圖載好、藥品卡片長出來）：重算頁數，停在同一個地方
+  clearTimeout(bkSoonT);
+  bkSoonT = setTimeout(function () {
+    if (!BK.on || BK.busy || !BK.flow || !BK.flow.isConnected) return;
+    var a = BK.anc;
+    bkMeasure();
+    if (a && a.el && a.el.isConnected) { var c = bkColOf(a.el) + a.d; if (c >= 0 && c !== BK.k) { bkGo(c, true); return; } }
+    bkPaint();
+  }, 180);
+}
+
+// 翻到第 k 頁（兩頁的：k 是左邊那一頁，一定是雙數）
+function bkGo(k, anc) {   // anc：true＝錨點不換（重排用）；{el, d}＝用這個當錨點（翻到某一篇、某個字）；沒給＝這一頁最上面那個
+  if (!BK.flow) return;
+  k = bkClamp(k | 0, 0, BK.n - 1);
+  if (BK.two) k -= k % 2;
+  BK.k = k;
+  BK.flow.style.transform = "translateX(" + (-k * BK.pitch) + "px)";
+  if (anc && anc.el) BK.anc = anc; else if (!anc) BK.anc = bkAnchor(k);
+  var ae = document.activeElement;   // 剛剛按的東西翻走了、看不到了：改停在書上（不然按空白鍵會再按到它）
+  if (ae && ae !== document.body && BK.flow.contains(ae) && !bkShown(bkColOf(ae))) { try { BK.el.focus({ preventScroll: true }); } catch (e) { /* 沒關係 */ } }
+  bkPaint();
+}
+function bkPaint() {
+  var k = BK.k, n = BK.n, last = BK.two ? k + 2 >= n : k + 1 >= n;
+  var nl = $(".rbk-no", BK.pl), nr = $(".rbk-no", BK.pr);
+  if (nl) nl.textContent = bkNoTxt(k);
+  if (nr) nr.textContent = BK.two && k + 2 <= n ? bkNoTxt(k + 1) : "";
+  BK.prev.disabled = k <= 0; BK.next.disabled = last;
+  var cnt = $("#rbkCnt");   // 上面那一排的「第幾頁／共幾頁」：一頁的（手機）寫在紙的最下面，這裡只留給讀螢幕的軟體念
+  if (cnt) { cnt.textContent = "第 " + (k + 1) + (BK.two && k + 2 <= n ? "–" + (k + 2) : "") + " 頁／共 " + n + " 頁"; cnt.classList.toggle("vh", !BK.two); }
+  if (WV.cid && !WV.tid && BK.secs && BK.secs.length) { var tid = bkCurSec(); if (tid) pwSet(tid); }
+  bkEager();
+}
+function bkNoTxt(c) { return BK.two ? String(c + 1) : (c + 1) + "／" + BK.n; }   // 紙最下面的頁數：兩頁＝「— 3 —」；一頁＝「3／17」
+function bkEager() {   // 這一頁、下一頁的圖先載（翻過去不用等）
+  var lo = BK.k - (BK.two ? 2 : 1), hi = BK.k + (BK.two ? 5 : 2);
+  $$("img[loading=lazy]", BK.flow).forEach(function (im) { var c = bkColOf(im); if (c >= lo && c <= hi) im.loading = "eager"; });
+}
+function bkGoTid(tid) { bkShowEl(document.getElementById("cht-" + tid)); }
+function bkShowEl(el) { var c = bkColOf(el); if (c >= 0) bkGo(c, { el: el, d: 0 }); }   // 翻到 el 開始的那一頁（圖晚一點載好、頁數變了，還是停在 el）
+
+// 翻頁：電腦（兩頁）＝翻過去的動畫；手機（一頁）＝滑過去
+function bkTurn(dir) {
+  if (!BK.on || BK.busy) return;
+  var k1 = BK.k + dir * (BK.two ? 2 : 1);
+  if (k1 < 0 || k1 >= BK.n) { bkBump(dir); return; }
+  if (reduceMotion()) { bkGo(k1); return; }
+  if (BK.two) bkFlip(dir); else bkSlide(dir, 0);
+}
+function bkBump(dir) {   // 第一頁、最後一頁：輕輕晃一下（翻不過去了）
+  var s = BK.stage; if (!s) return;
+  s.classList.remove("bump-l", "bump-r"); void s.offsetWidth; s.classList.add(dir > 0 ? "bump-r" : "bump-l");
+  setTimeout(function () { s.classList.remove("bump-l", "bump-r"); }, 360);
+  if (dir > 0) toast("已經是最後一頁了");
+}
+function bkView(col, cls) {   // 一頁的樣子（複製一份內容，只露出第 col 頁）：翻頁動畫用
+  var paper = h("div", { class: "rbk-paper" }, [h("span", { class: "rbk-no" }, [col >= 0 && col < BK.n ? bkNoTxt(col) : ""])]);
+  var clip = h("div", { class: "rbk-vclip" });
+  if (col >= 0 && col < BK.n) {
+    var f = BK.flow.cloneNode(true);
+    $$("[id]", f).forEach(function (x) { x.removeAttribute("id"); });
+    if (typeof chaSyncClone === "function") chaSyncClone(BK.flow, f);   // 第 44 批：章的小動畫：複製的那一份停在同一格
+    f.classList.remove("rbk-anim");
+    f.style.transform = "translateX(" + (-col * BK.pitch) + "px)";
+    clip.appendChild(f);
+  }
+  return h("div", { class: "rbk-view " + cls }, [paper, clip]);
+}
+function bkFlip(dir) {   // 兩頁：右邊那一頁往左翻（下一頁）／左邊那一頁往右翻（上一頁）
+  BK.busy = true;
+  var k0 = BK.k, k1 = k0 + 2 * dir, fx = BK.fx;
+  fx.innerHTML = "";
+  var stay = dir > 0 ? bkView(k0, "l") : bkView(k0 + 1, "r");   // 翻完以前還看得到的那一頁
+  var leaf = dir > 0 ? h("div", { class: "rbk-leaf r" }, [bkView(k0 + 1, "f"), bkView(k0 + 2, "b")]) : h("div", { class: "rbk-leaf l" }, [bkView(k0, "f"), bkView(k0 - 1, "b")]);
+  fx.appendChild(stay); fx.appendChild(leaf);
+  bkGo(k1);
+  void leaf.offsetWidth;
+  var end = function () { if (!BK.busy || leaf.dataset.end) return; leaf.dataset.end = "1"; BK.busy = false; fx.innerHTML = ""; };
+  requestAnimationFrame(function () { requestAnimationFrame(function () { leaf.classList.add("go"); }); });
+  leaf.addEventListener("transitionend", function (e) { if (e.target === leaf) end(); });
+  setTimeout(end, 1100);
+}
+function bkSlide(dir, dx) {   // 一頁（手機）：下一頁＝這一頁往左滑走、下面是下一頁；上一頁＝上一頁從左邊滑進來
+  BK.busy = true;
+  var k0 = BK.k, fx = BK.fx, P = BK.P + 30;
+  fx.innerHTML = "";
+  var v = bkView(dir > 0 ? k0 : k0 - 1, "s");
+  v.style.transform = "translateX(" + (dir > 0 ? Math.min(0, dx) : -P + Math.max(0, dx)) + "px)";
+  fx.appendChild(v);
+  if (dir > 0) bkGo(k0 + 1);
+  void v.offsetWidth;
+  v.classList.add("mv");
+  v.style.transform = "translateX(" + (dir > 0 ? -P : 0) + "px)";
+  var end = function () { if (v.dataset.end) return; v.dataset.end = "1"; if (dir < 0) bkGo(k0 - 1); BK.busy = false; fx.innerHTML = ""; };
+  v.addEventListener("transitionend", end);
+  setTimeout(end, 700);
+}
+
+// 點左右兩邊翻頁（會動的東西：連結、按鍵、圖、表格…照常）
+function bkClick(e) {
+  if (!BK.on || BK.busy || BK.dragged) { BK.dragged = false; return; }
+  var t = e.target;
+  if (t.closest && t.closest("a,button,input,select,textarea,label,summary,video,audio,img,canvas,[role=button],[tabindex]:not(.rbk),[contenteditable],.xlink,.ycp")) return;
+  if (window.getSelection && String(window.getSelection() || "").length) return;   // 在選字（反灰）：不翻
+  var r = BK.stage.getBoundingClientRect(), x = e.clientX - r.left, edge = BK.two ? 0.16 : 0.3;
+  if (x < r.width * edge) bkTurn(-1);
+  else if (x > r.width * (1 - edge)) bkTurn(1);
+}
+// 滾輪、觸控板：往下＝下一頁（一下翻一頁，不會一次翻好幾頁）
+function bkWheel(e) {
+  if (!BK.on || e.ctrlKey || e.metaKey) return;
+  var hz = Math.abs(e.deltaX) > Math.abs(e.deltaY), d = hz ? e.deltaX : e.deltaY;
+  if (hz && bkHScroll(e.target, d > 0 ? 1 : -1)) return;   // 很寬的表格：左右捲照常
+  e.preventDefault();
+  var now = Date.now();
+  if (now - BK.wLast > 260) BK.wAcc = 0;
+  BK.wLast = now; BK.wAcc += d;
+  if (now < BK.wB || Math.abs(BK.wAcc) < 46) return;
+  BK.wB = now + 650; var dir = BK.wAcc > 0 ? 1 : -1; BK.wAcc = 0;
+  bkTurn(dir);
+}
+// 手指左右滑：一頁的跟著手指走；兩頁的放開手指才翻
+function bkTouchStart(e) {
+  if (!BK.on || BK.busy || e.touches.length !== 1) { BK.drag = null; return; }
+  var p = e.touches[0];
+  BK.drag = { x0: p.clientX, y0: p.clientY, t0: Date.now(), dx: 0, dir: 0, v: null, k0: BK.k, tg: e.target };
+}
+function bkHScroll(t, dir) {   // t 在可以左右捲的東西裡（很寬的表格）、還捲得動（dir 1＝往右捲、-1＝往左捲）：回 true
+  for (var el = t; el && el !== BK.flow && el.nodeType === 1; el = el.parentNode) {
+    if (el.scrollWidth > el.clientWidth + 1) {
+      var ox = getComputedStyle(el).overflowX;
+      if (ox === "auto" || ox === "scroll") { var mx = el.scrollWidth - el.clientWidth; if (dir > 0 ? el.scrollLeft < mx - 1 : el.scrollLeft > 1) return true; }
+    }
+  }
+  return false;
+}
+function bkTouchMove(e) {
+  var d = BK.drag; if (!d || e.touches.length !== 1) return;
+  var p = e.touches[0], dx = p.clientX - d.x0, dy = p.clientY - d.y0;
+  if (!d.dir) {
+    if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2) { if (Math.abs(dy) > 14) BK.drag = null; return; }
+    d.dir = dx < 0 ? 1 : -1;
+    if (bkHScroll(d.tg, d.dir)) { BK.drag = null; return; }   // 在很寬的表格上左右滑：捲表格，不翻頁
+    var ok = d.dir > 0 ? BK.k + (BK.two ? 2 : 1) < BK.n : BK.k > 0;
+    if (!BK.two && ok && !reduceMotion()) {   // 一頁：準備跟著手指走的那一頁
+      BK.busy = true; BK.fx.innerHTML = "";
+      d.v = bkView(d.dir > 0 ? BK.k : BK.k - 1, "s");
+      BK.fx.appendChild(d.v);
+      if (d.dir > 0) bkGo(BK.k + 1);
+    }
+    d.ok = ok;
+  }
+  e.preventDefault();
+  d.dx = dx; BK.dragged = true;
+  if (d.v) {
+    var P = BK.P + 30;
+    d.v.style.transform = "translateX(" + (d.dir > 0 ? Math.min(0, dx) : -P + Math.max(0, dx)) + "px)";
+  }
+}
+function bkTouchEnd() {
+  var d = BK.drag; BK.drag = null;
+  if (!d || !d.dir) return;
+  setTimeout(function () { BK.dragged = false; }, 60);
+  var fast = Math.abs(d.dx) / Math.max(1, Date.now() - d.t0) > 0.45, far = Math.abs(d.dx) > BK.P * 0.22;
+  var go = (fast || far) && (d.dir > 0 ? d.dx < 0 : d.dx > 0);
+  if (!d.ok) { if (go) bkBump(d.dir); return; }
+  if (BK.two || !d.v) { if (go) { BK.busy = false; bkTurn(d.dir); } return; }
+  var v = d.v, P = BK.P + 30;
+  v.classList.add("mv");
+  var to = go ? (d.dir > 0 ? -P : 0) : (d.dir > 0 ? 0 : -P);
+  v.style.transform = "translateX(" + to + "px)";
+  var end = function () {
+    if (v.dataset.end) return; v.dataset.end = "1";
+    if (go && d.dir < 0) bkGo(d.k0 - 1);
+    if (!go && d.dir > 0) bkGo(d.k0);
+    BK.busy = false; BK.fx.innerHTML = "";
+  };
+  v.addEventListener("transitionend", end);
+  setTimeout(end, 700);
+}
+// 鍵盤：← → PageUp PageDown 空白鍵 Home End
+document.addEventListener("keydown", function (e) {
+  if (!BK.on || !BK.stage || !BK.stage.isConnected || typeof TAB === "undefined" || TAB !== "view" || e.defaultPrevented) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (document.querySelector(".lightbox, .fv, .modal, .hdrawer, .hsearch, .guardcv.on")) return;
+  var tg = e.target, typing = tg && (tg.isContentEditable || /^(input|textarea|select)$/i.test(tg.tagName || ""));
+  if (typing) return;
+  var onBtn = tg && tg.closest && tg.closest("button,a,[role=button]");
+  var k = e.key;
+  if (k === "ArrowRight" || k === "PageDown" || (k === " " && !e.shiftKey && !onBtn)) { e.preventDefault(); bkTurn(1); }
+  else if (k === "ArrowLeft" || k === "PageUp" || (k === " " && e.shiftKey && !onBtn)) { e.preventDefault(); bkTurn(-1); }
+  else if (k === "Home") { e.preventDefault(); bkGo(0); }
+  else if (k === "End") { e.preventDefault(); bkGo(BK.n - 1); }
+});
+// 視窗大小變了（手機轉方向）：書的大小由 ResizeObserver 處理；剛剛太矮改成捲動的、現在夠高了：改回翻頁
+var bkRszT = 0;
+window.addEventListener("resize", function () {
+  clearTimeout(bkRszT);
+  bkRszT = setTimeout(function () {
+    if (typeof TAB === "undefined" || TAB !== "view") return;
+    if (!BK.on && bkPref() === "book" && WV.cid && !WV.view && $(".pg .rbkt") && !$(".pg.book")) {   // 這台選翻頁、這一頁現在照捲動的看（剛剛太矮）：夠高了就換回翻頁，停在同一篇
+      if (BK.noFit === bkKey()) { if (window.innerHeight <= (BK.noFitH || 0) + 60) return; BK.noFit = ""; }
+      else if (!bkFits()) return;
+      if (!WV.tid && PW.tid) BK.keep = { key: bkKey(), k: 0, tid: PW.tid };
+      drawWeb(); return;
+    }
+    if (BK.on && !window.ResizeObserver) bkReflow();
+  }, 160);
+});
+
+/* ════════ chanim.js ════════ */
+/* ───────── 第 44 批：每章的小動畫（章的頁面最上面）─────────
+   ① 程式畫的線條動畫：藥局裡的場景（錠劑調劑、水藥調劑、覆核、發藥、藥物諮詢、疑義處方、行政事宜、法規、作業流程、急診、冷藏、問卷、藥品資訊、一般）。
+      照章名自動配（CHA_KW）；編輯器每一章可以改成「選一個」「自己上傳（GIF／APNG／WebP；短影片先轉成 WebP 動畫）」「不要」。
+   ② 用 SVG 的 SMIL 動畫：每一個東西自己的時間表（一輪 6 秒，一直重複）。
+      不動的時候（手機開了「減少動態效果」、設定「網頁動畫自動播放」關掉、按了 ⏸）停在「示意的那一格」（pt：一輪裡的第幾成）。
+   ③ 全部是程式畫的線條，沒有圖檔（不用多載東西，很輕）。內容（章名）只用來挑哪一個，不會畫進圖裡。 */
+var CHA_DUR = 6;
+function _chaA(attr, vals, kt) { return '<animate attributeName="' + attr + '" values="' + vals + '" keyTimes="' + kt + '" dur="' + CHA_DUR + 's" repeatCount="indefinite"/>'; }
+function _chaT(type, vals, kt) { return '<animateTransform attributeName="transform" type="' + type + '" values="' + vals + '" keyTimes="' + kt + '" dur="' + CHA_DUR + 's" repeatCount="indefinite"/>'; }
+function _chaD(a, b) { return _chaA("stroke-dashoffset", "1;1;0;0", "0;" + a + ";" + b + ";1"); }   // 線：a 以前看不到 → a～b 畫出來 → 留到這一輪結束
+function _chaP(d, cls, a, b, st) { return '<path class="' + cls + '" pathLength="1" stroke-dasharray="1" d="' + d + '"' + (st ? ' style="' + st + '"' : "") + ">" + _chaD(a, b) + "</path>"; }
+function _chaPop(x, y, a, inner) {   // 在 (x, y) 冒出來（a 那時候：0 → 1.15 → 1），留到這一輪結束
+  return '<g transform="translate(' + x + " " + y + ')"><g>' + _chaT("scale", "0;0;1.15;1;1", "0;" + a + ";" + (a + 0.03) + ";" + (a + 0.05) + ";1") + inner + "</g></g>";
+}
+function _chaShow(a, b) { return _chaA("opacity", "0;0;1;1", "0;" + a + ";" + b + ";1"); }   // a～b 慢慢出現
+function _chaBlink(a, b) { return _chaA("opacity", "0;0;1;1;0;0", "0;" + a + ";" + (a + 0.02) + ";" + b + ";" + (b + 0.02) + ";1"); }   // a～b 出現一下
+var CHA_FLOOR = '<path class="g" d="M14 128 H346"/>';
+function _chaPill(x, y, cls, s, e, tx, ty) {   // 一顆藥：s～e 從 (x, y) 跳進 (tx, ty)（藥袋的口），進去就看不到；這一輪結束悄悄回原位
+  var dx = tx - x, dy = ty - y, m = ((s + e) / 2).toFixed(3);
+  return "<g>" + _chaT("translate", "0 0;0 0;" + (dx / 2) + " " + (dy - 46) + ";" + dx + " " + dy + ";" + dx + " " + dy + ";0 0", "0;" + s + ";" + m + ";" + e + ";.99;1") +
+    _chaA("opacity", "1;1;0;0;1", "0;" + e + ";" + (e + 0.02).toFixed(3) + ";.99;1") +
+    '<circle class="' + cls + '" cx="' + x + '" cy="' + y + '" r="6.5" stroke="#13312F" stroke-width="2"/><path class="s2" d="M' + (x - 4) + " " + y + " H" + (x + 4) + '"/></g>';
+}
+function _chaMan(x, coat, face) {   // 一個人（半身）：x＝中間；coat：衣服的顏色 class；face：朝哪邊（1 右、-1 左）
+  return '<path class="' + coat + '" d="M' + (x - 24) + " 104 q0 -30 24 -30 q24 0 24 30 Z\"/>" +
+    '<circle class="w" cx="' + x + '" cy="52" r="15"/>' +
+    '<circle class="ink" cx="' + (x + face * 6) + '" cy="50" r="2"/>' +
+    '<path class="s2" d="M' + (x + face * 1) + " 59 q" + (face * 4) + " 3 " + (face * 8) + ' 0"/>';
+}
+
+var CHA = {
+  // ── 錠劑調劑：看處方箋 → 劃重點 → 藥一顆一顆跳進藥袋 → 打勾 ──
+  tablet: { n: "錠劑調劑（看處方、抓藥、裝袋）", pt: 0.31, svg: function () {
+    return CHA_FLOOR +
+      '<rect class="w" x="22" y="16" width="80" height="106" rx="7"/>' +
+      '<rect class="y" x="32" y="72" width="54" height="12" rx="3" opacity=".85">' + _chaA("width", "0;0;54;54", "0;.24;.30;1") + "</rect>" +
+      '<path class="cs" d="M36 28 v20 M36 28 h8 a5.5 5.5 0 0 1 0 11 h-8 M43 39 l9 9 M55 39 l8 9 M63 39 l-8 9"/>' +
+      _chaP("M36 64 H88", "s", 0.02, 0.08) + _chaP("M36 78 H82", "s", 0.08, 0.14) + _chaP("M36 92 H86", "s", 0.14, 0.2) + _chaP("M36 106 H70", "s", 0.2, 0.26) +
+      '<path class="lt" d="M118 98 L128 118 H214 L224 98 Z"/>' +
+      '<circle class="w" cx="136" cy="108" r="5" style="stroke-width:2"/><circle class="w" cx="146" cy="112" r="4.5" style="stroke-width:2"/>' +
+      _chaPill(158, 106, "c", 0.32, 0.44, 296, 58) + _chaPill(172, 109, "y", 0.46, 0.58, 296, 58) + _chaPill(186, 105, "t", 0.6, 0.72, 296, 58) +
+      "<g>" + _chaT("rotate", "0 246 66;0 246 66;-9 246 66;0 246 66;0 246 66;-9 246 66;0 246 66;0 246 66;-9 246 66;0 246 66;0 246 66", "0;.30;.33;.36;.44;.47;.50;.58;.61;.64;1") +
+      '<path class="s" d="M206 98 L246 66" style="stroke-width:5"/><path class="w" d="M194 106 l13 -10 l5 6 l-13 10 z" style="stroke-width:2.5"/></g>' +
+      '<path class="w" d="M262 50 H332 V122 H262 Z"/><path class="s" d="M262 61 H332"/>' +
+      '<rect class="t" x="271" y="71" width="52" height="14" rx="3"/>' +
+      _chaP("M284 100 l9 9 l17 -18", "cs", 0.76, 0.86);
+  } },
+  // ── 水藥調劑：藥水倒進量杯 → 到刻度（線變紅）→ 打勾 ──
+  liquid: { n: "水藥調劑（倒藥水、看刻度）", pt: 0.62, svg: function () {
+    var flow = '<path class="lq-s" d="M137 33 C150 40 166 58 172 112" stroke-dasharray="6 5">' + _chaA("stroke-dashoffset", "0;-44", "0;1") + _chaA("opacity", "0;0;1;1;0;0", "0;.08;.1;.48;.5;1") + "</path>";
+    return CHA_FLOOR +
+      '<g transform="rotate(58 104 50)"><rect class="w" x="84" y="26" width="40" height="64" rx="8"/><rect class="w" x="97" y="12" width="14" height="15" rx="2"/>' +
+      '<rect class="y" x="89" y="44" width="30" height="26" rx="3"/><path class="s2" d="M94 53 H114 M94 61 H108"/></g>' +
+      flow +
+      '<rect class="lq" x="152" y="96" width="42" height="26">' + _chaA("y", "122;122;96;96;122", "0;.1;.5;.97;1") + _chaA("height", "0;0;26;26;0", "0;.1;.5;.97;1") + "</rect>" +
+      '<path class="s" d="M148 66 L152 72 V118 a5 5 0 0 0 5 5 H189 a5 5 0 0 0 5 -5 V72 L198 66"/>' +
+      '<path class="s2" d="M152 84 H160 M152 108 H160"/>' +
+      '<path class="mk" d="M152 96 H202" stroke="#13312F" stroke-dasharray="4 3">' + _chaA("stroke", "#13312F;#13312F;#E4572E;#E4572E;#13312F", "0;.52;.55;.95;1") + "</path>" +
+      '<text class="tx" x="206" y="100">10 mL</text>' +
+      _chaP("M246 98 l6 6 l12 -13", "cs", 0.58, 0.66) +
+      '<rect class="w" x="282" y="62" width="44" height="60" rx="8"/><rect class="w" x="294" y="48" width="20" height="15" rx="3"/>' +
+      '<rect class="lq" x="285" y="90" width="38" height="29" rx="5"/><rect class="t" x="288" y="72" width="32" height="14" rx="3"/>';
+  } },
+  // ── 覆核：放大鏡一行一行看 → 每一行打勾 → 藥袋上冒出 ✓ ──
+  check: { n: "覆核（一項一項核對、打勾）", pt: 0.9, svg: function () {
+    var rows = "", ys = [40, 62, 84, 106];
+    ys.forEach(function (y, i) {
+      rows += '<rect class="w" x="114" y="' + (y - 8) + '" width="15" height="15" rx="3" style="stroke-width:2.5"/><path class="s2" d="M137 ' + y + ' H' + (198 - i * 6) + '"/>' +
+        _chaP("M116 " + (y - 1) + " l4.5 5 l8 -10", "cs", 0.12 + i * 0.18, 0.17 + i * 0.18, "stroke-width:3.5");
+    });
+    return CHA_FLOOR +
+      '<rect class="w" x="100" y="16" width="112" height="108" rx="8"/><rect class="t" x="138" y="9" width="36" height="14" rx="4"/>' + rows +
+      "<g>" + _chaT("translate", "0 0;0 0;0 22;0 22;0 44;0 44;0 66;0 66;0 0", "0;.14;.24;.32;.42;.50;.60;.86;1") +
+      '<circle class="gl" cx="222" cy="36" r="14"/><path class="s" d="M232 46 L246 60" style="stroke-width:5"/></g>' +
+      '<path class="w" d="M262 52 H330 V122 H262 Z"/><path class="s" d="M262 62 H330"/><rect class="lt" x="272" y="72" width="48" height="12" rx="3" style="stroke-width:2"/>' +
+      _chaPop(312, 98, 0.86, '<circle class="t" r="14"/><path class="ws" d="M-6 0 l4 5 l8 -10"/>') +
+      '<rect class="w" x="34" y="66" width="44" height="56" rx="8"/><rect class="c" x="42" y="54" width="28" height="13" rx="3"/><rect class="y" x="40" y="84" width="32" height="16" rx="3"/>';
+  } },
+  // ── 發藥：藥袋在櫃台上滑到病人那邊 → 病人那邊冒出 ✓ ──
+  dispense: { n: "發藥（藥袋交給病人）", pt: 0.88, svg: function () {
+    return CHA_FLOOR +
+      _chaMan(70, "tc", 1) + '<path class="ws2" d="M62 78 L70 92 L78 78"/>' + '<rect class="t" x="58" y="34" width="24" height="8" rx="3"/>' +
+      _chaMan(290, "yc", -1) +
+      '<rect class="w" x="20" y="100" width="320" height="12" rx="3"/>' +
+      "<g>" + _chaT("translate", "0 0;0 0;118 0;118 0;0 0", "0;.18;.6;.97;1") +
+      '<path class="w" d="M98 66 H136 V100 H98 Z"/><path class="s2" d="M98 74 H136"/><rect class="c" x="106" y="82" width="22" height="9" rx="2"/></g>' +
+      _chaPop(235, 50, 0.66, '<circle class="y" r="13" stroke="#13312F" stroke-width="2.5"/><path class="s" d="M-6 0 l4 5 l8 -10"/>') +
+      '<g><circle class="ink" cx="104" cy="38" r="2.5">' + _chaBlink(0.05, 0.6) + '</circle><circle class="ink" cx="112" cy="34" r="2.5">' + _chaBlink(0.12, 0.6) + '</circle><circle class="ink" cx="120" cy="30" r="2.5">' + _chaBlink(0.19, 0.6) + "</circle></g>";
+  } },
+  // ── 藥物諮詢：藥師說（💊）→ 病人問（？）→ 藥師答（✓） ──
+  counsel: { n: "藥物諮詢（對話）", pt: 0.82, svg: function () {
+    var bub = function (x, y, flip, inner, a, b) {
+      return "<g>" + _chaA("opacity", "0;0;1;1;0;0", "0;" + a + ";" + (a + 0.03) + ";" + b + ";" + (b + 0.03) + ";1") +
+        '<path class="w" d="M' + (x - 34) + " " + (y - 22) + " h68 a8 8 0 0 1 8 8 v24 a8 8 0 0 1 -8 8 h" + (flip ? "-48 l-8 10 l-2 -10" : "-10 l-8 10 l-2 -10 h-48") + " a8 8 0 0 1 -8 -8 v-24 a8 8 0 0 1 8 -8 z\"/>" + inner + "</g>";
+    };
+    return CHA_FLOOR +
+      _chaMan(60, "tc", 1) + '<path class="ws2" d="M52 78 L60 92 L68 78"/>' +
+      _chaMan(300, "yc", -1) +
+      '<rect class="w" x="96" y="98" width="168" height="12" rx="3"/><path class="s" d="M118 110 V128 M242 110 V128"/>' +
+      bub(126, 42, true, '<rect class="c" x="110" y="30" width="34" height="14" rx="7" stroke="#13312F" stroke-width="2"/><path class="s2" d="M127 30 V44"/>', 0.04, 0.34) +
+      bub(234, 42, false, '<text class="tx big" x="234" y="50" text-anchor="middle">?</text>', 0.36, 0.64) +
+      bub(126, 42, true, '<path class="cs" d="M114 37 l7 7 l14 -15"/>', 0.66, 0.96);
+  } },
+  // ── 疑義處方：處方上的 ？ 一直跳 → 打電話問醫師 → 改好打勾 ──
+  query: { n: "疑義處方（有問題就問清楚）", pt: 0.84, svg: function () {
+    return CHA_FLOOR +
+      '<rect class="w" x="110" y="16" width="86" height="106" rx="7"/>' +
+      '<path class="cs" d="M124 28 v20 M124 28 h8 a5.5 5.5 0 0 1 0 11 h-8 M131 39 l9 9 M143 39 l8 9 M151 39 l-8 9"/>' +
+      '<path class="s2" d="M124 64 H180 M124 78 H172 M124 92 H178 M124 106 H160"/>' +
+      '<rect class="y" x="121" y="72" width="56" height="12" rx="3" opacity=".7"/><path class="s2" d="M124 78 H172"/>' +
+      '<g transform="translate(222 58)"><g>' + _chaT("scale", "1;1;1.25;1;1.25;1;1;0;0", "0;.04;.12;.2;.28;.36;.6;.62;1") +
+      '<circle class="c" r="18" stroke="#13312F" stroke-width="2.5"/><text class="tx wq" x="0" y="8" text-anchor="middle">?</text></g></g>' +
+      _chaPop(222, 58, 0.64, '<circle class="t" r="18" stroke="#13312F" stroke-width="2.5"/><path class="ws" d="M-8 0 l5 6 l11 -13"/>') +
+      "<g>" + _chaT("rotate", "0 298 98;0 298 98;-10 298 98;10 298 98;-10 298 98;10 298 98;0 298 98;0 298 98", "0;.3;.34;.38;.42;.46;.5;1") +
+      '<rect class="w" x="282" y="72" width="32" height="52" rx="7"/><rect class="lt" x="287" y="80" width="22" height="32" rx="2" style="stroke-width:2"/><circle class="ink" cx="298" cy="118" r="2.2"/>' +
+      '<path class="ts" d="M292 92 a6 6 0 0 1 12 0 M296 98 h4" style="stroke-width:2.5"/></g>' +
+      '<path class="ts" d="M268 74 a16 16 0 0 1 10 -12 M260 68 a26 26 0 0 1 16 -18">' + _chaBlink(0.3, 0.52) + "</path>" +
+      '<rect class="w" x="34" y="70" width="40" height="52" rx="8"/><rect class="c" x="41" y="58" width="26" height="13" rx="3"/>';
+  } },
+  // ── 行政事宜：文件一張一張疊上來 → 蓋章 → 放進資料夾 ──
+  admin: { n: "行政事宜（文件、蓋章、歸檔）", pt: 0.66, svg: function () {
+    var sheet = function (dy, a) { return "<g>" + _chaT("translate", "0 -60;0 -60;0 0;0 0;0 -60", "0;" + a + ";" + (a + 0.06) + ";.97;1") + _chaA("opacity", "0;0;1;1;0", "0;" + a + ";" + (a + 0.03) + ";.97;1") + '<rect class="w" x="' + (100 + dy) + '" y="' + (40 + dy) + '" width="92" height="78" rx="5"/><path class="s2" d="M' + (112 + dy) + " " + (60 + dy) + " h56 M" + (112 + dy) + " " + (74 + dy) + " h64 M" + (112 + dy) + " " + (88 + dy) + ' h44"/></g>'; };
+    return CHA_FLOOR +
+      sheet(-8, 0.02) + sheet(-4, 0.1) + sheet(0, 0.18) +
+      '<circle class="stamp" cx="168" cy="100" r="13">' + _chaA("opacity", "0;0;1;1;0", "0;.42;.43;.97;1") + "</circle>" +
+      "<g>" + _chaT("translate", "0 -54;0 -54;0 0;0 0;0 -54;0 -54", "0;.32;.4;.44;.52;1") +
+      '<rect class="c" x="156" y="88" width="24" height="10" rx="2" stroke="#13312F" stroke-width="2.5"/><path class="w" d="M162 88 V70 h12 V88"/><circle class="w" cx="168" cy="64" r="8"/></g>' +
+      '<path class="yf" d="M244 56 H272 l8 10 H332 V122 H244 Z"/><path class="s" d="M244 76 H332"/>' +
+      "<g>" + _chaT("translate", "0 0;0 0;-10 -6;0 0", "0;.7;.78;1") + '<rect class="lt" x="252" y="84" width="72" height="30" rx="4" style="stroke-width:2"/><path class="s2" d="M262 96 h40 M262 104 h28"/></g>';
+  } },
+  // ── 法規：翻開的法典（字一行一行出現）＋天平輕輕擺 ──
+  law: { n: "藥師法規（法典、天平）", pt: 0.5, svg: function () {
+    var ang = "0 252 54;-8 252 54;0 252 54;8 252 54;0 252 54", kt = "0;.25;.5;.75;1";
+    return CHA_FLOOR +
+      '<path class="w" d="M40 34 q34 -10 64 4 V118 q-30 -14 -64 -4 Z"/><path class="w" d="M168 34 q-34 -10 -64 4 V118 q30 -14 64 -4 Z"/>' +
+      _chaP("M52 52 q22 -5 42 2", "s2", 0.02, 0.08) + _chaP("M52 66 q22 -5 42 2", "s2", 0.08, 0.14) + _chaP("M52 80 q22 -5 42 2", "s2", 0.14, 0.2) + _chaP("M52 94 q18 -4 30 0", "s2", 0.2, 0.26) +
+      _chaP("M116 54 q22 -7 42 -2", "s2", 0.26, 0.32) + _chaP("M116 68 q22 -7 42 -2", "s2", 0.32, 0.38) + _chaP("M116 82 q22 -7 42 -2", "s2", 0.38, 0.44) +
+      '<path class="cs" d="M131 96 l6 6 l12 -13" opacity=".9"/>' +
+      '<path class="s" d="M252 54 V118 M232 120 H272"/><circle class="y" cx="252" cy="48" r="7" stroke="#13312F" stroke-width="2.5"/>' +
+      "<g>" + _chaT("rotate", ang, kt) + '<path class="s" d="M212 54 H292" style="stroke-width:4"/></g>' +
+      "<g>" + _chaT("translate", "0 0;0 5.6;0 0;0 -5.6;0 0", kt) + '<path class="s2" d="M212 54 L200 84 M212 54 L224 84"/><path class="lt" d="M196 84 h32 a16 9 0 0 1 -32 0 z" style="stroke-width:2.5"/></g>' +
+      "<g>" + _chaT("translate", "0 0;0 -5.6;0 0;0 5.6;0 0", kt) + '<path class="s2" d="M292 54 L280 84 M292 54 L304 84"/><path class="lt" d="M276 84 h32 a16 9 0 0 1 -32 0 z" style="stroke-width:2.5"/></g>';
+  } },
+  // ── 作業流程：三個框用箭頭連起來，一個小圓點沿著流程跑 ──
+  rules: { n: "作業流程、規範（一步一步）", pt: 0.9, svg: function () {
+    return CHA_FLOOR +
+      '<rect class="w" x="24" y="46" width="76" height="46" rx="10"/><rect class="w" x="142" y="46" width="76" height="46" rx="10"/><path class="w" d="M298 36 L336 69 L298 102 L260 69 Z"/>' +
+      '<path class="s2" d="M42 64 h40 M42 76 h28 M160 64 h40 M160 76 h32"/><text class="tx" x="298" y="74" text-anchor="middle">OK</text>' +
+      _chaP("M100 69 H136", "s", 0.14, 0.24) + _chaP("M128 61 l8 8 l-8 8", "s", 0.22, 0.26) +
+      _chaP("M218 69 H254", "s", 0.44, 0.54) + _chaP("M246 61 l8 8 l-8 8", "s", 0.52, 0.56) +
+      '<circle class="c" cx="0" cy="0" r="7" stroke="#13312F" stroke-width="2">' + _chaT("translate", "62 69;62 69;180 69;180 69;258 69;258 69;62 69", "0;.1;.3;.4;.56;.97;1") + _chaA("opacity", "1;1;0;0;1", "0;.58;.62;.97;1") + "</circle>" +
+      _chaPop(62, 30, 0.08, '<circle class="y" r="10" stroke="#13312F" stroke-width="2"/><text class="tx sm" x="0" y="4" text-anchor="middle">1</text>') +
+      _chaPop(180, 30, 0.32, '<circle class="y" r="10" stroke="#13312F" stroke-width="2"/><text class="tx sm" x="0" y="4" text-anchor="middle">2</text>') +
+      _chaPop(298, 118, 0.62, '<circle class="t" r="10" stroke="#13312F" stroke-width="2"/><path class="ws" d="M-5 0 l3.5 4 l7 -8" style="stroke-width:2.5"/>');
+  } },
+  // ── 急診：救護車開進來、燈一閃一閃；旁邊心電圖一直畫 ──
+  er: { n: "急診（救護車、心電圖）", pt: 0.5, svg: function () {
+    return '<path class="g" d="M14 128 H346"/>' +
+      '<path class="g" d="M20 128 h20 M70 128 h20 M120 128 h20 M170 128 h20" stroke-dasharray="20 30">' + _chaA("stroke-dashoffset", "0;50", "0;1") + "</path>" +
+      "<g>" + _chaT("translate", "-160 0;-160 0;0 0;0 0;0 0;160 0", "0;.05;.35;.85;.85;1") + _chaA("opacity", "0;0;1;1;0;0", "0;.04;.08;.85;.9;1") +
+      '<path class="w" d="M40 70 H140 V118 H40 Z"/><path class="w" d="M140 82 H164 l14 16 V118 H140 Z"/><path class="s2" d="M150 86 h10 l8 10 h-18 Z"/>' +
+      '<path class="cs" d="M82 82 v24 M70 94 h24"/><circle class="w" cx="68" cy="120" r="10"/><circle class="w" cx="150" cy="120" r="10"/>' +
+      '<rect class="c" x="74" y="60" width="16" height="10" rx="2" stroke="#13312F" stroke-width="2">' + _chaA("fill", "#E4572E;#0B7A75;#E4572E", "0;.5;1") + "</rect></g>" +
+      '<rect class="lt" x="214" y="26" width="128" height="78" rx="10"/>' +
+      '<path class="ecg" d="M224 70 H254 l6 -14 l8 30 l8 -40 l7 24 H302 l5 -8 l5 8 H334" pathLength="1" stroke-dasharray="1">' + _chaA("stroke-dashoffset", "1;0;0;-1", "0;.45;.55;1") + "</path>";
+  } },
+  // ── 冷藏：冰箱、溫度計在 2～8 °C 那一段上下、雪花慢慢飄 ──
+  fridge: { n: "冷藏藥品（2～8 °C）", pt: 0.5, svg: function () {
+    return CHA_FLOOR +
+      '<rect class="w" x="96" y="12" width="92" height="114" rx="10"/><path class="s" d="M96 48 H188"/><path class="s" d="M174 22 v16 M174 58 v26" style="stroke-width:4"/>' +
+      '<rect class="lt" x="108" y="58" width="24" height="30" rx="4" style="stroke-width:2"/><rect class="c" x="140" y="64" width="14" height="24" rx="3" stroke="#13312F" stroke-width="2"/><rect class="y" x="112" y="96" width="44" height="18" rx="3" stroke="#13312F" stroke-width="2"/>' +
+      '<rect class="ink" x="112" y="24" width="44" height="16" rx="3"/><text class="tx dg" x="134" y="36" text-anchor="middle">2–8°C</text>' +
+      '<rect class="w" x="238" y="18" width="18" height="86" rx="9"/><circle class="w" cx="247" cy="110" r="14"/><circle class="c" cx="247" cy="110" r="9"/>' +
+      '<rect class="okb" x="261" y="58" width="12" height="26" rx="2"/><text class="tx sm" x="279" y="62">8</text><text class="tx sm" x="279" y="86">2</text>' +
+      '<rect class="c" x="243" y="64" width="8" height="42" rx="4">' + _chaA("y", "70;62;70;78;70", "0;.25;.5;.75;1") + _chaA("height", "36;44;36;28;36", "0;.25;.5;.75;1") + "</rect>" +
+      "<g>" + _chaT("translate", "0 -14;0 30", "0;1") + _chaA("opacity", "0;1;1;0", "0;.15;.8;1") + '<path class="ts" d="M48 30 v12 M43 33 l10 6 M43 39 l10 -6"/><path class="ts" d="M316 40 v12 M311 43 l10 6 M311 49 l10 -6"/></g>' +
+      "<g>" + _chaT("translate", "0 -30;0 14", "0;1") + _chaA("opacity", "0;0;1;1;0", "0;.3;.45;.85;1") + '<path class="ts" d="M66 74 v12 M61 77 l10 6 M61 83 l10 -6"/><path class="ts" d="M332 84 v12 M327 87 l10 6 M327 93 l10 -6"/></g>';
+  } },
+  // ── 問卷：鉛筆一題一題勾選 → 最後冒出一顆星 ──
+  quiz: { n: "問卷（作答）", pt: 0.9, svg: function () {
+    var q = "", ys = [42, 68, 94];
+    ys.forEach(function (y, i) {
+      q += '<path class="s2" d="M104 ' + (y - 8) + ' h' + (60 - i * 8) + '"/>';
+      [0, 1, 2].forEach(function (k) { q += '<circle class="w" cx="' + (112 + k * 26) + '" cy="' + (y + 6) + '" r="6" style="stroke-width:2"/>'; });
+      var pick = [1, 0, 2][i];
+      q += '<circle class="c" cx="' + (112 + pick * 26) + '" cy="' + (y + 6) + '" r="3.8">' + _chaA("opacity", "0;0;1;1", "0;" + (0.16 + i * 0.2) + ";" + (0.18 + i * 0.2) + ";1") + "</circle>";
+    });
+    var px = function (i) { return [1, 0, 2][i] * 26 + 112; };
+    return CHA_FLOOR +
+      '<rect class="w" x="92" y="16" width="118" height="108" rx="8"/>' + q +
+      "<g>" + _chaT("translate", "0 0;" + (px(0) - 180) + " " + (48 - 62) + ";" + (px(0) - 180) + " " + (48 - 62) + ";" + (px(1) - 180) + " " + (74 - 62) + ";" + (px(1) - 180) + " " + (74 - 62) + ";" + (px(2) - 180) + " " + (100 - 62) + ";" + (px(2) - 180) + " " + (100 - 62) + ";0 0;0 0", "0;.12;.2;.32;.4;.52;.6;.72;1") +
+      '<g transform="rotate(35 180 62)"><rect class="y" x="176" y="20" width="10" height="38" rx="2" stroke="#13312F" stroke-width="2.5"/><path class="w" d="M176 58 h10 l-5 10 z" style="stroke-width:2.5"/><rect class="c" x="176" y="14" width="10" height="7" rx="2"/></g></g>' +
+      _chaPop(266, 66, 0.74, '<path class="y" d="M0 -24 L7 -8 L24 -7 L11 4 L15 21 L0 12 L-15 21 L-11 4 L-24 -7 L-7 -8 Z" stroke="#13312F" stroke-width="2.5" stroke-linejoin="round"/>');
+  } },
+  // ── 藥品資訊：藥瓶的標籤被放大鏡掃過 → 旁邊的說明一行一行出現 ──
+  info: { n: "藥品資訊（看清楚藥的資料）", pt: 0.8, svg: function () {
+    return CHA_FLOOR +
+      '<rect class="w" x="44" y="40" width="64" height="84" rx="10"/><rect class="w" x="58" y="24" width="36" height="17" rx="3"/>' +
+      '<rect class="lt" x="50" y="62" width="52" height="40" rx="4" style="stroke-width:2"/><path class="s2" d="M58 74 h36 M58 84 h28 M58 94 h32"/>' +
+      "<g>" + _chaT("translate", "0 0;0 0;-36 0;0 0;0 0", "0;.06;.26;.42;1") + '<circle class="gl" cx="106" cy="82" r="16"/><path class="s" d="M117 94 L132 110" style="stroke-width:5"/></g>' +
+      '<rect class="w" x="170" y="22" width="166" height="96" rx="10"/>' +
+      _chaPop(194, 46, 0.3, '<circle class="t" r="12"/><text class="tx wq sm2" x="0" y="5" text-anchor="middle">i</text>') +
+      _chaP("M216 46 H316", "s2", 0.36, 0.44) + _chaP("M188 70 H310", "s2", 0.46, 0.54) + _chaP("M188 86 H296", "s2", 0.56, 0.64) + _chaP("M188 102 H262", "s2", 0.66, 0.74);
+  } },
+  // ── 一般：膠囊彈跳、旁邊亮晶晶 ──
+  pill: { n: "一般（藥丸彈跳）", pt: 0.5, svg: function () {
+    var kt = "0;.2;.4;.5;.6;.8;1";
+    return CHA_FLOOR +
+      '<ellipse class="sh" cx="180" cy="124" rx="34" ry="5">' + _chaA("rx", "34;26;18;16;18;26;34", kt) + "</ellipse>" +
+      "<g>" + _chaT("translate", "0 0;0 -26;0 -48;0 -52;0 -48;0 -26;0 0", kt) +
+      '<g transform="rotate(-24 180 100)"><path class="c" d="M152 100 a14 14 0 0 1 14 -14 h14 v28 h-14 a14 14 0 0 1 -14 -14 z" stroke="#13312F" stroke-width="3"/><path class="w" d="M180 86 h14 a14 14 0 0 1 0 28 h-14 z"/></g></g>' +
+      _chaPop(122, 52, 0.36, '<path class="y" d="M0 -10 L3 -3 L10 0 L3 3 L0 10 L-3 3 L-10 0 L-3 -3 Z"/>') +
+      _chaPop(240, 40, 0.46, '<path class="y" d="M0 -12 L3.5 -3.5 L12 0 L3.5 3.5 L0 12 L-3.5 3.5 L-12 0 L-3.5 -3.5 Z"/>') +
+      _chaPop(250, 92, 0.56, '<path class="t" d="M0 -8 L2.5 -2.5 L8 0 L2.5 2.5 L0 8 L-2.5 2.5 L-8 0 L-2.5 -2.5 Z"/>') +
+      '<path class="w" d="M54 76 H92 V122 H54 Z"/><path class="cs" d="M73 88 v22 M62 99 h22"/><rect class="t" x="58" y="64" width="30" height="12" rx="3"/>' +
+      '<rect class="lt" x="266" y="92" width="56" height="30" rx="5"/><circle class="w" cx="280" cy="102" r="5" style="stroke-width:2"/><circle class="w" cx="294" cy="102" r="5" style="stroke-width:2"/><circle class="w" cx="308" cy="102" r="5" style="stroke-width:2"/><circle class="w" cx="280" cy="114" r="5" style="stroke-width:2"/><circle class="w" cx="294" cy="114" r="5" style="stroke-width:2"/><circle class="w" cx="308" cy="114" r="5" style="stroke-width:2"/>';
+  } }
+};
+var CHA_KEYS = ["tablet", "liquid", "check", "dispense", "counsel", "query", "admin", "law", "rules", "er", "fridge", "quiz", "info", "pill"];
+// 照章名自動配（前面的先比；都不像＝一般）
+var CHA_KW = [
+  ["er", /急診|急救|急重症/],
+  ["fridge", /冷藏|冰箱|冷凍|冷鏈/],
+  ["liquid", /水藥|藥水|液劑|糖漿|口服液/],
+  ["query", /疑義|疑問|處方問題/],
+  ["check", /覆核|核對|檢核|雙人/],
+  ["dispense", /發藥|給藥|領藥|交付|取藥/],
+  ["counsel", /諮詢|衛教|用藥指導|說明會/],
+  ["law", /法規|法律|條例|法令/],
+  ["admin", /行政|事務|文書|公文|排班|請假|會議/],
+  ["quiz", /問卷|考試|測驗|考題/],
+  ["info", /藥品資訊|藥物資訊|藥品資料|藥典|仿單|資訊/],
+  ["tablet", /錠|膠囊|藥丸|粉劑|調劑|抓藥|配藥/],
+  ["rules", /規則|規範|作業|流程|SOP|標準/i]
+];
+function chAnimAuto(name) {
+  var n = String(name || ""), k = "pill";
+  CHA_KW.some(function (x) { if (x[1].test(n)) { k = x[0]; return true; } return false; });
+  return k;
+}
+function chAnimOf(c) {   // 這一章的小動畫：{ kind: "lib", key } ／ { kind: "up", b }（自己上傳的）／ null（不要、設定關掉）
+  if (!c || (typeof CFG !== "undefined" && CFG && CFG.chAnim === false)) return null;
+  var a = c.anim || null;
+  if (a && a.m === "off") return null;
+  if (a && a.m === "up" && /^https:\/\//.test(a.url || "")) return { kind: "up", b: a };
+  if (a && a.m === "lib" && CHA[a.k]) return { kind: "lib", key: a.k };
+  return { kind: "lib", key: chAnimAuto(c.name) };
+}
+function chaSvg(key, label) {
+  var s = CHA[key] || CHA.pill;
+  return '<svg class="cha-svg cha-' + key + '" viewBox="0 0 360 140" role="img" aria-label="' + esc(label || s.n) + '" focusable="false">' + s.svg() + "</svg>";
+}
+function chaSeek(svg, key, run) {   // run＝true：從頭動；false：停在示意的那一格
+  if (!svg || typeof svg.pauseAnimations !== "function") return;
+  try {
+    if (run) { svg.unpauseAnimations(); }
+    else { svg.pauseAnimations(); svg.setCurrentTime(((CHA[key] || CHA.pill).pt || 0.5) * CHA_DUR); }
+  } catch (e) { /* 不支援就算了（照樣看得到圖） */ }
+}
+// 章的頁面最上面那一塊（c＝章；o.title：章的名字給讀螢幕的軟體念）
+function chAnimEl(c) {
+  var A = chAnimOf(c); if (!A) return null;
+  if (A.kind === "up") {   // 自己上傳的：跟內容裡的「動畫檔」一樣放（會自動播、可以暫停；減少動態效果的人先停住）
+    var b = Object.assign({ t: "anim", kind: "file", cap: "" }, A.b);
+    var el = typeof webAnim === "function" ? webAnim(b, { onImg: null }) : null;
+    return el ? h("div", { class: "cha up" }, [el]) : null;
+  }
+  var run = typeof animAuto === "function" ? animAuto() : true;
+  var box = h("div", { class: "cha", "data-k": A.key, html: chaSvg(A.key, (c.name || "") + "：" + (CHA[A.key] || CHA.pill).n + "（動畫）") });
+  var bt = h("button", { class: "cha-b", type: "button" }, [""]);
+  var paint = function () { bt.textContent = run ? "⏸" : "▶"; bt.setAttribute("aria-label", run ? "暫停動畫" : "播放動畫"); bt.title = run ? "暫停" : "播放"; box.classList.toggle("still", !run); };
+  bt.onclick = function (e) { e.stopPropagation(); run = !run; chaSeek($("svg", box), A.key, run); paint(); };
+  box.appendChild(bt); paint();
+  setTimeout(function () { if (!run) chaSeek($("svg", box), A.key, false); }, 0);   // 不動的：停在示意的那一格（要先放進畫面才停得住）
+  return box;
+}
+// 翻頁動畫複製的那一份：跟原本的停在同一格（不會從頭跑）
+function chaSyncClone(from, to) {
+  var a = $$("svg.cha-svg", from), b = $$("svg.cha-svg", to);
+  b.forEach(function (s, i) { try { var t = a[i] && a[i].getCurrentTime ? a[i].getCurrentTime() : 0; s.pauseAnimations(); s.setCurrentTime(t); } catch (e) { /* 沒關係 */ } });
+}
 
 /* ════════ quiz.js ════════ */
 /* ═══════════════ quiz.js：問卷、考試（藥師在網頁上填；第 32 批）═══════════════
@@ -8262,10 +9051,10 @@ function renderTree() {
       h("div", {}, [h("div", { class: "t2" }, [c.name || "（還沒有章名）"]), h("div", { class: "t1" }, [(ED.titles[c.id] || []).length + " 個標題"])])
     ]));
     if (chosen) {
-      var tsc = ED.titles[c.id] || [], lvc = _yzTLvs_(tsc);   // 第 43 批：標題分層（像目錄：第 2、3 層往右縮；第 1 層有子標題＝粗體）
+      var tsc = ED.titles[c.id] || [], lvc = _yzTLvs_(tsc), mgc = _yzMgHosts_(tsc);   // 第 43 批：標題分層（像目錄：第 2、3 層往右縮；第 1 層有子標題＝粗體）；第 44 批：合併顯示
       tsc.forEach(function (t, k) {
-        var lv = lvc[k], hd = lv === 1 && _yzTKids_(tsc, k, lvc) > 0;
-        c1.appendChild(h("div", { class: "chT lv" + lv + (hd ? " hd" : "") + (ED.cur.kind === "title" && ED.cur.id === t.id ? " on" : ""), "data-lv": String(lv), onclick: function () { selectNode("title", t.id); } }, [t.name || "（還沒有標題）"]));
+        var lv = lvc[k], hd = lv === 1 && _yzTKids_(tsc, k, lvc) > 0, mh = mgc[t.id];
+        c1.appendChild(h("div", { class: "chT lv" + lv + (hd ? " hd" : "") + (mh ? " mg" : "") + (ED.cur.kind === "title" && ED.cur.id === t.id ? " on" : ""), "data-lv": String(lv), title: mh ? "看的時候合併到「" + (mh.name || "（還沒有標題）") + "」裡（" + (_yzMgOf_(t).at === "start" ? "放在前面" : "接在後面") + "）" : null, onclick: function () { selectNode("title", t.id); } }, [mh ? h("span", { class: "mgi", "aria-hidden": "true" }, ["⤴ "]) : null, t.name || "（還沒有標題）"]));
       });
       c1.appendChild(h("div", { style: "padding:4px 0 6px 26px" }, [btn("＋新增標題", function () { addTitle(c.id); })]));
     }
@@ -8319,13 +9108,15 @@ function renderChForm(f, c) {
   });
   f.appendChild(dz.el);
   f.appendChild(lbl("三", "章名（純文字）"));
-  var nm = h("input", { class: "in", value: c.name }); nm.oninput = function () { c.name = nm.value; markDirty(); renderTree(); refreshPreview(); }; f.appendChild(nm);
+  var nm = h("input", { class: "in", value: c.name }); nm.oninput = function () { c.name = nm.value; markDirty(); renderTree(); refreshPreview(); if (typeof c._chaRe === "function") c._chaRe(); }; f.appendChild(nm);
   f.appendChild(lbl("三", "簡介（一兩行，章元卡片上會顯示）"));
   var it = h("textarea", { class: "ta", style: "min-height:56px" }); it.value = c.intro || ""; it.oninput = function () { c.intro = it.value; changed(); }; f.appendChild(it);
   f.appendChild(hint("卡片的大小在預覽視窗裡調（所有章元共用同一個大小）。"));
+  f.appendChild(lbl("三", "小動畫（藥師打開這一章時，最上面那一小段動畫）"));   // 第 44 批
+  f.appendChild(chAnimEditor(c));
   f.appendChild(h("div", { class: "lbl" }, ["這一章的標題（" + ts.length + "）"]));
-  var lvf = _yzTLvs_(ts);   // 第 43 批：分層的往右縮
-  ts.forEach(function (t, k) { f.appendChild(h("div", { class: "chT lv" + lvf[k], style: "padding-left:" + (8 + (lvf[k] - 1) * 18) + "px;border:1px solid var(--line);border-radius:8px;margin:4px 0", onclick: function () { selectNode("title", t.id); } }, [t.name || "（還沒有標題）"])); });
+  var lvf = _yzTLvs_(ts), mgf = _yzMgHosts_(ts);   // 第 43 批：分層的往右縮；第 44 批：合併顯示（⤴）
+  ts.forEach(function (t, k) { f.appendChild(h("div", { class: "chT lv" + lvf[k] + (mgf[t.id] ? " mg" : ""), style: "padding-left:" + (8 + (lvf[k] - 1) * 18) + "px;border:1px solid var(--line);border-radius:8px;margin:4px 0", onclick: function () { selectNode("title", t.id); } }, [mgf[t.id] ? "⤴ " : "", t.name || "（還沒有標題）"])); });
   f.appendChild(h("div", { style: "display:flex;gap:6px;flex-wrap:wrap;margin-top:12px" }, [
     btn("＋新增標題", function () { addTitle(c.id); }), btn("▲ 往前移", function () { moveChapter(c.id, -1); }), btn("▼ 往後移", function () { moveChapter(c.id, 1); }),
     confirmBtn("刪除這一章", function () {
@@ -8379,6 +9170,10 @@ function renderTitleForm(f, t, ch) {
   f.appendChild(lbl("八", "📱 LINE：好幾張卡片怎麼排"));
   f.appendChild(laySeg(t, false));
 
+  // 第 44 批：合併顯示（兩個都留著，看的時候合在一起）
+  f.appendChild(lbl("九", "⤴ 合併顯示（兩篇都留著，看的時候合在一起）"));
+  f.appendChild(mgPanel(t, ch));
+
   f.appendChild(h("div", { style: "display:flex;gap:6px;flex-wrap:wrap;margin-top:14px" }, [
     btn("▲ 往前移", function () { moveTitle(t, -1); }), btn("▼ 往後移", function () { moveTitle(t, 1); }),
     btn("← 往左（上一層）", function () { lvTitle(t, -1); }, "sm tlvl"), btn("→ 往右（變子標題）", function () { lvTitle(t, 1); }, "sm tlvr"),   // 第 43 批：標題分層
@@ -8388,6 +9183,69 @@ function renderTitleForm(f, t, ch) {
   ]));
   f.appendChild(hint("分層（最多 3 層，像目錄）：「→ 往右」＝變成上一個標題的子標題；「← 往左」＝回到上一層。子標題會跟著一起動（往前移、往後移、往右、往左）；刪掉一個標題，它的子標題往上一層。"));
 }
+// 第 44 批：合併顯示（兩篇都留著，看的時候合在一起）。這一篇「併到」同一章的另一篇（主標題）：
+//   藥師看的時候（網頁、LINE、搜尋、Word 匯出），這一篇接在主標題的內容裡（上面一行小標題＝這一篇的名字），清單裡不單獨出現。
+//   編輯器裡照舊兩篇、各自改；放在主標題內容的前面或後面每次自己選（之後也可以改）；隨時可以取消。
+var MG_AT = "end";   // 合併的時候放在主標題內容的：end＝後面、start＝前面（剛剛選的）
+function mgSeg(cur, on) {   // ⬇ 接在後面／⬆ 放在前面
+  var sg = h("div", { class: "seg wseg mgat", role: "group", "aria-label": "放在主標題內容的哪裡" });
+  [["end", "⬇ 接在後面"], ["start", "⬆ 放在前面"]].forEach(function (p) {
+    var b = h("button", { type: "button", class: cur === p[0] ? "on" : "", "aria-pressed": cur === p[0] ? "true" : "false" }, [p[1]]);
+    b.onclick = function () { $$("button", sg).forEach(function (x) { var on2 = x === b; x.classList.toggle("on", on2); x.setAttribute("aria-pressed", on2 ? "true" : "false"); }); on(p[0]); };
+    sg.appendChild(b);
+  });
+  return sg;
+}
+function mgPanel(t, ch) {
+  var a = ED.titles[ch.id] || [], i = a.indexOf(t), H = _yzMgHosts_(a), host = H[t.id] || null;
+  var nm = function (x) { return "「" + (x && x.name || "（還沒有標題）") + "」"; };
+  var box = h("div", { class: "mgpanel" });
+  if (host) {   // 這一篇已經合併到別篇
+    var at = _yzMgOf_(t).at;
+    box.appendChild(h("div", { class: "mgnow" }, ["⤴ 這一篇合併到 ", h("b", {}, [nm(host)]), "：藥師看的時候（網頁、LINE、搜尋），接在它的內容" + (at === "start" ? "前面" : "後面") + "，上面一行小標題" + nm(t) + "；清單裡不會單獨出現。這裡照舊可以改內容。"]));
+    box.appendChild(h("div", { class: "mgrow" }, [h("span", { class: "muted" }, ["放在" + nm(host) + "內容的："]), mgSeg(at, function (v) {
+      if (v === "start") t.mg.at = "start"; else delete t.mg.at;
+      markDirty(); renderEdit();
+    })]));
+    box.appendChild(h("div", { class: "mgrow" }, [
+      btn("✖ 取消合併", function () { delete t.mg; markDirty(); renderEdit(); toast("已取消合併：" + nm(t) + "又是自己一篇（清單裡看得到）"); }, "sm mgoff"),
+      btn("→ 到" + nm(host), function () { selectNode("title", host.id); }, "sm")
+    ]));
+    return box;
+  }
+  var kids = a.filter(function (x) { return H[x.id] === t; });   // 併進這一篇的
+  if (kids.length) {
+    var kb = h("span", { class: "lkchips" });
+    kids.forEach(function (x) { kb.appendChild(h("button", { class: "lkchip", type: "button", onclick: function () { selectNode("title", x.id); } }, [(_yzMgOf_(x).at === "start" ? "⬆ " : "⬇ ") + (x.name || "（還沒有標題）")])); });
+    box.appendChild(h("div", { class: "mgnow" }, [h("b", {}, ["⤵ 併進這一篇的（" + kids.length + " 篇）："]), kb]));
+    box.appendChild(hint("藥師看的時候，這幾篇接在這一篇裡（⬆＝放在前面、⬇＝接在後面）。點一個可以去改，或取消合併。"));
+  }
+  var up = i > 0 ? a[i - 1] : null, upHost = up ? (H[up.id] || up) : null;   // 上一個是被併的：併到它的主標題
+  if (upHost === t) upHost = null;
+  var opts = a.filter(function (x) { return x !== t && !H[x.id]; });
+  var sel = h("select", { class: "in mgsel", "aria-label": "合併到哪一篇", style: "width:auto;max-width:100%" }, [h("option", { value: "" }, ["合併到…（選同一章的一篇）"])].concat(opts.map(function (x) { return h("option", { value: x.id }, [x.name || "（還沒有標題）"]); })));
+  var go = function (to) {
+    var hx = a.filter(function (x) { return x.id === to; })[0]; if (!hx || hx === t) return;
+    t.mg = { to: hx.id }; if (MG_AT === "start") t.mg.at = "start";
+    kids.forEach(function (x) { x.mg.to = hx.id; });   // 原本併進這一篇的：跟著到新的主標題
+    markDirty(); renderEdit();
+    toast("⤴ " + nm(t) + (kids.length ? "（和併進來的 " + kids.length + " 篇）" : "") + "合併到" + nm(hx) + "：藥師看的時候接在它的" + (MG_AT === "start" ? "前面" : "後面"));
+  };
+  sel.onchange = function () { if (sel.value) go(sel.value); };
+  box.appendChild(h("div", { class: "mgrow" }, [h("span", { class: "muted" }, ["合併的時候，放在主標題內容的："]), mgSeg(MG_AT, function (v) { MG_AT = v; })]));
+  box.appendChild(h("div", { class: "mgrow" }, [
+    upHost ? btn("⤴ 併到上一個（" + nm(upHost) + "）", function () { go(upHost.id); }, "sm pri mgup") : h("span", { class: "muted" }, ["（上面沒有可以併的）"]),
+    opts.length ? sel : null
+  ]));
+  box.appendChild(hint("兩篇都留著（這裡照舊各自改）；藥師看的時候（網頁、LINE、搜尋、Word 匯出），這一篇接在主標題的內容裡，上面一行小標題是這一篇的名字；頁數合在一起、備註接在主標題的備註後面。隨時可以取消。"));
+  return box;
+}
+// 第 44 批：預覽＝藥師看到的樣子（合併顯示的：主標題連同併進來的；被併的那一篇＝它的主標題）
+function mgViewOf(t, ch) {
+  var a = ED.titles[ch.id] || [], H = _yzMgHosts_(a), host = H[t.id] || t, v = _yzMergeView_(a);
+  return { t: v.filter(function (x) { return x.id === host.id; })[0] || t, host: host === t ? null : host, list: v };
+}
+
 // 第 27 批：這個標題的「連結」一區：這一篇連到哪裡（文字裡的「連結」行）、誰連到這一篇（自動）、＋ 加一個連結
 function linkPanel(t, ch) {
   var outBox = h("span", { class: "lkchips" }), backBox = h("span", { class: "lkchips" }), backTip = h("span", { class: "muted" });
@@ -8463,6 +9321,8 @@ function addSubTitle(t) {   // ＋ 子標題：放在這個標題（和它的子
   a.splice(edTSpan(a, i, lvs), 0, nt); markDirty(); selectNode("title", nt.id);
 }
 function edTitleDrop(a, i) {   // 刪掉第 i 個標題：它的子標題往上一層（不會掛到別人底下）
+  var gone = a[i];
+  if (gone) a.forEach(function (x) { if (x.mg && x.mg.to === gone.id) delete x.mg; });   // 第 44 批：併到它的那幾篇：又是自己一篇（不會跟著刪）
   edTLvFix(a);
   var lvs = _yzTLvs_(a), e = edTSpan(a, i, lvs);
   for (var k = i + 1; k < e; k++) { var nv = lvs[k] - 1; if (nv > 1) a[k].lv = nv; else delete a[k].lv; }
@@ -8723,7 +9583,7 @@ function edCopyTitle(t) {
   sel.value = t.ch;
   var close = modal({ title: "📋 複製這一篇", lines: ["整篇（內容、圖片、表格、備註…）複製一份，標題後面加「（複製）」。放在哪一章："], buttons: [{ label: "取消", cls: "sm" }, { label: "📋 複製", cls: "sm pri", fn: function () {
     var to = sel.value || t.ch, nt = JSON.parse(JSON.stringify(t)), a = ED.titles[to] || (ED.titles[to] = []);
-    nt.id = "t" + Date.now(); nt.ch = to; nt.name = (t.name || "") + "（複製）";
+    nt.id = "t" + Date.now(); nt.ch = to; nt.name = (t.name || "") + "（複製）"; delete nt.mg;   // 第 44 批：複製的那一份是自己一篇（不合併）
     // 第 43 批：同一章＝放在這一篇（和它的子標題）後面、同一層；別章＝放最後面、第 1 層（只複製這一篇，不含子標題）
     if (to === t.ch) { edTLvFix(a); var lvz = _yzTLvs_(a), iz = a.indexOf(t); if (lvz[iz] > 1) nt.lv = lvz[iz]; else delete nt.lv; a.splice(iz < 0 ? a.length : edTSpan(a, iz, lvz), 0, nt); }
     else { delete nt.lv; a.push(nt); }
@@ -9317,6 +10177,156 @@ function tableEditor(b, t) {
   return wrap;
 }
 
+/* ───────── 第 44 批：每章的小動畫（章元的設定）─────────
+   自動（照章名配程式畫的線條動畫）／選一個（14 個場景）／自己上傳（GIF、APNG、WebP 動畫檔；短影片 MP4、WebM、MOV 先在這裡轉成 WebP 動畫）／不要。
+   存在章元的 anim：沒有＝自動；{ m: "lib", k }；{ m: "up", url, raw, fid, poster, fmt, w, h, ar, bytes, frames, dur }；{ m: "off" }。 */
+function chAnimEditor(c) {
+  var wrap = h("div", { class: "chaE" }), seg = h("div", { class: "seg wseg chaE-seg", role: "group", "aria-label": "小動畫" }), body = h("div", { class: "chaE-b" });
+  var a = c.anim || null, mode = a && (a.m === "off" || a.m === "lib" || a.m === "up") ? a.m : "auto";
+  var pick = a && a.m === "lib" && CHA[a.k] ? a.k : chAnimAuto(c.name);
+  var up = a && a.m === "up" && a.url ? a : null;   // 自己上傳的（切到別的再切回來還在；存檔只存現在選的）
+  var stat = h("div", { class: "hint chaE-st", role: "status", "aria-live": "polite" });
+  var save = function () {
+    if (mode === "auto") delete c.anim;
+    else if (mode === "off") c.anim = { m: "off" };
+    else if (mode === "lib") c.anim = { m: "lib", k: pick };
+    else if (up) c.anim = Object.assign({ m: "up" }, up);
+    else delete c.anim;   // 選了「自己上傳」、還沒放檔案：先照章名自動配
+    changed();
+  };
+  var live = function (key) {   // 預覽（會動；開了「減少動態效果」的照樣停著）
+    var el = chAnimEl({ name: c.name, anim: { m: "lib", k: key } });
+    return el ? h("div", { class: "chaE-pv" }, [el]) : null;
+  };
+  function paint() {
+    seg.innerHTML = ""; body.innerHTML = "";
+    [["auto", "🪄 自動（照章名）"], ["lib", "👆 選一個"], ["up", "⬆️ 自己上傳"], ["off", "🚫 不要"]].forEach(function (p) {
+      seg.appendChild(h("button", { class: mode === p[0] ? "on" : "", type: "button", "aria-pressed": mode === p[0] ? "true" : "false", onclick: function () { if (mode === p[0]) return; mode = p[0]; save(); paint(); } }, [p[1]]));
+    });
+    if (CFG && CFG.chAnim === false) body.appendChild(h("div", { class: "tw note" }, ["ℹ 管理頁「網頁每章的小動畫」是關的：藥師現在看不到任何小動畫（這裡照樣可以先選好）。"]));
+    if (mode === "auto") {
+      var k = chAnimAuto(c.name);
+      body.appendChild(hint("照章名「" + (c.name || "（還沒有章名）") + "」配到：" + CHA[k].n + "。章名改了會跟著換；想固定用哪一個，按「👆 選一個」。"));
+      body.appendChild(live(k));
+    } else if (mode === "lib") {
+      var grid = h("div", { class: "chaE-g", role: "listbox", "aria-label": "選一個小動畫" });
+      CHA_KEYS.forEach(function (k) {
+        var b = h("button", { class: "chaE-i" + (k === pick ? " on" : ""), type: "button", role: "option", "aria-selected": k === pick ? "true" : "false", title: CHA[k].n, onclick: function () { pick = k; save(); paint(); } }, [h("span", { class: "chaE-t", html: chaSvg(k) }), h("span", { class: "chaE-n" }, [CHA[k].n.replace(/（.*$/, "")])]);
+        grid.appendChild(b);
+      });
+      body.appendChild(grid);
+      setTimeout(function () { $$(".chaE-t svg", grid).forEach(function (sv, i) { chaSeek(sv, CHA_KEYS[i], false); }); }, 0);   // 小圖：停在示意的那一格
+      body.appendChild(hint("現在選的：" + CHA[pick].n + "（下面是會動的樣子）"));
+      body.appendChild(live(pick));
+    } else if (mode === "up") {
+      body.appendChild(hint("放一個動畫檔（GIF、APNG、WebP），或一段短影片（MP4、WebM、MOV，最多 6 秒；會在這裡先轉成 WebP 動畫再存，聲音不留）。檔名一樣換成亂碼。畫面裡不要有病人資料、人臉。"));
+      var dz = dropZone({
+        accept: "image/gif,image/png,image/webp,video/mp4,video/webm,video/quicktime,.mov",
+        empty: "把動畫檔或短影片拖進來　／　點下面選擇檔案",
+        bad: "這不是 GIF／APNG／WebP 動畫，也不是 MP4／WebM／MOV 影片", done: "小動畫放好了（存檔名稱改成亂碼）",
+        ok: function (f) { return /^(image\/(gif|png|webp)|video\/(mp4|webm|quicktime))$/.test(f.type || "") || /\.(gif|png|apng|webp|mp4|webm|mov|m4v)$/i.test(f.name || ""); },
+        reader: function (blob, cb) {
+          if (/^video\//.test(blob.type || "") || /\.(mp4|webm|mov|m4v)$/i.test(blob.name || "")) vidToWebp(blob, function (uri, info) { stat.textContent = ""; cb(uri, info); }, function (i, n) { stat.textContent = "⏳ 影片轉成動畫：第 " + i + "／" + n + " 格…"; });
+          else readAnimFile(blob, cb);
+        },
+        get: function () { return up && up.url; }, shown: function () { return up && (up.poster || up.url); },
+        fnText: function () { return up ? animInfoText(up) + "　存檔名稱（亂碼）：" + (up.fname || "—") : ""; },
+        upload: function (uri, info) {
+          var mime = info.fmt === "gif" ? "image/gif" : info.fmt === "webp" ? "image/webp" : "image/png";
+          return uploadUri(uri.replace(/^data:[^;,]+;/, "data:" + mime + ";"), "動畫").then(function (r1) {
+            return uploadUri(info.poster, "動畫第一格").then(function (r2) {
+              up = { url: r1.raw, raw: r1.raw, fid: r1.fid, fname: r1.fname, poster: r2.url, fmt: info.fmt, bytes: info.bytes, w: info.w, h: info.h, frames: info.frames, dur: info.dur, ar: _yzAR_(info.w, info.h) };
+              save(); paint();
+            });
+          });
+        },
+        clear: function () { up = null; save(); paint(); }
+      });
+      body.appendChild(dz.el); body.appendChild(stat);
+      if (up) { var pv = chAnimEl({ name: c.name, anim: Object.assign({ m: "up" }, up) }); if (pv) body.appendChild(h("div", { class: "chaE-pv" }, [pv])); }
+      else body.appendChild(hint("還沒放檔案：藥師先看到照章名自動配的那一個。"));
+    } else body.appendChild(hint("這一章不放小動畫。"));
+  }
+  c._chaRe = function () { if (mode === "auto" && wrap.isConnected) paint(); };   // 章名改了：自動配的跟著換
+  wrap.appendChild(seg); wrap.appendChild(body); paint();
+  return wrap;
+}
+// 短影片 → WebP 動畫（最多 6 秒、每秒 8 格、寬最多 480；聲音不要）。用瀏覽器自己的解碼、編碼（Chrome、Edge、Firefox 可以；Safari 不會編 WebP：請先轉成 GIF）
+var VID_MAX_SEC = 6, VID_FPS = 8, VID_W = 480, VID_IN_MAX = 80 * 1024 * 1024;
+function vidToWebp(blob, cb, prog) {
+  if (blob.size > VID_IN_MAX) { cb(null, { error: "影片太大（" + _yzKbText_(blob.size) + "）：請先剪短（最多 6 秒）再傳。" }); return; }
+  var probe = document.createElement("canvas"); probe.width = probe.height = 2;
+  if (probe.toDataURL("image/webp").indexOf("data:image/webp") !== 0) { cb(null, { error: "這個瀏覽器不能把影片轉成動畫：請用電腦的 Chrome 或 Edge，或先把影片轉成 GIF 再傳。" }); return; }
+  var url = URL.createObjectURL(blob), v = document.createElement("video"), done = false;
+  var end = function (uri, info) { if (done) return; done = true; try { URL.revokeObjectURL(url); } catch (e) { /* 沒關係 */ } cb(uri, info); };
+  v.muted = true; v.playsInline = true; v.preload = "auto";
+  v.onerror = function () { end(null, { error: "這個影片在這個瀏覽器打不開（iPhone 的 HEVC 影片常常這樣）：請改傳 MP4（H.264），或先轉成 GIF 再傳。" }); };
+  v.onloadeddata = function () {
+    var vw = v.videoWidth, vh = v.videoHeight;
+    if (!vw || !vh || !isFinite(v.duration)) { end(null, { error: "讀不到影片的長度、大小：請改傳 MP4（H.264）或 GIF。" }); return; }
+    var dur = Math.min(v.duration, VID_MAX_SEC), n = Math.max(2, Math.floor(dur * VID_FPS)), sc = Math.min(1, VID_W / vw);
+    var w = Math.max(2, Math.round(vw * sc / 2) * 2), hh = Math.max(2, Math.round(vh * sc / 2) * 2);
+    var cv = document.createElement("canvas"); cv.width = w; cv.height = hh;
+    var g = cv.getContext("2d"), frames = [], i = 0, poster = "";
+    var grab = function () {
+      if (i >= n) { finish(); return; }
+      var t = Math.min(v.duration - 0.01, i / VID_FPS + 0.001), ok = false;
+      var on = function () {
+        if (ok) return; ok = true; v.removeEventListener("seeked", on);
+        g.fillStyle = "#fff"; g.fillRect(0, 0, w, hh); g.drawImage(v, 0, 0, w, hh);
+        if (!i) poster = cv.toDataURL("image/jpeg", 0.85);
+        cv.toBlob(function (fb) {
+          if (!fb) { end(null, { error: "轉不出來（這個瀏覽器不能編 WebP）：請先把影片轉成 GIF 再傳。" }); return; }
+          fb.arrayBuffer().then(function (ab) { frames.push(new Uint8Array(ab)); i++; if (prog) prog(i, n); grab(); }, function () { end(null, { error: "轉不出來：請再試一次。" }); });
+        }, "image/webp", 0.72);
+      };
+      v.addEventListener("seeked", on);
+      try { v.currentTime = t; } catch (e) { end(null, { error: "影片沒辦法跳到那一格：請改傳 MP4（H.264）或 GIF。" }); }
+    };
+    var finish = function () {
+      var out = webpAnim(frames, w, hh, Math.round(1000 / VID_FPS));
+      if (!out) { end(null, { error: "轉不出來：請先把影片轉成 GIF 再傳。" }); return; }
+      if (out.length > ANIM_UP_MAX) { end(null, { error: "轉出來的動畫 " + _yzKbText_(out.length) + "，超過 6 MB：請剪短一點再傳。" }); return; }
+      var bin = "", CH = 0x8000;
+      for (var k = 0; k < out.length; k += CH) bin += String.fromCharCode.apply(null, out.subarray(k, k + CH));
+      var info = sniffAnim(out.buffer);
+      info.poster = poster; info.w = w; info.h = hh; info.bytes = out.length; info.fmt = "webp";
+      end("data:image/webp;base64," + btoa(bin), info);
+    };
+    grab();
+  };
+  v.src = url;
+}
+// 好幾張 WebP（每一格）→ 一個 WebP 動畫（RIFF：VP8X＋ANIM＋每一格一個 ANMF）
+function webpAnim(frames, w, hh, ms) {
+  var u24 = function (a, p, v) { a[p] = v & 255; a[p + 1] = (v >> 8) & 255; a[p + 2] = (v >> 16) & 255; };
+  var u32 = function (a, p, v) { a[p] = v & 255; a[p + 1] = (v >> 8) & 255; a[p + 2] = (v >> 16) & 255; a[p + 3] = (v >>> 24) & 255; };
+  var tag = function (a, p, s) { for (var k = 0; k < 4; k++) a[p + k] = s.charCodeAt(k); };
+  var bodies = [];
+  for (var f = 0; f < frames.length; f++) {   // 每一格：拿出 WEBP 後面的影像 chunk（VP8／VP8L／ALPH），不要 VP8X、ICC、EXIF、XMP
+    var a = frames[f], p = 12, parts = [], len = 0;
+    if (ascii(a, 0, 4) !== "RIFF" || ascii(a, 8, 4) !== "WEBP") return null;
+    while (p + 8 <= a.length) {
+      var ty = ascii(a, p, 4), n = u32le(a, p + 4), tot = 8 + n + (n & 1);
+      if (ty === "VP8 " || ty === "VP8L" || ty === "ALPH") { parts.push(a.subarray(p, Math.min(a.length, p + tot))); len += Math.min(a.length - p, tot); }
+      p += tot;
+    }
+    if (!parts.length) return null;
+    bodies.push({ parts: parts, len: len });
+  }
+  var size = 4 + 18 + 14;
+  bodies.forEach(function (b) { size += 8 + 16 + b.len; });
+  var out = new Uint8Array(8 + size), q = 0;
+  tag(out, 0, "RIFF"); u32(out, 4, size); tag(out, 8, "WEBP"); q = 12;
+  tag(out, q, "VP8X"); u32(out, q + 4, 10); out[q + 8] = 0x02 | (bodies.some(function (b) { return b.parts.some(function (x) { return ascii(x, 0, 4) === "ALPH"; }); }) ? 0x10 : 0); u24(out, q + 12, w - 1); u24(out, q + 15, hh - 1); q += 18;
+  tag(out, q, "ANIM"); u32(out, q + 4, 6); u32(out, q + 8, 0xFFFFFFFF); out[q + 12] = 0; out[q + 13] = 0; q += 14;
+  bodies.forEach(function (b) {
+    tag(out, q, "ANMF"); u32(out, q + 4, 16 + b.len); u24(out, q + 8, 0); u24(out, q + 11, 0); u24(out, q + 14, w - 1); u24(out, q + 17, hh - 1); u24(out, q + 20, ms); out[q + 23] = 0x02; q += 24;
+    b.parts.forEach(function (x) { out.set(x, q); q += x.length; });
+  });
+  return out;
+}
+
 /* ───────── 動畫 ─────────
  * 動畫檔不能重新壓縮（壓了就不會動了）。這裡只看檔頭，認出格式、尺寸、幾格、多長；
  * 第一格另外存成一張 JPEG（LINE 卡片放不下動畫時，顯示這一張）。檔名一樣換成亂碼。 */
@@ -9685,9 +10695,11 @@ function refreshPreview() {
     return;
   }
   var t = edTitle(ED.cur.id); if (!t) return;
-  var ch = edCh(t.ch), ts = ED.titles[ch.id], i = ts.indexOf(t);
+  var ch = edCh(t.ch), mv = mgViewOf(t, ch), tv = mv.t, ts = mv.list, i = ts.indexOf(tv);   // 第 44 批：合併顯示：預覽＝藥師看到的（主標題連同併進來的）
+  if (mv.host) body.appendChild(h("div", { class: "tw note mgpv" }, ["⤴ 這一篇合併到「" + (mv.host.name || "（還沒有標題）") + "」：下面是藥師看到的樣子（在它裡面）。"]));
+  else if (tv !== t) body.appendChild(h("div", { class: "tw note mgpv" }, ["⤵ 下面是藥師看到的樣子：併進來的 " + (tv.mgs || []).length + " 篇接在裡面。"]));
   if (ED.view === "line") {
-    var r = lineCards(edChI(ch), t, { hb: edHb(), size: t.size, lay: _yzLayOf_(t, CFG), dev: true, editUrl: YZ_CFG.webUrl + "?edit=1", prev: i > 0 ? "x" : null, next: i < ts.length - 1 ? "x" : null });
+    var r = lineCards(edChI(ch), tv, { hb: edHb(), size: tv.size, lay: _yzLayOf_(tv, CFG), dev: true, editUrl: YZ_CFG.webUrl + "?edit=1", prev: i > 0 ? "x" : null, next: i < ts.length - 1 ? "x" : null });
     body.appendChild(stackOf(r.bubbles));
     r.bytes.forEach(function (by, kk) {
       var car = r.kinds && r.kinds[kk] === "carousel", nn = car ? r.bubbles[kk].contents.length : 1;
@@ -9706,14 +10718,14 @@ function refreshPreview() {
     var ni = (t.blocks || []).filter(function (b) { return b.t === "img" && b.url && !b.draw; }).length;   // 流程圖不算（存成 PNG）
     if (ni) meter.appendChild(hint("圖片 " + ni + " 張：存檔前會自動縮到最長邊 1600、轉成 JPEG（LINE 規定一張圖不能超過 1 MB）。卡片大小上限算的是網址，不是圖檔本身。"));
   } else {
-    var wd = t.ww || 760;
-    var art = webArticle(ch, t, { width: wd, onImg: lightbox, hb: edHb(), pv: true, onTitle: function () { toast("（預覽：這裡會跳到那個標題）"); }, onChapter: function () { toast("（預覽：這裡會跳到那一章）"); } });
+    var wd = tv.ww || 760;
+    var art = webArticle(ch, tv, { width: wd, onImg: lightbox, hb: edHb(), pv: true, onTitle: function () { toast("（預覽：這裡會跳到那個標題）"); }, onChapter: function () { toast("（預覽：這裡會跳到那一章）"); } });
     var box = h("div", { class: "pvweb" }, [art]);
     box.style.width = (wd + 26) + "px";
     var z = Math.min(1, (pvw - 28) / (wd + 26)); if (z < 1) box.style.zoom = z.toFixed(3);
     body.appendChild(h("div", { class: "pvwebwrap" }, [box]));
     if (z < 1) meter.appendChild(hint("這裡縮小到 " + Math.round(z * 100) + "% 顯示（實際寬度 " + wd + " px）。"));
-    meter.appendChild(h("div", { style: "margin-top:6px" }, [btn("🔍 用實際大小看", function () { bigWebPreview(ch, t); })]));
+    meter.appendChild(h("div", { style: "margin-top:6px" }, [btn("🔍 用實際大小看", function () { bigWebPreview(ch, tv); })]));
   }
 }
 function bigWebPreview(ch, t) {
@@ -11778,31 +12790,25 @@ function buildAdminPane() {
   pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px" }, [h("h2", {}, ["③ 員工名單（申請時比對：對得上的自動核可）"]), h("div", { id: "rsBox" }, [h("div", { class: "muted" }, ["載入中…"])])]));   // 第 34 批
   pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px" }, [h("h2", {}, ["④ 看過紀錄（最新的在最上面）"]), h("div", { id: "logBox" }, [h("div", { class: "muted" }, ["載入中…"])])]));
   pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px" }, [h("h2", {}, ["⑤ 🔒 我的裝置（開發者網頁綁定的）"]), h("div", { id: "devBox" }, [h("div", { class: "muted" }, ["載入中…"])])]));   // 第 34 批追加
-  pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px" }, [h("h2", {}, ["⑥ 🖥 電腦用的入口連結"]), h("div", { id: "pcBox" })]));   // 第 36 批
+  pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px", id: "pcSec", hidden: true }, [h("h2", {}, ["⑥ 🖥 電腦登入用的 cfg.js（要換一次）"]), h("div", { id: "pcBox" })]));   // 第 36 批；第 44 批：平常完全看不到，cfg.js 要換的時候才出現
   pane.appendChild(h("section", { class: "card adm", style: "margin-top:16px" }, [h("h2", {}, ["⑦ 📤 匯出給 Copilot（SharePoint 用）"]), h("div", { id: "exBox" })]));   // 第 37 批：export.js
 }
-// 第 36 批：「⑥ 🖥 電腦用的入口連結」：在電腦上打開 → 員工編號＋姓名登入（這台第一次、無痕視窗：再加 LINE 驗證碼）。連結裡沒有任何人的鑰匙
-// 第 38 批：連結縮短成「…/hb.html#短碼」。後端位置不再放在連結、也不放在 GitHub：改成加密的 cfg.js（HB_XC），只有短碼解得開。
-// 第 42 批：入口連結只有「…/hb.html」（後面不加短碼）。這台第一次用：同事在 LINE 按「🔗 複製連結」拿自己的連結（每個人、每次都不一樣）。
+// 第 36 批：「⑥ 🖥 電腦用的入口連結」。第 38 批：後端位置不放在連結、也不放在 GitHub：改成加密的 cfg.js（HB_XC），只有短碼解得開。
+// 第 43 批：短碼縮成 12 碼：cfg.js 多一把 7 碼鑰匙（HB_XC7）。
+// 第 44 批：使用者說「可以直接隱藏」：⑥ 平常完全看不到。打開管理頁時自己看一次 GitHub 上的 cfg.js：
+//   是新的＝什麼都不顯示；要換（第一次、或換了部署位置）＝才出現一行提醒＋「⬇️ 下載 cfg.js」「🔄 檢查」。
+//   同事登入電腦版＝LINE「🔗 外部連結」：🌐 網址（…/hb.html）＋🔑 12 碼短碼（cfg.js 換好以前是 28 碼，照樣能用）。
 function pcLinkBase() { return location.origin + location.pathname; }
-function pcCopyBtn(getText, label) {
-  var b = btn(label || "📋 複製", function () {
-    var t = getText(), done = function (ok) { b.textContent = ok ? "已複製 ✓" : "複製不了：自己全選複製"; setTimeout(function () { if (b.isConnected) b.textContent = label || "📋 複製"; }, 2200); };
-    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(function () { done(true); }, function () { done(false); }); return; } } catch (e) { /* 換下面的 */ }
-    done(false);
-  }, "sm pccopy");
-  return b;
-}
+function pcShow(on) { var sec = $("#pcSec"); if (sec) sec.hidden = !on; }
 function drawPcLink() {
-  var box = $("#pcBox"); if (!box) return; box.innerHTML = "";
-  box.appendChild(h("p", { class: "hint", style: "margin-top:0" }, ["入口連結（給同事）＋一個小檔 cfg.js（放到 GitHub，網站才知道後端在哪）。正在產生…"]));
-  if (!(window.crypto && crypto.subtle && typeof crypto.subtle.importKey === "function" && typeof crypto.subtle.deriveKey === "function")) { box.innerHTML = ""; box.appendChild(h("p", { class: "hint" }, ["這裡做不出加密的連結（可能是在對話裡的小框框打開，或瀏覽器太舊）。請把網頁用電腦的 Chrome 或 Safari 從正式網址打開，再到這裡拿短連結。"])); return; }
+  var box = $("#pcBox"); if (!box) return; box.innerHTML = ""; pcShow(false);
+  if (!(window.crypto && crypto.subtle && typeof crypto.subtle.importKey === "function" && typeof crypto.subtle.deriveKey === "function")) return;   // 這裡做不出加密的 cfg.js（在對話裡的小框框打開、瀏覽器太舊）：不顯示
   call("hbEntry", []).then(function (r) {
-    if (!adOk(r)) return;
-    if (!r.code || !XRE.test(r.x || X)) { box.innerHTML = ""; box.appendChild(h("p", { class: "hint" }, ["❌ 做不出來：拿不到後端位置。重新整理再試一次。"])); return; }
-    var xx = XRE.test(r.x || "") ? r.x : X, k7 = /^[a-z0-9]{7}$/.test(r.code7 || "") ? r.code7 : "";   // 第 43 批：12 碼連結的 7 碼鑰匙（舊的後端沒有）
-    Promise.all([scSeal(r.code, xx), k7 ? scSeal(k7, xx) : Promise.resolve("")]).then(function (bs) { pcDraw(box, r, bs[0], bs[1], xx); }, function (e) { box.innerHTML = ""; box.appendChild(h("p", { class: "hint" }, ["❌ 加密沒成功：" + (e && e.message || e) + "。重新整理再試一次。"])); });
-  }, function (e) { box.innerHTML = ""; box.appendChild(h("p", { class: "hint" }, ["❌ " + e.message])); });
+    if (!r || r.err || !r.code || !XRE.test(r.x || X)) return;
+    var xx = XRE.test(r.x || "") ? r.x : X, k7 = /^[a-z0-9]{7}$/.test(r.code7 || "") ? r.code7 : "";   // 第 43 批：12 碼的 7 碼鑰匙（舊的後端沒有）
+    if (!k7) return;   // 後端還是舊的：先不顯示（換好、部署以後再來就有）
+    Promise.all([scSeal(r.code, xx), scSeal(k7, xx)]).then(function (bs) { pcDraw(box, r, bs[0], bs[1], xx); }, function () { /* 做不出來：不顯示 */ });
+  }, function () { /* 不顯示 */ });
 }
 // 第 43 批：看 GitHub 上現在的 cfg.js（不用快取）：解得開 7 碼鑰匙＝新的 → resolve(true)
 function pcGhCheck(k7, xx) {
@@ -11815,51 +12821,30 @@ function pcGhCheck(k7, xx) {
 }
 function pcDraw(box, r, blob, blob7, xx) {
   box.innerHTML = "";
-  var pcl = +r.pcl || 0, on7 = !!r.on7, k7 = r.code7 || "";
-  var url = pcLinkBase();   // 第 42 批：後面不加短碼（短碼只拿來做 cfg.js；同事用 LINE「🔗 複製連結」拿自己的連結）
-  var cfg = "// 藥戰手冊：後端位置（加密）。放在 hb.html 同一層。別人看不出位置；換部署再到管理頁「⑥」重做一次。\nwindow.HB_XC = \"" + blob + "\";\n" + (blob7 ? "window.HB_XC7 = \"" + blob7 + "\";   // 第 43 批：12 碼連結用\n" : "");
-  // 第 43 批：平常收起來，只露出一行狀態（要動的時候才打開）
-  var st = h("p", { class: "pcst" + (on7 || !blob7 ? "" : " warn"), id: "pcst" }, [!blob7 ? "⚠ 後端還是舊的（第 42 批以前）：先把藥戰手冊專案的 02、03 換好、部署新版本，這裡才會出 12 碼連結。" : on7 ? "✅ 正常：GitHub 上的 cfg.js 是新的，同事在 LINE 按「🔗 複製連結」拿到的是 12 碼的短連結。" : "⏳ 要換一次 cfg.js：打開下面的「看入口連結、cfg.js」，下載 cfg.js 傳到 GitHub（同名蓋掉），1～2 分鐘後按「🔄 檢查 GitHub 上的 cfg.js」。換好以前，同事拿到的照舊是 28 碼的連結（照樣打得開）。"]);
-  var det = h("details", { class: "pcdet", id: "pcdet" }, [h("summary", {}, ["看入口連結、cfg.js（平常不用動）"])]);
-  if (!on7 && blob7) det.open = true;
-  box.appendChild(st);
-  box.appendChild(det);
-  var inp = h("input", { class: "in pcurl", readonly: true, value: url, "aria-label": "電腦用的入口連結", onclick: function () { try { this.select(); } catch (e) { /* 沒關係 */ } } });
-  det.appendChild(h("p", { class: "hint", style: "margin-top:8px" }, ["① 入口連結（給同事）：就是「…/hb.html」，後面什麼都不加。存成書籤，或貼在院內網站；用過的電腦打開就是「員工編號＋姓名」的登入畫面。"]));
-  det.appendChild(h("div", { class: "pcurlrow" }, [inp, pcCopyBtn(function () { return url; })]));
-  det.appendChild(h("p", { class: "hint", style: "margin:4px 0 0" }, ["這台電腦第一次用（或無痕視窗）：在 LINE 的「藥戰手冊」按下面那排的「🔗 複製連結」（電腦版 LINE 打「複製連結」），貼到瀏覽器打開。每個人、每次按的連結都不一樣；打開以後網址列只剩「…/hb.html」。"]));
-  if (!pcl) det.appendChild(h("p", { class: "hint", style: "margin:4px 0 0;color:#8A5A00" }, ["⚠ 後端還是舊的（同事的 LINE 還沒有「🔗 複製連結」）：先把藥戰手冊專案的 02、03 換好、部署新版本。"]));
-  var ta = h("textarea", { class: "in pccfg", readonly: true, rows: "4", "aria-label": "cfg.js 的內容", onclick: function () { try { this.select(); } catch (e) { /* 沒關係 */ } } });
-  ta.value = cfg;
+  var on7 = !!r.on7, k7 = r.code7 || "";
+  var cfg = "// 藥戰手冊：後端位置（加密）。放在 hb.html 同一層。別人看不出位置；換部署再到管理頁「⑥」重做一次。\nwindow.HB_XC = \"" + blob + "\";\nwindow.HB_XC7 = \"" + blob7 + "\";   // 第 43 批：12 碼短碼用\n";
   var dl = btn("⬇️ 下載 cfg.js", function () {
-    try { var u = URL.createObjectURL(new Blob([cfg], { type: "text/javascript" })); if (typeof exDownload === "function") exDownload(u, "cfg.js"); else { var a = h("a", { href: u, download: "cfg.js" }); document.body.appendChild(a); a.click(); a.remove(); } setTimeout(function () { URL.revokeObjectURL(u); }, 2000); } catch (e) { toast("下載不了：請全選上面的文字，自己存成 cfg.js"); }
-  }, "sm pri");
-  det.appendChild(h("p", { class: "hint", style: "margin:12px 0 2px" }, ["② 設定檔 cfg.js：上傳到 GitHub，跟 hb.html 放同一層（同名的蓋掉）。這裡面只有「加密過的後端位置」，別人看不出來。"]));
-  det.appendChild(h("div", { class: "pcurlrow" }, [ta, h("div", { style: "display:flex;flex-direction:column;gap:6px" }, [dl, pcCopyBtn(function () { return cfg; }, "📋 複製內容")])]));
+    try { var u = URL.createObjectURL(new Blob([cfg], { type: "text/javascript" })); if (typeof exDownload === "function") exDownload(u, "cfg.js"); else { var a = h("a", { href: u, download: "cfg.js" }); document.body.appendChild(a); a.click(); a.remove(); } setTimeout(function () { URL.revokeObjectURL(u); }, 2000); } catch (e) { toast("下載不了：請重新整理再試一次"); }
+  }, "sm pri pcdl");
   var ckm = h("span", { class: "hint", id: "pcckm", role: "status", "aria-live": "polite" }, [""]);
-  var ck = btn("🔄 檢查 GitHub 上的 cfg.js", function () { pcCheck(true); }, "sm");
-  if (blob7) det.appendChild(h("div", { class: "pcurlrow" }, [ck, ckm]));
-  det.appendChild(h("ul", { class: "hint", style: "margin:10px 0 0;padding-left:1.2em" }, [
-    h("li", {}, ["入口連結裡沒有後端位置、沒有短碼、也沒有任何人的鑰匙：光有連結看不到內容。同事自己的連結 10 分鐘內第一次登入不用驗證碼；其他時候，每次登入都要用手機 LINE 傳「登入」拿 6 位數驗證碼（第 43 批起不記住電腦）。"]),
-    h("li", {}, ["後端位置放在 cfg.js、而且是加密的：在 GitHub 上看不到位置。解開用的鑰匙不給任何人看，只遮過藏在每個人自己的連結裡（每條都不一樣）。換部署（位置變了）只要回來這裡，重做一次 cfg.js 傳上去。"]),
-    h("li", {}, ["第 43 批：自己的連結縮短成 12 碼（每個人、每 2 分鐘都不一樣）。cfg.js 要換一次新的（多一把 7 碼鑰匙）；換好、按了「檢查」，同事拿到的才會變 12 碼。以前拿的 28 碼連結 10 分鐘內照樣打得開。"]),
-    h("li", {}, ["以前給過同事的「…/hb.html#12 碼」固定短連結停用了：用過的電腦照常打開（網址列會自己變成 …/hb.html）；沒用過的電腦會請他到 LINE 按「🔗 複製連結」。"]),
-    h("li", {}, ["第 43 批起沒有「記住這台電腦」了：以前記住的電腦都忘掉，每次登入都要驗證（共用電腦也安全）。同一個員工編號＋姓名核可了兩個 LINE 帳號的，哪一個都可以傳「登入」拿驗證碼。"])]));
-  var pcCheck = function (say) {   // 看 GitHub 上的 cfg.js：新的＝告訴後端（開始給 12 碼）；已經開著卻變回舊的＝告訴後端先改回 28 碼
-    if (!k7 || !blob7) return;
+  var ck = btn("🔄 檢查 GitHub 上的 cfg.js", function () { pcCheck(true); }, "sm pcck");
+  box.appendChild(h("p", { class: "pcst warn", id: "pcst" }, ["⏳ 要換一次 cfg.js：按「⬇️ 下載 cfg.js」，傳到 GitHub（跟 hb.html 放同一層，同名的蓋掉），1～2 分鐘後按「🔄 檢查」。換好以前，同事在 LINE「🔗 外部連結」拿到的短碼是 28 碼（照樣能用）；換好以後是 12 碼，這一段就不再出現。"]));
+  box.appendChild(h("div", { class: "pcurlrow" }, [dl, ck, ckm]));
+  var pcCheck = function (say) {   // 看 GitHub 上的 cfg.js：新的＝告訴後端（開始給 12 碼）、這一段藏起來；已經開著卻變回舊的＝告訴後端先改回 28 碼、這一段出現
     ck.disabled = true; ckm.textContent = say ? "檢查中…" : "";
     pcGhCheck(k7, xx).then(function (good) {
       ck.disabled = false;
-      if (good === on7) { if (say) { ckm.textContent = good ? "✅ GitHub 上的 cfg.js 是新的" : "❌ GitHub 上的還是舊的 cfg.js（或還沒更新好）：確定傳上去了，等 1～2 分鐘再按一次。"; } return; }
+      if (good === on7) { pcShow(!good); if (say) ckm.textContent = good ? "✅ GitHub 上的 cfg.js 是新的" : "❌ GitHub 上的還是舊的 cfg.js（或還沒更新好）：確定傳上去了，等 1～2 分鐘再按一次。"; return; }
       call("hbEntry", [good ? 1 : -1]).then(function (r2) {
         if (!adOk(r2)) return;
-        toast(good ? "✅ cfg.js 換好了：同事在 LINE 拿到的連結從現在起是 12 碼" : "⚠ GitHub 上的 cfg.js 變回舊的了：同事拿到的連結先改回 28 碼（照樣打得開）");
+        toast(good ? "✅ cfg.js 換好了：同事在 LINE 拿到的短碼從現在起是 12 碼" : "⚠ GitHub 上的 cfg.js 不是現在這一份：同事拿到的短碼先改回 28 碼（照樣能用），請照 ⑥ 換一次");
         drawPcLink();
       }, function (e) { ckm.textContent = "❌ " + e.message; });
     });
   };
-  if (blob7) pcCheck(false);   // 打開管理頁時自己看一次（不出聲）
+  pcCheck(false);   // 打開管理頁時自己看一次（不出聲）：要換才出現
 }
+
 function adminLoad() {
   drawSettings();
   drawPcLink();   // 第 36 批
@@ -12114,7 +13099,26 @@ function drawSettings() {
   row("imgDirect", "圖片直接顯示在 LINE 卡片上", "關掉＝LINE 卡片上的圖片、目錄圖改成按鈕，要登入網頁才看得到");
   row("animDirect", "動畫直接在 LINE 卡片上播放", "關掉＝只顯示第一格＋「▶ 在網頁看動畫」按鈕");
   row("webAnimAuto", "網頁動畫自動播放", "關掉＝一律先停住，按「▶ 播放」才動（手機開了「減少動態效果」的人，一律先停住）");
+  row("chAnim", "網頁每章的小動畫", "章的頁面最上面放一小段動畫（照章名自動配，也可以在編輯器每一章自己選、自己上傳、或不要）。關掉＝都不放");   // 第 44 批
   row("lineSwipe", "LINE：好幾張卡片預設「左右滑」", "一個標題有 2 張以上卡片時，預設合成一則左右滑（關掉＝一頁一頁往下排）。每個標題可以在編輯器「📱 LINE：好幾張卡片怎麼排」自己選，自己選的優先");
+  // 第 44 批：藥戰手冊 LINE 的圖文選單（輸入框下面那條）開關。使用者說「先關閉」：部署第 44 批以後自動關一次；要再打開按這裡（或 LINE 打「圖文選單 開」）
+  var rmBox = h("span", { class: "muted", id: "rmTog", style: "font-size:12.5px" }, ["讀取中…"]);
+  box.appendChild(settingRow("LINE 圖文選單（輸入框下面那條）", "關著＝沒有那條選單（下面那排按鍵照舊）。打開＝看得到手冊的人都有：🏠 首頁、⌨️ 打字搜尋、📋 問卷、🌐 網頁。在 LINE 打「圖文選單 開」「圖文選單 關」也一樣", rmBox));
+  var rmDraw = function (x) {
+    var holder = $("#rmTog"); if (!holder) return;
+    if (!x || x.off === undefined) { holder.textContent = "（後端還沒換成第 44 批）"; return; }
+    var t = tog(!x.off, function (v, el) {
+      el.disabled = true;
+      call("hbRm", [v ? 1 : 0], { ms: 60000 }).then(function (y) {
+        el.disabled = false;
+        if (!y || y.st === "lock") { adOk(y); return; }
+        if (y.err) toast("❌ " + y.err); else toast(v ? "✅ 圖文選單打開了（看得到手冊的人都有）" : "⏸ 圖文選單關掉了（大家的都拿掉）");
+        rmDraw(y);
+      }, function (e) { el.disabled = false; toast("❌ " + e.message); });
+    }, "LINE 圖文選單");
+    t.id = "rmTog"; holder.replaceWith(t);
+  };
+  call("hbRm", []).then(rmDraw, function () { rmDraw(null); });
 }
 
 /* ════════ roster.js ════════ */
@@ -13014,7 +14018,7 @@ function exportGo(opt) {
   call("hbData", []).then(function (r) {
     if (r && r.st === "lock") { logout("expired"); throw new Error("驗證過期了，請重新登入"); }
     if (!r || !r.data) throw new Error((r && r.err) || "拿不到手冊");
-    var hb = EXP.hb = JSON.parse(JSON.stringify(r.data));
+    var hb = EXP.hb = _yzMergeHb_(JSON.parse(JSON.stringify(r.data)));   // 第 44 批：合併顯示以後的樣子（被併的那一篇接在主標題裡，跟藥師看到的一樣）
     _yzLadderNumberAll_(hb);   // 條文「接續上一段」的號碼
     EXP.info = "藥戰手冊・內容第 " + (hb.rev || 0) + " 版・匯出時間 " + stamp + "・院內資料，請勿外傳";
     EXP.dinfo = "補藥神器藥品資料・匯出時間 " + stamp + "・院內資料，請勿外傳";
