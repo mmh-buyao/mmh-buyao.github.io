@@ -1085,8 +1085,8 @@ body{min-height:100vh}
 }
 
 /* 浮水印：蓋住整頁（包括放大的圖），不擋滑鼠。第 41 批：加重（字比較粗、比較密、兩層錯開），怕用別的手機、平板拍；濃度 .11（不影響查閱） */
-.wm{position:fixed;inset:0;pointer-events:none;z-index:220;opacity:.11;background-repeat:repeat;background-position:0 0,160px 105px}
-body:not(.guard) .wm{opacity:.07}   /* 開發者在「✏️ 編輯」「👥 管理」：淡一點（不擋編輯）；看手冊的時候都是 .11 */
+.wm{position:fixed;inset:0;pointer-events:none;z-index:220;opacity:var(--wmo,.08);background-repeat:repeat;background-position:0 0,160px 105px}
+body:not(.guard) .wm{opacity:calc(var(--wmo,.08) * .65)}   /* 開發者在「✏️ 編輯」「👥 管理」：再淡一點（不擋編輯）。第 43 批：濃淡照管理頁 ② 的設定（預設「淡」.08；以前 .11） */
 
 /* 第 41 批：看手冊＝內部資料：不能選字、不能長按另存圖片（打字的框、反灰可複製照常） */
 body.guard{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -1583,3 +1583,93 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .exnext{margin:8px 0 0;padding-left:1.4em}
 .hint.warn{color:#8A5300}
 @media (prefers-reduced-motion: reduce){.exbar i{transition:none}}
+
+/* ───────── 第 43 批：標題分層（像目錄，最多 3 層）＋上面固定一條「現在讀到哪裡」───────── */
+/* 編輯器左邊的清單：第 2、3 層往右縮；第 1 層有子標題＝粗體 */
+.chT.lv2{padding-left:46px}
+.chT.lv3{padding-left:62px;font-size:12.5px}
+.chT.lv2::before,.chT.lv3::before{content:"└ ";color:#9AA5B1}
+.chT.hd:not(.on){font-weight:700;color:var(--ink)}
+/* 現在讀到哪裡：這一章第 1 層的標題排一排（太多可以左右滑），讀到的那一篇黃底；有分層的章下面一行寫現在這一篇 */
+.pg>.pgwhere{position:sticky;top:var(--mqh);z-index:29;background:rgba(14,18,20,.92);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;border-bottom:2px solid #F2C230;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.pw-row{display:flex;align-items:center;min-width:0;width:min(100%,1180px);margin:0 auto}
+.pw-ch{flex:none;max-width:34%;border:0;background:transparent;color:#F2C230;font:inherit;font-weight:900;font-size:14px;line-height:1.3;padding:8px 12px 8px max(12px,env(safe-area-inset-left,0px));cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:1px solid rgba(255,255,255,.22)}
+.pw-ch:hover{color:#FFE08A}
+.pw-l{position:relative;flex:1 1 auto;min-width:0;display:flex;align-items:center;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:5px max(8px,env(safe-area-inset-right,0px)) 5px 8px;scroll-behavior:smooth}
+.pw-l::-webkit-scrollbar{display:none}
+.pw-sep{flex:none;color:rgba(255,255,255,.38);padding:0 3px;font-size:13px}
+.pw-i{flex:none;max-width:18em;border:0;background:transparent;color:rgba(255,255,255,.86);font:inherit;font-weight:700;font-size:14px;line-height:1.3;padding:6px 11px;border-radius:7px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pw-i:hover{color:#fff;background:rgba(255,255,255,.12)}
+.pw-i.on{background:#F2C230;color:#13312F;font-weight:900}
+.pw-i:focus-visible,.pw-ch:focus-visible{outline:2px solid #F2C230;outline-offset:1px}
+.pw-sub{width:min(100%,1180px);margin:0 auto;padding:0 14px 6px;font-size:12.5px;font-weight:700;color:#F6E7B0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:1.6em;line-height:1.6em}
+@media (max-width:560px){
+  .pw-ch{max-width:40%;font-size:13px;padding:7px 9px 7px max(9px,env(safe-area-inset-left,0px))}
+  .pw-i{font-size:13px;padding:6px 9px;max-width:14em}
+  .pw-sub{padding:0 10px 5px}
+}
+@media (prefers-reduced-motion:reduce){.pw-l{scroll-behavior:auto}}
+.chsec{scroll-margin-top:calc(var(--mqh) + 60px)}
+/* 章的頁面：分層的章，目錄改直的一列（子標題往右縮）；每一篇的標題照層次變小、往右縮 */
+.chtoc.deep .chtoc-l{flex-direction:column;align-items:stretch;gap:5px}
+.chtoc.deep .chtoc-b{text-align:left;border-radius:12px;padding:6px 12px;overflow-wrap:anywhere}
+.chtoc.deep .chtoc-b.lv2{margin-left:22px;border-width:1.5px;font-size:13.5px}
+.chtoc.deep .chtoc-b.lv3{margin-left:44px;border-width:1px;font-size:13px;font-weight:600}
+.chtoc.deep .chtoc-b.lv2::before,.chtoc.deep .chtoc-b.lv3::before{content:"└ ";opacity:.6}
+.chsec.lv2{margin-left:clamp(8px,2.4vw,22px)}
+.chsec.lv3{margin-left:clamp(16px,4.8vw,44px)}
+.chsec.lv2 .chsec-h{border-bottom-width:2px}
+.chsec.lv2 .chsec-t{font-size:clamp(18px,2.9vw,22px)}
+.chsec.lv3 .chsec-h{border-bottom:2px dashed var(--pink)}
+.chsec.lv3 .chsec-t{font-size:clamp(16.5px,2.5vw,19px)}
+/* 單篇的頁面：章 › 上層的標題（點了打開） */
+.pgpath{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px}
+.pgpath .pgchip.up::before{content:"› ";opacity:.75}
+/* 第 43 批：電腦登入沒有「記住這台電腦」了；員工編號旁邊小字「英文字母大小寫都可以」 */
+.pcaa{font-weight:500;color:var(--ink2);font-size:12px;margin-left:4px}
+/* 第 43 批：管理頁 ⑥ 平常收起來：上面一行狀態（正常／要換 cfg.js），點「看入口連結、cfg.js」才打開 */
+.pcst{margin:0 0 8px;font-size:14px;line-height:1.6;color:var(--ink);overflow-wrap:anywhere}
+.pcst.warn{color:#8A5300;background:#FFF7E6;border:1px solid #F3D9A4;border-radius:10px;padding:8px 12px}
+.pcdet{border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:#FAFBFC}
+.pcdet>summary{cursor:pointer;font-weight:700;color:var(--accent);list-style-position:inside}
+.pcdet[open]>summary{margin-bottom:4px}
+/* ───────── 第 43 批：網址連結的檔案（Word、PDF、Excel、PPT、圖片）：黃色的小框；點了在手冊裡的小視窗看（只能看）───────── */
+.xlink.xfile{border-color:#E3C27A;background:#FFF8E8;color:#7A4B00}
+.xlink.xfile:hover{background:#FFF1D2;border-color:#D4A94F}
+.xlink.xfile:focus-visible{outline:3px solid rgba(180,120,0,.35);outline-offset:2px}
+.lk-r2{flex-wrap:wrap}
+.lk-k{flex:0 1 auto;width:auto;max-width:100%}
+.fv{position:fixed;inset:0;z-index:205;background:rgba(10,14,18,.62);display:flex;align-items:center;justify-content:center;padding:clamp(0px,2.4vw,28px)}
+.fv-in{position:relative;display:flex;flex-direction:column;width:min(1100px,100%);height:100%;max-height:980px;background:#E9EDF1;border-radius:14px;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+.fv-h{display:flex;align-items:center;gap:8px;padding:8px 10px 8px 14px;background:#13312F;color:#fff;flex:none;min-width:0}
+.fv-ic{font-size:20px;flex:none}
+.fv-tt{flex:1;min-width:0;display:flex;flex-direction:column}
+.fv-t{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fv-pg{font-size:12px;color:#CFE3DF;font-variant-numeric:tabular-nums;min-height:1.2em}
+.fv-zs{display:flex;gap:4px;flex:none}
+.fv .btn.sm{padding:5px 10px}
+.fv .btn.fv-z{background:#fff;color:#13312F;border:0}
+.fv .btn.fv-z:disabled{opacity:.45}
+.fv .btn.fv-x{background:#E4572E;color:#fff;border:0;font-weight:800}
+.fv-b{flex:1;min-height:0;overflow:auto;padding:14px;display:flex;flex-direction:column;align-items:flex-start;gap:14px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:pan-x pan-y pinch-zoom;overscroll-behavior:contain}
+.fv-p{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18);flex:none;position:relative;margin:0 auto}   /* 放大到比視窗寬：可以往左、往右捲（不用置中：置中會切掉左邊） */
+.fv-p:not(.on)::after{content:"…";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9AA5B1;font-size:28px}
+.fv-cv{display:block}
+.fv-ims{flex:none;margin:0 auto}
+.fv-img{display:block;max-width:none;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18);-webkit-user-drag:none;-webkit-touch-callout:none}
+.fv-m{margin:auto;text-align:center;color:#334155;padding:24px;max-width:520px;overflow-wrap:anywhere}
+.fv-m.err{color:#7F1D1D}
+.fv-e{font-weight:700;line-height:1.6}
+.fv-sp{width:34px;height:34px;margin:0 auto 10px;border-radius:50%;border:4px solid #CBD5E1;border-top-color:#0E7C66;animation:fvsp 1s linear infinite}
+@keyframes fvsp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.fv-sp{animation:none}}
+.fv-f{flex:none;padding:5px 10px;font-size:12px;color:#5F6B7A;background:#F6F8FA;text-align:center;border-top:1px solid #D7DEE5}
+@media (max-width:640px){
+  .fv{padding:0}
+  .fv-in{width:100%;max-height:none;border-radius:0}
+  .fv-h{padding-top:max(8px,env(safe-area-inset-top,0px))}
+  .fv .btn.fv-zf{display:none}
+  .fv-b{padding:8px}
+  .fv-f{padding-bottom:max(5px,env(safe-area-inset-bottom,0px))}
+}
+@media print{.fv{display:none!important}}

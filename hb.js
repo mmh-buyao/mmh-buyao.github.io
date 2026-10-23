@@ -8,6 +8,9 @@
 /* ════════ logo ════════ */
 var HB_LOGO_SVG = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"153 123 1009 1009\"><path fill=\"#064742\" fill-rule=\"evenodd\" d=\"M616.0 1094.2C567.2 1033.0 485.4 991.3 389.6 978.9C358.2 974.8 314.9 975.2 281.3 979.7L269.0 981.4L252.3 964.8C231.6 944.3 213.5 928.6 194.2 914.6C189.1 910.8 185.1 907.3 185.3 906.6C186.1 904.2 219.1 903.3 247.0 905.0C327.9 909.9 413.6 931.9 479.5 964.8C516.7 983.3 543.9 1002.2 572.3 1029.2C588.4 1044.4 596.9 1054.1 609.8 1071.4C623.4 1089.7 622.3 1088.5 624.0 1086.8C624.8 1085.9 628.0 1081.8 631.0 1077.5C669.0 1023.6 712.4 986.8 771.3 958.5C803.8 942.8 834.2 932.1 878.0 920.7C930.3 907.0 1006.5 900.1 1054.8 904.7C1062.5 905.4 1062.7 906.9 1055.6 912.0C1037.5 925.1 1003.3 954.7 987.8 970.9C982.4 976.4 977.4 981.0 976.7 981.0C976.0 981.0 969.2 980.1 961.5 979.0C885.2 968.3 802.8 981.1 733.5 1014.4C693.0 1033.8 660.8 1058.0 634.0 1088.9C628.3 1095.6 623.1 1101.0 622.5 1101.0C621.9 1101.0 618.9 1098.0 616.0 1094.2ZM609.0 1047.8C587.8 1021.0 559.6 993.7 533.3 974.6C479.2 935.2 376.1 895.9 298.0 884.9C290.0 883.8 283.1 882.4 282.5 881.9C281.9 881.3 280.3 876.1 278.9 870.2C276.8 861.8 276.5 859.2 277.5 858.2C282.0 853.3 333.9 851.8 359.0 855.8C433.7 867.9 503.3 902.4 553.0 952.0C583.5 982.4 602.9 1011.7 612.4 1041.9C615.9 1053.1 614.8 1055.1 609.0 1047.8ZM631.6 1049.1C630.5 1047.3 635.2 1028.2 641.6 1008.9C654.8 968.6 683.4 927.3 716.8 900.1C722.0 895.9 728.3 890.8 730.8 888.7C738.0 882.9 753.3 872.9 766.5 865.2C777.5 858.9 788.9 852.8 822.5 835.5C829.1 832.1 842.9 824.9 853.3 819.6L872.0 809.8L874.9 811.7C876.4 812.7 883.7 818.1 891.1 823.7C898.5 829.3 908.5 836.9 913.5 840.6C924.0 848.5 952.7 867.8 962.3 873.5C975.8 881.5 976.0 882.4 963.8 883.4C932.9 886.0 876.3 898.3 840.5 910.1C748.5 940.6 681.5 984.5 639.5 1041.8C633.5 1050.0 632.6 1050.8 631.6 1049.1ZM621.2 1008.8C619.5 994.1 615.5 975.6 611.4 962.6C607.6 950.8 594.8 923.3 588.7 913.7C584.1 906.6 584.0 905.6 588.2 906.3C590.0 906.6 595.3 907.6 600.0 908.4C632.7 914.4 669.2 903.6 689.5 881.9C703.1 867.4 709.8 851.4 708.7 836.3C707.8 823.9 702.0 814.3 689.9 805.2C671.3 791.1 643.2 782.6 587.5 774.0C550.8 768.3 528.5 759.7 514.7 745.7C495.7 726.6 495.3 699.6 513.8 675.7C519.8 667.8 528.7 660.6 541.8 653.1C558.0 643.9 595.0 629.6 597.2 631.8C599.1 633.7 592.7 642.3 578.5 657.0C567.2 668.7 563.8 672.9 560.7 679.0C552.7 695.0 552.3 711.1 559.6 725.1C567.6 740.3 582.5 748.5 619.5 758.1C659.3 768.3 681.9 776.6 696.6 786.3C708.6 794.2 709.5 791.7 698.8 780.4C691.1 772.4 681.0 765.5 668.5 759.9C664.4 758.0 661.0 755.9 661.0 755.2C661.0 753.2 666.2 749.1 668.8 749.0C670.1 749.0 675.0 750.6 679.8 752.6C710.9 765.4 730.9 784.0 738.0 806.6C744.7 828.2 739.5 852.9 724.2 872.2C721.0 876.2 709.5 888.0 698.7 898.4C687.8 908.7 676.3 920.7 673.0 924.9C654.3 948.6 640.2 974.3 630.4 1002.2C627.2 1011.5 624.1 1019.0 623.5 1019.0C622.8 1019.0 621.9 1014.8 621.2 1008.8ZM599.1 983.7C555.5 914.2 497.0 868.5 421.5 845.2C374.5 830.7 316.8 829.0 279.7 841.2C273.8 843.1 272.8 843.2 271.6 841.9C270.8 841.1 267.4 833.1 264.0 824.0C236.5 751.5 208.2 684.8 181.5 629.4C176.1 618.1 172.6 609.7 173.0 609.0C173.9 607.5 176.5 608.3 204.5 618.7C298.2 653.6 364.3 689.1 424.0 736.6C446.1 754.3 478.9 787.6 496.9 810.9C499.3 814.0 503.1 818.8 505.4 821.5C510.1 827.1 538.5 864.6 552.6 884.0C569.7 907.4 586.8 934.8 593.2 949.0C602.4 969.3 609.6 994.0 606.2 994.0C605.8 994.0 602.6 989.4 599.1 983.7ZM937.5 843.7C929.8 838.0 918.3 829.5 912.0 824.9C885.0 805.3 882.0 802.8 882.0 800.4C882.0 799.1 884.3 793.6 887.1 788.3C890.0 782.9 895.7 771.8 900.0 763.5C904.2 755.2 910.2 743.8 913.2 738.0C916.3 732.2 925.4 714.7 933.5 699.0C956.2 655.1 966.1 636.7 968.4 634.2C969.5 632.9 978.6 626.6 988.5 620.3C998.4 613.9 1008.5 607.4 1010.9 605.8C1015.6 602.7 1019.6 602.4 1021.3 605.1C1022.1 606.3 1021.7 609.2 1019.8 615.6C1013.3 638.0 1002.9 674.7 999.6 686.5C997.7 693.6 992.9 711.0 989.1 725.0C981.2 753.5 980.3 757.0 966.7 810.0C961.4 830.6 956.6 848.9 956.2 850.5C954.8 855.6 952.4 854.7 937.5 843.7ZM524.0 826.9C520.7 822.4 518.0 817.7 518.0 816.6C518.0 807.5 527.3 787.3 535.6 778.2L540.7 772.5L546.6 773.8C555.8 775.7 556.1 776.6 550.1 784.0C540.4 796.2 534.6 810.3 533.2 825.9C532.8 831.0 532.0 834.5 531.3 834.7C530.6 835.0 527.4 831.4 524.0 826.9ZM681.8 743.8C679.2 742.7 676.9 741.3 676.7 740.6C676.4 740.0 678.0 736.5 680.2 733.0C690.2 716.5 691.3 696.8 683.2 680.5C678.9 671.9 675.0 666.9 661.5 653.0C646.3 637.4 643.5 632.7 643.6 623.5C643.7 619.1 644.4 616.1 646.3 612.3C652.1 601.1 649.1 587.8 638.5 577.5C627.9 567.1 611.5 560.3 569.0 548.5C550.8 543.5 532.2 535.2 523.4 528.2C504.9 513.6 502.5 483.9 518.0 460.8C534.0 436.8 562.9 417.3 611.9 397.3C652.3 380.8 659.7 377.6 673.0 371.2C712.4 352.3 736.1 332.7 747.7 309.6C760.4 284.4 756.2 258.2 736.2 236.8C727.2 227.3 720.2 222.4 706.4 215.8C668.0 197.8 613.1 201.3 589.2 223.5C585.7 226.7 581.7 231.4 580.3 233.9C565.0 260.4 546.7 277.8 516.5 294.4C503.9 301.3 498.0 303.9 488.8 306.4C483.5 307.9 483.0 308.3 482.0 311.8C480.5 317.5 480.9 324.9 483.1 331.0C486.3 339.9 486.4 340.0 484.7 340.0C483.9 340.0 481.1 337.7 478.6 334.9C473.2 328.9 470.0 320.0 470.0 310.8C470.0 306.3 469.4 303.8 467.8 301.2C466.1 298.4 465.5 295.6 465.2 288.9C464.0 264.5 483.0 226.5 507.7 204.0C527.9 185.6 560.9 168.7 591.3 161.0C638.1 149.3 690.3 154.3 732.7 174.5C784.5 199.3 815.0 241.3 815.0 287.9C815.0 342.2 777.4 384.6 702.5 415.0C695.4 417.9 674.0 425.5 655.0 432.0C604.2 449.3 594.4 453.5 579.8 464.2C570.9 470.7 564.8 477.7 560.8 485.8C554.6 498.4 556.8 513.8 566.4 524.8C574.6 534.1 590.5 541.3 620.0 549.0C653.1 557.7 669.0 563.5 681.1 571.6C706.8 588.6 710.1 617.7 689.0 640.4C685.9 643.7 682.8 647.5 682.1 648.7C679.5 653.7 681.2 658.6 688.1 666.6C698.6 678.8 702.3 688.7 702.4 705.0C702.5 720.4 698.3 733.5 690.5 742.9C687.4 746.5 687.9 746.4 681.8 743.8ZM1122.5 688.9C1113.2 685.1 1097.4 678.6 1087.5 674.6C1041.4 655.8 1024.4 648.6 1022.8 647.1C1021.2 645.6 1021.4 644.4 1026.9 626.6C1030.0 616.1 1033.2 607.4 1033.9 607.2C1034.5 607.0 1037.6 608.7 1040.8 611.1C1049.4 617.5 1084.5 645.6 1092.6 652.4C1096.5 655.8 1105.9 663.7 1113.5 670.0C1145.7 696.8 1145.0 696.1 1141.3 695.9C1140.3 695.9 1131.8 692.8 1122.5 688.9ZM578.4 625.9C578.2 625.4 577.8 620.7 577.7 615.3C577.4 602.8 575.1 597.3 567.1 589.7C559.4 582.4 557.9 581.7 535.8 576.1C500.2 567.0 482.4 560.7 457.0 548.1C401.5 520.5 361.6 481.8 337.0 431.5C328.9 415.1 322.2 396.4 323.7 394.9C324.4 394.2 327.8 394.8 334.4 396.9C354.8 403.4 398.2 409.0 452.0 412.0C470.8 413.0 526.3 415.0 537.8 415.0C542.3 415.0 544.0 415.4 544.0 416.4C544.0 417.1 541.2 419.9 537.8 422.6C507.2 446.4 490.9 476.1 494.9 501.1C497.4 516.8 502.8 526.6 514.3 536.1C524.8 544.9 535.2 549.5 568.7 560.0C580.6 563.7 587.7 568.2 593.2 575.5C598.3 582.2 600.1 587.8 600.7 598.5C601.2 607.2 601.1 607.7 597.8 614.0C594.9 619.8 593.9 620.8 589.0 623.2C582.8 626.2 579.2 627.1 578.4 625.9ZM744.0 610.9C727.2 609.8 726.0 609.3 726.0 604.1C726.0 601.9 726.4 599.9 726.9 599.6C727.3 599.3 735.3 598.8 744.6 598.5C785.1 597.0 811.8 592.7 847.0 581.8C868.8 575.1 880.3 570.5 899.1 560.9C968.6 525.4 1017.8 466.4 1041.3 390.0C1043.8 382.0 1046.1 373.6 1046.5 371.2C1047.2 367.0 1049.2 365.6 1050.4 368.6C1051.4 371.3 1051.0 381.1 1049.5 391.5C1044.3 426.1 1027.7 462.5 1001.4 497.2C991.5 510.3 965.8 536.0 951.5 547.1C893.7 592.3 817.0 615.9 744.0 610.9ZM707.9 575.8C701.0 562.9 683.6 551.8 656.5 543.0C616.7 530.2 604.7 523.6 598.0 511.0C595.6 506.5 596.2 496.2 599.2 489.7C607.2 472.6 631.1 458.1 691.7 433.4C699.0 430.4 711.6 424.9 719.7 421.2L734.5 414.3L753.0 413.6C818.1 411.2 875.2 404.6 899.9 396.8C905.5 395.0 909.6 394.2 910.1 394.7C911.4 396.0 905.2 413.4 898.6 427.3C879.0 468.7 844.9 506.0 802.0 533.2C781.7 546.1 761.7 555.6 737.5 563.9C720.6 569.8 718.5 570.8 714.6 574.9C711.1 578.6 709.5 578.8 707.9 575.8ZM482.5 398.9C413.9 396.8 342.0 390.1 326.2 384.2C320.7 382.1 319.5 379.1 323.2 376.6C332.6 370.4 387.4 365.6 477.0 363.0C529.8 361.5 662.0 361.7 662.0 363.3C662.0 364.7 646.4 371.8 622.9 381.0C614.4 384.3 600.5 390.0 592.0 393.5L576.5 400.0L541.5 399.8C522.2 399.8 495.7 399.3 482.5 398.9ZM768.4 396.9C767.6 395.6 767.3 396.0 778.0 387.9C782.7 384.4 790.5 377.7 795.3 373.1L804.2 364.6L811.3 364.8C846.8 366.0 890.1 370.4 904.9 374.4C919.1 378.3 915.2 383.7 896.0 387.0C892.4 387.6 887.0 388.5 884.0 389.0C869.2 391.6 854.1 393.1 813.0 396.0C781.7 398.3 769.4 398.5 768.4 396.9ZM522.3 250.1C526.1 246.6 528.8 241.2 529.2 236.4C529.5 233.0 529.2 232.5 527.3 232.2C524.7 231.8 516.3 236.0 513.3 239.2C508.5 244.4 505.2 256.2 508.2 257.3C510.0 257.9 518.9 253.4 522.3 250.1Z\"/><path fill=\"#A78448\" fill-rule=\"evenodd\" d=\"M604.1 897.9C590.4 895.2 578.3 889.0 568.1 879.4C541.0 853.9 540.2 813.4 566.3 786.7L573.0 779.7L579.8 780.3C591.1 781.4 629.7 788.6 641.8 791.9C664.9 798.2 679.6 805.4 688.0 814.6C693.7 820.8 695.0 824.4 695.0 834.3C695.0 864.8 672.4 890.5 639.4 897.5C631.9 899.1 611.4 899.3 604.1 897.9ZM633.0 752.4C630.0 751.6 624.6 750.6 621.0 750.0C589.5 744.9 572.0 731.2 568.8 709.2C567.7 701.9 567.8 700.5 569.9 692.9C573.0 681.2 575.4 677.6 591.0 661.5C608.9 642.9 611.7 637.3 614.0 614.4C615.6 598.4 612.6 585.0 605.0 574.8C603.4 572.5 602.0 570.2 602.0 569.8C602.0 566.6 616.9 573.5 624.5 580.2C627.1 582.5 630.2 586.7 632.1 590.5C635.6 597.7 635.7 600.8 632.5 615.0C628.9 631.3 633.3 642.6 649.6 658.7C667.5 676.5 672.1 683.7 674.1 697.5C676.7 715.0 667.9 733.3 652.2 743.0C649.6 744.6 645.8 747.7 643.8 750.0C641.8 752.2 639.8 754.0 639.3 753.9C638.9 753.8 636.0 753.2 633.0 752.4ZM1002.6 511.2C1002.3 510.8 1003.9 508.4 1006.0 505.9C1008.1 503.4 1014.1 495.3 1019.4 487.9C1036.1 464.5 1037.3 462.8 1045.5 454.6C1062.4 437.4 1085.7 426.1 1109.1 423.4C1116.6 422.6 1116.9 423.4 1113.5 433.6C1102.0 467.5 1082.6 489.4 1053.6 501.2C1036.4 508.3 1004.6 514.5 1002.6 511.2ZM961.3 508.2C959.7 507.0 950.2 489.9 946.4 481.2C939.6 465.4 937.7 455.6 937.6 437.5C937.6 421.1 938.6 413.5 943.1 396.8C946.3 385.0 946.6 385.0 957.3 396.1C972.0 411.3 978.5 424.4 981.2 444.0C983.4 460.6 979.2 480.1 969.4 499.1C965.0 507.6 963.3 509.5 961.3 508.2ZM1014.8 420.2C999.8 399.1 990.2 379.0 984.8 357.0C982.8 348.7 982.5 345.1 982.5 328.0C982.6 310.2 982.8 307.5 985.3 297.5C989.7 279.8 994.3 265.8 995.8 265.2C998.8 264.1 1012.5 282.3 1021.5 299.2C1036.6 327.6 1039.4 359.7 1029.9 397.5C1027.6 406.8 1022.4 421.9 1020.8 423.7C1019.1 425.7 1018.4 425.3 1014.8 420.2Z\"/></svg>";   // 第 40 批：藥戰手冊的 LOGO（向量）
 
+/* ════════ pdf ════════ */
+var HB_PDF_V = "345a5b5057";   // 第 43 批：hbpdf.js、hbcmap.js 的版本（換了才重新下載）
+
 /* ════════ rt.js ════════ */
 /* rt.js — 「格式文字」：粗體、斜體、底線、刪除線、文字顏色、文字大小、標題、分隔線、標註、引用、連結到標題。
  * 存起來的就是一段普通文字，格式用方括號標記（[b]粗體[/b]、[c=red]紅字[/c]）；沒有標記的舊內容照原樣顯示。
@@ -1663,16 +1666,42 @@ function _yzMapCheck1_(cat, hb, o) {
   return out;
 }
 
-// ── 標題清單：一章一張，每個標題一行，點了開內容 ──
+// ── 第 43 批：標題分層（最多 3 層，像 Word 的標題 1／2／3；像圖二的目錄）──
+// 每個標題只記「第幾層」（lv：2、3；沒寫＝第 1 層），上下關係照順序算（跟階梯式一樣）：第 2 層掛在它上面最近的第 1 層底下……
+// 第一個一定是第 1 層；每一個最多比上一個多一層（存檔時後端也會修一次）。不自動編號（照開發者打的名字）。
+var YZ_TLV_MAX = 3;
+function _yzTLv_(t) { var n = Math.floor(Number(t && t.lv) || 1); return n >= 2 && n <= YZ_TLV_MAX ? n : 1; }
+function _yzTLvs_(ts) {   // 一章的標題 → 修正過的層級，例如 [1, 2, 2, 3, 1]
+  var out = [], prev = 0;
+  (ts || []).forEach(function (t) { var lv = Math.min(_yzTLv_(t), prev + 1); out.push(lv); prev = lv; });
+  return out;
+}
+function _yzTPath_(ts, t) {   // 這個標題的上層（第 1 層在前）：[第 1 層, 第 2 層]；沒有上層＝[]
+  var i = (ts || []).indexOf(t); if (i < 0) return [];
+  var lvs = _yzTLvs_(ts), want = lvs[i] - 1, out = [];
+  for (var k = i - 1; k >= 0 && want >= 1; k--) if (lvs[k] === want) { out.unshift(ts[k]); want--; }
+  return out;
+}
+function _yzTKids_(ts, i, lvs) {   // 第 i 個標題底下有幾個（子標題、孫標題）＝緊接在後面、層級比它大的
+  lvs = lvs || _yzTLvs_(ts);
+  var n = 0;
+  for (var k = i + 1; k < lvs.length && lvs[k] > lvs[i]; k++) n++;
+  return n;
+}
+function _yzTDeep_(ts) { return _yzTLvs_(ts).some(function (v) { return v > 1; }); }   // 這一章有沒有分層
+
+// ── 標題清單：一章一張，每個標題一行，點了開內容（第 43 批：有分層的，往右縮；第 1 層有子標題的用粗體）──
 function _yzTitleListBubble_(ch, titles, o) {
   o = o || {};
-  var rows = [];
+  var rows = [], lvs = _yzTLvs_(titles);
   titles.forEach(function (t, i) {
+    var lv = lvs[i], head = lv === 1 && _yzTKids_(titles, i, lvs) > 0;
     if (i > 0) rows.push({ type: "separator", color: "#E3E7EC" });
     rows.push({
-      type: "box", layout: "horizontal", paddingAll: "10px", spacing: "sm", action: _yzPB_("yz=t&t=" + t.id, "打開"),
+      type: "box", layout: "horizontal", paddingAll: "10px", paddingStart: lv > 1 ? (10 + (lv - 1) * 16) + "px" : "10px", spacing: "sm", action: _yzPB_("yz=t&t=" + t.id, "打開"),
       contents: [
-        { type: "text", text: t.name, size: "sm", wrap: true, color: "#1F1F1F", flex: 1 },
+        lv > 1 ? { type: "text", text: "└", size: "xs", color: "#9AA5B1", flex: 0, gravity: "center" } : null,
+        { type: "text", text: t.name, size: lv > 2 ? "xs" : "sm", weight: head ? "bold" : "regular", wrap: true, color: lv > 1 ? "#334155" : "#1F1F1F", flex: 1 },
         _yzPageShort_(t.page) ? { type: "text", text: _yzPageShort_(t.page), size: "xxs", color: "#8A6D00", flex: 0, gravity: "center" } : null,
         { type: "text", text: "›", size: "lg", color: YZ_ACCENT, flex: 0, gravity: "center" }
       ].filter(Boolean)
@@ -1957,17 +1986,41 @@ function _yzLinkFix_(v) {   // → 合格的網址（http(s)://網站…，沒�
 function _yzLinkHost_(u) { var m = /^https?:\/\/([^\/?#:]+)/i.exec(String(u || "")); return m ? m[1].replace(/^www\./i, "").toLowerCase() : ""; }
 function _yzLinkItems_(b) { return (b && Array.isArray(b.items) ? b.items : []).filter(function (x) { return x && _yzLinkFix_(x.u); }).slice(0, YZ_LINK_MAX); }
 function _yzLinkLabel_(x) { return String(x && x.t || "").replace(/\s+/g, " ").trim() || _yzLinkHost_(_yzLinkFix_(x && x.u)) || "網站"; }
-function _yzLinkNodes_(b) {
+// 第 43 批：網址連結指到檔案（Word、PDF、Excel、PPT、圖片；Google 文件、試算表、簡報、雲端硬碟的檔）→ 網頁在手冊裡的小視窗看（只能看：不能下載、不能列印、有浮水印）；
+//   LINE 點了打開網頁的那個小視窗（不給原本的網址）。每一個連結的「開法」k：""＝自動（看網址）、"file"＝一定當檔案看、"web"＝一定開網頁（新視窗）。
+var YZ_FILE_EXT = { pdf: "pdf", doc: "word", docx: "word", odt: "word", rtf: "word", txt: "word", xls: "excel", xlsx: "excel", ods: "excel", csv: "excel", ppt: "ppt", pptx: "ppt", odp: "ppt", png: "img", jpg: "img", jpeg: "img", gif: "img", webp: "img", bmp: "img" };
+var YZ_FILE_ICO = { pdf: "📕", word: "📘", excel: "📗", ppt: "📙", img: "🖼", file: "📄" };
+var YZ_FILE_NAME = { pdf: "PDF", word: "Word", excel: "Excel", ppt: "PPT", img: "圖片", file: "檔案" };
+function _yzLinkFileKind_(x) {   // → "pdf"／"word"／"excel"／"ppt"／"img"／"file"（看不出是哪一種的檔）／""＝網頁
+  var u = _yzLinkFix_(x && x.u), k = x && x.k;
+  if (!u || k === "web") return "";
+  var m = /^https?:\/\/(?:docs|drive)\.google\.com\/(document|spreadsheets|presentation|file)\/(?:u\/\d+\/)?d\//i.exec(u);
+  if (m) return m[1] === "document" ? "word" : m[1] === "spreadsheets" ? "excel" : m[1] === "presentation" ? "ppt" : "file";
+  if (/^https?:\/\/drive\.google\.com\/(open|uc)\?/i.test(u) && /[?&]id=/i.test(u)) return "file";
+  var e = (/\.([A-Za-z0-9]{2,5})$/.exec(u.split(/[?#]/)[0]) || [])[1], t = e ? YZ_FILE_EXT[e.toLowerCase()] : "";
+  return t || (k === "file" ? "file" : "");
+}
+function _yzLinkTag_(u) {   // 網址的小指紋（手冊改過、連結換了位置也找得到同一個檔）
+  var h = 0x811c9dc5, s = String(u || "");
+  for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(36);
+}
+function _yzLinkNodes_(b, ctx) {
+  ctx = ctx || {};
   return _yzLinkItems_(b).map(function (x, i) {
-    var u = _yzLinkFix_(x.u), lab = _yzLinkLabel_(x), n = String(x.n || "").replace(/\s+/g, " ").trim(), sub = _yzLinkHost_(u) + (n ? "｜" + n : "");
-    return { type: "box", layout: "horizontal", spacing: "md", margin: i ? "sm" : "md", paddingAll: "11px", cornerRadius: "10px", borderWidth: "1px", borderColor: "#A9C7E8", backgroundColor: "#F2F7FD",
-      action: { type: "uri", label: lab.substring(0, 20), uri: u },
+    var u = _yzLinkFix_(x.u), lab = _yzLinkLabel_(x), n = String(x.n || "").replace(/\s+/g, " ").trim(), fk = _yzLinkFileKind_(x);
+    var sub = fk ? YZ_FILE_NAME[fk] + "｜在手冊網頁看（只能看）" + (n ? "｜" + n : "") : _yzLinkHost_(u) + (n ? "｜" + n : "");
+    var fu = fk && ctx.furl ? ctx.furl(b, i, _yzLinkTag_(u)) : "";   // 檔案：點了開網頁的小視窗（不給原本的網址）；沒有網頁連結（編輯器的預覽）＝不能點
+    var box = { type: "box", layout: "horizontal", spacing: "md", margin: i ? "sm" : "md", paddingAll: "11px", cornerRadius: "10px", borderWidth: "1px", borderColor: fk ? "#E3C27A" : "#A9C7E8", backgroundColor: fk ? "#FFF8E8" : "#F2F7FD",
       contents: [
-        { type: "text", text: "🌐", flex: 0, size: "lg", gravity: "center" },
+        { type: "text", text: fk ? YZ_FILE_ICO[fk] : "🌐", flex: 0, size: "lg", gravity: "center" },
         { type: "box", layout: "vertical", flex: 1, spacing: "xs", contents: [
-          { type: "text", text: lab.substring(0, 60), size: "sm", weight: "bold", color: "#174A84", wrap: true },
+          { type: "text", text: lab.substring(0, 60), size: "sm", weight: "bold", color: fk ? "#7A4B00" : "#174A84", wrap: true },
           { type: "text", text: sub.substring(0, 160), size: "xxs", color: "#5F6B7A", wrap: true }] },
-        { type: "text", text: "↗", flex: 0, size: "md", weight: "bold", color: "#174A84", gravity: "center" }] };
+        { type: "text", text: fk ? "›" : "↗", flex: 0, size: "md", weight: "bold", color: fk ? "#7A4B00" : "#174A84", gravity: "center" }] };
+    if (!fk) box.action = { type: "uri", label: lab.substring(0, 20), uri: u };
+    else if (fu) box.action = { type: "uri", label: lab.substring(0, 20), uri: fu };
+    return box;
   });
 }
 function _yzLinkLines_(b) {   // 搜尋、Word 匯出、AI 出題用的字：「名稱：網址（說明）」
@@ -1983,7 +2036,7 @@ function _yzBlockNodes_(b, act, bs, ctx) {
   if (b.t === "img") { var y = b.draw ? _yzDrawImage_(b, act ? act(b) : null) : _yzImage_(b, act ? act(b) : null); return y ? [y] : []; }   // 第 40 批：流程圖
   if (b.t === "anim" && b.kind !== "steps") { var z = _yzAnimFile_(b, { act: act ? act(b) : null, used: ctx.used, tid: ctx.tid }); return z ? [z] : []; }
   if (b.t === "drug") return _yzDrugNodes_(b, ctx);   // 第 29 批：藥品卡片（LINE 收起來）
-  if (b.t === "link") return _yzLinkNodes_(b);   // 第 40 批（一起做的）：網址連結
+  if (b.t === "link") return _yzLinkNodes_(b, ctx);   // 第 40 批（一起做的）：網址連結；第 43 批：檔案的連結開網頁的小視窗（ctx.furl）
   return [];   // 分步動畫（steps）不放在文字卡裡，由 _yzContentBubbles_ 另外做成一排卡片
 }
 function _yzContentBubble_(ch, ti, nodes, note, o) {
@@ -2003,7 +2056,7 @@ function _yzContentBubble_(ch, ti, nodes, note, o) {
   ].filter(Boolean) });
   foot.push(_yzFoot_());
   var part = o.parts > 1 ? "（第 " + o.part + "／" + o.parts + " 張）" : "";
-  var top = "📘 藥戰手冊　" + (ch.ico ? ch.ico + " " : "") + ch.name;
+  var top = "📘 藥戰手冊　" + (ch.ico ? ch.ico + " " : "") + ch.name + (o.path && o.path.length ? " › " + o.path.join(" › ") : "");   // 第 43 批：分層的標題：上層也寫出來
   var hero = !o.part || o.part === 1 ? _yzThemeHero_(ch, top, ti.name, part || null, "20:7") : null;   // 第一張：主題圖；後面幾張：青綠色那條就好（省空間）
   return _yzTopOf_({
     type: "bubble", size: o.size || ti.size || "giga",
@@ -2035,7 +2088,7 @@ function _yzContentBubbles_(ch, ti, blocks, note, o) {
   var segs = [{ nodes: [] }], used = { n: 0 };   // used：已經放了幾張「會自己動」的圖（LINE 一則訊息最多 10 張，整個標題一起算比較保守）
   var cur = function () { return segs[segs.length - 1]; };
   var hasNote = !!_yzNote_(note, ti.page);
-  var probe = function (nodes, last) { return _yzBytes_(_yzContentBubble_(ch, ti, nodes, note, { size: o.size, dev: o.dev, editUrl: o.editUrl, prev: o.prev, next: o.next, parts: 9, part: 9, noteOn: !!last, back: last ? back : null })); };
+  var probe = function (nodes, last) { return _yzBytes_(_yzContentBubble_(ch, ti, nodes, note, { size: o.size, dev: o.dev, editUrl: o.editUrl, prev: o.prev, next: o.next, parts: 9, part: 9, noteOn: !!last, back: last ? back : null, path: o.path })); };
   var bs = o.size || ti.size || "giga";
   // 「連結到標題」的行：用標題代號找到標題，按鈕上寫「章名　標題名」（同一章就只寫標題名）；找不到（被刪了）就不顯示
   var goFn = o.hb ? function (id) { return _yzGoTarget_(o.hb, id, ch.id); } : null;
@@ -2057,7 +2110,7 @@ function _yzContentBubbles_(ch, ti, blocks, note, o) {
       segs.push({ steps: sb }); segs.push({ nodes: [] });
       return;
     }
-    var nodes = _yzIndentNodes_(_yzBlockNodes_(b, act, bs, { used: used, tid: ti.id, go: goFn, pact: pact }), _yzBlockInd_(b) * YZ_IND_PX);   // 整塊縮排（編輯器每一塊的 ⇤ ⇥）
+    var nodes = _yzIndentNodes_(_yzBlockNodes_(b, act, bs, { used: used, tid: ti.id, go: goFn, pact: pact, furl: o.furl }), _yzBlockInd_(b) * YZ_IND_PX);   // 整塊縮排（編輯器每一塊的 ⇤ ⇥）
     // 一個內容塊平常整塊放；階梯式內容常常很長，可以在「一條」和「一條」之間拆開；
     // 文字塊只有「自己一個就放不下」才一行一行拆。
     var units = [nodes];
@@ -2086,7 +2139,7 @@ function _yzContentBubbles_(ch, ti, blocks, note, o) {
   segs.forEach(function (sg, i) {
     var lastOne = i === parts - 1;
     if (sg.steps) { flat = flat.concat(sg.steps); groups.push(sg.steps); return; }
-    var cb = _yzContentBubble_(ch, ti, sg.nodes, note, { size: o.size, dev: o.dev && lastOne, editUrl: o.editUrl, prev: i === 0 ? o.prev : null, next: lastOne ? o.next : null, parts: parts, part: i + 1, noteOn: lastOne, back: lastOne ? back : null });
+    var cb = _yzContentBubble_(ch, ti, sg.nodes, note, { size: o.size, path: o.path, dev: o.dev && lastOne, editUrl: o.editUrl, prev: i === 0 ? o.prev : null, next: lastOne ? o.next : null, parts: parts, part: i + 1, noteOn: lastOne, back: lastOne ? back : null });
     flat.push(cb); groups.push([cb]);
   });
   // 第 28 批：兩張以上 → 一則「左右滑」的卡片（carousel，照順序：內容、分步動畫的每一步）。一排最多 12 張、一則不超過 YZ_MSG_SAFE；放不下就接下一則
@@ -2871,12 +2924,15 @@ var CFGX = ""; try { if (typeof window.HB_X === "string" && XRE.test(window.HB_X
 //   前 16 碼＝這一條的號碼（後端認得是誰、什麼時候拿的：10 分鐘內第一次登入不用驗證碼），後 12 碼＝cfg.js 的鑰匙遮過（用前 16 碼拿掉遮的）。
 //   一打開就把短碼從網址列拿掉（只剩 …/hb.html），解出後端位置就記在這台（存成書籤、重新整理都可以）。
 //   以前管理頁給的「…/hb.html#12 碼」固定短連結停用了（用過的這台照常打開）。
-var PCL_RE = /^[a-z0-9]{28}$/, PCL_A = "abcdefghijklmnopqrstuvwxyz0123456789", LK_RE = /^[a-z0-9]{16}$/;
+// 第 43 批：自己的連結縮短成 12 碼：前 5 碼＝簽章（這個人＋第幾個 2 分鐘；後端認得是誰、10 分鐘內），後 7 碼＝cfg.js 的 7 碼鑰匙（HB_XC7）遮過。
+//   12 碼的也可能是以前停用的固定短連結：解得開 HB_XC7 才算自己的連結，解不開＝當成以前的（SCOLD）。28 碼的照舊（HB_XC）。
+var PCL_RE = /^([a-z0-9]{28}|[a-z0-9]{12})$/, PCL_A = "abcdefghijklmnopqrstuvwxyz0123456789", LK_RE = /^([a-z0-9]{16}|[a-z0-9]{5})$/;
 var HASH0 = String(location.hash || "").replace(/^#/, "");
-var SCODE = PCL_RE.test(HASH0) ? HASH0 : "", SCOLD = /^[a-z0-9]{12}$/.test(HASH0), SCERR = "";
+var SCODE = PCL_RE.test(HASH0) ? HASH0 : "", SCOLD = false, SCERR = "";
+function lkOf(code) { return code.length === 12 ? code.slice(0, 5) : code.slice(0, 16); }   // 帶給後端的那一段（連結的號碼）
 function lkSave(v) { try { if (v) sessionStorage.setItem("hblk", JSON.stringify({ lk: v, at: Date.now() })); else sessionStorage.removeItem("hblk"); } catch (e) { /* 記不住就算了 */ } }
 function lkLoad() { try { var o = JSON.parse(sessionStorage.getItem("hblk") || "null"); if (o && LK_RE.test(String(o.lk || "")) && Date.now() - +o.at < 66e4) return String(o.lk); } catch (e) { /* 沒有 */ } return ""; }
-var PCLK = SCODE ? SCODE.slice(0, 16) : lkLoad();   // 這一頁是用 LINE 複製的連結打開的：電腦登入時帶給後端（重新整理還在：記在這個分頁，11 分鐘）
+var PCLK = SCODE ? lkOf(SCODE) : lkLoad();   // 這一頁是用 LINE 複製的連結打開的：電腦登入時帶給後端（重新整理還在：記在這個分頁，11 分鐘）
 if (SCODE) lkSave(PCLK);
 var SAVED = keyLoad();
 if (!T && !SCODE && SAVED && (!X || SAVED.x === X) && (!CFGX || SAVED.x === CFGX)) { X = SAVED.x; T = SAVED.t; FROMSAVED = true; }   // 自己的連結：先解出後端位置（scResolve），再看這台記住的
@@ -2889,7 +2945,7 @@ try {
     if (XOK && (!RX0 || RX0 === X)) { try { localStorage.setItem("hbx", X); } catch (e) { /* 記不住就算了 */ } history.replaceState(null, "", location.pathname); }
     else history.replaceState(null, "", location.pathname + (XOK ? "#x=" + HP.x : ""));   // 這台原本連的跟這條不一樣：照舊留在網址列（backendCheck 會問用哪一個）
   }
-  else if (SCODE || SCOLD || /[?&]openExternalBrowser=/.test(location.search || "")) history.replaceState(null, "", location.pathname);
+  else if (SCODE || /[?&]openExternalBrowser=/.test(location.search || "")) history.replaceState(null, "", location.pathname);
 } catch (e) { /* 沒關係 */ }
 // 第 42 批：已經開著 …/hb.html 的分頁，在網址列貼上連結（只有 # 後面不一樣，瀏覽器不會重新載入）→ 自己重新載入，照新的連結開
 window.addEventListener("hashchange", function () {
@@ -2935,18 +2991,30 @@ function pclKey(code) {   // 第 42 批：自己的連結（28 碼）→ cfg.js 
     return k;
   });
 }
-function scResolve(cb) {   // 開場：網址是自己的連結（#28 碼）→ 用 cfg.js 解出後端位置；這台記住的鑰匙也是這個後端的，就直接用
+function pclKey7(code) {   // 第 43 批：12 碼的連結 → cfg.js 的 7 碼鑰匙：前 5 碼算 SHA-256，後 7 碼每一碼往回挪
+  var s = code.slice(0, 5), m = code.slice(5);
+  return crypto.subtle.digest("SHA-256", new TextEncoder().encode("hbk2|" + s)).then(function (b) {
+    var u = new Uint8Array(b), k = "";
+    for (var i = 0; i < 7; i++) k += PCL_A.charAt((PCL_A.indexOf(m.charAt(i)) - u[i] % 36 + 36) % 36);
+    return k;
+  });
+}
+function scOld() {   // 第 43 批：12 碼的解不開 HB_XC7＝以前停用的固定短連結（或沒複製完整）：不帶連結號碼
+  SCOLD = true; SCODE = ""; PCLK = ""; lkSave("");
+  if (!X) { var sv = keyLoad(); X = CFGX || (sv ? sv.x : bxLoad()); if (!T && sv && sv.x === X) { T = sv.t; FROMSAVED = true; SAVED = sv; } }   // 這台記住的照常打開
+}
+function scResolve(cb) {   // 開場：網址是自己的連結（#28 碼、第 43 批 #12 碼）→ 用 cfg.js 解出後端位置；這台記住的鑰匙也是這個後端的，就直接用
   if (!SCODE || X) { cb(); return; }
-  var blob = ""; try { if (typeof window.HB_XC === "string") blob = window.HB_XC; } catch (e) { blob = ""; }
-  if (!blob) { SCERR = "nocfg"; cb(); return; }
+  var c12 = SCODE.length === 12, blob = ""; try { var w = c12 ? window.HB_XC7 : window.HB_XC; if (typeof w === "string") blob = w; } catch (e) { blob = ""; }
+  if (!blob) { if (c12 && typeof window.HB_XC === "string") { scOld(); cb(); return; } SCERR = "nocfg"; cb(); return; }
   if (!(window.crypto && crypto.subtle && typeof crypto.subtle.importKey === "function" && typeof crypto.subtle.deriveKey === "function" && typeof crypto.subtle.digest === "function" && window.TextEncoder && window.TextDecoder)) { cb(); return; }
-  var p; try { p = pclKey(SCODE).then(function (k) { return scOpen(k, blob); }); } catch (e) { SCERR = "bad"; cb(); return; }
+  var p; try { p = (c12 ? pclKey7(SCODE) : pclKey(SCODE)).then(function (k) { return scOpen(k, blob); }); } catch (e) { SCERR = "bad"; cb(); return; }
   p.then(function (x) {
-    if (!XRE.test(x)) { SCERR = "bad"; cb(); return; }
+    if (!XRE.test(x)) { if (c12) scOld(); else SCERR = "bad"; cb(); return; }
     X = x; try { localStorage.setItem("hbx", X); } catch (e) { /* 記不住就算了 */ }   // 第 42 批：網址列已經拿掉短碼了：記住後端位置（重新整理、存成書籤都打得開）
     var sv = keyLoad(); if (!T && sv && sv.x === X) { T = sv.t; FROMSAVED = true; SAVED = sv; }
     cb();
-  }, function () { SCERR = "bad"; cb(); });
+  }, function () { if (c12) scOld(); else SCERR = "bad"; cb(); });
 }
 
 /* ── 跟後端講話（藥戰手冊專案的 API）── */
@@ -3267,9 +3335,8 @@ function scrLoginCode(why, r) {
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") LG.auto = 0; });
 
 /* ── 第 36 批：電腦登入（員工編號＋姓名）──
-   用「電腦用的入口連結」（…/hb.html，存成書籤）打開 → 打員工編號＋姓名 →
-   ① 這台記住你（以前在這台用 LINE 驗證碼登入過、勾了「記住這台電腦」）：直接進去；
-   ② 沒記住（這台第一次、無痕視窗、清掉了網站資料）：手機 LINE 的「藥戰手冊」傳「登入」→ LINE 回 6 位數 → 打在這裡。
+   用「電腦用的入口連結」（…/hb.html，存成書籤）打開 → 打員工編號＋姓名 → 手機 LINE 的「藥戰手冊」傳「登入」→ LINE 回 6 位數 → 打在這裡。
+   第 43 批：拿掉「記住這台電腦」：每次都要驗證（共用電腦最安全）；員工編號的英文字母大小寫都可以。
    第 42 批：用自己在 LINE 按「🔗 複製連結」拿的連結打開的（10 分鐘內、第一次用）：②不用做（連結本來就是從他的 LINE 拿的）。
    等驗證碼的那一組記在這個分頁（sessionStorage）：切去別的分頁再回來，還是同一組（10 分鐘內）。 */
 var PC = { sec: "", ex: 0, busy: false, tm: 0, seq: 0 };
@@ -3280,15 +3347,15 @@ function scrFirst(why) {
   var inp = h("input", { class: "in", id: "pclin", type: "text", autocomplete: "off", spellcheck: "false", placeholder: "貼上 LINE「🔗 複製連結」拿到的連結", "aria-label": "LINE 複製的連結" });
   var m = h("div", { class: "scr-m", role: "status", "aria-live": "polite" });
   var go = function () {
-    var v = String(inp.value || "").replace(/\s+/g, ""), mm = /#([a-z0-9]{28})$/.exec(v) || /^([a-z0-9]{28})$/.exec(v);
-    if (!mm) { m.textContent = /#[a-z0-9]{12}$/.test(v) ? "這是以前的固定短連結（已經停用）：請在 LINE 按「🔗 複製連結」，貼你自己的。" : "這不像 LINE「🔗 複製連結」拿到的連結：請在 LINE 再按一次，整條貼上來。"; try { inp.focus(); } catch (e) { /* 沒關係 */ } return; }
-    SCODE = mm[1]; SCOLD = false; SCERR = ""; PCLK = SCODE.slice(0, 16); lkSave(PCLK);
+    var v = String(inp.value || "").replace(/\s+/g, ""), mm = /#([a-z0-9]{28}|[a-z0-9]{12})$/.exec(v) || /^([a-z0-9]{28}|[a-z0-9]{12})$/.exec(v);   // 第 43 批：12 碼的也收
+    if (!mm) { m.textContent = "這不像 LINE「🔗 複製連結」拿到的連結：請在 LINE 再按一次，整條貼上來。"; try { inp.focus(); } catch (e) { /* 沒關係 */ } return; }
+    SCODE = mm[1]; SCOLD = false; SCERR = ""; PCLK = lkOf(SCODE); lkSave(PCLK);
     m.textContent = "打開中…";
     start();
   };
   inp.onkeydown = function (e) { if (e.key === "Enter") go(); };
-  var t = why === "old" ? "這條入口連結已經停用" : why ? "連結打不開" : "請從 LINE 打開";
-  var lines = why === "old" ? ["以前管理頁給的「…/hb.html#12 碼」那一條已經停用了：現在每個人用自己的連結（每個人、每次都不一樣）。"] : [];
+  var t = why === "old" ? "這條連結打不開" : why ? "連結打不開" : "請從 LINE 打開";
+  var lines = why === "old" ? ["這條連結打不開：可能是以前管理頁給的固定短連結（已經停用），或沒有複製完整。現在每個人用自己的連結（每個人、每次都不一樣）。"] : [];
   if (why === "nocfg") lines.push("網站上還沒有放好 cfg.js（剛上傳的話，等 1～2 分鐘再重新整理）。還是不行，請跟開發者說。");
   if (why === "bad") lines.push("這條連結跟網站上的 cfg.js 對不上（可能開發者剛換過設定，或連結沒有複製完整）：請在 LINE 再按一次「🔗 複製連結」。");
   lines.push(MSG_PC, "在手機上：" + MSG_LINE);
@@ -3306,8 +3373,7 @@ function pcLoad() {
   } catch (e) { /* 沒有 */ }
   return null;
 }
-function pcRemGet() { try { return localStorage.getItem("pcrem") !== "0"; } catch (e) { return true; } }   // 「記住這台電腦」上次勾了沒（共用電腦取消過，下次預設也不勾）
-function pcRemSet(v) { try { localStorage.setItem("pcrem", v ? "1" : "0"); } catch (e) { /* 記不住就算了 */ } }
+function pcRemDrop() { try { localStorage.removeItem("pcrem"); } catch (e) { /* 沒關係 */ } }   // 第 43 批：沒有「記住這台電腦」了（以前記的勾勾拿掉）
 function loginWhy(why, r, pc) {   // 登入畫面最上面那一句（為什麼要登入）
   var again = pc ? "重新登入" : "重新取得代號、驗證碼登入";
   if (why === "idle") return "閒置超過 " + Math.round(IDLE_MS / 6e4) + " 分鐘，已自動登出，手冊內容已經從畫面上拿掉。要再看：" + again + "。";
@@ -3327,8 +3393,8 @@ function scrLoginPc(why, r) {
   var my = ++PC.seq, alive = function () { return my === PC.seq && box.isConnected; };
   var emp = h("input", { class: "in", maxlength: "20", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", placeholder: "例：E10107", "aria-label": "員工編號", "aria-required": "true" });
   var nm = h("input", { class: "in", maxlength: "20", autocomplete: "off", spellcheck: "false", placeholder: "例：王小明", "aria-label": "姓名", "aria-required": "true" });
-  var rem = h("input", { type: "checkbox", checked: pcRemGet(), id: "pcrem" });
   var go = h("button", { class: "btn pri lggo", type: "button", id: "pcgo" }, ["登入"]);
+  pcRemDrop();
   var m = h("div", { class: "scr-m lgm", role: "status", "aria-live": "polite" });
   var cin = h("input", { class: "in lgin", type: "text", inputmode: "numeric", autocomplete: "one-time-code", maxlength: "9", placeholder: "6 位數", "aria-label": "LINE 回的 6 位數驗證碼", id: "pccode" });
   var go2 = h("button", { class: "btn pri lggo", type: "button", id: "pcgo2" }, ["確定"]);
@@ -3338,24 +3404,21 @@ function scrLoginPc(why, r) {
   var step1 = h("div", { class: "pcbox", id: "pcstep1" }, [
     PCLK ? h("div", { class: "pclhint", id: "pclhint" }, ["🔗 這一頁是用你在 LINE 複製的連結打開的：10 分鐘內打員工編號＋姓名就能進去（不用驗證碼）。"]) : null,   // 第 42 批
     h("div", { class: "lgst" }, ["① 打你的", h("b", {}, ["員工編號"]), "和", h("b", {}, ["姓名"]), "（要跟申請時填的一樣）"]),
-    h("div", { class: "scr-form" }, [h("label", {}, [h("span", {}, ["員工編號"]), emp]), h("label", {}, [h("span", {}, ["姓名"]), nm])]),
-    h("label", { class: "pcrem", for: "pcrem" }, [rem, h("span", {}, ["記住這台電腦（下次只要打員工編號＋姓名）"])]),
+    h("div", { class: "scr-form" }, [h("label", {}, [h("span", {}, ["員工編號", h("small", { class: "pcaa" }, ["（英文字母大小寫都可以）"])]), emp]), h("label", {}, [h("span", {}, ["姓名"]), nm])]),
     h("div", { class: "scr-b" }, [go]), m]);
   var step2 = h("div", { class: "pcbox pc2", id: "pcstep2", hidden: true }, [
-    h("div", { class: "lgst" }, ["② 這台電腦還沒記住你：拿出手機，打開 LINE 的「藥戰手冊」，傳「", h("b", {}, ["登入"]), "」兩個字（或按下面那排的「🌐 網頁」）"]),
+    h("div", { class: "lgst" }, ["② 拿出手機，用", h("b", {}, ["申請藥戰手冊的那個 LINE 帳號"]), "，在「藥戰手冊」傳「", h("b", {}, ["登入"]), "」兩個字（或按下面那排的「🌐 網頁」）"]),
     h("div", { class: "lgst2" }, ["LINE 會回你 6 位數的", h("b", {}, ["驗證碼"]), "，打在這裡："]),
     h("div", { class: "lgrow" }, [cin, go2]), m2,
     h("div", { class: "lgmeta" }, ["請在 ", cd, " 內完成　", restart])]);
-  var forget = TRE.test(T) && why === "out" ? h("button", { class: "lglink", type: "button", id: "pcforget" }, ["🧹 讓這台電腦忘記我"]) : null;
   var box = screen([logo(), h("h2", {}, ["🔐 登入藥戰手冊"]),
     lines.length ? h("div", { class: "scr-p" }, lines.map(function (l) { return h("p", {}, [l]); })) : null,
     step1, step2,
-    h("p", { class: "lgfine" }, ["這台電腦第一次用、或是無痕視窗：還要用手機 LINE 拿 6 位數驗證碼，確認是本人（用 LINE「🔗 複製連結」剛拿的連結打開的，10 分鐘內不用）。共用的電腦可以不要勾「記住這台電腦」。", h("br"), "驗證碼、自己的連結都只能自己用，不要傳給任何人。"]),
+    h("p", { class: "lgfine" }, ["每次登入都要用手機 LINE 拿 6 位數驗證碼，確認是本人（用 LINE「🔗 複製連結」剛拿的連結打開的，10 分鐘內不用）。這台電腦不會記住你，共用的電腦也可以放心用。", h("br"), "驗證碼、自己的連結都只能自己用，不要傳給任何人。"]),
     KEEP_ED || (typeof KEEP_QE !== "undefined" && KEEP_QE) ? h("p", { class: "lockkeep" }, ["✏️ 你有還沒儲存的修改：登入以後會接著編輯（還沒存進去）。"]) : null,
     h("div", { class: "lgrolew" }, [
       h("button", { class: "lglink", type: "button", onclick: function () { pcStop(); LG.mode = "code"; LG.role = ""; scrLogin(why, r); } }, ["改用代號登入"]),
-      h("button", { class: "lglink", type: "button", onclick: function () { pcStop(); LG.role = "dev"; scrLogin(why, r); } }, ["開發者登入"])]),
-    forget ? h("div", { class: "lgrolew" }, [forget]) : null], "lgscr pcscr");
+      h("button", { class: "lglink", type: "button", onclick: function () { pcStop(); LG.role = "dev"; scrLogin(why, r); } }, ["開發者登入"])])], "lgscr pcscr");
   var focus = function (el) { try { el.focus(); } catch (e) { /* 沒關係 */ } };
   var tick = function () {
     if (!alive() || !PC.sec) { pcStop(); return; }
@@ -3379,9 +3442,9 @@ function scrLoginPc(why, r) {
     if (!e) { m.textContent = "請打員工編號"; focus(emp); return; }
     if (!/^[A-Za-z0-9Ａ-Ｚａ-ｚ０-９\-－]{2,20}$/.test(e)) { m.textContent = "員工編號只能是英文字母、數字（2～20 個字）"; focus(emp); return; }
     if (!n) { m.textContent = "請打姓名"; focus(nm); return; }
-    PC.busy = true; go.disabled = true; m.textContent = "確認中…"; pcRemSet(rem.checked);
+    PC.busy = true; go.disabled = true; m.textContent = "確認中…";
     var slow = slowMsg(m), lk = PCLK;
-    call("hbPcLogin", [e, n, rem.checked ? 1 : 0, lk || ""], { ms: 80000 }).then(function (x) {   // 第 42 批：帶這一頁的連結號碼（LINE 複製的；10 分鐘內第一次不用驗證碼）
+    call("hbPcLogin", [e, n, 0, lk || ""], { ms: 80000 }).then(function (x) {   // 第 42 批：帶這一頁的連結號碼（LINE 複製的；10 分鐘內第一次不用驗證碼）。第 43 批：不記住這台（第三個一律 0）
       clearTimeout(slow); PC.busy = false; go.disabled = false;
       if (!alive()) return;
       if (x && TRE.test(String(x.t || ""))) { done(x); return; }
@@ -3391,7 +3454,7 @@ function scrLoginPc(why, r) {
         return;
       }
       if (x && x.st && !x.err) { onBoot(x); return; }   // 被撤銷了、手冊關了…
-      m.textContent = "❌ " + String(x && x.err || "沒登入成功，再試一次").slice(0, 260);
+      m.textContent = (x && x.wait ? "⏳ " : "❌ ") + String(x && x.err || "沒登入成功，再試一次").slice(0, 260);   // 第 43 批：還在等核可（不是打錯）
       if (x && x.field) focus(x.field === "name" ? nm : emp);
     }, function (er) { clearTimeout(slow); PC.busy = false; go.disabled = false; if (alive()) m.textContent = /等太久/.test(String(er && er.message)) ? "❌ 等太久沒有回應，再按一次「登入」。" : "❌ 連不上後端，網路好了再試一次"; });
   };
@@ -3417,10 +3480,6 @@ function scrLoginPc(why, r) {
   [emp, nm].forEach(function (inp) { inp.onkeydown = function (ev) { if (ev.key === "Enter") submit(); }; });
   cin.onkeydown = function (ev) { if (ev.key === "Enter") submit2(); };
   restart.onclick = function () { toStep1(""); };
-  if (forget) forget.onclick = function () {
-    forget.disabled = true;
-    call("hbPcForget", []).then(function () { keyDrop(); T = ""; scrLogin("forgot"); }, function () { forget.disabled = false; toast("❌ 連不上後端，網路好了再試一次"); });
-  };
   var p = pcLoad();
   if (p) { PC.sec = p.sec; PC.ex = +p.ex; toStep2(); } else focus(emp);
 }
@@ -3458,13 +3517,36 @@ function scrId(r) {
 }
 var POLL = 0, POLL2 = 0;
 function stopPolls() { clearTimeout(POLL); clearInterval(POLL2); POLL = POLL2 = 0; }
+/* 第 43 批：等核可的那一頁：已經從 LINE 確認是本人的（後端給了暗碼 aw，只放在這個分頁）＝核可以後自己進去（員工編號、姓名已經驗證過，不用再登入）。
+   前 30 分鐘每 20 秒問一次，之後每 1 分鐘，最多 6 小時；分頁關掉、換一台：照平常登入（回 LINE 按「🌐 網頁」也可以）。 */
+var AW = "";
+function awSave(v) { AW = v || ""; try { if (AW) sessionStorage.setItem("hbaw", JSON.stringify({ x: X, aw: AW, ex: Date.now() + 6 * 36e5 })); else sessionStorage.removeItem("hbaw"); } catch (e) { /* 記不住就算了 */ } }
+function awLoad() {
+  if (AW) return AW;
+  try { var o = JSON.parse(sessionStorage.getItem("hbaw") || "null"); if (o && o.x === X && TRE.test(String(o.aw || "")) && +o.ex > Date.now()) return (AW = String(o.aw)); } catch (e) { /* 沒有 */ }
+  return "";
+}
 function scrWait(r) {
-  var emp = r && r.me && r.me.emp;
+  var emp = r && r.me && r.me.emp, aw = r && TRE.test(String(r.aw || "")) ? String(r.aw) : awLoad();
+  if (aw) awSave(aw);
+  var stamp = h("p", { class: "muted", id: "awst" }, [aw ? "這個畫面會自己檢查（核可以後自己進去）。" : "這個畫面每 30 秒會自己檢查一次。"]);
   screen([logo(), h("h2", {}, ["⏳ 已送出申請，等開發者核可"]),
-    h("div", { class: "scr-p" }, [h("p", {}, [(emp ? "員工編號 " + emp + "。" : "") + "核可後你的 LINE 會收到通知。"]), h("p", {}, ["10 分鐘內核可的話，按「現在檢查」就能進去；超過的話，回到這個網頁重新取得代號登入（或回 LINE 打開「📘 藥戰手冊」按「🌐 網頁」）。"]), h("p", { class: "muted" }, ["這個畫面每 30 秒會自己檢查一次。"])]),
+    h("div", { class: "scr-p" }, [h("p", {}, [(emp ? "員工編號 " + emp + "。" : "") + "核可後你的 LINE 會收到通知。"]),
+      h("p", {}, [aw ? "✅ 員工編號、姓名已經送出：開發者核可以後，這個畫面會自己進去手冊，不用再登入（這個分頁先不要關；最多等 6 小時）。分頁關掉了也沒關係：核可以後回 LINE 按「🌐 網頁」就能看。" : "核可以後，回 LINE 打開「📘 藥戰手冊」按「🌐 網頁」就能看（或回到這個網頁重新登入）。"]),
+      stamp]),
     h("div", { class: "scr-b" }, [btn("現在檢查", function () { boot(); })])]);
-  var t0 = Date.now();
-  (function loop() { POLL = setTimeout(function () { if (Date.now() - t0 > 30 * 6e4) return; if (document.visibilityState === "hidden") { loop(); return; } call("hbBoot", [""]).then(function (x) { if (x && x.st === "wait") loop(); else onBoot(x); }, function () { loop(); }); }, 30000); })();
+  var t0 = Date.now(), max = aw ? 6 * 36e5 : 30 * 6e4;
+  (function loop() {
+    var gap = aw ? (Date.now() - t0 < 30 * 6e4 ? 20000 : 60000) : 30000;
+    POLL = setTimeout(function () {
+      if (Date.now() - t0 > max) { if (aw) awSave(""); stamp.textContent = "⌛ 等太久了（超過 " + (aw ? "6 小時" : "30 分鐘") + "）：核可以後，回 LINE 按「🌐 網頁」，或重新整理這一頁登入。"; return; }
+      if (document.visibilityState === "hidden") { loop(); return; }
+      call("hbBoot", ["", aw]).then(function (x) {
+        if (x && x.st === "wait") { if (aw && x.aw !== aw) { aw = ""; awSave(""); } loop(); return; }
+        awSave(""); onBoot(x);
+      }, function () { loop(); });
+    }, gap);
+  })();
 }
 
 /* ── 開場 ── */
@@ -3480,7 +3562,8 @@ function boot() {
   scrLoad();
   var tk = TICKET, sid = SESS;
   var prog = function (ph, got, tot) { if (sid !== SESS || !BOOT.on) return; BOOT.ph = ph; BOOT.got = got; BOOT.tot = tot; if (BOOT.tick) BOOT.tick(); };   // 第 40 批：後端做完了、下載了多少（進度條）
-  call("hbBoot", [tk], { ms: 30000, prog: prog, onTry: function (n) { BOOT.n = n; if (n > 1) { BOOT.ph = "go"; BOOT.tq = Date.now(); } } }).then(function (r) {   // 開發者這一台還沒綁定時，後端還沒看通行證：綁好再帶一次
+  var aw0 = awLoad();   // 第 43 批：等核可的暗碼（沒有就不帶：跟以前一樣）
+  call("hbBoot", aw0 ? [tk, aw0] : [tk], { ms: 30000, prog: prog, onTry: function (n) { BOOT.n = n; if (n > 1) { BOOT.ph = "go"; BOOT.tq = Date.now(); } } }).then(function (r) {   // 開發者這一台還沒綁定時，後端還沒看通行證：綁好再帶一次
     // 第 35 批：自動再試過（第一次等太久沒回應）：第一次可能其實做完了、已經用掉 LINE 給的通行證 → 等 3 秒、不帶通行證再問一次（第一次做完的話，這一台已經驗證過了）
     if (tk && BOOT.n > 1 && r && (r.st === "lock" || r.st === "none") && r.bad && !BOOT.again) {
       BOOT.again = true; BOOT.step = "再確認一次";
@@ -3561,6 +3644,7 @@ function onBoot(r) {
   var st = r.st;
   if (st === "closed") { scrMsg("藥戰手冊還沒開放", ["請等開發者通知。"]); return; }
   if (st === "setup") { scrMsg("藥戰手冊還沒接上", ["在藥戰手冊的 Apps Script 編輯器，選 yzMoveIn → 執行一次（從補藥神器搬過來）。", "好了以後重新整理這一頁。"], [reloadBtn()]); return; }
+  if (st !== "wait" && typeof awSave === "function") awSave("");   // 第 43 批：不是在等核可了：等核可的暗碼丟掉
   if (st === "need") { scrId(r); return; }   // 第 32 批：驗證過是本人了，第一次要打員工編號＋姓名
   if (st === "wait") { scrWait(r); return; }
   if (st === "no") { scrMsg("沒有通過審核", ["看不到藥戰手冊的內容。有疑問請找開發者。"]); return; }
@@ -3571,6 +3655,14 @@ function onBoot(r) {
   scrMsg("沒辦法打開", ["看不懂後端的回應（" + String(st) + "）。"], [reloadBtn()]);
 }
 
+// 第 43 批：LINE 的檔案連結打開手冊 → 直接打開那個檔（只能看）
+function fvFromHash() {
+  var m = /^(\d{1,3})\.(\d{1,2})\.([a-z0-9]{1,8})$/.exec(String(HP.f || ""));
+  if (!m || !HP.t) return;
+  var t = titleOf(HP.t), b = t && (t.blocks || [])[+m[1]], it = b && b.t === "link" ? _yzLinkItems_(b)[+m[2]] : null;
+  if (!it || _yzLinkTag_(it.u) !== m[3]) (t && t.blocks || []).forEach(function (bb) { if (bb && bb.t === "link") _yzLinkItems_(bb).forEach(function (x) { if (_yzLinkTag_(x.u) === m[3]) it = x; }); });
+  fvOpen({ tid: HP.t, bi: +m[1], ii: +m[2], tag: m[3], label: it ? _yzLinkLabel_(it) : "檔案", kind: it ? _yzLinkFileKind_(it) : "" });
+}
 /* ── 打開手冊：上面一排（標題、頁籤、誰、閒置倒數、登出）＋頁籤內容＋浮水印 ── */
 var IDLE_MS = 30 * 6e4, LAST_ACT = Date.now(), LAST_PING = 0, TAB = "view";
 // 有人改了手冊（hbPing 看到 rev 變了）：重新拿一次，看的這邊換成新的（編輯器裡還沒存的修改不動）
@@ -3614,8 +3706,8 @@ function enterMain(r) {
   if (IS_DEV && KEEP_ED) { edRestore(KEEP_ED); KEEP_ED = null; showTab("edit"); toast("接著剛剛還沒儲存的修改（還沒存進手冊）"); }
   else if (qeBack) { ED.mode = "qz"; ED.cur = { kind: "qz", id: "" }; ED.view = "web"; showTab("edit"); toast("接著剛剛還沒儲存的問卷（還沒存進問卷試算表）"); }
   else if (IS_DEV && HP.edit && edTitleExists(HP.edit)) { gotoEdit(HP.edit); }
-  else { showTab("view"); if (HP.t && titleOf(HP.t)) openTitle(HP.t); }
-  HP.t = HP.edit = "";
+  else { showTab("view"); if (HP.t && titleOf(HP.t)) { openTitle(HP.t); fvFromHash(); } }   // 第 43 批：LINE 檔案連結（&f＝第幾塊.第幾個.指紋）→ 打開那個檔
+  HP.t = HP.edit = HP.f = "";
   idleTick();
   guardSync();
 }
@@ -3649,7 +3741,9 @@ function wmText() {
   var who = [ME && ME.name, ME && ME.emp, ME && !ME.emp && ME.tail ? "…" + ME.tail : ""].filter(Boolean).join("　");
   return [who || "藥戰手冊", stamp() + "　內部資料勿外傳"];
 }
-function paintWm() { var w = $("#wm"); if (w) w.style.backgroundImage = wmCss(wmText()); }
+var WM_LV = [0, 0.05, 0.08, 0.11, 0.15];   // 第 43 批：浮水印濃淡（管理頁 ②：1 很淡、2 淡（預設）、3 中（第 41 批的濃度）、4 濃）
+function wmLv() { var v = parseInt(CFG && CFG.wmLv, 10); return v >= 1 && v <= 4 ? v : 2; }
+function paintWm() { var w = $("#wm"); if (w) { w.style.backgroundImage = wmCss(wmText()); w.style.setProperty("--wmo", String(WM_LV[wmLv()])); } }
 
 /* ── 第 41 批：看手冊的時候不能複製、盡量不能截圖（內部資料）──
    網頁沒辦法 100% 擋住截圖（手機的截圖鍵、用另一支手機拍，網頁都不會知道）：所以浮水印加重（拍下來看得出是誰）；其他能擋的都擋：
@@ -4199,11 +4293,21 @@ function webBacklinks(list, fromCh, onTitle) {
 }
 // ── 第 40 批（一起做的）：網址連結：一個連結一個小框（🌐 名稱、網站、說明、↗）。
 //   電腦：點了開一個小視窗（手冊還在後面）；手機、LINE 裡的瀏覽器：開新分頁（手機沒有小視窗）。不帶手冊的網址過去（no-referrer、noopener）
-function webLinks(b, hl) {
+// 第 43 批：連結指到檔案（Word、PDF、Excel、PPT、圖片）：點了在手冊裡的小視窗看（fview.js；只能看）。ctx：{ tid, bi }（手冊裡的哪一塊）；編輯器的預覽＝試開（還沒存也可以）
+function webLinks(b, hl, ctx) {
+  ctx = ctx || {};
   var its = _yzLinkItems_(b);
   if (!its.length) return null;
-  return h("div", { class: "xlinks" }, its.map(function (x) {
-    var u = _yzLinkFix_(x.u), lab = _yzLinkLabel_(x), n = String(x.n || "").trim(), host = _yzLinkHost_(u);
+  return h("div", { class: "xlinks" }, its.map(function (x, i) {
+    var u = _yzLinkFix_(x.u), lab = _yzLinkLabel_(x), n = String(x.n || "").trim(), host = _yzLinkHost_(u), fk = _yzLinkFileKind_(x);
+    if (fk) {
+      var go = function (e) { if (e) e.preventDefault(); if (ctx.pv) fvOpen({ try: u, label: lab, kind: fk }); else if (ctx.tid) fvOpen({ tid: ctx.tid, bi: ctx.bi, ii: i, tag: _yzLinkTag_(u), label: lab, kind: fk }); };
+      return h("a", { class: "xlink xfile", href: "#", role: "button", "data-k": fk, title: "在手冊裡看（只能看）：" + lab, onclick: go, onkeydown: function (e) { if (e.key === " ") go(e); } }, [
+        h("span", { class: "xl-i", "aria-hidden": "true" }, [YZ_FILE_ICO[fk] || "📄"]),
+        h("span", { class: "xl-t" }, [h("b", {}, hlNodes(lab, hl)), h("small", {}, hlNodes(YZ_FILE_NAME[fk] + "｜在手冊裡看（只能看）" + (n ? "｜" + n : ""), hl))]),
+        h("span", { class: "xl-o", "aria-hidden": "true" }, ["›"])
+      ]);
+    }
     return h("a", { class: "xlink", href: u, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", title: (xlSmall() ? "在小視窗打開：" : "打開：") + u, onclick: function (e) { if (xlOpen(u)) e.preventDefault(); } }, [
       h("span", { class: "xl-i", "aria-hidden": "true" }, ["🌐"]),
       h("span", { class: "xl-t" }, [h("b", {}, hlNodes(lab, hl)), h("small", {}, hlNodes(host + (n ? "｜" + n : ""), hl))]),
@@ -4231,7 +4335,7 @@ function webArticle(ch, t, o) {   // o.page：在「圖一」樣式的頁面裡�
   var goFn = o.hb ? function (id) { return _yzGoTarget_(o.hb, id, ch.id); } : null;
   if (o.hb) _yzLadderNumberAll_(o.hb);   // 條文「接續上一段」：先算好這一章每一段從第幾號開始
   var hidN = 0, shown = 0;
-  (t.blocks || []).forEach(function (b) {
+  (t.blocks || []).forEach(function (b, bIdx) {
     if (_yzOnlyHide_(b, "web")) { hidN++; return; }   // 第 41 批：只在 LINE 的這一塊：網頁不放
     var el = null;
     if (b.t === "text") el = webText(b.v, o.hl, { go: goFn, onTitle: o.onTitle, onChapter: o.onChapter, pics: b.pics, tbls: b.tbls, onImg: o.onImg });
@@ -4241,7 +4345,7 @@ function webArticle(ch, t, o) {   // o.page：在「圖一」樣式的頁面裡�
     else if (b.t === "img" && b.url) el = webFig(b, o);
     else if (b.t === "anim") el = webAnim(b, o);
     else if (b.t === "drug") el = webDrugs(b, o);   // 第 29 批：藥品卡片（補藥神器的藥）
-    else if (b.t === "link") el = webLinks(b, o.hl);   // 第 40 批（一起做的）：網址連結
+    else if (b.t === "link") el = webLinks(b, o.hl, { tid: t.id, bi: bIdx, pv: !!o.pv || !o.page });   // 第 40 批（一起做的）：網址連結；第 43 批：檔案在手冊裡的小視窗看（編輯器的預覽＝試開）
     if (!el) return;
     var bi = _yzBlockInd_(b);
     if (bi) { el.style.marginLeft = (bi * 1.6).toFixed(1) + "em"; el.classList.add("bind"); }   // 整塊縮排（第 27 批：圖片、表格、動畫、階梯式也能縮排）
@@ -4540,6 +4644,8 @@ function drawPage(root, atHome) {
   pg.appendChild(back);
   var mqOn = mqConf(HB.cat).on, mqName = c ? c.name : WV.view === "search" ? "搜尋" : isQz ? "問卷" : "";
   if (mqOn) pg.appendChild(marquee(mqWords(mqName))); else pg.style.setProperty("--mqh", "0px");
+  var pwb = c && !other && titlesOf(c.id).length ? pwBar(c, t) : null;   // 第 43 批：現在讀到哪裡（這一章每一篇排一排，讀到的亮）
+  if (pwb) pg.appendChild(pwb);
   var col = h("div", { class: "pgcol" });
   // 上：‹ 回上一層 ＋ 標誌
   var up = isQz ? qzBackBtn() : null;   // 問卷：作答、結果頁＝「‹ 問卷清單」
@@ -4563,8 +4669,81 @@ function drawPage(root, atHome) {
   if (!atHome) pg.appendChild(h("button", { class: "hhome", type: "button", onclick: goHome, title: "回首頁" }, ["🏠 首頁"]));
   root.appendChild(pg);
   if (WV.cid || WV.tid || WV.view) pg.style.setProperty("--colw", (t ? Math.min(1000, Math.max(680, (t.ww || 760) + 70)) : isQz ? 760 : 680) + "px");
+  if (pwb) { PW.cur = ""; if (t) pwSet(t.id); else pwScan(); }
   idleTick();
 }
+/* ── 第 43 批：上面固定一條「現在讀到哪裡」：這一章第 1 層的標題排成一排（太多可以左右滑），讀到的那一篇亮（黃底）；
+   有分層的章：下面一行寫現在這一篇（在子標題裡＝「└ 子標題 › 再下一層」）。章的頁面：捲到哪一篇就亮哪一篇；點了直接捲過去。
+   單篇的頁面：亮這一篇（或它的上層），點了打開那一篇。高度固定（不會捲一捲就跳）。 */
+var PW = { raf: 0, cur: "", lock: 0 };   // lock：點了跳過去、還在捲的時候（上面那一條不跟著中間經過的篇跳）
+var YZ_NO_RE = /^\s*[（(]?\s*(?:[0-9０-９]+|[一二三四五六七八九十百]+|[壹貳參叁肆伍陸柒捌玖拾]+)\s*(?:[、.．:：)）]|\s)|^\s*[（(]?\s*[A-Za-zＡ-Ｚａ-ｚ]\s*[、.．:：)）]|^\s*第\s*[0-9０-９一二三四五六七八九十百]+\s*[章節篇條項部]/;
+function tocLabel(t, k, deep) { var n = t.name || "（還沒有標題）"; return deep || YZ_NO_RE.test(n) ? n : (k + 1) + ". " + n; }   // 照打的名字；沒分層、名字自己沒有編號的才在前面加「1.」
+function pwBar(c, t) {
+  var ts = titlesOf(c.id), lvs = _yzTLvs_(ts), deep = lvs.some(function (v) { return v > 1; });
+  var row = h("div", { class: "pw-l" });
+  ts.forEach(function (x, k) {
+    if (lvs[k] !== 1) return;
+    if (row.firstChild) row.appendChild(h("span", { class: "pw-sep", "aria-hidden": "true" }, ["｜"]));
+    row.appendChild(h("button", { class: "pw-i", type: "button", "data-tid": x.id, onclick: function () { if (WV.tid) { if (x.id !== WV.tid) openTitle(x.id); } else pwJump(x.id); } }, [x.name || "（還沒有標題）"]));
+  });
+  var bar = h("nav", { class: "pgwhere" + (deep ? " deep" : ""), "aria-label": "現在讀到哪裡" }, [
+    h("div", { class: "pw-row" }, [h("button", { class: "pw-ch", type: "button", title: t ? "回到這一章" : "回到這一章最上面", onclick: function () { if (WV.tid) openChapter(c.id); else { topOfView(); pwScan(); } } }, [chIco(c) + " " + (c.name || "")]), row]),
+    deep ? h("div", { class: "pw-sub", "aria-live": "polite" }, [""]) : null
+  ]);
+  bar._ts = ts; bar._lvs = lvs;
+  return bar;
+}
+function pwSet(tid) {   // 讀到 tid 那一篇（可以是子標題）：亮它的第 1 層；有分層：下面那一行寫它
+  var bar = $(".pgwhere"); if (!bar || !bar._ts) return;
+  var ts = bar._ts, lvs = bar._lvs, i = 0;
+  ts.some(function (x, k) { if (x.id === tid) { i = k; return true; } return false; });
+  var top = i; while (top > 0 && lvs[top] > 1) top--;
+  var topId = ts[top] ? ts[top].id : "";
+  $$(".pw-i", bar).forEach(function (b) {
+    var on = b.getAttribute("data-tid") === topId;
+    b.classList.toggle("on", on);
+    if (on) b.setAttribute("aria-current", "location"); else b.removeAttribute("aria-current");
+  });
+  var sub = $(".pw-sub", bar);
+  if (sub && ts[i]) {
+    var p = lvs[i] > 1 ? _yzTPath_(ts, ts[i]).slice(1).concat([ts[i]]) : [];
+    sub.textContent = p.length ? "└ " + p.map(function (x) { return x.name || "（還沒有標題）"; }).join(" › ") : "▸ " + (ts[i].name || "（還沒有標題）");
+  }
+  if (PW.cur !== topId) {   // 亮的那一個滑到看得到的地方（只滑這一排，不動整頁；剛打開這一頁：直接到，不用滑過去）
+    var first = !PW.cur;
+    PW.cur = topId;
+    var row = $(".pw-l", bar), ab = $(".pw-i.on", bar);
+    if (row && ab && row.scrollWidth > row.clientWidth + 2) {
+      if (first || window.__SHOT) row.style.scrollBehavior = "auto";
+      row.scrollLeft = Math.max(0, ab.offsetLeft - (row.clientWidth - ab.offsetWidth) / 2);
+      if (first || window.__SHOT) row.style.scrollBehavior = "";
+    }
+  }
+}
+function pwOff() { var mq = $(".pg>.mq:not(.mqb)"), bar = $(".pgwhere"); return (mq ? mq.offsetHeight : 0) + (bar ? bar.offsetHeight : 0); }
+function pwScan() {   // 章的頁面：現在讀到哪一篇（最上面那一條下面、最後一個捲過去的；捲到底＝最後一篇）
+  PW.raf = 0;
+  var bar = $(".pgwhere"); if (!bar || WV.tid) return;
+  var ss = $$(".chsec"); if (!ss.length) return;
+  var lim = pwOff() + 14, cur = ss[0];
+  ss.forEach(function (x) { if (x.getBoundingClientRect().top <= lim) cur = x; });
+  var de = document.documentElement;
+  if (window.pageYOffset > 40 && window.innerHeight + window.pageYOffset >= de.scrollHeight - 4) cur = ss[ss.length - 1];
+  pwSet(cur.getAttribute("data-tid") || "");
+}
+function pwJump(tid) {   // 捲到那一篇（扣掉上面固定的那兩條）
+  var el = document.getElementById("cht-" + tid); if (!el) return;
+  var y = Math.max(0, el.getBoundingClientRect().top + window.pageYOffset - pwOff() - 8);
+  try { window.scrollTo({ top: y, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches || window.__SHOT ? "auto" : "smooth" }); } catch (e) { window.scrollTo(0, y); }
+  pwSet(tid);
+  var my = PW.lock = Date.now() + 1600;   // 捲到了（或 1.6 秒）就放開；點的那一篇一直亮著，直到自己再捲
+  var done = function () { window.removeEventListener("scrollend", done); if (PW.lock === my) PW.lock = 0; };
+  window.addEventListener("scrollend", done);
+  setTimeout(done, 1600);
+}
+window.addEventListener("scroll", function () { if (PW.lock && Date.now() < PW.lock) return; if (!PW.raf && $(".pgwhere") && !WV.tid) PW.raf = requestAnimationFrame(pwScan); }, { passive: true });
+["wheel", "touchstart", "keydown"].forEach(function (k) { window.addEventListener(k, function () { PW.lock = 0; }, { passive: true }); });   // 自己捲：馬上跟著
+window.addEventListener("resize", function () { if (!PW.raf && $(".pgwhere") && !WV.tid) PW.raf = requestAnimationFrame(pwScan); });
 function drawChapterPage(col, c, ico, bg) {
   var tts = titlesOf(c.id);
   col.appendChild(pgHead(ico + " " + c.name, c.intro || (tts.length ? tts.length + " 個標題" : "")));
@@ -4574,18 +4753,20 @@ function drawChapterPage(col, c, ico, bg) {
     return;
   }
   // 第 28 批：整章的內容直接展開（不用一篇一篇點進去）；上面一排是標題清單，點了直接捲到那一篇
+  // 第 43 批：標題分層的章：清單改成直的一列（子標題往右縮，像目錄）；名字照打的（沒分層、名字沒有自己編號的才加「1.」）
+  var lvs = _yzTLvs_(tts), deep = lvs.some(function (v) { return v > 1; });
   if (tts.length > 1) {
-    var toc = h("div", { class: "chtoc" }, [h("div", { class: "chtoc-h" }, ["這一章有 " + tts.length + " 個標題（點了直接捲到那一篇）"])]), tl = h("div", { class: "chtoc-l" });
+    var toc = h("div", { class: "chtoc" + (deep ? " deep" : "") }, [h("div", { class: "chtoc-h" }, ["這一章有 " + tts.length + " 個標題（點了直接捲到那一篇）"])]), tl = h("div", { class: "chtoc-l" });
     tts.forEach(function (tt, k) {
-      tl.appendChild(h("button", { class: "chtoc-b", type: "button", onclick: function () { var el = document.getElementById("cht-" + tt.id); if (el) el.scrollIntoView({ block: "start" }); } }, [(k + 1) + ". " + (tt.name || "（還沒有標題）")]));
+      tl.appendChild(h("button", { class: "chtoc-b" + (deep ? " lv" + lvs[k] : ""), type: "button", onclick: function () { pwJump(tt.id); } }, [tocLabel(tt, k, deep)]));
     });
     toc.appendChild(tl);
     col.appendChild(pgCard([toc], { cls: "slim" }));
   }
-  tts.forEach(function (tt) {
-    var art = webArticle(c, tt, { width: tt.ww || 760, onImg: lightbox, hl: null, hb: HB, onTitle: openTitle, onChapter: openChapter, page: true });
-    art.insertBefore(h("div", { class: "chsec-h" }, [h("h2", { class: "chsec-t" }, [tt.name || "（還沒有標題）"]), h("button", { class: "pbtn chsec-o", type: "button", onclick: function () { openTitle(tt.id); }, "aria-label": "單獨看「" + (tt.name || "") + "」" }, ["單獨看 ›"])]), art.firstChild);
-    col.appendChild(h("section", { class: "chsec", id: "cht-" + tt.id }, [h("div", { class: "pgart" }, [art])]));
+  tts.forEach(function (tt, k) {
+    var lv = lvs[k], art = webArticle(c, tt, { width: tt.ww || 760, onImg: lightbox, hl: null, hb: HB, onTitle: openTitle, onChapter: openChapter, page: true });
+    art.insertBefore(h("div", { class: "chsec-h" }, [h(lv === 1 ? "h2" : lv === 2 ? "h3" : "h4", { class: "chsec-t" }, [tt.name || "（還沒有標題）"]), h("button", { class: "pbtn chsec-o", type: "button", onclick: function () { openTitle(tt.id); }, "aria-label": "單獨看「" + (tt.name || "") + "」" }, ["單獨看 ›"])]), art.firstChild);
+    col.appendChild(h("section", { class: "chsec lv" + lv, id: "cht-" + tt.id, "data-tid": tt.id }, [h("div", { class: "pgart" }, [art])]));
   });
   var bk = webBacklinks(_yzBacklinks_(HB, [c.id], null), c.id, openTitle);   // 互相連結：從別的標題連到這一章的
   if (bk) col.appendChild(pgCard([bk]));
@@ -4593,7 +4774,10 @@ function drawChapterPage(col, c, ico, bg) {
 function drawTitlePage(col, c, t) {
   var ts = titlesOf(c.id), i = ts.indexOf(t);
   col.appendChild(pgHead(t.name || "（還沒有標題）"));
-  col.appendChild(h("div", { class: "pgsub" }, [h("button", { class: "pgchip", type: "button", onclick: function () { openChapter(c.id); } }, [chIco(c) + " " + c.name])]));
+  var up = _yzTPath_(ts, t);   // 第 43 批：子標題：章 › 上層 › 再上層（點了打開那一篇）
+  col.appendChild(h("div", { class: "pgsub pgpath" }, [h("button", { class: "pgchip", type: "button", onclick: function () { openChapter(c.id); } }, [chIco(c) + " " + c.name])].concat(up.map(function (x) {
+    return h("button", { class: "pgchip up", type: "button", onclick: function () { openTitle(x.id); } }, [x.name || "（還沒有標題）"]);
+  }))));
   var art = webArticle(c, t, { width: t.ww || 760, onImg: lightbox, hl: WV.hl, hb: HB, onTitle: openTitle, onChapter: openChapter, page: true });
   col.appendChild(h("div", { class: "pgart" }, [art]));
   col.appendChild(h("div", { class: "pgnav" }, [
@@ -4728,12 +4912,245 @@ function drawSearchResults(col) {
   r.hits.forEach(function (hit) {
     var pg = _yzPageText_(hit.t.page), label = YZ_WHERE[hit.where] && hit.where !== "page" ? YZ_WHERE[hit.where] + "有符合" : "";
     col.appendChild(pgCard([
-      h("div", { class: "pc-meta" }, [h("span", { class: "pc-ch" }, [chIco(hit.ch) + " " + hit.ch.name]), pg ? h("span", { class: "pc-pg" }, ["📖 " + pg]) : null, label ? h("span", {}, [label]) : null]),
+      h("div", { class: "pc-meta" }, [h("span", { class: "pc-ch" }, [chIco(hit.ch) + " " + [hit.ch.name].concat(_yzTPath_(titlesOf(hit.ch.id), hit.t).map(function (x) { return x.name; })).join(" › ")]), pg ? h("span", { class: "pc-pg" }, ["📖 " + pg]) : null, label ? h("span", {}, [label]) : null]),
       h("h2", { class: "pc-t" }, hlNodes(hit.t.name, r.toks)),
       hit.where !== "page" ? h("div", { class: "pc-note" }, hlNodes(hit.snip, r.toks, hit.where === "ocr")) : null
     ], { go: function () { openTitle(hit.t.id, r.toks); }, label: "打開「" + hit.t.name + "」" }));
   });
 }
+
+/* ════════ fview.js ════════ */
+/* ═══════════════ fview.js：第 43 批：網址連結的檔案（Word、PDF、Excel、PPT、圖片）在手冊裡的小視窗看（只能看）═══════════════
+   點了 → 跟後端要檔案（hbFile；Word、Excel、PPT 後端用雲端硬碟轉成 PDF）→
+     PDF：用 PDF.js（hbpdf.js：第一次打開檔案才載入）一頁一頁畫在畫面上（捲到哪一頁才畫哪一頁）；圖片：直接放。
+   只能看：沒有下載、列印的按鈕；不能右鍵、不能拖；浮水印蓋在上面；列印的時候整個不印。
+   電腦：一個大的小視窗（手冊還在後面）；手機：整個畫面。放大縮小：－／＋／「適合寬度」（電腦也可以 Ctrl＋滾輪）。
+   手機按「上一頁」也是關掉這個小視窗（不會離開手冊）。開發者在編輯器按「試開」：還沒存的網址也可以（hbFileTry）。 */
+var FV = { el: null, doc: null, task: null, scale: 1, fit: true, n: 0, w1: 0, h1: 0, pages: [], io: null, seq: 0, img: null, url: "", lib: null, back: null, hist: false };
+function fvB64(b) { var s = atob(String(b || "")), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
+function fvLib() {   // PDF.js（第一次才載入；之後直接用）
+  if (window.pdfjsLib && window.pdfjsWorker) return Promise.resolve(window.pdfjsLib);
+  if (FV.lib) return FV.lib;
+  FV.lib = new Promise(function (ok, bad) {
+    var s = document.createElement("script");
+    s.src = "hbpdf.js?v=" + HB_PDF_V;
+    s.onload = function () { if (window.pdfjsLib && window.pdfjsWorker) ok(window.pdfjsLib); else { FV.lib = null; bad(new Error("看 PDF 的程式沒有載入好")); } };
+    s.onerror = function () { FV.lib = null; bad(new Error("看 PDF 的程式（hbpdf.js）載入不了：請開發者確認 GitHub 上有放 hbpdf.js")); };
+    document.head.appendChild(s);
+  });
+  return FV.lib;
+}
+function fvCMaps() {   // 字型對照表（hbcmap.js）：PDF 裡的中文字沒有嵌字型時才載入（大部分的 PDF 用不到）
+  if (window.HB_CMAPS) return Promise.resolve(window.HB_CMAPS);
+  if (FV.cml) return FV.cml;
+  FV.cml = new Promise(function (ok, bad) {
+    var s = document.createElement("script");
+    s.src = "hbcmap.js?v=" + HB_PDF_V;
+    s.onload = function () { if (window.HB_CMAPS) ok(window.HB_CMAPS); else { FV.cml = null; bad(new Error("字型對照表沒有載入好")); } };
+    s.onerror = function () { FV.cml = null; bad(new Error("字型對照表（hbcmap.js）載入不了：請開發者確認 GitHub 上有放 hbcmap.js")); };
+    document.head.appendChild(s);
+  });
+  return FV.cml;
+}
+function FvCMap() { /* PDF.js 要字型對照表時問這裡 */ }
+FvCMap.prototype.fetch = function (o) {
+  var nm = String(o && o.name || "");
+  return fvCMaps().then(function (all) {
+    var b = all[nm];
+    if (!b) throw new Error("沒有這個字型對照表：" + nm);
+    var lib = window.pdfjsLib, ct = lib && lib.CMapCompressionType ? lib.CMapCompressionType.BINARY : 1;
+    return { cMapData: fvB64(b), compressionType: ct };
+  });
+};
+function fvIco(k) { return (YZ_FILE_ICO && YZ_FILE_ICO[k]) || "📄"; }
+function fvClose(fromPop) {
+  FV.seq++;
+  if (FV.io) { try { FV.io.disconnect(); } catch (e) { /* 沒關係 */ } FV.io = null; }
+  if (FV.task) { try { FV.task.destroy(); } catch (e) { /* 沒關係 */ } FV.task = null; }
+  if (FV.doc) { try { FV.doc.destroy(); } catch (e) { /* 沒關係 */ } FV.doc = null; }
+  if (FV.url) { try { URL.revokeObjectURL(FV.url); } catch (e) { /* 沒關係 */ } FV.url = ""; }
+  FV.pages = []; FV.img = null;
+  var had = !!FV.el;
+  if (FV.el) { FV.el.remove(); FV.el = null; }
+  document.removeEventListener("keydown", fvKey, true);
+  if (had && FV.hist && !fromPop) { FV.hist = false; try { if (history.state && history.state.hbfv) history.back(); } catch (e) { /* 沒關係 */ } }
+  FV.hist = false;
+  if (had && FV.back && FV.back.isConnected) { try { FV.back.focus({ preventScroll: true }); } catch (e) { /* 沒關係 */ } }
+  FV.back = null;
+}
+window.addEventListener("popstate", function () { if (FV.el) fvClose(true); });   // 手機按「上一頁」：關掉小視窗
+function fvKey(e) {
+  if (!FV.el) return;
+  if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fvClose(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) { e.preventDefault(); fvZoom(1.25); }
+  else if ((e.ctrlKey || e.metaKey) && e.key === "-") { e.preventDefault(); fvZoom(0.8); }
+}
+// o：{ tid, bi, ii, tag, label, kind }（手冊裡的連結）；或 { try: 網址, label, kind }（開發者試開）
+function fvOpen(o) {
+  o = o || {};
+  fvClose();
+  var my = FV.seq, label = String(o.label || "檔案");
+  FV.back = document.activeElement;
+  var title = h("b", { class: "fv-t" }, [label]);
+  var pg = h("span", { class: "fv-pg", role: "status", "aria-live": "polite" }, [""]);
+  var zo = h("button", { class: "btn sm fv-z", type: "button", "aria-label": "縮小", title: "縮小", disabled: true }, ["－"]);
+  var zf = h("button", { class: "btn sm fv-z fv-zf", type: "button", title: "照視窗的寬度", disabled: true }, ["適合寬度"]);
+  var zi = h("button", { class: "btn sm fv-z", type: "button", "aria-label": "放大", title: "放大", disabled: true }, ["＋"]);
+  var xb = h("button", { class: "btn sm fv-x", type: "button", "aria-label": "關掉", title: "關掉（Esc）" }, ["✕"]);
+  var msg = h("div", { class: "fv-m" }, [h("div", { class: "fv-sp", "aria-hidden": "true" }), h("p", { id: "fvmsg" }, ["拿檔案中…"])]);
+  var body = h("div", { class: "fv-b", tabindex: "0", "aria-label": "檔案內容" }, [msg]);
+  var inner = h("div", { class: "fv-in" }, [h("div", { class: "fv-h" }, [h("span", { class: "fv-ic", "aria-hidden": "true" }, [fvIco(o.kind)]), h("div", { class: "fv-tt" }, [title, pg]), h("div", { class: "fv-zs" }, [zo, zf, zi]), xb]), body,
+    h("div", { class: "fv-f" }, ["🔒 內部資料：只能看，不能下載、不能列印"])]);
+  var box = h("div", { class: "fv", role: "dialog", "aria-modal": "true", "aria-label": "看檔案：" + label }, [inner]);
+  box.addEventListener("click", function (e) { if (e.target === box) fvClose(); });   // 電腦：點旁邊的灰色也是關掉
+  box.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+  box.addEventListener("dragstart", function (e) { e.preventDefault(); });
+  body.addEventListener("wheel", function (e) { if (e.ctrlKey || e.metaKey) { e.preventDefault(); fvZoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); } }, { passive: false });
+  xb.onclick = function () { fvClose(); };
+  zo.onclick = function () { fvZoom(0.8); }; zi.onclick = function () { fvZoom(1.25); }; zf.onclick = function () { FV.fit = true; fvFit(); };
+  document.body.appendChild(box);
+  FV.el = box; FV.zs = [zo, zf, zi]; FV.pg = pg; FV.body = body;
+  document.addEventListener("keydown", fvKey, true);
+  try { history.pushState({ hbfv: 1 }, "", location.href.split("#")[0]); FV.hist = true; } catch (e) { FV.hist = false; }
+  try { xb.focus({ preventScroll: true }); } catch (e) { /* 沒關係 */ }
+  var t0 = Date.now(), got = 0;
+  var say = function () {
+    var m = $("#fvmsg", box); if (!m || my !== FV.seq) return;
+    var s = Math.round((Date.now() - t0) / 1000);
+    m.textContent = got > 0 ? "下載中…" + (got > 1048576 ? (got / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(got / 1024)) + " KB") : "拿檔案中…" + (s >= 2 ? s + " 秒" : "") + (s >= 4 ? "（Word、Excel、PPT 第一次打開要轉成 PDF，大約 5～30 秒）" : "");
+  };
+  var tick = setInterval(function () { if (my !== FV.seq) { clearInterval(tick); return; } say(); }, 1000);
+  var prog = function (ph, g) { if (ph === "dl") { got = g || 0; say(); } };
+  var req = o.try ? call("hbFileTry", [o.try], { ms: 150000, prog: prog }) : call("hbFile", [o.tid, o.bi, o.ii, o.tag || ""], { ms: 150000, prog: prog });
+  req.then(function (r) {
+    clearInterval(tick);
+    if (my !== FV.seq) return;
+    if (r && r.st && !r.err) { fvClose(); if (r.st === "lock") logout("expired"); return; }   // 登入過期了
+    if (!r || !r.ok) { fvErr(r && r.err || "沒拿到檔案"); return; }
+    if (r.label || r.name) { title.textContent = r.label || r.name; box.setAttribute("aria-label", "看檔案：" + title.textContent); }
+    if (r.kind === "img") fvImg(r, my); else fvPdf(r, my);
+  }, function (e) { clearInterval(tick); if (my === FV.seq) fvErr(e && e.code === "bad" ? "藥戰手冊的後端還不認得「在手冊裡看檔案」（Apps Script 要貼第 43 批的 01、02、03，部署新版本）" : e && e.message || "連不上後端"); });   // 後端還是舊的：說清楚
+}
+function fvErr(t) {
+  if (!FV.body) return;
+  FV.body.innerHTML = "";
+  FV.body.appendChild(h("div", { class: "fv-m err" }, [h("p", { class: "fv-e" }, ["❌ " + String(t).slice(0, 300)]), h("p", { class: "muted" }, ["關掉以後可以再按一次試試。一直打不開，請截圖給開發者。"])]));
+}
+function fvZoomOk(on) { (FV.zs || []).forEach(function (b) { b.disabled = !on; }); }
+function fvImg(r, my) {
+  var bytes = fvB64(r.b64); r.b64 = null;
+  FV.url = URL.createObjectURL(new Blob([bytes], { type: r.mime || "image/png" }));
+  var im = h("img", { class: "fv-img", alt: "", draggable: "false" });
+  im.onload = function () { if (my !== FV.seq) return; FV.img = im; FV.w1 = im.naturalWidth || 1; FV.h1 = im.naturalHeight || 1; FV.fit = true; fvFit(); fvZoomOk(true); FV.pg.textContent = "圖片"; };
+  im.onerror = function () { if (my === FV.seq) fvErr("這張圖打不開（格式不支援）"); };
+  im.src = FV.url;
+  FV.body.innerHTML = "";
+  FV.body.appendChild(h("div", { class: "fv-ims" }, [im]));
+}
+function fvPdf(r, my) {
+  var bytes = fvB64(r.b64); r.b64 = null;
+  var m = $("#fvmsg", FV.el); if (m) m.textContent = "打開 PDF…";
+  fvLib().then(function (lib) {
+    if (my !== FV.seq) return null;
+    FV.task = lib.getDocument({ data: bytes, isEvalSupported: false, CMapReaderFactory: FvCMap, cMapPacked: true, useSystemFonts: true, enableXfa: false, disableAutoFetch: true, disableStream: true, disableRange: true, verbosity: 0 });
+    return FV.task.promise;
+  }).then(function (doc) {
+    if (!doc) return null;
+    if (my !== FV.seq) { try { doc.destroy(); } catch (e) { /* 沒關係 */ } return null; }
+    FV.doc = doc; FV.n = doc.numPages;
+    return doc.getPage(1).then(function (p1) {
+      if (my !== FV.seq) return;
+      var vp = p1.getViewport({ scale: 1 });
+      FV.w1 = vp.width; FV.h1 = vp.height;
+      fvPages(my);
+    });
+  }).then(null, function (e) { if (my === FV.seq) fvErr(/password|Password/.test(String(e && e.message)) ? "這個 PDF 有密碼，打不開" : "PDF 打不開：" + (e && e.message || e)); });
+}
+function fvPages(my) {   // 每一頁先放一個框（大小照第一頁），捲到才畫
+  var body = FV.body;
+  body.innerHTML = "";
+  FV.pages = [];
+  for (var i = 1; i <= FV.n; i++) {
+    var c = h("canvas", { class: "fv-cv", "aria-hidden": "true" });
+    var d = h("div", { class: "fv-p", "data-n": String(i), role: "img", "aria-label": "第 " + i + " 頁" }, [c]);
+    body.appendChild(d);
+    FV.pages.push({ n: i, el: d, cv: c, at: 0, busy: false, w: FV.w1, h: FV.h1, task: null });
+  }
+  FV.fit = true;
+  fvFit();
+  fvZoomOk(true);
+  if ("IntersectionObserver" in window) {
+    FV.io = new IntersectionObserver(function (ents) {
+      ents.forEach(function (en) { var p = FV.pages[+en.target.getAttribute("data-n") - 1]; if (!p) return; p.vis = en.isIntersecting; if (en.isIntersecting) fvDraw(p, my); });
+      fvTrim();
+    }, { root: body, rootMargin: "800px 0px" });
+    FV.pages.forEach(function (p) { FV.io.observe(p.el); });
+  } else FV.pages.forEach(function (p) { fvDraw(p, my); });
+  body.addEventListener("scroll", fvWhere, { passive: true });
+  fvWhere();
+}
+function fvAvail() { return Math.max(160, (FV.body ? FV.body.clientWidth : 600) - 28); }
+function fvFit() {   // 照視窗的寬度（最大 2.5 倍）
+  if (!FV.w1) return;
+  FV.scale = Math.max(0.2, Math.min(2.5, fvAvail() / FV.w1));
+  fvApply();
+}
+function fvZoom(f) {
+  if (!FV.w1) return;
+  FV.fit = false;
+  FV.scale = Math.max(0.2, Math.min(5, FV.scale * f));
+  fvApply();
+}
+function fvApply() {   // 放大縮小：看的地方（中間那一點）不跑掉
+  var body = FV.body;
+  var cx = body ? (body.scrollLeft + body.clientWidth / 2) / Math.max(1, body.scrollWidth) : 0.5, cy = body ? body.scrollTop / Math.max(1, body.scrollHeight) : 0;
+  if (FV.img) {
+    FV.img.style.width = Math.round(FV.w1 * FV.scale) + "px";
+    FV.img.style.height = Math.round(FV.h1 * FV.scale) + "px";
+  } else FV.pages.forEach(function (p) {
+    p.el.style.width = Math.round(p.w * FV.scale) + "px";
+    p.el.style.height = Math.round(p.h * FV.scale) + "px";
+    if (p.at && Math.abs(p.at - FV.scale) > 0.001) { p.at = 0; if (p.vis) fvDraw(p, FV.seq); }
+  });
+  if (body) { body.scrollTop = cy * body.scrollHeight; body.scrollLeft = Math.max(0, cx * body.scrollWidth - body.clientWidth / 2); }
+}
+function fvDraw(p, my) {   // 畫一頁（照現在的放大倍數；手機、高解析的螢幕畫清楚一點，但一頁最多 1200 萬像素）
+  if (!FV.doc || p.busy || (p.at && Math.abs(p.at - FV.scale) < 0.001)) return;
+  p.busy = true;
+  var sc = FV.scale;
+  FV.doc.getPage(p.n).then(function (pg) {
+    if (my !== FV.seq) return null;
+    var vp1 = pg.getViewport({ scale: 1 });
+    if (Math.abs(vp1.width - p.w) > 0.5 || Math.abs(vp1.height - p.h) > 0.5) { p.w = vp1.width; p.h = vp1.height; p.el.style.width = Math.round(p.w * FV.scale) + "px"; p.el.style.height = Math.round(p.h * FV.scale) + "px"; }
+    var vp = pg.getViewport({ scale: sc }), dpr = Math.min(window.devicePixelRatio || 1, 3);
+    while (dpr > 1 && vp.width * vp.height * dpr * dpr > 12e6) dpr -= 0.25;
+    var cv = p.cv;
+    cv.width = Math.floor(vp.width * dpr); cv.height = Math.floor(vp.height * dpr);
+    cv.style.width = Math.round(vp.width) + "px"; cv.style.height = Math.round(vp.height) + "px";
+    var ctx = cv.getContext("2d", { alpha: false });
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height);
+    p.task = pg.render({ canvasContext: ctx, viewport: vp, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null, annotationMode: window.pdfjsLib && pdfjsLib.AnnotationMode ? pdfjsLib.AnnotationMode.DISABLE : 0 });
+    return p.task.promise.then(function () { p.at = sc; p.el.classList.add("on"); });
+  }).then(function () {
+    p.busy = false; p.task = null;
+    if (my === FV.seq && Math.abs(p.at - FV.scale) > 0.001 && p.vis) fvDraw(p, my);   // 畫的時候又放大縮小了：再畫一次
+  }, function () { p.busy = false; p.task = null; });
+}
+function fvTrim() {   // 離現在很遠的頁：清掉（手機記憶體不夠）；捲回來再畫
+  var cur = FV.cur || 1;
+  FV.pages.forEach(function (p) {
+    if (p.vis || p.busy || !p.at || Math.abs(p.n - cur) <= 4) return;
+    p.cv.width = 0; p.cv.height = 0; p.at = 0; p.el.classList.remove("on");
+  });
+}
+function fvWhere() {   // 上面寫「第幾頁／幾頁」
+  var body = FV.body; if (!body || !FV.pages.length) return;
+  var mid = body.scrollTop + body.clientHeight * 0.35, cur = 1;
+  FV.pages.forEach(function (p) { if (p.el.offsetTop <= mid) cur = p.n; });
+  if (cur !== FV.cur) { FV.cur = cur; fvTrim(); }
+  FV.pg.textContent = "第 " + cur + "／" + FV.n + " 頁";
+}
+window.addEventListener("resize", function () { if (FV.el && FV.fit) fvFit(); });
 
 /* ════════ quiz.js ════════ */
 /* ═══════════════ quiz.js：問卷、考試（藥師在網頁上填；第 32 批）═══════════════
@@ -7845,8 +8262,10 @@ function renderTree() {
       h("div", {}, [h("div", { class: "t2" }, [c.name || "（還沒有章名）"]), h("div", { class: "t1" }, [(ED.titles[c.id] || []).length + " 個標題"])])
     ]));
     if (chosen) {
-      (ED.titles[c.id] || []).forEach(function (t) {
-        c1.appendChild(h("div", { class: "chT" + (ED.cur.kind === "title" && ED.cur.id === t.id ? " on" : ""), onclick: function () { selectNode("title", t.id); } }, [t.name || "（還沒有標題）"]));
+      var tsc = ED.titles[c.id] || [], lvc = _yzTLvs_(tsc);   // 第 43 批：標題分層（像目錄：第 2、3 層往右縮；第 1 層有子標題＝粗體）
+      tsc.forEach(function (t, k) {
+        var lv = lvc[k], hd = lv === 1 && _yzTKids_(tsc, k, lvc) > 0;
+        c1.appendChild(h("div", { class: "chT lv" + lv + (hd ? " hd" : "") + (ED.cur.kind === "title" && ED.cur.id === t.id ? " on" : ""), "data-lv": String(lv), onclick: function () { selectNode("title", t.id); } }, [t.name || "（還沒有標題）"]));
       });
       c1.appendChild(h("div", { style: "padding:4px 0 6px 26px" }, [btn("＋新增標題", function () { addTitle(c.id); })]));
     }
@@ -7905,7 +8324,8 @@ function renderChForm(f, c) {
   var it = h("textarea", { class: "ta", style: "min-height:56px" }); it.value = c.intro || ""; it.oninput = function () { c.intro = it.value; changed(); }; f.appendChild(it);
   f.appendChild(hint("卡片的大小在預覽視窗裡調（所有章元共用同一個大小）。"));
   f.appendChild(h("div", { class: "lbl" }, ["這一章的標題（" + ts.length + "）"]));
-  ts.forEach(function (t) { f.appendChild(h("div", { class: "chT", style: "padding-left:8px;border:1px solid var(--line);border-radius:8px;margin:4px 0", onclick: function () { selectNode("title", t.id); } }, [t.name])); });
+  var lvf = _yzTLvs_(ts);   // 第 43 批：分層的往右縮
+  ts.forEach(function (t, k) { f.appendChild(h("div", { class: "chT lv" + lvf[k], style: "padding-left:" + (8 + (lvf[k] - 1) * 18) + "px;border:1px solid var(--line);border-radius:8px;margin:4px 0", onclick: function () { selectNode("title", t.id); } }, [t.name || "（還沒有標題）"])); });
   f.appendChild(h("div", { style: "display:flex;gap:6px;flex-wrap:wrap;margin-top:12px" }, [
     btn("＋新增標題", function () { addTitle(c.id); }), btn("▲ 往前移", function () { moveChapter(c.id, -1); }), btn("▼ 往後移", function () { moveChapter(c.id, 1); }),
     confirmBtn("刪除這一章", function () {
@@ -7919,7 +8339,8 @@ function moveChapter(id, d) {
   var x = ED.chapters[i]; ED.chapters[i] = ED.chapters[j]; ED.chapters[j] = x; renumber(); markDirty(); renderEdit();
 }
 function renderTitleForm(f, t, ch) {
-  f.appendChild(h("div", { class: "muted", style: "font-size:12.5px" }, [ch.name + " ›"]));
+  var tsl = ED.titles[ch.id] || [], tlv = _yzTLvs_(tsl)[tsl.indexOf(t)] || 1;
+  f.appendChild(h("div", { class: "muted", style: "font-size:12.5px" }, [[ch.name].concat(_yzTPath_(tsl, t).map(function (x) { return x.name || "（還沒有標題）"; })).join(" › ") + " ›" + (tlv > 1 ? "　（第 " + tlv + " 層）" : "")]));
   f.appendChild(lbl("四", "標題（純文字）"));
   var ti = h("input", { class: "in", value: t.name, placeholder: "例：一、一般藥品補充" });
   ti.oninput = function () { t.name = ti.value; markDirty(); renderTree(); refreshPreview(); };
@@ -7960,9 +8381,12 @@ function renderTitleForm(f, t, ch) {
 
   f.appendChild(h("div", { style: "display:flex;gap:6px;flex-wrap:wrap;margin-top:14px" }, [
     btn("▲ 往前移", function () { moveTitle(t, -1); }), btn("▼ 往後移", function () { moveTitle(t, 1); }),
+    btn("← 往左（上一層）", function () { lvTitle(t, -1); }, "sm tlvl"), btn("→ 往右（變子標題）", function () { lvTitle(t, 1); }, "sm tlvr"),   // 第 43 批：標題分層
+    btn("＋ 子標題", function () { addSubTitle(t); }, "sm tlvsub"),
     btn("📋 複製這一篇", function () { edCopyTitle(t); }, "sm cpt"),   // 第 32 批：整篇複製一份，放到選的章
-    confirmBtn("刪除這個標題", function () { var a = ED.titles[ch.id], i = a.indexOf(t); a.splice(i, 1); markDirty(); a.length ? selectNode("title", a[Math.min(i, a.length - 1)].id) : selectNode("ch", ch.id); })
+    confirmBtn("刪除這個標題", function () { var a = ED.titles[ch.id], i = a.indexOf(t); edTitleDrop(a, i); markDirty(); a.length ? selectNode("title", a[Math.min(i, a.length - 1)].id) : selectNode("ch", ch.id); })
   ]));
+  f.appendChild(hint("分層（最多 3 層，像目錄）：「→ 往右」＝變成上一個標題的子標題；「← 往左」＝回到上一層。子標題會跟著一起動（往前移、往後移、往右、往左）；刪掉一個標題，它的子標題往上一層。"));
 }
 // 第 27 批：這個標題的「連結」一區：這一篇連到哪裡（文字裡的「連結」行）、誰連到這一篇（自動）、＋ 加一個連結
 function linkPanel(t, ch) {
@@ -7999,7 +8423,51 @@ function linkPanel(t, ch) {
     h("div", { class: "lkrow" }, [sel, add])
   ]);
 }
-function moveTitle(t, d) { var a = ED.titles[t.ch], i = a.indexOf(t), j = i + d; if (j < 0 || j >= a.length) return; a[i] = a[j]; a[j] = t; markDirty(); renderEdit(); }
+// 第 43 批：往前／往後＝連子標題一起搬，跟同一層的前一個／後一個（也連它的子標題）換位置；已經是那一層的第一個／最後一個：不動
+function edTSpan(a, i, lvs) { var e = i + 1; while (e < a.length && lvs[e] > lvs[i]) e++; return e; }   // 第 i 個標題＋它的子標題：[i, e)
+function moveTitle(t, d) {
+  var a = ED.titles[t.ch], i = a.indexOf(t); if (i < 0) return;
+  edTLvFix(a);
+  var lvs = _yzTLvs_(a), L = lvs[i], e = edTSpan(a, i, lvs), blk;
+  if (d < 0) {
+    var k = i - 1; while (k >= 0 && lvs[k] > L) k--;
+    if (k < 0 || lvs[k] < L) { toast(L > 1 ? "已經是這一層的第一個了（要搬出去：先按「← 往左」）" : "已經是第一個了"); return; }
+    blk = a.splice(i, e - i); Array.prototype.splice.apply(a, [k, 0].concat(blk));
+  } else {
+    if (e >= a.length || lvs[e] < L) { toast(L > 1 ? "已經是這一層的最後一個了（要搬出去：先按「← 往左」）" : "已經是最後一個了"); return; }
+    var e2 = edTSpan(a, e, lvs);
+    blk = a.splice(e, e2 - e); Array.prototype.splice.apply(a, [i, 0].concat(blk));
+  }
+  markDirty(); renderEdit();
+}
+function edTLvFix(a) { var lvs = _yzTLvs_(a); a.forEach(function (x, k) { if (lvs[k] > 1) x.lv = lvs[k]; else delete x.lv; }); }   // 層級照順序修好（存檔時後端也會修）
+function lvTitle(t, d) {   // ← → ：這個標題連子標題一起往左／往右一層
+  var a = ED.titles[t.ch], i = a.indexOf(t); if (i < 0) return;
+  edTLvFix(a);
+  var lvs = _yzTLvs_(a), L = lvs[i], e = edTSpan(a, i, lvs), k, mx = L;
+  for (k = i; k < e; k++) mx = Math.max(mx, lvs[k]);
+  if (d > 0) {
+    if (i === 0) { toast("第一個標題不能往右（要先有一個上層的標題）"); return; }
+    if (L > lvs[i - 1]) { toast("已經是上一個標題的子標題了"); return; }
+    if (mx >= YZ_TLV_MAX) { toast("最多 " + YZ_TLV_MAX + " 層：" + (L >= YZ_TLV_MAX ? "已經是第 " + YZ_TLV_MAX + " 層了" : "它的子標題已經到第 " + YZ_TLV_MAX + " 層了")); return; }
+  } else if (L <= 1) { toast("已經是第 1 層了"); return; }
+  for (k = i; k < e; k++) { var nv = lvs[k] + d; if (nv > 1) a[k].lv = nv; else delete a[k].lv; }
+  markDirty(); renderEdit();
+}
+function addSubTitle(t) {   // ＋ 子標題：放在這個標題（和它的子標題）的後面，比它多一層
+  var a = ED.titles[t.ch], i = a.indexOf(t); if (i < 0) return;
+  edTLvFix(a);
+  var lvs = _yzTLvs_(a), L = lvs[i];
+  if (L >= YZ_TLV_MAX) { toast("最多 " + YZ_TLV_MAX + " 層：這個標題已經是第 " + YZ_TLV_MAX + " 層了"); return; }
+  var nt = { id: "t" + Date.now(), ch: t.ch, name: "（新的子標題）", size: "giga", ww: 760, note: "", page: "", blocks: [], lv: L + 1 };
+  a.splice(edTSpan(a, i, lvs), 0, nt); markDirty(); selectNode("title", nt.id);
+}
+function edTitleDrop(a, i) {   // 刪掉第 i 個標題：它的子標題往上一層（不會掛到別人底下）
+  edTLvFix(a);
+  var lvs = _yzTLvs_(a), e = edTSpan(a, i, lvs);
+  for (var k = i + 1; k < e; k++) { var nv = lvs[k] - 1; if (nv > 1) a[k].lv = nv; else delete a[k].lv; }
+  a.splice(i, 1);
+}
 
 /* ───────── 內容塊（文字／階梯式／表格／圖片） ───────── */
 var KIND_NAME = { text: "文字", ladder: "階梯式內容", table: "表格", img: "圖片", anim: "動畫", drug: "藥品卡片", link: "網址連結" };
@@ -8093,7 +8561,7 @@ function blockEditor(t, b, i) {
 }
 function edTitleChoices() {   // 「連結」可以選的：整章（第 27 批）＋全部章元的全部標題（照章分組）
   var out = ED.chapters.map(function (c) { return { id: c.id, label: "📚 " + (c.name || "（還沒有章名）") + "（整章）", grp: "整章（打開那一章的標題清單）" }; });
-  ED.chapters.forEach(function (c) { (ED.titles[c.id] || []).forEach(function (t) { out.push({ id: t.id, label: c.name + " › " + (t.name || "（還沒有標題）"), grp: "標題：" + (c.name || "") }); }); });
+  ED.chapters.forEach(function (c) { var tsg = ED.titles[c.id] || []; tsg.forEach(function (t) { out.push({ id: t.id, label: [c.name].concat(_yzTPath_(tsg, t).map(function (x) { return x.name; })).join(" › ") + " › " + (t.name || "（還沒有標題）"), grp: "標題：" + (c.name || "") }); }); });
   return out;
 }
 // 第 28 批：文字裡的圖：選好檔 → 縮小 → 上傳（檔名亂碼）→ cb({ url, fid, fname, ar, info })；不行 cb(null)
@@ -8256,7 +8724,9 @@ function edCopyTitle(t) {
   var close = modal({ title: "📋 複製這一篇", lines: ["整篇（內容、圖片、表格、備註…）複製一份，標題後面加「（複製）」。放在哪一章："], buttons: [{ label: "取消", cls: "sm" }, { label: "📋 複製", cls: "sm pri", fn: function () {
     var to = sel.value || t.ch, nt = JSON.parse(JSON.stringify(t)), a = ED.titles[to] || (ED.titles[to] = []);
     nt.id = "t" + Date.now(); nt.ch = to; nt.name = (t.name || "") + "（複製）";
-    if (to === t.ch) a.splice(a.indexOf(t) + 1, 0, nt); else a.push(nt);
+    // 第 43 批：同一章＝放在這一篇（和它的子標題）後面、同一層；別章＝放最後面、第 1 層（只複製這一篇，不含子標題）
+    if (to === t.ch) { edTLvFix(a); var lvz = _yzTLvs_(a), iz = a.indexOf(t); if (lvz[iz] > 1) nt.lv = lvz[iz]; else delete nt.lv; a.splice(iz < 0 ? a.length : edTSpan(a, iz, lvz), 0, nt); }
+    else { delete nt.lv; a.push(nt); }
     markDirty(); selectNode("title", nt.id);
     toast("📋 複製好了：「" + nt.name + "」（在「" + (edCh(to) || {}).name + "」）。改好標題就可以用");
   } }] });
@@ -8303,14 +8773,21 @@ function linkEditor(b) {
       var uIn = h("input", { class: "in lk-u", value: x.u || "", maxlength: "1000", inputmode: "url", autocomplete: "off", spellcheck: "false", placeholder: "網址（https:// 開頭）", "aria-label": "網址 " + (k + 1) });
       var nIn = h("input", { class: "in lk-n", value: x.n || "", maxlength: "120", placeholder: "說明（可以不填）", "aria-label": "說明 " + (k + 1) });
       var msg = h("div", { class: "lk-m", role: "status" });
+      // 第 43 批：開法：自動（看網址是不是檔案）／在手冊裡看（檔案：只能看）／開網頁（新視窗）
+      var kSel = h("select", { class: "in lk-k", "aria-label": "開法 " + (k + 1), title: "讀的人點了怎麼開" }, [["", "開法：自動（看網址）"], ["file", "在手冊裡看（檔案，只能看）"], ["web", "開網頁（新視窗）"]].map(function (o) { return h("option", { value: o[0] }, [o[1]]); }));
+      kSel.value = x.k === "file" || x.k === "web" ? x.k : "";
+      var ico = h("span", { class: "lk-no", "aria-hidden": "true" }, ["🌐"]);
       var chk = function () {
-        var raw = String(uIn.value || "").trim(), ok = _yzLinkFix_(raw);
-        msg.textContent = !raw ? "還沒填網址（沒填的不會出現在 LINE、網頁）" : ok ? "✓ " + _yzLinkHost_(ok) + (x.t ? "" : "（沒填顯示的字：用網站名稱）") : "⚠ 網址要 https:// 或 http:// 開頭，中間不能有空白";
+        var raw = String(uIn.value || "").trim(), ok = _yzLinkFix_(raw), fk = ok ? _yzLinkFileKind_({ u: ok, k: x.k }) : "";
+        msg.textContent = !raw ? "還沒填網址（沒填的不會出現在 LINE、網頁）" : !ok ? "⚠ 網址要 https:// 或 http:// 開頭，中間不能有空白" : fk ? "✓ " + YZ_FILE_ICO[fk] + " " + YZ_FILE_NAME[fk] + "：讀的人在手冊裡的小視窗看（只能看，不能下載、列印）" + (x.t ? "" : "（沒填顯示的字：用網站名稱）") : "✓ 網頁 " + _yzLinkHost_(ok) + "：讀的人開新視窗" + (x.t ? "" : "（沒填顯示的字：用網站名稱）");
         msg.className = "lk-m" + (raw && !ok ? " bad" : ok ? " ok" : "");
+        ico.textContent = fk ? YZ_FILE_ICO[fk] : "🌐";
         tryB.disabled = !ok;
+        tryB.textContent = fk ? "👁 試開" : "↗ 試開";
+        tryB.title = fk ? "在手冊裡的小視窗先看看（後端拿得到嗎、轉得成 PDF 嗎）" : "自己先點點看（電腦開小視窗）";
       };
-      var tryB = btn("↗ 試開", function () { var u = _yzLinkFix_(uIn.value); if (!u) return; if (!xlOpen(u)) window.open(u, "_blank", "noopener,noreferrer"); }, "sm");
-      tryB.title = "自己先點點看（電腦開小視窗）";
+      var tryB = btn("↗ 試開", function () { var u = _yzLinkFix_(uIn.value); if (!u) return; var fk = _yzLinkFileKind_({ u: u, k: x.k }); if (fk) { fvOpen({ try: u, label: _yzLinkLabel_({ u: u, t: x.t }), kind: fk }); return; } if (!xlOpen(u)) window.open(u, "_blank", "noopener,noreferrer"); }, "sm lk-try");
+      kSel.onchange = function () { if (kSel.value) x.k = kSel.value; else delete x.k; chk(); changed(); };
       tIn.oninput = function () { x.t = tIn.value; chk(); changed(); };
       uIn.oninput = function () { x.u = uIn.value.trim(); chk(); changed(); };
       uIn.onblur = function () { var raw = String(uIn.value || "").trim(); if (/^www\./i.test(raw)) { uIn.value = x.u = "https://" + raw; chk(); changed(); } };
@@ -8319,7 +8796,7 @@ function linkEditor(b) {
       del.title = "刪掉這一個連結";
       var up = k > 0 ? btn("▲", function () { var y = b.items[k - 1]; b.items[k - 1] = x; b.items[k] = y; paint(); changed(); }, "sm") : null;
       if (up) up.title = "往上移";
-      list.appendChild(h("div", { class: "lkrw" }, [h("span", { class: "lk-no" }, ["🌐"]), h("div", { class: "lk-f" }, [h("div", { class: "lk-r1" }, [tIn, uIn]), h("div", { class: "lk-r2" }, [nIn, tryB, up, del]), msg])]));
+      list.appendChild(h("div", { class: "lkrw" }, [ico, h("div", { class: "lk-f" }, [h("div", { class: "lk-r1" }, [tIn, uIn]), h("div", { class: "lk-r2" }, [nIn, kSel, tryB, up, del]), msg])]));
       chk();
     });
   }
@@ -8327,7 +8804,7 @@ function linkEditor(b) {
   paint();
   wrap.appendChild(list);
   wrap.appendChild(h("div", { class: "lk-add" }, [add]));
-  wrap.appendChild(hint("讀的人點了：電腦網頁開一個小視窗（手冊還在後面）、手機開新分頁、LINE 用 LINE 的瀏覽器打開。顯示的字、說明搜尋找得到；Word 匯出寫「名稱：網址」。"));
+  wrap.appendChild(hint("網頁：電腦開一個小視窗（手冊還在後面）、手機開新分頁、LINE 用 LINE 的瀏覽器打開。第 43 批：網址是檔案（Word、PDF、Excel、PPT、圖片；Google 文件、試算表、簡報、雲端硬碟的檔）→ 讀的人在手冊裡的小視窗看（只能看，不能下載、列印，有浮水印；LINE 點了開網頁的小視窗）。院內網路、SharePoint 這種要登入的網址後端拿不到：檔案請放雲端硬碟（分享給藥戰手冊的 Google 帳號就好，不用公開）。顯示的字、說明搜尋找得到；Word 匯出寫「名稱：網址」。"));
   return wrap;
 }
 
@@ -9709,7 +10186,8 @@ function lineCards(ch, t, opts) {
     }
     return b;
   });
-  var r = _yzContentBubbles_(ch, t, fb, t.note, Object.assign({ hb: HB }, opts));
+  var tsx = (ED && ED.titles && ED.titles[t.ch]) || [], pth = tsx.indexOf(t) >= 0 ? _yzTPath_(tsx, t).map(function (x) { return x.name; }) : [];   // 第 43 批：上層標題
+  var r = _yzContentBubbles_(ch, t, fb, t.note, Object.assign({ hb: HB, path: pth }, opts));
   if (!(opts && opts.keepFake)) r.bubbles.forEach(function (b) { unfake(b, t.blocks); });   // keepFake：給檢查程式用，保留「跟真的一樣長的 Drive 網址」
   return r;
 }
@@ -11322,31 +11800,65 @@ function drawPcLink() {
   call("hbEntry", []).then(function (r) {
     if (!adOk(r)) return;
     if (!r.code || !XRE.test(r.x || X)) { box.innerHTML = ""; box.appendChild(h("p", { class: "hint" }, ["❌ 做不出來：拿不到後端位置。重新整理再試一次。"])); return; }
-    var xx = XRE.test(r.x || "") ? r.x : X;
-    scSeal(r.code, xx).then(function (blob) { pcDraw(box, r.code, blob, !!r.pcl); }, function (e) { box.innerHTML = ""; box.appendChild(h("p", { class: "hint" }, ["❌ 加密沒成功：" + (e && e.message || e) + "。重新整理再試一次。"])); });
+    var xx = XRE.test(r.x || "") ? r.x : X, k7 = /^[a-z0-9]{7}$/.test(r.code7 || "") ? r.code7 : "";   // 第 43 批：12 碼連結的 7 碼鑰匙（舊的後端沒有）
+    Promise.all([scSeal(r.code, xx), k7 ? scSeal(k7, xx) : Promise.resolve("")]).then(function (bs) { pcDraw(box, r, bs[0], bs[1], xx); }, function (e) { box.innerHTML = ""; box.appendChild(h("p", { class: "hint" }, ["❌ 加密沒成功：" + (e && e.message || e) + "。重新整理再試一次。"])); });
   }, function (e) { box.innerHTML = ""; box.appendChild(h("p", { class: "hint" }, ["❌ " + e.message])); });
 }
-function pcDraw(box, code, blob, pcl) {
+// 第 43 批：看 GitHub 上現在的 cfg.js（不用快取）：解得開 7 碼鑰匙＝新的 → resolve(true)
+function pcGhCheck(k7, xx) {
+  var u = location.href.split("#")[0].split("?")[0].replace(/[^\/]*$/, "") + "cfg.js?t=" + Date.now();
+  return fetch(u, { cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer" }).then(function (res) { return res.ok ? res.text() : ""; }).then(function (txt) {
+    var m = /HB_XC7\s*=\s*"([^"]+)"/.exec(txt || "");
+    if (!m) return false;
+    return scOpen(k7, m[1]).then(function (x) { return x === xx; }, function () { return false; });
+  }, function () { return false; });
+}
+function pcDraw(box, r, blob, blob7, xx) {
   box.innerHTML = "";
+  var pcl = +r.pcl || 0, on7 = !!r.on7, k7 = r.code7 || "";
   var url = pcLinkBase();   // 第 42 批：後面不加短碼（短碼只拿來做 cfg.js；同事用 LINE「🔗 複製連結」拿自己的連結）
-  var cfg = "// 藥戰手冊：後端位置（加密）。放在 hb.html 同一層。別人看不出位置；換部署再到管理頁「⑥」重做一次。\nwindow.HB_XC = \"" + blob + "\";\n";
+  var cfg = "// 藥戰手冊：後端位置（加密）。放在 hb.html 同一層。別人看不出位置；換部署再到管理頁「⑥」重做一次。\nwindow.HB_XC = \"" + blob + "\";\n" + (blob7 ? "window.HB_XC7 = \"" + blob7 + "\";   // 第 43 批：12 碼連結用\n" : "");
+  // 第 43 批：平常收起來，只露出一行狀態（要動的時候才打開）
+  var st = h("p", { class: "pcst" + (on7 || !blob7 ? "" : " warn"), id: "pcst" }, [!blob7 ? "⚠ 後端還是舊的（第 42 批以前）：先把藥戰手冊專案的 02、03 換好、部署新版本，這裡才會出 12 碼連結。" : on7 ? "✅ 正常：GitHub 上的 cfg.js 是新的，同事在 LINE 按「🔗 複製連結」拿到的是 12 碼的短連結。" : "⏳ 要換一次 cfg.js：打開下面的「看入口連結、cfg.js」，下載 cfg.js 傳到 GitHub（同名蓋掉），1～2 分鐘後按「🔄 檢查 GitHub 上的 cfg.js」。換好以前，同事拿到的照舊是 28 碼的連結（照樣打得開）。"]);
+  var det = h("details", { class: "pcdet", id: "pcdet" }, [h("summary", {}, ["看入口連結、cfg.js（平常不用動）"])]);
+  if (!on7 && blob7) det.open = true;
+  box.appendChild(st);
+  box.appendChild(det);
   var inp = h("input", { class: "in pcurl", readonly: true, value: url, "aria-label": "電腦用的入口連結", onclick: function () { try { this.select(); } catch (e) { /* 沒關係 */ } } });
-  box.appendChild(h("p", { class: "hint", style: "margin-top:0" }, ["① 入口連結（給同事）：就是「…/hb.html」，後面什麼都不加。存成書籤，或貼在院內網站；用過的電腦打開就是「員工編號＋姓名」的登入畫面。"]));
-  box.appendChild(h("div", { class: "pcurlrow" }, [inp, pcCopyBtn(function () { return url; })]));
-  box.appendChild(h("p", { class: "hint", style: "margin:4px 0 0" }, ["這台電腦第一次用（或無痕視窗）：在 LINE 的「藥戰手冊」按下面那排的「🔗 複製連結」（電腦版 LINE 打「複製連結」），貼到瀏覽器打開。每個人、每次按的連結都不一樣；打開以後網址列只剩「…/hb.html」。"]));
-  if (!pcl) box.appendChild(h("p", { class: "hint", style: "margin:4px 0 0;color:#8A5A00" }, ["⚠ 後端還是舊的（同事的 LINE 還沒有「🔗 複製連結」）：先把藥戰手冊專案的 02、03 換好、部署新版本。"]));
-  var ta = h("textarea", { class: "in pccfg", readonly: true, rows: "3", "aria-label": "cfg.js 的內容", onclick: function () { try { this.select(); } catch (e) { /* 沒關係 */ } } });
+  det.appendChild(h("p", { class: "hint", style: "margin-top:8px" }, ["① 入口連結（給同事）：就是「…/hb.html」，後面什麼都不加。存成書籤，或貼在院內網站；用過的電腦打開就是「員工編號＋姓名」的登入畫面。"]));
+  det.appendChild(h("div", { class: "pcurlrow" }, [inp, pcCopyBtn(function () { return url; })]));
+  det.appendChild(h("p", { class: "hint", style: "margin:4px 0 0" }, ["這台電腦第一次用（或無痕視窗）：在 LINE 的「藥戰手冊」按下面那排的「🔗 複製連結」（電腦版 LINE 打「複製連結」），貼到瀏覽器打開。每個人、每次按的連結都不一樣；打開以後網址列只剩「…/hb.html」。"]));
+  if (!pcl) det.appendChild(h("p", { class: "hint", style: "margin:4px 0 0;color:#8A5A00" }, ["⚠ 後端還是舊的（同事的 LINE 還沒有「🔗 複製連結」）：先把藥戰手冊專案的 02、03 換好、部署新版本。"]));
+  var ta = h("textarea", { class: "in pccfg", readonly: true, rows: "4", "aria-label": "cfg.js 的內容", onclick: function () { try { this.select(); } catch (e) { /* 沒關係 */ } } });
   ta.value = cfg;
   var dl = btn("⬇️ 下載 cfg.js", function () {
     try { var u = URL.createObjectURL(new Blob([cfg], { type: "text/javascript" })); if (typeof exDownload === "function") exDownload(u, "cfg.js"); else { var a = h("a", { href: u, download: "cfg.js" }); document.body.appendChild(a); a.click(); a.remove(); } setTimeout(function () { URL.revokeObjectURL(u); }, 2000); } catch (e) { toast("下載不了：請全選上面的文字，自己存成 cfg.js"); }
   }, "sm pri");
-  box.appendChild(h("p", { class: "hint", style: "margin:12px 0 2px" }, ["② 設定檔 cfg.js：上傳到 GitHub，跟 hb.html 放同一層（同名的蓋掉）。這裡面只有「加密過的後端位置」，別人看不出來。"]));
-  box.appendChild(h("div", { class: "pcurlrow" }, [ta, h("div", { style: "display:flex;flex-direction:column;gap:6px" }, [dl, pcCopyBtn(function () { return cfg; }, "📋 複製內容")])]));
-  box.appendChild(h("ul", { class: "hint", style: "margin:10px 0 0;padding-left:1.2em" }, [
-    h("li", {}, ["入口連結裡沒有後端位置、沒有短碼、也沒有任何人的鑰匙：光有連結看不到內容。同事自己的連結 10 分鐘內第一次登入不用驗證碼；其他時候，這台電腦第一次用、或是無痕視窗，還要用手機 LINE 傳「登入」拿 6 位數驗證碼。"]),
+  det.appendChild(h("p", { class: "hint", style: "margin:12px 0 2px" }, ["② 設定檔 cfg.js：上傳到 GitHub，跟 hb.html 放同一層（同名的蓋掉）。這裡面只有「加密過的後端位置」，別人看不出來。"]));
+  det.appendChild(h("div", { class: "pcurlrow" }, [ta, h("div", { style: "display:flex;flex-direction:column;gap:6px" }, [dl, pcCopyBtn(function () { return cfg; }, "📋 複製內容")])]));
+  var ckm = h("span", { class: "hint", id: "pcckm", role: "status", "aria-live": "polite" }, [""]);
+  var ck = btn("🔄 檢查 GitHub 上的 cfg.js", function () { pcCheck(true); }, "sm");
+  if (blob7) det.appendChild(h("div", { class: "pcurlrow" }, [ck, ckm]));
+  det.appendChild(h("ul", { class: "hint", style: "margin:10px 0 0;padding-left:1.2em" }, [
+    h("li", {}, ["入口連結裡沒有後端位置、沒有短碼、也沒有任何人的鑰匙：光有連結看不到內容。同事自己的連結 10 分鐘內第一次登入不用驗證碼；其他時候，每次登入都要用手機 LINE 傳「登入」拿 6 位數驗證碼（第 43 批起不記住電腦）。"]),
     h("li", {}, ["後端位置放在 cfg.js、而且是加密的：在 GitHub 上看不到位置。解開用的鑰匙不給任何人看，只遮過藏在每個人自己的連結裡（每條都不一樣）。換部署（位置變了）只要回來這裡，重做一次 cfg.js 傳上去。"]),
-    h("li", {}, ["以前給過同事的「…/hb.html#12 碼」那一條停用了：用過的電腦照常打開（網址列會自己變成 …/hb.html）；沒用過的電腦會請他到 LINE 按「🔗 複製連結」。"]),
-    h("li", {}, ["勾了「記住這台電腦」的人，之後在同一台只要打員工編號＋姓名（30 天沒用就要再驗證一次）；名單上刪掉的人，記住的電腦也一起忘掉。"])]));
+    h("li", {}, ["第 43 批：自己的連結縮短成 12 碼（每個人、每 2 分鐘都不一樣）。cfg.js 要換一次新的（多一把 7 碼鑰匙）；換好、按了「檢查」，同事拿到的才會變 12 碼。以前拿的 28 碼連結 10 分鐘內照樣打得開。"]),
+    h("li", {}, ["以前給過同事的「…/hb.html#12 碼」固定短連結停用了：用過的電腦照常打開（網址列會自己變成 …/hb.html）；沒用過的電腦會請他到 LINE 按「🔗 複製連結」。"]),
+    h("li", {}, ["第 43 批起沒有「記住這台電腦」了：以前記住的電腦都忘掉，每次登入都要驗證（共用電腦也安全）。同一個員工編號＋姓名核可了兩個 LINE 帳號的，哪一個都可以傳「登入」拿驗證碼。"])]));
+  var pcCheck = function (say) {   // 看 GitHub 上的 cfg.js：新的＝告訴後端（開始給 12 碼）；已經開著卻變回舊的＝告訴後端先改回 28 碼
+    if (!k7 || !blob7) return;
+    ck.disabled = true; ckm.textContent = say ? "檢查中…" : "";
+    pcGhCheck(k7, xx).then(function (good) {
+      ck.disabled = false;
+      if (good === on7) { if (say) { ckm.textContent = good ? "✅ GitHub 上的 cfg.js 是新的" : "❌ GitHub 上的還是舊的 cfg.js（或還沒更新好）：確定傳上去了，等 1～2 分鐘再按一次。"; } return; }
+      call("hbEntry", [good ? 1 : -1]).then(function (r2) {
+        if (!adOk(r2)) return;
+        toast(good ? "✅ cfg.js 換好了：同事在 LINE 拿到的連結從現在起是 12 碼" : "⚠ GitHub 上的 cfg.js 變回舊的了：同事拿到的連結先改回 28 碼（照樣打得開）");
+        drawPcLink();
+      }, function (e) { ckm.textContent = "❌ " + e.message; });
+    });
+  };
+  if (blob7) pcCheck(false);   // 打開管理頁時自己看一次（不出聲）
 }
 function adminLoad() {
   drawSettings();
@@ -11592,6 +12104,11 @@ function drawSettings() {
   vd.onchange = function () { var v = parseInt(vd.value, 10); v = isNaN(v) ? 3 : Math.max(0, Math.min(30, v)); vd.value = String(v); save({ verDays: v }, vd); };
   box.appendChild(settingRow("編輯器的「🕘 舊版本」留幾天", "過了就自動丟到雲端硬碟的垃圾桶（30 天內救得回來）；最新 3 份一定留。每次存檔、每天第一次打開編輯器時清。0＝不自動清（只留最新 50 份）。沒在用的舊圖（換掉的目錄圖、重做過的章元背景）也是每天第一次打開編輯器時清", h("div", { class: "sw2" }, [vd, h("span", { class: "muted" }, ["天"])])));
   row("watermark", "網頁浮水印", "網頁每一頁蓋「姓名＋員工代號＋時間」");
+  // 第 43 批：浮水印濃淡（預設「淡」；第 41 批的濃度＝「中」）
+  var wl = h("select", { class: "in", id: "wmlv", "aria-label": "浮水印濃淡", style: "width:auto" }, [["1", "很淡"], ["2", "淡（預設）"], ["3", "中（第 41 批的濃度）"], ["4", "濃"]].map(function (o) { return h("option", { value: o[0] }, [o[1]]); }));
+  wl.value = String(c.wmLv >= 1 && c.wmLv <= 4 ? c.wmLv : 2); wl.disabled = c.watermark === false;
+  wl.onchange = function () { save({ wmLv: parseInt(wl.value, 10) || 2 }, wl); };
+  box.appendChild(settingRow("浮水印濃淡", "越淡越不擋字、越濃拍照越看得出是誰。開發者在「✏️ 編輯」「👥 管理」時會再淡一點", wl));
   row("viewLog", "看過紀錄", "記誰、何時、看哪一章／哪個標題（不記內容）");
   row("footer", "固定頁尾「內部資料，請勿外傳」", "LINE 每張卡片和網頁最下面都放這一行");
   row("imgDirect", "圖片直接顯示在 LINE 卡片上", "關掉＝LINE 卡片上的圖片、目錄圖改成按鈕，要登入網頁才看得到");
@@ -12137,7 +12654,7 @@ function exPicFrag(F, p, ind) {   // 一張圖：圖＋圖說＋圖片裡的字�
   if (cap) exPut(F, exP(exR(cap), { style: "Caption", ind: ind }));
   if (o) exPut(F, exP(exR(dr ? "🔀 流程圖的字：\n" : "🔍 圖片裡的字：", { b: 1 }) + exR(o), { style: "HbSmall", ind: ind }));
 }
-function exTextUnits(out, tname, b, hb, cid, bi) {   // 文字（可以有圖、表格）：一行一塊（標註、引用連在一起的算一塊）
+function exTextUnits(out, tname, b, hb, cid, bi, tl) {   // 文字（可以有圖、表格）：一行一塊（標註、引用連在一起的算一塊）。tl＝這個標題是第幾層（第 43 批：裡面的小標題跟著往下一級）
   var ls = _yzParseLines_(b.v), i = 0, j;
   function base(L) { return bi + (L.lv || 0) * EX_IND; }
   function add(xml, pics) { var F = exFrag(tname, true); F.xml = xml; if (pics) F.pics = pics; out.push(F); return F; }
@@ -12166,7 +12683,7 @@ function exTextUnits(out, tname, b, hb, cid, bi) {   // 文字（可以有圖、
       add(q);
       i = j; continue;
     }
-    if (L.k === "head") add(exP(exRuns(L.runs), { style: "Heading" + Math.min(5, (L.h || 1) + 1), ind: base(L) }));
+    if (L.k === "head") add(exP(exRuns(L.runs), { style: "Heading" + Math.min(5, (L.h || 1) + (tl || 1)), ind: base(L) }));
     else if (L.k === "item") add(exP(exR(L.mark) + EX_TAB + exRuns(L.runs), { ind: base(L), hang: EX_IND }));
     else add(exP(exRuns(L.runs), { ind: base(L) }));
     i++;
@@ -12204,14 +12721,16 @@ function exDrugUnits(out, tname, b, bi) {   // 藥品卡片：一支藥一張小
     out.push(F);
   });
 }
-function exTitleUnits(hb, c, t) {   // 一個標題 → 一小塊一小塊（第一塊是標題，黏著下一塊）。沒有內容（沒有任何一塊、也沒有備註、頁數）＝[]
+function exTitleUnits(hb, c, t, tl, kids) {   // 一個標題 → 一小塊一小塊（第一塊是標題，黏著下一塊）。沒有內容（沒有任何一塊、也沒有備註、頁數）＝[]
+  // 第 43 批：tl＝第幾層（1～3）→ Word 的標題 1～3（Copilot、Word 的導覽窗格看得到層次）；kids＝下面有子標題（自己沒有內容也要放標題）
+  tl = tl >= 2 && tl <= 3 ? tl : 1;
   var tname = String(t.name || "").trim() || "（還沒有標題）", out = [], H = exFrag(tname, false);
-  exPut(H, exP(exR(tname), { style: "Heading1" }));
+  exPut(H, exP(exR(tname), { style: "Heading" + tl }));
   H.glue = true;
   (t.blocks || []).forEach(function (b) {
     if (!b) return;
     var bi = _yzBlockInd_(b) * EX_IND;
-    if (b.t === "text") exTextUnits(out, tname, b, hb, c.id, bi);
+    if (b.t === "text") exTextUnits(out, tname, b, hb, c.id, bi, tl);
     else if (b.t === "ladder") exLadderUnits(out, tname, b, bi);
     else if (b.t === "table") { var F = exFrag(tname, true); exPut(F, exTable(b, bi)); if (F.xml) out.push(F); }
     else if (b.t === "img" && b.url) { var F2 = exFrag(tname, true); exPicFrag(F2, b, bi); out.push(F2); }
@@ -12241,12 +12760,15 @@ function exTitleUnits(hb, c, t) {   // 一個標題 → 一小塊一小塊（第
     exPut(N, xml);
     out.push(N);
   }
-  if (!out.length) return [];
+  if (!out.length) return kids ? [H] : [];   // 第 43 批：只有名字的上層標題（內容都在子標題）也要放，層次才對
   return [H].concat(out);
 }
 function exChapterDocs(hb, c, ci) {   // 一章 → 一個（太大就好幾個）Word 檔：[{ name, D }]。沒有內容＝[]
-  var units = [];
-  (((hb.titles || {})[c.id]) || []).forEach(function (t) { if (t) units = units.concat(exTitleUnits(hb, c, t)); });
+  var units = [], ts = ((hb.titles || {})[c.id]) || [], lvs = _yzTLvs_(ts);
+  ts.forEach(function (t, k) {
+    if (!t) return;
+    units = units.concat(exTitleUnits(hb, c, t, lvs[k], _yzTKids_(ts, k, lvs) > 0));
+  });
   if (!units.length) return [];
   var cname = String(c.name || "").trim() || "第 " + (ci + 1) + " 章", intro = String(c.intro || "").trim();
   var docs = exPack(units, function (k) {
