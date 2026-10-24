@@ -1564,7 +1564,9 @@ function _yzMergeView_(ts) {
     var o = {}; Object.keys(t).forEach(function (k) { o[k] = t[k]; });
     var bl = [], notes = [], pages = [t.page];
     var part = function (g) {
-      bl.push({ t: "text", v: "[h3] " + _yzRtEsc_(String(g.name || "（還沒有標題）").replace(/[\r\n]+/g, " ")), brk: true, mgh: g.id });
+      var hd = { t: "text", v: "[h3] " + _yzRtEsc_(String(g.name || "（還沒有標題）").replace(/[\r\n]+/g, " ")), brk: true, mgh: g.id };
+      if (g.pb === true) hd.pb = true;
+      bl.push(hd);
       (g.blocks || []).forEach(function (x) { bl.push(x); });
       pages.push(g.page);
       if (_yzNoteHas_(g.note)) notes.push("【" + String(g.name || "").trim() + "】" + String(g.note).trim());
@@ -1896,16 +1898,16 @@ function _yzLinkNodes_(b, ctx) {
   ctx = ctx || {};
   return _yzLinkItems_(b).map(function (x, i) {
     var u = _yzLinkFix_(x.u), lab = _yzLinkLabel_(x), n = String(x.n || "").replace(/\s+/g, " ").trim(), fk = _yzLinkFileKind_(x);
-    var sub = fk ? YZ_FILE_NAME[fk] + "｜在手冊網頁看（只能看）" + (n ? "｜" + n : "") : _yzLinkHost_(u) + (n ? "｜" + n : "");
-    var fu = fk && ctx.furl ? ctx.furl(b, i, _yzLinkTag_(u)) : "";
+    var fu = ctx.furl ? ctx.furl(b, i, _yzLinkTag_(u), fk ? "f" : "w") : "";
+    var sub = fk ? YZ_FILE_NAME[fk] + "｜在手冊網頁看（只能看）" + (n ? "｜" + n : "") : _yzLinkHost_(u) + (fu ? "｜在手冊網頁看" : "") + (n ? "｜" + n : "");
     var box = { type: "box", layout: "horizontal", spacing: "md", margin: i ? "sm" : "md", paddingAll: "11px", cornerRadius: "10px", borderWidth: "1px", borderColor: fk ? "#E3C27A" : "#A9C7E8", backgroundColor: fk ? "#FFF8E8" : "#F2F7FD",
       contents: [
         { type: "text", text: fk ? YZ_FILE_ICO[fk] : "🌐", flex: 0, size: "lg", gravity: "center" },
         { type: "box", layout: "vertical", flex: 1, spacing: "xs", contents: [
           { type: "text", text: lab.substring(0, 60), size: "sm", weight: "bold", color: fk ? "#7A4B00" : "#174A84", wrap: true },
           { type: "text", text: sub.substring(0, 160), size: "xxs", color: "#5F6B7A", wrap: true }] },
-        { type: "text", text: fk ? "›" : "↗", flex: 0, size: "md", weight: "bold", color: fk ? "#7A4B00" : "#174A84", gravity: "center" }] };
-    if (!fk) box.action = { type: "uri", label: lab.substring(0, 20), uri: u };
+        { type: "text", text: fk || fu ? "›" : "↗", flex: 0, size: "md", weight: "bold", color: fk ? "#7A4B00" : "#174A84", gravity: "center" }] };
+    if (!fk) box.action = { type: "uri", label: lab.substring(0, 20), uri: fu || u };
     else if (fu) box.action = { type: "uri", label: lab.substring(0, 20), uri: fu };
     return box;
   });
@@ -3144,7 +3146,7 @@ function scrLoginCode(why, r) {
 document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") LG.auto = 0; });
 
 var PC = { sec: "", ex: 0, busy: false, tm: 0, seq: 0, e: "", n: "" };
-var MSG_PC = "在電腦（或別的瀏覽器）上：打開 LINE 的「藥戰手冊」，按下面那排的「🔗 外部連結」→「🌐 網址」，貼到瀏覽器打開；網頁會請你填「🔑 12 碼短碼」（也在那張卡片上），再打員工編號＋姓名。";
+var MSG_PC = "在電腦（或別的瀏覽器）上：打開 LINE 的「藥戰手冊」，按下面那排的「🔗 外部連結」→「🌐 網址」→「📋 自動複製」，貼到瀏覽器打開；網頁會請你填「🔑 短碼」（也在那張卡片上），再打員工編號＋姓名。";
 function pcStop() { clearInterval(PC.tm); PC.tm = 0; }
 function pcSave() { try { if (PC.sec) sessionStorage.setItem("hbpc", JSON.stringify({ x: X, sec: PC.sec, ex: PC.ex })); else sessionStorage.removeItem("hbpc"); } catch (e) {  } }
 function pcLoad() {
@@ -3183,12 +3185,12 @@ function pcLinks(why, r) {
 function scrFirst(why, msg, r) {
   lgStop(); pcStop();
   var my = ++PC.seq;
-  var inp = h("input", { class: "in pccode", id: "pclin", type: "text", autocomplete: "off", autocapitalize: "off", spellcheck: "false", maxlength: "300", placeholder: "貼上 12 碼短碼", "aria-label": "隨機驗證短碼（12 碼）", "aria-describedby": "pclm" });
+  var inp = h("input", { class: "in pccode", id: "pclin", type: "text", autocomplete: "off", autocapitalize: "off", spellcheck: "false", maxlength: "300", placeholder: "貼上短碼", "aria-label": "隨機驗證短碼", "aria-describedby": "pclm" });
   var m = h("div", { class: "scr-m lgm", id: "pclm", role: "status", "aria-live": "polite" }, [msg || ""]);
   var go = h("button", { class: "btn pri lggo", type: "button", id: "pclgo" }, ["下一步"]);
   var next = function () {
     var code = pcCodeOf(inp.value);
-    if (!code) { m.textContent = "這不像 LINE 回的短碼：回 LINE 按「🔗 外部連結」→「🔑 12 碼短碼」，把那 12 碼整組貼上來。"; try { inp.focus(); } catch (e) {  } return; }
+    if (!code) { m.textContent = "這不像 LINE 回的短碼：回 LINE 按「🔗 外部連結」→「🔑 短碼」→「📋 自動複製」，整組貼上來。"; try { inp.focus(); } catch (e) {  } return; }
     PCLK = lkOf(code); lkSave(PCLK);
     if (canLogin()) { SCODE = ""; scrLoginPc("", r); return; }
     SCODE = code; SCOLD = false; SCERR = ""; X = ""; T = ""; FROMSAVED = false;
@@ -3200,13 +3202,13 @@ function scrFirst(why, msg, r) {
   var lines = [];
   var w0 = r ? loginWhy(r.why || "", r, true) : "";
   if (w0) lines.push(w0);
-  if (why === "old") lines.push("這個短碼（或連結）打不開：可能是以前的固定短連結（已經停用），或沒有複製完整。回 LINE 按「🔗 外部連結」→「🔑 12 碼短碼」，拿一組新的。");
+  if (why === "old") lines.push("這個短碼（或連結）打不開：可能是以前的固定短連結（已經停用），或沒有複製完整。回 LINE 按「🔗 外部連結」→「🔑 短碼」，拿一組新的。");
   if (why === "nocfg") lines.push("網站上還沒有放好 cfg.js（剛上傳的話，等 1～2 分鐘再重新整理）。還是不行，請跟開發者說。");
   if (why === "bad") lines.push("這個短碼跟網站上的 cfg.js 對不上（可能開發者剛換過設定，或沒有複製完整）：回 LINE 拿一組新的。");
   screen([logo(), h("h2", {}, ["🔐 登入藥戰手冊"]),
     lines.length ? h("div", { class: "scr-p" }, lines.map(function (l) { return h("p", {}, [l]); })) : null,
     h("div", { class: "pcbox", id: "pcstep0" }, [
-      h("div", { class: "lgst" }, ["① 填入", h("b", {}, ["隨機驗證短碼"]), "：在 LINE 的「藥戰手冊」按下面那排的「", h("b", {}, ["🔗 外部連結"]), "」→「", h("b", {}, ["🔑 12 碼短碼"]), "」，把 LINE 回的 12 碼貼在這裡"]),
+      h("div", { class: "lgst" }, ["① 填入", h("b", {}, ["隨機驗證短碼"]), "：在 LINE 的「藥戰手冊」按下面那排的「", h("b", {}, ["🔗 外部連結"]), "」→「", h("b", {}, ["🔑 短碼"]), "」→「", h("b", {}, ["📋 自動複製"]), "」，貼在這裡"]),
       h("div", { class: "pclrow" }, [inp, go]), m,
       h("div", { class: "lgst2 pcnext" }, ["② 下一步：打你的員工編號和姓名"])]),
     pcFine(),
@@ -3257,7 +3259,7 @@ function scrLoginPc(why, r) {
       if (!alive()) return;
       if (x && TRE.test(String(x.t || ""))) { done(x); return; }
       if (x && x.lk) { back("❌ " + String(x.err || "短碼不對、過期或用過了：回 LINE 拿一組新的。").slice(0, 260)); return; }
-      if (x && x.need === "line") { back("❌ 短碼不對、或已經過期（超過 10 分鐘）：回 LINE 按「🔗 外部連結」→「🔑 12 碼短碼」，拿一組新的。"); return; }
+      if (x && x.need === "line") { back("❌ 短碼不對、或已經過期（超過 10 分鐘）：回 LINE 按「🔗 外部連結」→「🔑 短碼」，拿一組新的。"); return; }
       if (x && x.st && !x.err) { onBoot(x); return; }
       m.textContent = (x && x.wait ? "⏳ " : "❌ ") + String(x && x.err || "沒登入成功，再試一次").slice(0, 260);
       if (x && x.field) focus(x.field === "name" ? nm : emp);
@@ -3432,11 +3434,12 @@ function onBoot(r) {
 }
 
 function fvFromHash() {
-  var m = /^(\d{1,3})\.(\d{1,2})\.([a-z0-9]{1,8})$/.exec(String(HP.f || ""));
+  var m = /^(\d{1,3})\.(\d{1,2})\.([a-z0-9]{1,8})$/.exec(String(HP.f || HP.w || ""));
   if (!m || !HP.t) return;
   var t = titleOf(HP.t), b = t && (t.blocks || [])[+m[1]], it = b && b.t === "link" ? _yzLinkItems_(b)[+m[2]] : null;
   if (!it || _yzLinkTag_(it.u) !== m[3]) (t && t.blocks || []).forEach(function (bb) { if (bb && bb.t === "link") _yzLinkItems_(bb).forEach(function (x) { if (_yzLinkTag_(x.u) === m[3]) it = x; }); });
-  fvOpen({ tid: HP.t, bi: +m[1], ii: +m[2], tag: m[3], label: it ? _yzLinkLabel_(it) : "檔案", kind: it ? _yzLinkFileKind_(it) : "" });
+  if (it && !_yzLinkFileKind_(it)) { wvOpen({ u: it.u, label: _yzLinkLabel_(it), tid: HP.t, bi: +m[1], ii: +m[2], tag: m[3] }); return; }
+  fvOpen({ tid: HP.t, bi: +m[1], ii: +m[2], tag: m[3], label: it ? _yzLinkLabel_(it) : "檔案", kind: it ? _yzLinkFileKind_(it) : "", u: it ? it.u : "" });
 }
 var IDLE_MS = 30 * 6e4, LAST_ACT = Date.now(), LAST_PING = 0, TAB = "view";
 function refreshData() {
@@ -3482,7 +3485,7 @@ function enterMain(r) {
   else if (qeBack) { ED.mode = "qz"; ED.cur = { kind: "qz", id: "" }; ED.view = "web"; showTab("edit"); toast("接著剛剛還沒儲存的問卷（還沒存進問卷試算表）"); tw = 3600; }
   else if (IS_DEV && HP.edit && edTitleExists(HP.edit)) { gotoEdit(HP.edit); }
   else { showTab("view"); if (HP.t && titleOf(HP.t)) { openTitle(HP.t); fvFromHash(); } }
-  HP.t = HP.edit = HP.f = "";
+  HP.t = HP.edit = HP.f = HP.w = "";
   idleTick();
   guardSync();
   if (r.last && r.last.at) { var lst = r.last, sid0 = SESS; setTimeout(function () { if (MAIN && sid0 === SESS) lgNote(lst); }, tw); }
@@ -3657,6 +3660,8 @@ function idleTick() {
   var s = Math.ceil(left / 1000);
   var mm = Math.floor(s / 60), mmss = (mm < 10 ? "0" : "") + mm + ":" + ("0" + s % 60).slice(-2);
   $$(".idle").forEach(function (e) { e.textContent = e.classList.contains("short") ? "⏱ " + mmss : "閒置 " + mmss + " 後自動登出"; e.classList.toggle("soon", s <= 60); });
+  $$(".ptw.ap").forEach(function (e) { e.classList.toggle("idlew", s <= 60); });
+  $$(".fv-idle").forEach(function (e) { e.hidden = s > 60; if (s <= 60) e.textContent = "⏱ " + mmss + " 後自動登出：點一下這裡就繼續"; });
 }
 setInterval(idleTick, 1000);
 setInterval(function () { if (MAIN) paintWm(); }, 60000);
@@ -4097,17 +4102,18 @@ function webLinks(b, hl, ctx) {
   return h("div", { class: "xlinks" }, its.map(function (x, i) {
     var u = _yzLinkFix_(x.u), lab = _yzLinkLabel_(x), n = String(x.n || "").trim(), host = _yzLinkHost_(u), fk = _yzLinkFileKind_(x);
     if (fk) {
-      var go = function (e) { if (e) e.preventDefault(); if (ctx.pv) fvOpen({ try: u, label: lab, kind: fk }); else if (ctx.tid) fvOpen({ tid: ctx.tid, bi: ctx.bi, ii: i, tag: _yzLinkTag_(u), label: lab, kind: fk }); };
+      var go = function (e) { if (e) e.preventDefault(); if (ctx.pv) fvOpen({ try: u, label: lab, kind: fk }); else if (ctx.tid) fvOpen({ tid: ctx.tid, bi: ctx.bi, ii: i, tag: _yzLinkTag_(u), label: lab, kind: fk, u: u }); };
       return h("a", { class: "xlink xfile", href: "#", role: "button", "data-k": fk, title: "在手冊裡看（只能看）：" + lab, onclick: go, onkeydown: function (e) { if (e.key === " ") go(e); } }, [
         h("span", { class: "xl-i", "aria-hidden": "true" }, [YZ_FILE_ICO[fk] || "📄"]),
         h("span", { class: "xl-t" }, [h("b", {}, hlNodes(lab, hl)), h("small", {}, hlNodes(YZ_FILE_NAME[fk] + "｜在手冊裡看（只能看）" + (n ? "｜" + n : ""), hl))]),
         h("span", { class: "xl-o", "aria-hidden": "true" }, ["›"])
       ]);
     }
-    return h("a", { class: "xlink", href: u, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", title: (xlSmall() ? "在小視窗打開：" : "打開：") + u, onclick: function (e) { if (xlOpen(u)) e.preventDefault(); } }, [
+    var gw = function (e) { if (e) e.preventDefault(); if (ctx.pv) wvOpen({ try: u, label: lab }); else wvOpen({ u: u, label: lab, tid: ctx.tid, bi: ctx.bi, ii: i, tag: _yzLinkTag_(u) }); };
+    return h("a", { class: "xlink xweb", href: u, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", title: "在手冊裡看：" + lab + "（" + host + "）", onclick: gw }, [
       h("span", { class: "xl-i", "aria-hidden": "true" }, ["🌐"]),
       h("span", { class: "xl-t" }, [h("b", {}, hlNodes(lab, hl)), h("small", {}, hlNodes(host + (n ? "｜" + n : ""), hl))]),
-      h("span", { class: "xl-o", "aria-hidden": "true" }, [xlSmall() ? "⧉" : "↗"])
+      h("span", { class: "xl-o", "aria-hidden": "true" }, ["›"])
     ]);
   }));
 }
@@ -4130,7 +4136,7 @@ function webArticle(ch, t, o) {
   }
   var goFn = o.hb ? function (id) { return _yzGoTarget_(o.hb, id, ch.id); } : null;
   if (o.hb) _yzLadderNumberAll_(o.hb);
-  var hidN = 0, shown = 0;
+  var hidN = 0, shown = 0, afterHd = false;
   (t.blocks || []).forEach(function (b, bIdx) {
     if (_yzOnlyHide_(b, "web")) { hidN++; return; }
     var el = null;
@@ -4143,9 +4149,14 @@ function webArticle(ch, t, o) {
     else if (b.t === "drug") el = webDrugs(b, o);
     else if (b.t === "link") el = webLinks(b, o.hl, { tid: t.id, bi: bIdx, pv: !!o.pv || !o.page });
     if (!el) return;
-    if (b.mgh) { el.id = "mg-" + b.mgh; el.classList.add("mghd"); }
+    if (b.mgh) { if (!o.noid) el.id = "mg-" + b.mgh; el.classList.add("mghd"); }
     var bi = _yzBlockInd_(b);
     if (bi) { el.style.marginLeft = (bi * 1.6).toFixed(1) + "em"; el.classList.add("bind"); }
+    var lead = !shown || afterHd;
+    if (b.pb === true && !lead) el.classList.add("pgbrk");
+    if (b.kp === true) el.classList.add("pgkeep");
+    if (o.mark) o.mark(el, b, { lead: lead, t: t });
+    afterHd = !!b.mgh;
     a.appendChild(el); shown++;
   });
   if (hidN && !shown) a.appendChild(h("p", { class: "muted onlyln" }, ["💬 這一篇的內容放在 LINE：請到 LINE 的「藥戰手冊」看。"]));
@@ -4371,6 +4382,7 @@ function homeName() { return homeMapOn() ? ((HB.cat && HB.cat.title) || "藥師�
 function drawWeb() {
   var root = $("#pane-view"); if (!root || !HB) return;
   if (typeof BK !== "undefined" && BK.on && !BK.keep && !WV.nav && typeof bkSave === "function") bkSave();
+  WV.lastNav = WV.nav || 0;
   WV.nav = 0;
   if (typeof _yzMvReset_ === "function") _yzMvReset_();
   if (typeof bkStop === "function") bkStop();
@@ -4414,23 +4426,46 @@ function titleThumb(t) {
 function pgStatus() {
   var dev = IS_DEV && ME.name !== "開發者", who = (ME.name || "") + (ME.emp ? "　" + ME.emp : "") + (dev ? "　（開發者）" : "");
   var lb = function (ico, txt, fn, label, dot) { return h("button", { class: "btn sm hbtn", type: "button", "aria-label": label || txt, title: label || txt, onclick: fn }, [ico, h("span", { class: "bl" }, [(ico ? " " : "") + txt]), dot ? abDot() : null]); };
-  return h("div", { class: "pgme" }, [
+  return h("div", { class: "pgme" + (IS_DEV ? " dev" : "") }, [
     h("div", { class: "hwho", title: who }, [who ? h("b", lgAttr({}), [h("span", { class: "hw-n" }, [ME.name || ""]), ME.emp ? h("span", { class: "hw-e" }, ["　" + ME.emp]) : null, dev ? h("span", { class: "hw-d" }, ["　（開發者）"]) : null]) : null, h("span", { class: "idle" }, [""]), h("span", { class: "idle short", "aria-hidden": "true" }, [""])]),
-    IS_DEV ? lb("✏️", "編輯", function () { showTab("edit"); }) : null,
-    IS_DEV ? lb("👥", "管理", function () { showTab("admin"); }, "", true) : null,
-    lb("", "登出", function () { logout("out"); })
+    IS_DEV ? h("div", { class: "pm-row" }, [
+      lb("✏️", "編輯", function () { showTab("edit"); }),
+      lb("👥", "管理", function () { showTab("admin"); }, "", true)
+    ]) : null,
+    h("div", { class: "pm-row" }, [lb("", "登出", function () { logout("out"); })])
   ]);
 }
-function pgTool(pg, c, atHome, ta) {
+function pgTool(pg, c, atHome, ta, pwb) {
   var hn = homeName();
+  var logo = h("button", { class: "pglogo", type: "button", title: "回首頁（" + hn + "）", "aria-label": "回首頁（" + hn + "）", onclick: goHomeTab }, [h("span", { class: "lgb" }, [logoImg()]), h("span", { class: "pl-t" }, ["藥戰手冊"])]);
   var l = h("div", { class: "pt-l" }, [
+    logo,
     h("button", { class: "btn hfab pt-b", type: "button", "aria-label": "搜尋", title: "搜尋手冊", onclick: function () { homeSearch(pg); } }, ["🔍", h("span", { class: "bl" }, [" 搜尋"])]),
-    h("button", { class: "btn hfab pt-b", type: "button", "aria-label": "章元", title: "章元（每一章）", onclick: function () { homeDrawer(pg); } }, ["☰", h("span", { class: "bl" }, [" 章元"])]),
     atHome ? qzFab() : null
   ]);
-  var logo = h("button", { class: "pglogo", type: "button", title: "回首頁（" + hn + "）", "aria-label": "回首頁（" + hn + "）", onclick: goHomeTab }, [h("span", { class: "lgb" }, [logoImg()]), h("span", { class: "pl-t" }, ["藥戰手冊"])]);
-  var tool = h("div", { class: "pgtool" + (ta ? " has-ta" : "") }, [l, ta ? taStrip(c) : null, h("div", { class: "pt-r" }, [logo, pgStatus()])]);
-  return h("div", { class: "ptw" }, [tool]);
+  var m = h("div", { class: "pt-m" + (pwb ? "" : " empty") }, [ta ? taStrip(c) : null, pwb || null]);
+  var tool = h("div", { class: "pgtool" + (pwb ? " has-pw" : "") }, [l, m, h("div", { class: "pt-r" }, [pgStatus()])]);
+  var tw = h("div", { class: "ptw" + (pwb ? " ap" : "") }, [tool]);
+  if (ta) tw.style.setProperty("--vidw", Math.max(4, Math.min(30, +(CFG && CFG.webVidCm) || 12)) + "cm");
+  if (pwb) ptHover(tw);
+  return tw;
+}
+function ptRest(tw) {
+  tw = tw || $(".pg>.ptw.ap"); if (!tw) return;
+  var tool = $(".pgtool", tw), ts = $(".tast", tw);
+  if (tool) tw.style.setProperty("--pth", Math.max(0, tool.offsetHeight - (ts ? ts.offsetHeight : 0)) + "px");
+}
+var PT = { out: 0, vt: 0, pend: false, rz: 0 };
+window.addEventListener("resize", function () { clearTimeout(PT.rz); PT.rz = setTimeout(function () { ptRest(); }, 120); });
+function ptHover(tw) {
+  tw.addEventListener("mouseenter", function () { clearTimeout(PT.out); tw.classList.add("hov"); });
+  tw.addEventListener("mouseleave", function () {
+    clearTimeout(PT.out);
+    PT.out = setTimeout(function () {
+      tw.classList.remove("hov");
+      if (PT.pend) { PT.pend = false; tw.classList.remove("vid"); }
+    }, 450);
+  });
 }
 function drawPage(root, atHome) {
   var isQz = WV.view === "qz", other = WV.view === "search" || isQz;
@@ -4447,8 +4482,7 @@ function drawPage(root, atHome) {
   var hasT = !!c && !other && titlesOf(c.id).length > 0;
   var pwb = hasT ? pwBar(c, t) : null;
   var book = hasT && !atHome && bkWant(c) && BK.noFit !== bkKey();
-  if (pwb) pg.appendChild(pwb);
-  pg.appendChild(pgTool(pg, c, atHome, hasT && taWant(c)));
+  pg.appendChild(pgTool(pg, c, atHome, hasT && taWant(c), pwb));
   var col = h("div", { class: "pgcol" });
   var up = isQz ? qzBackBtn() : null;
   if (up) col.appendChild(h("div", { class: "pgtop" }, [up]));
@@ -4463,7 +4497,7 @@ function drawPage(root, atHome) {
   pg.appendChild(col);
   if (mqOn) pg.appendChild(marquee(mqWords(mqName), "mqb"));
   root.appendChild(pg);
-  if (pwb) pg.style.setProperty("--pwh", pwb.offsetHeight + "px");
+  if (pwb) { var tw0 = $(".ptw", pg); if (tw0) { tw0.style.setProperty("--pwb", pwb.offsetHeight + "px"); ptRest(tw0); } }
   if (WV.cid || WV.tid || WV.view) pg.style.setProperty("--colw", (book ? 1640 : t ? Math.min(1000, Math.max(680, (t.ww || 760) + 70)) : isQz ? 760 : 680) + "px");
   if (pwb) { PW.cur = ""; PW.sub = ""; if (t) pwSet(t.id); else if (!book) pwScan(); }
   if (book) bkStart();
@@ -4536,7 +4570,11 @@ function pwSet(tid) {
     }
   }
 }
-function pwOff() { var mq = $(".pg>.mq:not(.mqb)"), bar = $(".pgwhere"), tw = $(".pg:not(.book)>.ptw"); return (mq ? mq.offsetHeight : 0) + (bar ? bar.offsetHeight : 0) + (tw ? tw.offsetHeight : 0); }
+function pwOff() {
+  var mq = $(".pg>.mq:not(.mqb)"), tw = $(".pg:not(.book)>.ptw");
+  var stick = !!tw && getComputedStyle(tw).position === "sticky";
+  return (mq ? mq.offsetHeight : 0) + (stick ? tw.offsetHeight : 0);
+}
 function pwScan() {
   PW.raf = 0;
   var bar = $(".pgwhere"); if (!bar || WV.tid || BK.on) return;
@@ -4569,13 +4607,19 @@ function drawChapterPage(col, c, ico, bg) {
     col.appendChild(pgCard([h("div", { class: "pc-t" }, [IS_DEV ? "這一章還沒有標題" : "🔒 這一章還在整理"]), h("div", { class: "pc-note" }, [IS_DEV ? "藥師在首頁看到的是🔒。到「✏️ 編輯」新增第一個標題，就會自動打開。" : "還沒有內容，開放以後就能看。"])]));
     return;
   }
+  chSecs(col, c, tts, vhb(), { onImg: lightbox, onTitle: openTitle, onChapter: openChapter });
+}
+function chSecs(col, c, tts, hb, o) {
+  o = o || {};
   var lvs = _yzTLvs_(tts);
   tts.forEach(function (tt, k) {
-    var lv = lvs[k], art = webArticle(c, tt, { width: tt.ww || 760, onImg: lightbox, hl: null, hb: vhb(), onTitle: openTitle, onChapter: openChapter, page: true });
-    art.insertBefore(h("div", { class: "chsec-h" }, [h(lv === 1 ? "h2" : lv === 2 ? "h3" : "h4", { class: "chsec-t" }, [tt.name || "（還沒有標題）"]), h("button", { class: "pbtn chsec-o", type: "button", onclick: function () { openTitle(tt.id); }, "aria-label": "單獨看「" + (tt.name || "") + "」" }, ["單獨看 ›"])]), art.firstChild);
-    col.appendChild(h("section", { class: "chsec lv" + lv, id: "cht-" + tt.id, "data-tid": tt.id }, [h("div", { class: "pgart" }, [art])]));
+    var lv = lvs[k], art = webArticle(c, tt, { width: tt.ww || 760, onImg: o.onImg, hl: null, hb: hb, onTitle: o.onTitle, onChapter: o.onChapter, page: true, pv: o.pv, noid: o.noid, mark: o.mark });
+    var hd = h("div", { class: "chsec-h" }, [h(lv === 1 ? "h2" : lv === 2 ? "h3" : "h4", { class: "chsec-t" }, [tt.name || "（還沒有標題）"]), h("button", { class: "pbtn chsec-o", type: "button", onclick: function () { if (o.onTitle) o.onTitle(tt.id); }, "aria-label": "單獨看「" + (tt.name || "") + "」" }, ["單獨看 ›"])]);
+    art.insertBefore(hd, art.firstChild);
+    if (o.markT) o.markT(hd, tt, k);
+    col.appendChild(h("section", { class: "chsec lv" + lv + (k > 0 && tt.pb === true ? " pgbrk" : ""), id: o.noid ? null : "cht-" + tt.id, "data-tid": tt.id }, [h("div", { class: "pgart" }, [art])]));
   });
-  var bk = webBacklinks(_yzBacklinks_(vhb(), [c.id], null), c.id, openTitle);
+  var bk = webBacklinks(_yzBacklinks_(hb, [c.id], null), c.id, o.onTitle);
   if (bk) col.appendChild(pgCard([bk]));
 }
 function drawTitlePage(col, c, t) {
@@ -4719,7 +4763,7 @@ function drawSearchResults(col) {
   });
 }
 
-var FV = { el: null, doc: null, task: null, scale: 1, fit: true, n: 0, w1: 0, h1: 0, pages: [], io: null, seq: 0, img: null, url: "", lib: null, back: null, hist: false };
+var FV = { el: null, doc: null, task: null, scale: 1, fit: true, n: 0, w1: 0, h1: 0, pages: [], io: null, seq: 0, img: null, url: "", lib: null, back: null, hist: false, web: null, base: "" };
 function fvB64(b) { var s = atob(String(b || "")), a = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) a[i] = s.charCodeAt(i); return a; }
 function fvLib() {
   if (window.pdfjsLib && window.pdfjsWorker) return Promise.resolve(window.pdfjsLib);
@@ -4758,23 +4802,56 @@ FvCMap.prototype.fetch = function (o) {
 function fvIco(k) { return (YZ_FILE_ICO && YZ_FILE_ICO[k]) || "📄"; }
 function fvClose(fromPop) {
   FV.seq++;
+  var many = !!(FV.web && FV.web.n > 1);
   if (FV.io) { try { FV.io.disconnect(); } catch (e) {  } FV.io = null; }
   if (FV.task) { try { FV.task.destroy(); } catch (e) {  } FV.task = null; }
   if (FV.doc) { try { FV.doc.destroy(); } catch (e) {  } FV.doc = null; }
   if (FV.url) { try { URL.revokeObjectURL(FV.url); } catch (e) {  } FV.url = ""; }
-  FV.pages = []; FV.img = null;
+  FV.pages = []; FV.img = null; FV.w1 = 0; FV.h1 = 0;
+  if (FV.web) { (FV.web.tm || []).forEach(function (t) { clearTimeout(t); }); if (FV.web.fr) { try { FV.web.fr.remove(); } catch (e) {  } } FV.web = null; }
   var had = !!FV.el;
   if (FV.el) { FV.el.remove(); FV.el = null; }
   document.removeEventListener("keydown", fvKey, true);
-  if (had && FV.hist && !fromPop) { FV.hist = false; try { if (history.state && history.state.hbfv) history.back(); } catch (e) {  } }
+  if (had && FV.hist && !fromPop) { FV.hist = false; fvHistOut(many); }
   FV.hist = false;
   if (had && FV.back && FV.back.isConnected) { try { FV.back.focus({ preventScroll: true }); } catch (e) {  } }
   FV.back = null;
 }
 window.addEventListener("popstate", function () { if (FV.el) fvClose(true); });
+function fvHistIn() {
+  try {
+    var nav = window.navigation;
+    if (nav && nav.currentEntry && !(history.state && history.state.hbfv)) FV.base = nav.currentEntry.key;
+    history.pushState({ hbfv: 1 }, "", location.href.split("#")[0]); FV.hist = true;
+  } catch (e) { FV.hist = false; }
+}
+function fvHistOut(many) {
+  try {
+    if (!(history.state && history.state.hbfv)) return;
+    var nav = window.navigation;
+    if (FV.base && nav && typeof nav.traverseTo === "function" && typeof nav.entries === "function" && nav.entries().some(function (e) { return e.key === FV.base; })) {
+      var r = nav.traverseTo(FV.base);
+      if (r && r.committed) r.committed.catch(function () {  });
+      if (r && r.finished) r.finished.catch(function () {  });
+      return;
+    }
+    if (!many) { history.back(); return; }
+    var n = 0;
+    var step = function () {
+      if (FV.el || n++ > 30 || !(history.state && history.state.hbfv)) return;
+      var done = false, t = 0;
+      var on = function () { if (done) return; done = true; clearTimeout(t); window.removeEventListener("popstate", on); setTimeout(step, 30); };
+      window.addEventListener("popstate", on);
+      t = setTimeout(on, 400);
+      try { history.back(); } catch (e) { done = true; clearTimeout(t); window.removeEventListener("popstate", on); }
+    };
+    step();
+  } catch (e) {  }
+}
 function fvKey(e) {
   if (!FV.el) return;
   if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fvClose(); return; }
+  if (FV.web) return;
   if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) { e.preventDefault(); fvZoom(1.25); }
   else if ((e.ctrlKey || e.metaKey) && e.key === "-") { e.preventDefault(); fvZoom(0.8); }
 }
@@ -4803,7 +4880,7 @@ function fvOpen(o) {
   document.body.appendChild(box);
   FV.el = box; FV.zs = [zo, zf, zi]; FV.pg = pg; FV.body = body;
   document.addEventListener("keydown", fvKey, true);
-  try { history.pushState({ hbfv: 1 }, "", location.href.split("#")[0]); FV.hist = true; } catch (e) { FV.hist = false; }
+  fvHistIn();
   try { xb.focus({ preventScroll: true }); } catch (e) {  }
   var t0 = Date.now(), got = 0;
   var say = function () {
@@ -4818,7 +4895,11 @@ function fvOpen(o) {
     clearInterval(tick);
     if (my !== FV.seq) return;
     if (r && r.st && !r.err) { fvClose(); if (r.st === "lock") logout("expired"); return; }
-    if (!r || !r.ok) { fvErr(r && r.err || "沒拿到檔案"); return; }
+    if (!r || !r.ok) {
+      var fb = r && /^(html|login|net|http)$/.test(String(r.code || "")) ? _yzLinkFix_(o.try || o.u) : "";
+      if (fb) { wvOpen({ u: fb, try: o.try ? fb : "", label: label, tid: o.tid, bi: o.bi, ii: o.ii, tag: o.tag, info: r.code === "net" ? null : r.wv ? { xfo: String(r.wv.xfo || ""), fa: Array.isArray(r.wv.fa) ? r.wv.fa : [] } : undefined, keep: true, note: IS_DEV && r.err ? "ℹ️（開發者才看得到）當成檔案拿不到，改用網頁的方式打開。後端說：" + String(r.err).slice(0, 200) : "" }); return; }
+      fvErr(r && r.err || "沒拿到檔案"); return;
+    }
     if (r.label || r.name) { title.textContent = r.label || r.name; box.setAttribute("aria-label", "看檔案：" + title.textContent); }
     if (r.kind === "img") fvImg(r, my); else fvPdf(r, my);
   }, function (e) { clearInterval(tick); if (my === FV.seq) fvErr(e && e.code === "bad" ? "藥戰手冊的後端還不認得「在手冊裡看檔案」（Apps Script 要貼第 43 批的 01、02、03，部署新版本）" : e && e.message || "連不上後端"); });
@@ -4944,6 +5025,145 @@ function fvWhere() {
 }
 window.addEventListener("resize", function () { if (FV.el && FV.fit) fvFit(); });
 
+var XV = { cache: {} };
+var XV_SB = "allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-storage-access-by-user-activation";
+var XV_WHY = {
+  xfo: "這個網站不讓別的網頁把它放在裡面（是那個網站自己的規定，瀏覽器一定會擋），所以沒辦法在手冊裡看。",
+  http: "這個網址沒有加密（http），瀏覽器不讓它放在手冊裡。",
+  bad: "網址不合格，打不開。"
+};
+function xvEmbed(u) {
+  var m = /^https:\/\/(?:www\.|m\.)?youtube\.com\/watch\?(?:[^#]*&)?v=([A-Za-z0-9_-]{6,20})/i.exec(u) || /^https:\/\/youtu\.be\/([A-Za-z0-9_-]{6,20})/i.exec(u) || /^https:\/\/(?:www\.|m\.)?youtube\.com\/(?:shorts|live|embed)\/([A-Za-z0-9_-]{6,20})/i.exec(u);
+  if (m) return "https://www.youtube-nocookie.com/embed/" + m[1];
+  m = /^https:\/\/(?:www\.)?vimeo\.com\/(\d{4,12})(?:[\/?#]|$)/i.exec(u);
+  return m ? "https://player.vimeo.com/video/" + m[1] : "";
+}
+function xvSame(u) { try { return new URL(u).origin === location.origin; } catch (e) { return true; } }
+function xvFaOk(list, origin) {
+  var o = /^(https?):\/\/([^\/:]+)(?::(\d+))?$/i.exec(String(origin || ""));
+  if (!o) return false;
+  var sch = o[1].toLowerCase(), host = o[2].toLowerCase(), port = o[3] || (sch === "https" ? "443" : "80");
+  return String(list || "").trim().split(/\s+/).some(function (t) {
+    t = t.toLowerCase();
+    if (!t || t === "'none'" || t === "'self'") return false;
+    if (t === "*") return true;
+    if (/^[a-z][a-z0-9+.-]*:$/.test(t)) return t === sch + ":" || (t === "http:" && sch === "https");
+    var m = /^(?:([a-z][a-z0-9+.-]*):\/\/)?(\*|\*\.[a-z0-9.-]+|[a-z0-9.-]+)(?::(\d+|\*))?(\/.*)?$/.exec(t);
+    if (!m) return false;
+    if (m[1] ? m[1] !== sch && !(m[1] === "http" && sch === "https") : sch !== "https" && sch !== "http") return false;
+    var hok = m[2] === "*" || (m[2].charAt(0) === "*" ? host.length > m[2].length - 1 && host.slice(-(m[2].length - 1)) === m[2].slice(1) : host === m[2]);
+    if (!hok) return false;
+    if (m[3] ? m[3] !== "*" && m[3] !== port : port !== (sch === "https" ? "443" : "80")) return false;
+    return !m[4] || m[4] === "/";
+  });
+}
+function xvBlocked(info) {
+  if (!info || info.busy || info.net) return "";
+  if (info.insecure) return "http";
+  var fa = Array.isArray(info.fa) ? info.fa : [];
+  if (fa.length) return fa.every(function (l) { return xvFaOk(l, location.origin); }) ? "" : "xfo";
+  var xs = {};
+  String(info.xfo || "").split(",").forEach(function (v) { v = v.trim().toLowerCase(); if (v) xs[v] = 1; });
+  var ks = Object.keys(xs);
+  if (ks.length > 1) return xs.deny || xs.allowall || xs.sameorigin ? "xfo" : "";
+  return ks[0] === "deny" || ks[0] === "sameorigin" ? "xfo" : "";
+}
+function wvOpen(o) {
+  o = o || {};
+  var u = _yzLinkFix_(o.try || o.u) || "", keep = !!(o.keep && FV.el && FV.hist), back = FV.back;
+  fvClose(keep);
+  var my = FV.seq, host = _yzLinkHost_(u), label = String(o.label || host || "網頁");
+  FV.back = keep ? back : document.activeElement;
+  var title = h("b", { class: "fv-t" }, [label]);
+  var sub = h("span", { class: "fv-pg" }, [host]);
+  var ob = h("a", { class: "btn sm fv-o", href: u || "#", target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", title: "另外打開（離開手冊的畫面；看完關掉就回來）", onclick: function (e) { if (!u || xlOpen(u)) e.preventDefault(); } }, ["↗", h("span", { class: "fv-ot" }, ["另外打開"])]);
+  var xb = h("button", { class: "btn sm fv-x", type: "button", "aria-label": "關掉", title: "關掉（Esc）" }, ["✕"]);
+  var body = h("div", { class: "fv-b wv-b" }, [h("div", { class: "fv-m wv-m" }, [h("div", { class: "fv-sp", "aria-hidden": "true" }), h("p", { id: "fvmsg" }, ["打開網頁中…"])])]);
+  var idle = h("div", { class: "fv-idle", role: "status", hidden: true }, [""]);
+  var note = o.note ? h("div", { class: "wv-note" }, [String(o.note)]) : null;
+  var inner = h("div", { class: "fv-in" }, [h("div", { class: "fv-h" }, [h("span", { class: "fv-ic", "aria-hidden": "true" }, ["🌐"]), h("div", { class: "fv-tt" }, [title, sub]), ob, xb]), idle, note, body,
+    h("div", { class: "fv-f" }, ["🌐 網頁的內容是那個網站的；空白、看不到：按上面「↗ 另外打開」"])]);
+  var box = h("div", { class: "fv fvw", role: "dialog", "aria-modal": "true", "aria-label": "看網頁：" + label }, [inner]);
+  box.addEventListener("click", function (e) { if (e.target === box) fvClose(); });
+  box.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+  box.addEventListener("dragstart", function (e) { e.preventDefault(); });
+  xb.onclick = function () { fvClose(); };
+  document.body.appendChild(box);
+  FV.el = box; FV.zs = []; FV.pg = sub; FV.body = body;
+  var W = FV.web = { u: u, fr: null, loaded: 0, info: undefined, shown: false, no: "", force: false, t0: Date.now(), tm: [], embed: "", label: label };
+  document.addEventListener("keydown", fvKey, true);
+  if (keep) FV.hist = true;
+  else fvHistIn();
+  try { xb.focus({ preventScroll: true }); } catch (e) {  }
+  if (!u) { wvNo(my, "bad"); return; }
+  if (!/^https:\/\//i.test(u)) { wvNo(my, "http"); return; }
+  W.embed = xvEmbed(u);
+  wvFrame(my);
+  W.tm.push(setTimeout(function () { wvMaybe(my); }, 8000));
+  var c = XV.cache[u], bk = typeof backAtLeast !== "function" || backAtLeast(12, 13);
+  var ask = o.info !== undefined ? Promise.resolve({ ok: 1, pre: o.info }) : c ? Promise.resolve({ ok: 1, pre: c }) : !bk ? Promise.resolve(null) :
+    o.try ? call("hbWebTry", [u], { ms: 20000 }) : o.tid ? call("hbWeb", [o.tid, o.bi, o.ii, o.tag || ""], { ms: 20000 }) : Promise.resolve(null);
+  ask.then(function (r) {
+    if (my !== FV.seq) return;
+    if (r && r.st && !r.err) { fvClose(); if (r.st === "lock") logout("expired"); return; }
+    var info = r && r.ok ? (r.pre !== undefined ? r.pre : r) : null;
+    if (info && r.pre === undefined && !info.busy && !info.net) XV.cache[u] = { xfo: String(info.xfo || ""), fa: Array.isArray(info.fa) ? info.fa : [], insecure: info.insecure ? 1 : 0 };
+    W.info = info; wvMaybe(my);
+  }, function () { if (my === FV.seq) { W.info = null; wvMaybe(my); } });
+}
+function wvFrame(my) {
+  var W = FV.web; if (!W || my !== FV.seq) return;
+  var src = W.embed || W.u, fr = document.createElement("iframe");
+  fr.className = "wv-f";
+  fr.setAttribute("title", W.label);
+  fr.setAttribute("referrerpolicy", "no-referrer");
+  fr.setAttribute("allow", "fullscreen; encrypted-media; picture-in-picture");
+  fr.setAttribute("sandbox", XV_SB + (xvSame(src) ? "" : " allow-same-origin") + (W.embed ? " allow-presentation" : ""));
+  fr.setAttribute("src", src);
+  fr.addEventListener("load", function () {
+    if (my !== FV.seq || FV.web !== W || W.fr !== fr) return;
+    W.n = (W.n || 0) + 1;
+    if (!W.loaded) { W.loaded = Date.now(); W.tm.push(setTimeout(function () { wvMaybe(my); }, 2500)); wvMaybe(my); }
+  });
+  W.fr = fr;
+  FV.body.appendChild(fr);
+}
+function wvMaybe(my) {
+  var W = FV.web; if (!W || my !== FV.seq || W.no) return;
+  if (W.info !== undefined) {
+    var why = W.embed || W.force ? "" : xvBlocked(W.info);
+    if (why) { wvNo(my, why); return; }
+    wvShow(my); return;
+  }
+  var now = Date.now();
+  if ((W.loaded && now - W.loaded >= 2400) || now - W.t0 >= 7900) wvShow(my);
+}
+function wvShow(my) {
+  var W = FV.web; if (!W || my !== FV.seq || W.shown || !W.fr) return;
+  W.shown = true;
+  $$(".wv-m", FV.body).forEach(function (m) { m.remove(); });
+  W.fr.classList.add("on");
+}
+function wvNo(my, why) {
+  var W = FV.web; if (!W || my !== FV.seq) return;
+  W.no = why; W.shown = false;
+  if (W.fr) { try { W.fr.remove(); } catch (e) {  } W.fr = null; }
+  FV.body.innerHTML = "";
+  var kids = [h("p", { class: "fv-e" }, ["🚫 " + (XV_WHY[why] || XV_WHY.xfo)])];
+  if (why !== "bad") {
+    kids.push(h("p", { class: "muted" }, [(why === "http" ? "" : "要登入的網站、付費的資料庫常常這樣。") + "按下面的按鍵另外打開：會離開手冊的畫面，看完關掉就回到手冊。"]));
+    kids.push(h("a", { class: "btn pri wv-go", href: W.u, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", onclick: function (e) { if (xlOpen(W.u)) e.preventDefault(); } }, ["↗ 另外打開這個網頁"]));
+    if (why !== "http") kids.push(h("button", { class: "wv-try", type: "button", onclick: function () { wvForce(my); } }, ["還是在這裡試試"]));
+  }
+  FV.body.appendChild(h("div", { class: "fv-m wv-no" }, kids));
+}
+function wvForce(my) {
+  var W = FV.web; if (!W || my !== FV.seq) return;
+  W.no = ""; W.force = true; W.loaded = 0; W.shown = false;
+  FV.body.innerHTML = "";
+  wvFrame(my); wvShow(my);
+}
+
 var BK = { on: false, k: 0, n: 1, two: false, P: 0, PH: 0, X: 0, Y: 0, G: 0, pitch: 0, busy: false, wLock: false, wAcc: 0, wLast: 0, tabAt: 0, drag: null, keep: null, mt: 0, mo: null };
 
 function bkPref() {
@@ -5049,23 +5269,29 @@ function bkGoKeep(keep) {
 }
 
 function bkClamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
-function bkLayout() {
-  if (!BK.on || !BK.stage || !BK.stage.isConnected) return false;
-  var vw = document.documentElement.clientWidth, st = BK.stage, br = BK.el.getBoundingClientRect();
-  var availW = Math.floor(br.width), PH = Math.floor(br.height);
+function bkGeom(availW, PH, vw) {
+  if (PH < 250) return null;
   var two = availW >= 880;
   var P = two ? Math.min(780, Math.floor(availW / 2)) : Math.min(availW, 720), W = two ? 2 * P : P;
-  if (PH < 250) return false;
   var X = Math.round(bkClamp(P * 0.065, 16, 44)), Y = Math.round(bkClamp(PH * 0.04, 12, 28)), NB = two ? 0 : 38, G = two ? 0 : 28;
-  BK.two = two; BK.P = P; BK.PH = PH; BK.X = X; BK.Y = Y; BK.G = G; BK.pitch = P + G;
-  st.style.setProperty("--P", P + "px"); st.style.setProperty("--PH", PH + "px");
-  st.style.width = W + "px"; st.style.height = PH + "px";
-  BK.el.classList.toggle("two", two); BK.el.classList.toggle("one", !two);
-  BK.el.classList.toggle("tight", two && (vw - W) / 2 < 60);
-  var f = BK.flow, fw = P - 2 * X, fh = PH - 2 * Y - NB;
-  f.style.left = X + "px"; f.style.top = Y + "px"; f.style.width = fw + "px"; f.style.height = fh + "px";
-  f.style.columnWidth = fw + "px"; f.style.columnGap = (2 * X + G) + "px";
-  f.style.setProperty("--fh", fh + "px");
+  return { two: two, P: P, W: W, PH: PH, X: X, Y: Y, NB: NB, G: G, pitch: P + G, fw: P - 2 * X, fh: PH - 2 * Y - NB, tight: two && (vw - W) / 2 < 60 };
+}
+function bkApply(el, st, f, g) {
+  st.style.setProperty("--P", g.P + "px"); st.style.setProperty("--PH", g.PH + "px");
+  st.style.width = g.W + "px"; st.style.height = g.PH + "px";
+  el.classList.toggle("two", g.two); el.classList.toggle("one", !g.two);
+  el.classList.toggle("tight", g.tight);
+  f.style.left = g.X + "px"; f.style.top = g.Y + "px"; f.style.width = g.fw + "px"; f.style.height = g.fh + "px";
+  f.style.columnWidth = g.fw + "px"; f.style.columnGap = (2 * g.X + g.G) + "px";
+  f.style.setProperty("--fh", g.fh + "px");
+}
+function bkLayout() {
+  if (!BK.on || !BK.stage || !BK.stage.isConnected) return false;
+  var br = BK.el.getBoundingClientRect();
+  var g = bkGeom(Math.floor(br.width), Math.floor(br.height), document.documentElement.clientWidth);
+  if (!g) return false;
+  BK.two = g.two; BK.P = g.P; BK.PH = g.PH; BK.X = g.X; BK.Y = g.Y; BK.G = g.G; BK.pitch = g.pitch;
+  bkApply(BK.el, BK.stage, BK.flow, g);
   bkMeasure();
   return true;
 }
@@ -5581,7 +5807,7 @@ function chAnimAuto(name) {
   return k;
 }
 function chAnimOf(c) {
-  if (!c || (typeof CFG !== "undefined" && CFG && CFG.chAnim === false)) return null;
+  if (!c) return null;
   var a = c.anim || null;
   if (a && a.m === "off") return null;
   if (a && a.m === "up" && /^https:\/\//.test(a.url || "")) return { kind: "up", b: a };
@@ -5620,16 +5846,16 @@ function chaSyncClone(from, to) {
   b.forEach(function (s, i) { try { var t = a[i] && a[i].getCurrentTime ? a[i].getCurrentTime() : 0; s.pauseAnimations(); s.setCurrentTime(t); } catch (e) {  } });
 }
 
-var TA = { el: null, box: null, pp: null, c: null, want: "", sig: "", run: null, key: "", up: null, tm: 0 };
-function taOff() { try { return localStorage.getItem("yz_ta") === "0"; } catch (e) { return false; } }
-function taSetOff(v) { try { if (v) localStorage.setItem("yz_ta", "0"); else localStorage.removeItem("yz_ta"); } catch (e) {  } }
+var TA = { el: null, box: null, c: null, want: "", sig: "", run: null, key: "", up: null, tm: 0, popped: "" };
+try { localStorage.removeItem("yz_ta"); } catch (e) {  }
+function vidOn() { return typeof CFG !== "undefined" && !!CFG && CFG.webVid === true; }
 function taAutoKey(name) {
   var n = String(name || ""), k = "";
   CHA_KW.some(function (x) { if (x[1].test(n)) { k = x[0]; return true; } return false; });
   return k;
 }
 function taAnimOf(c, t) {
-  if (!c || (typeof CFG !== "undefined" && CFG && CFG.chAnim === false)) return null;
+  if (!c || !vidOn()) return null;
   if (c.anim && c.anim.m === "off") return null;
   var a = t && t.anim;
   if (a && a.m === "off") return { kind: "none" };
@@ -5640,7 +5866,7 @@ function taAnimOf(c, t) {
   return chAnimOf(c);
 }
 function taWant(c) {
-  if (!c || (typeof CFG !== "undefined" && CFG && CFG.chAnim === false)) return false;
+  if (!c || !vidOn()) return false;
   if (c.anim && c.anim.m === "off") return false;
   return typeof titlesOf === "function" ? titlesOf(c.id).length > 0 : true;
 }
@@ -5649,30 +5875,23 @@ function taStrip(c) {
   TA.c = c; TA.want = ""; TA.sig = ""; TA.key = ""; TA.up = null;
   if (TA.run === null) TA.run = typeof animAuto === "function" ? animAuto() : true;
   var box = h("div", { class: "ta-box" });
-  var pp = h("button", { class: "ta-pp", type: "button", onclick: function (e) { e.stopPropagation(); TA.run = !TA.run; taPlay(); } }, [""]);
-  var inr = h("div", { class: "ta-in", onclick: function () { TA.run = !TA.run; taPlay(); } }, [box, pp]);
-  var x = h("button", { class: "ta-x", type: "button", title: "收起小動畫", "aria-label": "收起小動畫", onclick: function () { taSetOff(true); taShow(); } }, ["▴"]);
-  var o = h("button", { class: "ta-o", type: "button", title: "打開小動畫", "aria-label": "打開小動畫", onclick: function () { taSetOff(false); taShow(); } }, ["🎬"]);
-  var el = h("div", { class: "tast", role: "group", "aria-label": "這一篇的小動畫" }, [inr, x, o]);
-  TA.el = el; TA.box = box; TA.pp = pp;
-  el.classList.toggle("off", taOff());
+  var inr = h("div", { class: "ta-in", title: "點一下收起來", onclick: function () { taHide(); } }, [box]);
+  var el = h("div", { class: "tast", role: "group", "aria-label": "這一篇的影片" }, [inr]);
+  TA.el = el; TA.box = box;
   return el;
 }
-function taShow() {
-  if (!TA.el) return;
-  var off = taOff();
-  TA.el.classList.toggle("off", off);
-  if (!off) { TA.sig = ""; taSet(TA.want, true); }
-  else { TA.box.innerHTML = ""; TA.sig = ""; }
+function taHide() {
+  clearTimeout(PT.vt); PT.pend = false;
+  var tw = TA.el && TA.el.closest ? TA.el.closest(".ptw") : null;
+  if (tw) tw.classList.remove("vid");
 }
 function taSig(A) { return !A ? "-" : A.kind === "lib" ? A.key : A.kind === "up" ? "up:" + (A.b.url || "") : "none"; }
 function taSet(tid, now) {
   if (!TA.el || !TA.el.isConnected) return;
   TA.want = tid || "";
-  if (taOff()) return;
   clearTimeout(TA.tm);
   var go = function () {
-    if (!TA.el || !TA.el.isConnected || taOff()) return;
+    if (!TA.el || !TA.el.isConnected) return;
     var t = TA.want && typeof titleOf === "function" ? titleOf(TA.want) : null, A = taAnimOf(TA.c, t), sig = (t ? t.id : "") + "|" + taSig(A);
     if (sig === TA.sig) return;
     TA.sig = sig;
@@ -5686,8 +5905,7 @@ function taPaint(A, t) {
   var none = !A || A.kind === "none";
   TA.el.classList.toggle("none", none);
   TA.el.setAttribute("data-k", none ? "none" : A.kind === "lib" ? A.key : "up");
-  if (none) { TA.pp.hidden = true; return; }
-  TA.pp.hidden = false;
+  if (none) { taHide(); return; }
   if (A.kind === "lib") {
     TA.key = A.key;
     box.innerHTML = chaSvg(A.key, (nm ? "「" + nm + "」的小動畫：" : "小動畫：") + (CHA[A.key] || CHA.pill).n);
@@ -5698,13 +5916,27 @@ function taPaint(A, t) {
   }
   box.classList.remove("in"); void box.offsetWidth; box.classList.add("in");
   taPlay();
+  if (t) taPop(t.id);
+}
+function taPop(tid) {
+  var tw = TA.el && TA.el.closest ? TA.el.closest(".ptw") : null;
+  if (!tw || !tid) return;
+  var same = TA.popped === tid && !(typeof WV !== "undefined" && WV.lastNav);
+  if (typeof WV !== "undefined") WV.lastNav = 0;
+  if (same || !TA.run || (typeof reduceMotion === "function" && reduceMotion())) return;
+  TA.popped = tid;
+  clearTimeout(PT.vt); PT.pend = false;
+  tw.classList.add("vid");
+  PT.vt = setTimeout(function () {
+    if (tw.classList.contains("hov")) { PT.pend = true; return; }
+    tw.classList.remove("vid");
+  }, CHA_DUR * 1000 + 300);
 }
 function taPlay() {
   if (!TA.box) return;
   var run = !!TA.run, svg = $("svg", TA.box);
   if (svg) chaSeek(svg, TA.key, run);
   if (TA.up) TA.up.img.src = run ? (TA.up.b.raw || TA.up.b.url) : (TA.up.b.poster || TA.up.b.url);
-  if (TA.pp) { TA.pp.textContent = run ? "⏸" : "▶"; TA.pp.setAttribute("aria-label", run ? "暫停小動畫" : "播放小動畫"); TA.pp.title = run ? "暫停" : "播放"; }
   if (TA.el) TA.el.classList.toggle("still", !run);
 }
 
@@ -8617,6 +8849,9 @@ function renderToolbar() {
   }
   var fm = $("#edfmt"); if (fm) fm.style.display = isT ? "" : "none";
   tb.appendChild(h("span", { class: "sp" }));
+  var bkb = h("button", { class: "btn sm pbopen", id: "pbOpen", type: "button", title: "藥師用網頁翻頁看的樣子（電腦兩頁、手機一頁）：點一塊內容，設定「從這裡換到新的一頁」「這一塊不要切開」", onclick: function () { pbOpen(); } }, ["📖 翻頁預覽", h("span", { class: "newb" }, ["新"])]);
+  if (!pbChapter()) bkb.disabled = true;
+  tb.appendChild(bkb);
   var pb = h("button", { class: "btn sm" + (PV.open ? " on" : ""), id: "pvToggle", type: "button", title: "預覽會浮在畫面上，可以拖來拖去、拉大拉小、放到最大" }, [PV.open ? "👁 預覽視窗：開" : "👁 打開預覽視窗"]);
   pb.onclick = function () { PV.open = !PV.open; pvSync(); renderToolbar(); if (PV.open) refreshPreview(); };
   tb.appendChild(pb);
@@ -8716,7 +8951,7 @@ function renderChForm(f, c) {
   f.appendChild(lbl("三", "簡介（一兩行，章元卡片上會顯示）"));
   var it = h("textarea", { class: "ta", style: "min-height:56px" }); it.value = c.intro || ""; it.oninput = function () { c.intro = it.value; changed(); }; f.appendChild(it);
   f.appendChild(hint("卡片的大小在預覽視窗裡調（所有章元共用同一個大小）。"));
-  f.appendChild(lbl("三", "小動畫（網頁深色那一條底下：這一章每一篇沒有配到的，就演這個）"));
+  f.appendChild(lbl("三", "小動畫（網頁的影片：這一章每一篇沒有配到的，就演這個）"));
   f.appendChild(chAnimEditor(c));
   f.appendChild(h("div", { class: "lbl" }, ["這一章的標題（" + ts.length + "）"]));
   var lvf = _yzTLvs_(ts), mgf = _yzMgHosts_(ts);
@@ -8775,11 +9010,15 @@ function renderTitleForm(f, t, ch) {
   f.appendChild(lbl("九", "⤴ 合併顯示（兩篇都留著，看的時候合在一起）"));
   f.appendChild(mgPanel(t, ch));
 
-  f.appendChild(lbl("十", "🎬 小動畫（藥師讀到這一篇時，網頁上面深色那一條底下演的）"));
+  f.appendChild(lbl("十", "🎬 小動畫（藥師翻到這一篇時，網頁的影片演的）"));
   var hostOf = _yzMgHosts_(tsl)[t.id];
   if (hostOf) f.appendChild(hint("這一篇合併到「" + (hostOf.name || "（還沒有標題）") + "」：讀到這裡演的是它的小動畫（到那一篇設定）。"));
   else if (tlv > 1) { var upT = _yzTPath_(tsl, t)[0]; f.appendChild(hint("子標題跟上一層「" + ((upT && upT.name) || "（還沒有標題）") + "」用同一個小動畫（到那一篇設定）。")); }
   else f.appendChild(tiAnimEditor(t, ch));
+
+  f.appendChild(lbl("十一", "📖 網頁翻頁：換頁（看著藥師看到的翻頁設定）"));
+  f.appendChild(h("div", { class: "pbsum" }, [btn("📖 翻頁預覽（設定換頁）", function () { pbOpen({ tid: t.id }); }, "sm pri pbopen2"), h("span", { class: "muted pbsumt" }, [pbSum(t)])]));
+  f.appendChild(hint("藥師用網頁翻頁看的時候（電腦兩頁、手機一頁），內容自己往下一頁排。切得不好的地方（例如一段字一半在下一頁、標題留在頁尾）：打開翻頁預覽，點那一塊，選「✂ 從這裡換到新的一頁」或「🔗 這一塊不要切開」；點標題＝這一篇從新的一頁開始。藥品卡片本來就不會切開。LINE 不受影響（LINE 的是每一塊的「📄 換下一張」）。"));
 
   f.appendChild(h("div", { style: "display:flex;gap:6px;flex-wrap:wrap;margin-top:14px" }, [
     btn("▲ 往前移", function () { moveTitle(t, -1); }), btn("▼ 往後移", function () { moveTitle(t, 1); }),
@@ -8972,7 +9211,9 @@ function blockEditor(t, b, i) {
   if (brkBtn && b.only === "web") brkBtn.hidden = true;
   var cpB = btn("📋 複製", function () { edClipBlocks(t, [i]); }, "sm cpb");
   cpB.title = "複製這一塊（文字、圖片、表格…格式都帶著）：到要放的標題，點一下某一塊，按最上面的「📌 貼上整塊」（會放在那一塊後面）";
-  var head = h("div", { class: "bh" }, [(b.t === "img" && b.draw ? "流程圖" : KIND_NAME[b.t]) + "　#" + (i + 1), visSel, h("span", { class: "sp" }),
+  var lead1 = (t.blocks || []).filter(function (x) { return !_yzOnlyHide_(x, "web"); })[0] === b;
+  var pbTag = b.pb === true || b.kp === true ? h("button", { class: "btn sm pbtag", type: "button", title: "網頁翻頁的設定：按了打開「📖 翻頁預覽」（在那裡改）", onclick: function () { pbOpen({ tid: t.id, b: b }); } }, [[b.pb === true ? (lead1 ? "✂ 換頁（第一塊不用）" : "✂ 網頁從這裡換頁") : "", b.kp === true ? "🔗 不切開" : ""].filter(Boolean).join("・")]) : null;
+  var head = h("div", { class: "bh" }, [(b.t === "img" && b.draw ? "流程圖" : KIND_NAME[b.t]) + "　#" + (i + 1), visSel, pbTag, h("span", { class: "sp" }),
     mrg, indLbl, decB, incB, brkBtn, cpB, btn("▲", function () { moveBlock(t, i, -1); }), btn("▼", function () { moveBlock(t, i, 1); }), delBtn]);
   var body = h("div", { class: "bb2" });
   var rte = null;
@@ -9056,6 +9297,8 @@ function toTextBlock(b) {
   else { id = rteNewPicId(o.tbls); o.tbls[id] = tblOf(b); o.v = "[tbl=" + id + "]"; }
   if (b.ind) o.ind = b.ind;
   if (b.brk) o.brk = true;
+  if (b.pb) o.pb = true;
+  if (b.kp) o.kp = true;
   return o;
 }
 function mergeTip(t, i) {
@@ -9145,6 +9388,8 @@ function edTblSplit(t, b, id) {
   if (before.trim()) { var x = mk(before); if (b.brk) x.brk = true; out.push(x); } else if (b.brk) tb.brk = true;
   out.push(tb);
   if (after.trim()) out.push(mk(after));
+  if (b.pb) out[0].pb = true;
+  if (b.kp) out.forEach(function (x) { x.kp = true; });
   t.blocks.splice.apply(t.blocks, [bi, 1].concat(out));
   ED.ab = bi + (before.trim() ? 1 : 0); renderForm(); changed();
   toast("表格拆出來了，變回自己一整塊");
@@ -9219,7 +9464,7 @@ function linkEditor(b) {
       var uIn = h("input", { class: "in lk-u", value: x.u || "", maxlength: "1000", inputmode: "url", autocomplete: "off", spellcheck: "false", placeholder: "網址（https:// 開頭）", "aria-label": "網址 " + (k + 1) });
       var nIn = h("input", { class: "in lk-n", value: x.n || "", maxlength: "120", placeholder: "說明（可以不填）", "aria-label": "說明 " + (k + 1) });
       var msg = h("div", { class: "lk-m", role: "status" });
-      var kSel = h("select", { class: "in lk-k", "aria-label": "開法 " + (k + 1), title: "讀的人點了怎麼開" }, [["", "開法：自動（看網址）"], ["file", "在手冊裡看（檔案，只能看）"], ["web", "開網頁（新視窗）"]].map(function (o) { return h("option", { value: o[0] }, [o[1]]); }));
+      var kSel = h("select", { class: "in lk-k", "aria-label": "開法 " + (k + 1), title: "讀的人點了怎麼開（都在手冊裡的小視窗看）" }, [["", "開法：自動（看網址是檔案還是網頁）"], ["file", "檔案：在手冊裡看（只能看）"], ["web", "網頁：在手冊裡看"]].map(function (o) { return h("option", { value: o[0] }, [o[1]]); }));
       kSel.value = x.k === "file" || x.k === "web" ? x.k : "";
       var ico = h("span", { class: "lk-no", "aria-hidden": "true" }, ["🌐"]);
       var chk = function () {
@@ -9231,7 +9476,7 @@ function linkEditor(b) {
         tryB.textContent = fk ? "👁 試開" : "↗ 試開";
         tryB.title = fk ? "在手冊裡的小視窗先看看（後端拿得到嗎、轉得成 PDF 嗎）" : "自己先點點看（電腦開小視窗）";
       };
-      var tryB = btn("↗ 試開", function () { var u = _yzLinkFix_(uIn.value); if (!u) return; var fk = _yzLinkFileKind_({ u: u, k: x.k }); if (fk) { fvOpen({ try: u, label: _yzLinkLabel_({ u: u, t: x.t }), kind: fk }); return; } if (!xlOpen(u)) window.open(u, "_blank", "noopener,noreferrer"); }, "sm lk-try");
+      var tryB = btn("↗ 試開", function () { var u = _yzLinkFix_(uIn.value); if (!u) return; var fk = _yzLinkFileKind_({ u: u, k: x.k }), lb = _yzLinkLabel_({ u: u, t: x.t }); if (fk) fvOpen({ try: u, label: lb, kind: fk }); else wvOpen({ try: u, label: lb }); }, "sm lk-try");
       kSel.onchange = function () { if (kSel.value) x.k = kSel.value; else delete x.k; chk(); changed(); };
       tIn.oninput = function () { x.t = tIn.value; chk(); changed(); };
       uIn.oninput = function () { x.u = uIn.value.trim(); chk(); changed(); };
@@ -9249,7 +9494,7 @@ function linkEditor(b) {
   paint();
   wrap.appendChild(list);
   wrap.appendChild(h("div", { class: "lk-add" }, [add]));
-  wrap.appendChild(hint("網頁：電腦開一個小視窗（手冊還在後面）、手機開新分頁、LINE 用 LINE 的瀏覽器打開。第 43 批：網址是檔案（Word、PDF、Excel、PPT、圖片；Google 文件、試算表、簡報、雲端硬碟的檔）→ 讀的人在手冊裡的小視窗看（只能看，不能下載、列印，有浮水印；LINE 點了開網頁的小視窗）。院內網路、SharePoint 這種要登入的網址後端拿不到：檔案請放雲端硬碟（分享給藥戰手冊的 Google 帳號就好，不用公開）。顯示的字、說明搜尋找得到；Word 匯出寫「名稱：網址」。"));
+  wrap.appendChild(hint("第 46 批：每一個連結都在手冊裡的小視窗看（網頁、LINE 都一樣；LINE 點了先打開手冊網頁）。網頁：那個網頁放在小視窗裡；有的網站自己規定不讓別的網頁放（要登入的、付費的資料庫常這樣），小視窗裡會寫清楚、給「↗ 另外打開」。網址是檔案（Word、PDF、Excel、PPT、圖片；Google 文件、試算表、簡報、雲端硬碟的檔）→ 只能看，不能下載、列印，有浮水印。院內網路、SharePoint 這種要登入的檔案後端拿不到：請放雲端硬碟（分享給藥戰手冊的 Google 帳號就好，不用公開）。YouTube、Vimeo 的影片可以直接在小視窗播。按「↗ 試開」先看看。顯示的字、說明搜尋找得到；Word 匯出寫「名稱：網址」。"));
   return wrap;
 }
 
@@ -9770,7 +10015,7 @@ function chaEditor(c, ch) {
     [["auto", isT ? "🪄 自動（照標題名）" : "🪄 自動（照章名）"], ["lib", "👆 選一個"], ["up", "⬆️ 自己上傳"], ["off", "🚫 不要"]].forEach(function (p) {
       seg.appendChild(h("button", { class: mode === p[0] ? "on" : "", type: "button", "aria-pressed": mode === p[0] ? "true" : "false", onclick: function () { if (mode === p[0]) return; mode = p[0]; save(); paint(); } }, [p[1]]));
     });
-    if (CFG && CFG.chAnim === false) body.appendChild(h("div", { class: "tw note" }, ["ℹ 管理頁「網頁的小動畫」是關的：藥師現在看不到任何小動畫（這裡照樣可以先選好）。"]));
+    if (!(CFG && CFG.webVid === true)) body.appendChild(h("div", { class: "tw note" }, ["ℹ 管理頁「網頁的影片」是關的（第 46 批先關掉）：藥師現在看不到（這裡照樣可以先選好）。"]));
     if (isT && ch.anim && ch.anim.m === "off") body.appendChild(h("div", { class: "tw note" }, ["ℹ 這一章（「" + (ch.name || "") + "」）的小動畫是「🚫 不要」：整章都不放（到章元那裡改）。"]));
     if (!isT && mode !== "off") body.appendChild(h("div", { class: "tw note" }, ["ℹ 第 45 批起，小動畫跟著讀到的那一篇換：每一篇先照它自己選的、再照標題名配；兩個都沒有的那幾篇，才演這一章的（這裡選的）。這裡選「🚫 不要」＝整章都不放。"]));
     if (mode === "auto" && isT) {
@@ -10787,6 +11032,370 @@ function catPartsUp(src, info) {
     img.onerror = function () { bad(new Error("讀不到這張圖，沒辦法切")); };
     img.src = src;
   });
+}
+
+var PBV = { ov: null, cid: "", dev: "pc", k: 0, n: 1, g: null, fr: null, sc: 1, doc: null, flow: null, mk: null, rbk: null, stage: null, menu: null, sel: null, mo: null, ro: null, seq: 0, focus: null, dirty: false, rz: 0, soon: 0, wh: 0, back: null };
+var PB_PHONE = { w: 390, h: 720 };
+function bk46Ok() { return backAtLeast(12, 13); }
+function bk46Warn(what) {
+  modal({ title: "⚠ 還不能用「" + what + "」", lines: ["藥戰手冊專案（Apps Script）的「02_藥戰手冊」還是舊的（第 46 批以前）：設了存不進去。", "請先把第 46 批的 02 貼上，「部署 → 管理部署作業 → ✏️ → 版本選新版本 → 部署」，再重新整理這一頁。"], buttons: [{ label: "知道了", cls: "sm pri" }] });
+}
+function pbChapter() {
+  if (!ED || ED.mode !== "ch" || !ED.cur) return null;
+  if (ED.cur.kind === "ch") return edCh(ED.cur.id) || null;
+  var t = ED.cur.kind === "title" ? edTitle(ED.cur.id) : null;
+  return t ? edCh(t.ch) || null : null;
+}
+function pbSum(t) {
+  var a = [], nb = 0, nk = 0;
+  (t.blocks || []).forEach(function (b) { if (b.pb === true) nb++; if (b.kp === true) nk++; });
+  if (t.pb === true) a.push("這一篇從新的一頁開始");
+  if (nb) a.push(nb + " 處從那裡換到新的一頁");
+  if (nk) a.push(nk + " 塊不要切開");
+  return a.length ? a.join("、") : "還沒有設定（照自動排）";
+}
+function pbOpen(focus) {
+  var c = pbChapter();
+  if (!c) { toast("先在左邊選一章（或一個標題）"); return; }
+  if (!(ED.titles[c.id] || []).length) { toast("這一章還沒有標題"); return; }
+  if (!bk46Ok()) { bk46Warn("📖 翻頁預覽（設定換頁）"); return; }
+  pbClose(true);
+  PBV.cid = c.id; PBV.k = 0; PBV.dirty = false; PBV.back = document.activeElement;
+  if (!focus && ED.cur.kind === "title") { var t0 = edTitle(ED.cur.id); focus = { tid: ED.cur.id, b: t0 && ED.ab !== null && ED.ab !== undefined ? (t0.blocks || [])[ED.ab] || null : null }; }
+  PBV.focus = focus || null;
+  var seg = h("div", { class: "seg pbseg", role: "group", "aria-label": "用哪一種畫面看" });
+  [["pc", "💻 電腦"], ["ph", "📱 手機"]].forEach(function (x) {
+    var b = h("button", { type: "button", "data-d": x[0], class: PBV.dev === x[0] ? "on" : "", "aria-pressed": PBV.dev === x[0] ? "true" : "false", title: x[0] === "pc" ? "電腦（這一台的視窗大小）：兩頁一起看" : "手機（大約 LINE 裡打開的大小）：一頁一頁" }, [x[1]]);
+    b.onclick = function () { if (PBV.dev === x[0]) return; PBV.dev = x[0]; $$("button", seg).forEach(function (y) { var on = y === b; y.classList.toggle("on", on); y.setAttribute("aria-pressed", on ? "true" : "false"); }); PBV.focus = pbAnchor(); pbBuild(); };
+    seg.appendChild(b);
+  });
+  var prev = h("button", { class: "btn sm pbnv", type: "button", id: "pbPrev", "aria-label": "上一頁", title: "上一頁（←）", onclick: function () { pbTurn(-1); } }, ["‹"]);
+  var next = h("button", { class: "btn sm pbnv", type: "button", id: "pbNext", "aria-label": "下一頁", title: "下一頁（→）", onclick: function () { pbTurn(1); } }, ["›"]);
+  var clr = confirmBtn("↺ 這一章的換頁全部拿掉", pbClearAll, "sm pbclr");
+  clr.title = "這一章每一篇、每一塊的「從這裡換頁」「不要切開」全部拿掉（回到自動排）";
+  var done = h("button", { class: "btn sm pri", type: "button", id: "pbDone", onclick: function () { pbClose(); } }, ["✓ 好了"]);
+  var bar = h("div", { class: "pbbar" }, [h("b", { class: "pbt" }, ["📖 翻頁預覽"]), h("span", { class: "pbch" }, [chIco(c, edHb()) + " " + (c.name || "")]), seg, h("span", { class: "pbnav" }, [prev, h("span", { class: "pbwhere", id: "pbWhere", "aria-live": "polite" }, [""]), next]), h("span", { class: "sp" }), clr, done]);
+  var ov = h("div", { class: "pbov", id: "pbov", role: "dialog", "aria-modal": "true", "aria-label": "翻頁預覽（設定換頁）" }, [
+    bar, h("div", { class: "pbbody", id: "pbBody" }),
+    h("div", { class: "pbhint" }, ["點一塊內容（或標題）：選「✂ 從這裡換到新的一頁」或「🔗 這一塊不要切開」。藥品卡片本來就不會切開。改了跟其他修改一樣，要「儲存」（或等自動存檔）藥師才看得到；LINE 不受影響。每個人的螢幕大小不一樣，自然換頁的地方會差一點；你設的換頁每個人都一樣。"])
+  ]);
+  document.body.appendChild(ov);
+  document.addEventListener("keydown", pbKeyDoc);
+  PBV.ov = ov;
+  try { done.focus({ preventScroll: true }); } catch (e) {  }
+  window.addEventListener("resize", pbResize);
+  pbBuild();
+}
+function pbClose(quiet) {
+  pbMenuClose();
+  if (PBV.mo) { try { PBV.mo.disconnect(); } catch (e) {  } PBV.mo = null; }
+  if (PBV.ro) { try { PBV.ro.disconnect(); } catch (e) {  } PBV.ro = null; }
+  window.removeEventListener("resize", pbResize);
+  document.removeEventListener("keydown", pbKeyDoc);
+  clearTimeout(PBV.soon); clearTimeout(PBV.rz);
+  PBV.seq++;
+  var ov = PBV.ov; PBV.ov = null; PBV.doc = null; PBV.flow = null; PBV.fr = null; PBV.g = null;
+  if (!ov) return;
+  ov.remove();
+  if (quiet) return;
+  if (PBV.dirty && typeof renderForm === "function" && TAB === "edit") renderForm();
+  var bk = PBV.back; PBV.back = null;
+  if (bk && bk.isConnected) { try { bk.focus({ preventScroll: true }); } catch (e) {  } }
+}
+function pbResize() { clearTimeout(PBV.rz); PBV.rz = setTimeout(function () { if (!PBV.ov) return; PBV.focus = pbAnchor(); pbBuild(); }, 250); }
+function pbKeyDoc(e) { if (PBV.ov && !e.defaultPrevented) pbKey(e); }
+function pbKey(e) {
+  if (e.key === "Escape") { e.preventDefault(); if (PBV.menu) pbMenuClose(); else pbClose(); return; }
+  if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); pbTurn(1); }
+  else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); pbTurn(-1); }
+}
+
+function pbBuild() {
+  var body = $("#pbBody"); if (!body || !PBV.ov) return;
+  pbMenuClose();
+  if (PBV.mo) { try { PBV.mo.disconnect(); } catch (e) {  } PBV.mo = null; }
+  if (PBV.ro) { try { PBV.ro.disconnect(); } catch (e) {  } PBV.ro = null; }
+  body.innerHTML = ""; PBV.doc = null; PBV.flow = null; PBV.g = null;
+  var phone = PBV.dev === "ph", my = ++PBV.seq;
+  var vw = phone ? PB_PHONE.w : Math.max(900, window.innerWidth), vh = phone ? PB_PHONE.h : Math.max(560, window.innerHeight);
+  var aw = Math.max(200, body.clientWidth - 16), ah = Math.max(200, body.clientHeight - 16), sc = Math.min(1, aw / vw, ah / vh);
+  var fr = h("iframe", { class: "pbfr", title: "藥師看到的翻頁（" + (phone ? "手機" : "電腦") + "）" });
+  fr.style.width = vw + "px"; fr.style.height = vh + "px"; fr.style.transform = "scale(" + sc.toFixed(4) + ")";
+  var wrap = h("div", { class: "pbfw" + (phone ? " ph" : "") }, [fr]);
+  wrap.style.width = Math.floor(vw * sc) + "px"; wrap.style.height = Math.floor(vh * sc) + "px";
+  body.appendChild(wrap);
+  body.appendChild(h("div", { class: "pbwait", id: "pbWait" }, ["排版中…"]));
+  PBV.fr = fr; PBV.sc = sc;
+  var d = fr.contentDocument; if (!d || !d.body) { $("#pbWait").textContent = "這個瀏覽器打不開預覽（請用電腦的 Chrome、Edge）"; return; }
+  d.documentElement.setAttribute("lang", "zh-Hant");
+  d.body.className = "pbdoc";
+  var left = 0, fired = false, go = function () { if (fired || my !== PBV.seq) return; fired = true; pbFill(d, my); };
+  $$("link[rel=stylesheet], style").forEach(function (s) {
+    if (s.tagName === "STYLE") { var st = d.createElement("style"); st.textContent = s.textContent; d.head.appendChild(st); return; }
+    var l = d.createElement("link"); l.rel = "stylesheet"; l.href = s.href; left++;
+    l.onload = l.onerror = function () { if (--left <= 0) go(); };
+    d.head.appendChild(l);
+  });
+  if (!left) go();
+  setTimeout(go, 4000);
+}
+function pbFill(d, my) {
+  var c = edCh(PBV.cid); if (!c) { pbClose(); return; }
+  var hb = edHb(), ts = _yzMergeView_(ED.titles[c.id] || []), mq = mqConf(ED.cat), bg = _yzChBg_(c), nm = c.name || "";
+  var pg = h("section", { class: "pg book" + (bg ? " has-bg" : ""), "aria-label": nm });
+  var back = h("div", { class: "pgbg", "aria-hidden": "true" });
+  if (bg) back.style.backgroundImage = cssUrl(bg);
+  pg.appendChild(back);
+  if (mq.on) pg.appendChild(marquee(mqWordsOf(mq, nm), "", mq.speed)); else pg.style.setProperty("--mqh", "0px");
+  var tw = pbBand(c, ts);
+  pg.appendChild(tw);
+  var flow = h("div", { class: "rbk-flow" });
+  flow.appendChild(pgHead(chIco(c, hb) + " " + nm, c.intro || (ts.length ? ts.length + " 個標題" : "")));
+  var nop = function () {  };
+  chSecs(flow, c, ts, _yzMergeHb_(hb), { pv: true, noid: true, onImg: nop, onTitle: nop, onChapter: nop, mark: pbMarkB, markT: pbMarkT });
+  if (YZ_CFG.footer) flow.appendChild(h("div", { class: "pgfoot" }, [YZ_NOTICE]));
+  $$("img[loading=lazy]", flow).forEach(function (im) { im.loading = "eager"; });
+  var mk = h("div", { class: "pbmk", "aria-hidden": "true" });
+  var vp = h("div", { class: "rbk-vp" }, [flow, mk]);
+  var arP = h("button", { class: "rbk-arw p", type: "button", "aria-label": "上一頁", title: "上一頁（←）" }, ["‹"]), arN = h("button", { class: "rbk-arw n", type: "button", "aria-label": "下一頁", title: "下一頁（→）" }, ["›"]);
+  var stage = h("div", { class: "rbk-stage" }, [h("div", { class: "rbk-pp l" }), h("div", { class: "rbk-pp r" }), h("div", { class: "rbk-spine", "aria-hidden": "true" }), vp, arP, arN]);
+  var rbk = h("div", { class: "rbk", role: "region", "aria-label": "手冊內容（翻頁預覽）" }, [stage]);
+  pg.appendChild(h("div", { class: "pgcol" }, [rbk]));
+  if (mq.on) pg.appendChild(marquee(mqWordsOf(mq, nm), "mqb", mq.speed));
+  pg.style.setProperty("--colw", "1640px");
+  d.body.appendChild(h("div", { class: "app home-on", id: "app" }, [h("main", { class: "panes" }, [h("div", { class: "pane on", id: "pane-view" }, [pg])])]));
+  var pw = $(".pgwhere", tw), tool = $(".pgtool", tw);
+  if (pw) tw.style.setProperty("--pwb", pw.offsetHeight + "px");
+  if (tool) tw.style.setProperty("--pth", tool.offsetHeight + "px");
+  PBV.doc = d; PBV.flow = flow; PBV.mk = mk; PBV.rbk = rbk; PBV.stage = stage; PBV.arP = arP; PBV.arN = arN;
+  d.addEventListener("click", pbClick, true);
+  ["dblclick", "auxclick", "contextmenu", "submit"].forEach(function (k) { d.addEventListener(k, function (e) { e.preventDefault(); e.stopPropagation(); }, true); });
+  d.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { var a = d.activeElement, t = a && a !== d.body && a.closest ? a.closest("[data-pbk]") : null; e.preventDefault(); if (t) { var r = t.getClientRects()[0] || t.getBoundingClientRect(); pbPick(t, r.left + 8, r.top + 8); } return; }
+    pbKey(e);
+  }, true);
+  d.addEventListener("wheel", pbWheel, { passive: false });
+  var W2 = d.defaultView;
+  if (W2 && W2.MutationObserver) { PBV.mo = new W2.MutationObserver(function () { pbSoon(); }); PBV.mo.observe(flow, { childList: true, subtree: true }); }
+  if (W2 && W2.ResizeObserver) { PBV.ro = new W2.ResizeObserver(function () { pbSoon(); }); PBV.ro.observe(rbk); }
+  flow.addEventListener("load", function () { pbSoon(); }, true);
+  var t0 = Date.now(), pend = function () { return $$(".dcard .dwait", flow).some(function (x) { return /載入中/.test(x.textContent); }); };
+  (function poll() {
+    if (my !== PBV.seq) return;
+    if (pend() && Date.now() - t0 < 1500) { setTimeout(poll, 100); return; }
+    var w = $("#pbWait"); if (w) w.remove();
+    pbLay(true);
+  })();
+}
+function pbBand(c, ts) {
+  var lvs = _yzTLvs_(ts), deep = lvs.some(function (v) { return v > 1; }), row = h("div", { class: "pw-l" });
+  ts.forEach(function (x, k) {
+    if (lvs[k] !== 1) return;
+    if (row.firstChild) row.appendChild(h("span", { class: "pw-sep", "aria-hidden": "true" }, ["｜"]));
+    row.appendChild(h("button", { class: "pw-i" + (row.firstChild ? "" : " on"), type: "button", tabindex: "-1" }, [x.name || "（還沒有標題）"]));
+  });
+  var bar = h("nav", { class: "pgwhere" + (deep ? " deep" : "") }, [
+    h("div", { class: "pw-row" }, [h("button", { class: "pw-ch", type: "button", tabindex: "-1" }, [chIco(c, edHb()) + " " + (c.name || "")]), row]),
+    deep ? h("div", { class: "pw-sub" }, [h("span", { class: "pw-sa", "aria-hidden": "true" }, ["└"]), h("div", { class: "pw-l2" }, [h("span", { class: "pw-one" }, ["▸ " + ((ts[0] && ts[0].name) || "")])])]) : null
+  ]);
+  var keep = IS_DEV, st = null;
+  IS_DEV = false;
+  try { st = pgStatus(); } finally { IS_DEV = keep; }
+  var l = h("div", { class: "pt-l" }, [h("button", { class: "pglogo", type: "button", tabindex: "-1" }, [h("span", { class: "lgb" }, [logoImg()]), h("span", { class: "pl-t" }, ["藥戰手冊"])]), h("button", { class: "btn hfab pt-b", type: "button", tabindex: "-1" }, ["🔍", h("span", { class: "bl" }, [" 搜尋"])])]);
+  return h("div", { class: "ptw ap", inert: "" }, [h("div", { class: "pgtool has-pw" }, [l, h("div", { class: "pt-m" }, [bar]), h("div", { class: "pt-r" }, [st])])]);
+}
+function pbMarkB(el, b, info) { el.setAttribute("data-pbk", "b"); el._pbB = b; el._pbI = info || {}; }
+function pbMarkT(hd, t, k) { hd.setAttribute("data-pbk", "t"); hd._pbT = t.id; hd._pbK = k; }
+
+function pbLay(first) {
+  var d = PBV.doc, rbk = PBV.rbk; if (!d || !rbk || !rbk.isConnected) return;
+  var br = rbk.getBoundingClientRect(), g = bkGeom(Math.floor(br.width), Math.floor(br.height), d.documentElement.clientWidth);
+  if (!g) { PBV.g = null; $("#pbWhere").textContent = "畫面太矮，排不下（藥師那邊會改成捲動的看）"; return; }
+  PBV.g = g;
+  bkApply(rbk, PBV.stage, PBV.flow, g);
+  var mk = PBV.mk; mk.style.left = g.X + "px"; mk.style.top = g.Y + "px"; mk.style.width = g.fw + "px"; mk.style.height = g.fh + "px";
+  PBV.n = Math.max(1, Math.round((PBV.flow.scrollWidth + 2 * g.X + g.G) / g.pitch));
+  var f = first && PBV.focus ? pbFind(PBV.focus) : null;
+  if (f) { pbGo(pbCol(f)); pbFlash(f); } else pbGo(PBV.k);
+  if (first) PBV.focus = null;
+}
+function pbSoon() {
+  clearTimeout(PBV.soon);
+  PBV.soon = setTimeout(function () { if (PBV.g && PBV.flow) pbLay(false); }, 160);
+}
+function pbCol(el) {
+  var g = PBV.g; if (!g || !el || !PBV.flow) return 0;
+  var rs = el.getClientRects(); if (!rs.length) return 0;
+  return Math.max(0, Math.floor((rs[0].left - PBV.flow.getBoundingClientRect().left + 4) / g.pitch));
+}
+function pbGo(k) {
+  var g = PBV.g; if (!g || !PBV.flow) return;
+  k = Math.max(0, Math.min(PBV.n - 1, k | 0));
+  if (g.two) k -= k % 2;
+  PBV.k = k;
+  var tf = "translateX(" + (-k * g.pitch) + "px)";
+  PBV.flow.style.transform = tf; PBV.mk.style.transform = tf;
+  var last = g.two ? k + 2 >= PBV.n : k + 1 >= PBV.n, w = $("#pbWhere"), p = $("#pbPrev"), nx = $("#pbNext");
+  if (w) w.textContent = (g.two && k + 1 < PBV.n ? "第 " + (k + 1) + "、" + (k + 2) + " 頁" : "第 " + (k + 1) + " 頁") + "（共 " + PBV.n + " 頁）";
+  if (p) p.disabled = k <= 0;
+  if (nx) nx.disabled = last;
+  if (PBV.arP) PBV.arP.disabled = k <= 0;
+  if (PBV.arN) PBV.arN.disabled = last;
+  pbMarks();
+}
+function pbTurn(dir) { if (!PBV.g) return; pbMenuClose(); pbGo(PBV.k + dir * (PBV.g.two ? 2 : 1)); }
+function pbWheel(e) {
+  e.preventDefault();
+  var dl = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX, now = Date.now();
+  if (Math.abs(dl) < 8 || now - PBV.wh < 380) return;
+  PBV.wh = now; pbTurn(dl > 0 ? 1 : -1);
+}
+function pbMarks() {
+  var mk = PBV.mk, flow = PBV.flow, g = PBV.g; if (!mk || !flow || !g) return;
+  mk.innerHTML = "";
+  var fr = flow.getBoundingClientRect();
+  var add = function (cls, x, y, w, hh, txt) { var e = h("i", { class: cls }, txt ? [txt] : []); e.style.left = Math.round(x) + "px"; e.style.top = Math.round(y) + "px"; if (w !== null) e.style.width = Math.round(w) + "px"; if (hh !== null) e.style.height = Math.round(hh) + "px"; mk.appendChild(e); };
+  $$(".pgbrk", flow).forEach(function (el) {
+    var r = el.getClientRects()[0]; if (!r) return;
+    var x = Math.floor((r.left - fr.left + 4) / g.pitch) * g.pitch, y = Math.max(5 - g.Y, r.top - fr.top - 7);
+    add("ln", x, y, g.fw, null);
+    add("tg r", x + g.fw, y - 9, null, null, el.classList.contains("chsec") || (el._pbB && el._pbB.mgh) ? "✂ 這一篇從新的一頁開始" : "✂ 從這裡換頁");
+  });
+  $$(".pgkeep", flow).forEach(function (el) {
+    Array.prototype.forEach.call(el.getClientRects(), function (r, i) {
+      add("kp", r.left - fr.left - Math.min(10, g.X - 3), r.top - fr.top, null, Math.max(10, r.height));
+      if (!i) add("tg k", r.left - fr.left + Math.max(0, r.width - 92), r.top - fr.top - 8, null, null, "🔗 不切開");
+    });
+  });
+}
+function pbFlash(el) { if (!el) return; el.classList.add("pbsel"); setTimeout(function () { if (el !== PBV.sel) el.classList.remove("pbsel"); }, 1400); }
+function pbFind(f) {
+  if (!f || !PBV.flow) return null;
+  var els = $$("[data-pbk]", PBV.flow);
+  if (f.b) { var x = els.filter(function (e) { return e._pbB === f.b; })[0]; if (x) return x; }
+  if (f.tid) return els.filter(function (e) { return e._pbT === f.tid; })[0] || els.filter(function (e) { return e._pbB && e._pbB.mgh === f.tid; })[0] || null;
+  return null;
+}
+function pbAnchor() {
+  if (!PBV.flow || !PBV.g) return PBV.focus;
+  var best = null, bt = 1e9;
+  $$("[data-pbk]", PBV.flow).some(function (el) {
+    var c = pbCol(el);
+    if (c === PBV.k) { var t = el.getClientRects()[0].top; if (t < bt) { bt = t; best = el; } }
+    return c > PBV.k + 1;
+  });
+  return best ? (best._pbB ? { b: best._pbB } : { tid: best._pbT }) : null;
+}
+
+function pbClick(e) {
+  e.preventDefault(); e.stopPropagation();
+  var ar = e.target && e.target.closest ? e.target.closest(".rbk-arw") : null;
+  if (ar) { pbTurn(ar.classList.contains("p") ? -1 : 1); return; }
+  var t = e.target && e.target.closest ? e.target.closest("[data-pbk]") : null;
+  if (!t || !PBV.flow || !PBV.flow.contains(t)) { pbMenuClose(); return; }
+  pbPick(t, e.clientX, e.clientY);
+}
+function pbOwner(b) {
+  var a = ED.titles[PBV.cid] || [];
+  for (var i = 0; i < a.length; i++) { var k = (a[i].blocks || []).indexOf(b); if (k >= 0) return { t: a[i], i: k }; }
+  return null;
+}
+function pbPick(el, cx, cy) {
+  pbMenuClose();
+  var kind = el.getAttribute("data-pbk"), items = [], head = "", stale = false;
+  var tog = function (label, on, fn, cls) {
+    var b = h("button", { type: "button", class: "btn sm pbm-o" + (on ? " on" : "") + (cls ? " " + cls : ""), role: "menuitemcheckbox", "aria-checked": on ? "true" : "false" }, [h("span", { class: "pbm-c", "aria-hidden": "true" }, [on ? "✓" : ""]), label]);
+    b.onclick = function () { fn(!on); };
+    return b;
+  };
+  var note = function (txt) { return h("div", { class: "pbm-n" }, [txt]); };
+  if (kind === "t") {
+    var tt = edTitle(el._pbT);
+    if (!tt) stale = true;
+    else {
+      head = "標題「" + (tt.name || "（還沒有標題）") + "」";
+      if (el._pbK === 0) items.push(note("這一章的第一篇：本來就在最前面（不用換頁）"));
+      else items.push(tog("✂ 這一篇從新的一頁開始", tt.pb === true, function (on) { pbSetT(el, tt.id, on); }, "pbm-pb"));
+    }
+  } else {
+    var b = el._pbB, info = el._pbI || {};
+    if (b && b.mgh) {
+      var g0 = edTitle(b.mgh);
+      if (!g0) stale = true;
+      else {
+        head = "併進來的「" + (g0.name || "（還沒有標題）") + "」";
+        if (info.lead) items.push(note("它放在這一篇的最前面：要換頁，點上面的標題（整篇從新的一頁開始）"));
+        else items.push(tog("✂ 「" + (g0.name || "這一篇") + "」從新的一頁開始", g0.pb === true, function (on) { pbSetT(el, g0.id, on); }, "pbm-pb"));
+      }
+    } else {
+      var ow = b ? pbOwner(b) : null;
+      if (!ow) stale = true;
+      else {
+        head = "「" + (ow.t.name || "（還沒有標題）") + "」第 " + (ow.i + 1) + " 塊（" + (b.t === "img" && b.draw ? "流程圖" : KIND_NAME[b.t] || "內容") + "）";
+        if (info.lead) items.push(note("這一篇的第一塊：要換頁，點上面的標題（整篇從新的一頁開始）"));
+        else items.push(tog("✂ 從這裡換到新的一頁", b.pb === true, function (on) { pbSetB(el, b, "pb", on); }, "pbm-pb"));
+        items.push(tog("🔗 這一塊不要切開（放不下就整塊換到下一頁）", b.kp === true, function (on) { pbSetB(el, b, "kp", on); }, "pbm-kp"));
+        items.push(h("button", { type: "button", class: "btn sm pbm-go", role: "menuitem", onclick: function () { var tid = ow.t.id, bi = ow.i; pbClose(); pbGotoBlock(tid, bi); } }, ["✏️ 到編輯器改這一塊"]));
+      }
+    }
+  }
+  if (stale) { toast("手冊剛剛更新了：預覽重新排好了，再點一次"); PBV.focus = pbAnchor(); pbBuild(); return; }
+  PBV.sel = el; el.classList.add("pbsel");
+  var m = h("div", { class: "pbmenu", role: "menu", "aria-label": head }, [h("div", { class: "pbm-h" }, [head])].concat(items).concat([h("button", { type: "button", class: "btn sm pbm-x", onclick: pbMenuClose }, ["關閉"])]));
+  document.body.appendChild(m);
+  PBV.menu = m;
+  var fr = PBV.fr.getBoundingClientRect(), x = fr.left + cx * PBV.sc + 10, y = fr.top + cy * PBV.sc + 10;
+  var mw = m.offsetWidth, mh = m.offsetHeight;
+  if (x + mw > innerWidth - 8) x = Math.max(8, innerWidth - mw - 8);
+  if (y + mh > innerHeight - 8) y = Math.max(8, fr.top + cy * PBV.sc - mh - 10);
+  m.style.left = Math.round(x) + "px"; m.style.top = Math.round(y) + "px";
+  var f1 = $("button", m); if (f1) { try { f1.focus({ preventScroll: true }); } catch (e2) {  } }
+}
+function pbMenuClose() {
+  if (PBV.menu) { PBV.menu.remove(); PBV.menu = null; }
+  if (PBV.sel) { PBV.sel.classList.remove("pbsel"); PBV.sel = null; }
+}
+function pbSetB(el, b, key, on) {
+  if (!pbOwner(b)) { pbMenuClose(); toast("手冊剛剛更新了：預覽重新排好了，再點一次"); PBV.focus = pbAnchor(); pbBuild(); return; }
+  if (on) b[key] = true; else delete b[key];
+  if (key === "pb") el.classList.toggle("pgbrk", on && !(el._pbI || {}).lead);
+  else el.classList.toggle("pgkeep", on);
+  pbAfter(el, key === "pb" ? (on ? "✂ 從這裡換到新的一頁" : "已拿掉「從這裡換頁」") : (on ? "🔗 這一塊不要切開" : "已拿掉「不要切開」"));
+}
+function pbSetT(el, tid, on) {
+  var t = edTitle(tid); if (!t) return;
+  if (on) t.pb = true; else delete t.pb;
+  var tgt = el.getAttribute("data-pbk") === "t" ? el.closest(".chsec") : el;
+  if (tgt) tgt.classList.toggle("pgbrk", on && (el.getAttribute("data-pbk") === "t" ? el._pbK > 0 : !(el._pbI || {}).lead));
+  pbAfter(el, on ? "✂ 「" + (t.name || "這一篇") + "」從新的一頁開始" : "已拿掉「從新的一頁開始」");
+}
+function pbAfter(el, msg) {
+  PBV.dirty = true;
+  pbMenuClose();
+  changed();
+  if (!PBV.g) return;
+  PBV.n = Math.max(1, Math.round((PBV.flow.scrollWidth + 2 * PBV.g.X + PBV.g.G) / PBV.g.pitch));
+  pbGo(pbCol(el));
+  pbFlash(el);
+  toast(msg + "（記得存檔，藥師才看得到）");
+}
+function pbClearAll() {
+  var a = ED.titles[PBV.cid] || [], n = 0;
+  a.forEach(function (t) {
+    if (t.pb === true) { delete t.pb; n++; }
+    (t.blocks || []).forEach(function (b) { if (b.pb === true) { delete b.pb; n++; } if (b.kp === true) { delete b.kp; n++; } });
+  });
+  if (!n) { toast("這一章本來就沒有設定換頁"); return; }
+  PBV.dirty = true; changed();
+  PBV.focus = pbAnchor(); pbBuild();
+  toast("這一章的換頁設定都拿掉了（" + n + " 個；照自動排）");
+}
+function pbGotoBlock(tid, bi) {
+  if (!edTitle(tid)) return;
+  ED.cur = { kind: "title", id: tid }; ED.mode = "ch"; ED.ab = bi;
+  renderEdit();
+  setTimeout(function () { var el = $("#blklist .blk[data-i='" + bi + "']"); if (el) { try { el.scrollIntoView({ block: "center" }); } catch (e) { el.scrollIntoView(); } } }, 30);
 }
 
 var DR_FONT = "'Noto Sans TC','Noto Sans CJK TC','PingFang TC','Microsoft JhengHei','Heiti TC',system-ui,sans-serif";
@@ -12306,13 +12915,13 @@ function pcGhCheck(k7, xx) {
 function pcDraw(box, r, blob, blob7, xx) {
   box.innerHTML = "";
   var on7 = !!r.on7, k7 = r.code7 || "";
-  var cfg = "// 藥戰手冊：後端位置（加密）。放在 hb.html 同一層。別人看不出位置；換部署再到管理頁「⑥」重做一次。\nwindow.HB_XC = \"" + blob + "\";\nwindow.HB_XC7 = \"" + blob7 + "\";   // 第 43 批：12 碼短碼用\n";
+  var cfg = "// 藥戰手冊：後端位置（加密）。放在 hb.html 同一層。別人看不出位置；換部署再到管理頁「⑥」重做一次。\nwindow.HB_XC = \"" + blob + "\";\nwindow.HB_XC7 = \"" + blob7 + "\";   // 第 43 批：短碼用\n";
   var dl = btn("⬇️ 下載 cfg.js", function () {
     try { var u = URL.createObjectURL(new Blob([cfg], { type: "text/javascript" })); if (typeof exDownload === "function") exDownload(u, "cfg.js"); else { var a = h("a", { href: u, download: "cfg.js" }); document.body.appendChild(a); a.click(); a.remove(); } setTimeout(function () { URL.revokeObjectURL(u); }, 2000); } catch (e) { toast("下載不了：請重新整理再試一次"); }
   }, "sm pri pcdl");
   var ckm = h("span", { class: "hint", id: "pcckm", role: "status", "aria-live": "polite" }, [""]);
   var ck = btn("🔄 檢查 GitHub 上的 cfg.js", function () { pcCheck(true); }, "sm pcck");
-  box.appendChild(h("p", { class: "pcst warn", id: "pcst" }, ["⏳ 要換一次 cfg.js：按「⬇️ 下載 cfg.js」，傳到 GitHub（跟 hb.html 放同一層，同名的蓋掉），1～2 分鐘後按「🔄 檢查」。換好以前，同事在 LINE「🔗 外部連結」拿到的短碼是 28 碼（照樣能用）；換好以後是 12 碼，這一段就不再出現。"]));
+  box.appendChild(h("p", { class: "pcst warn", id: "pcst" }, ["⏳ 要換一次 cfg.js：按「⬇️ 下載 cfg.js」，傳到 GitHub（跟 hb.html 放同一層，同名的蓋掉），1～2 分鐘後按「🔄 檢查」。換好以前，同事在 LINE「🔗 外部連結」拿到的短碼比較長（照樣能用）；換好以後變短，這一段就不再出現。"]));
   box.appendChild(h("div", { class: "pcurlrow" }, [dl, ck, ckm]));
   var pcCheck = function (say) {
     ck.disabled = true; ckm.textContent = say ? "檢查中…" : "";
@@ -12321,7 +12930,7 @@ function pcDraw(box, r, blob, blob7, xx) {
       if (good === on7) { pcShow(!good); if (say) ckm.textContent = good ? "✅ GitHub 上的 cfg.js 是新的" : "❌ GitHub 上的還是舊的 cfg.js（或還沒更新好）：確定傳上去了，等 1～2 分鐘再按一次。"; return; }
       call("hbEntry", [good ? 1 : -1]).then(function (r2) {
         if (!adOk(r2)) return;
-        toast(good ? "✅ cfg.js 換好了：同事在 LINE 拿到的短碼從現在起是 12 碼" : "⚠ GitHub 上的 cfg.js 不是現在這一份：同事拿到的短碼先改回 28 碼（照樣能用），請照 ⑥ 換一次");
+        toast(good ? "✅ cfg.js 換好了：同事在 LINE 拿到的短碼從現在起變短了" : "⚠ GitHub 上的 cfg.js 不是現在這一份：同事拿到的短碼先改回長的（照樣能用），請照 ⑥ 換一次");
         drawPcLink();
       }, function (e) { ckm.textContent = "❌ " + e.message; });
     });
@@ -12599,7 +13208,10 @@ function drawSettings() {
   row("imgDirect", "圖片直接顯示在 LINE 卡片上", "關掉＝LINE 卡片上的圖片、目錄圖改成按鈕，要登入網頁才看得到");
   row("animDirect", "動畫直接在 LINE 卡片上播放", "關掉＝只顯示第一格＋「▶ 在網頁看動畫」按鈕");
   row("webAnimAuto", "網頁動畫自動播放", "關掉＝一律先停住，按「▶ 播放」才動（手機開了「減少動態效果」的人，一律先停住）");
-  row("chAnim", "網頁的小動畫", "深色那一條底下放一小格動畫：讀到哪一篇就演那一篇的（照標題名自動配，配不到用章的；編輯器每一章、每一篇也可以自己選、自己上傳、或不要）。關掉＝都不放");
+  box.appendChild(settingRow("網頁的影片", "預設關著（第 46 批先關掉）。打開＝翻到新的一篇時，深色那一條上面出來一格影片，演一次就收起來（點一下也收）：照標題名自動配，配不到用章的；編輯器每一章、每一篇也可以自己選、自己上傳、或不要。藥師不能自己開關", tog(c.webVid === true, function (v, el) { save({ webVid: v }, el); }, "網頁的影片")));
+  var vcm = h("input", { class: "in", type: "number", min: "4", max: "30", value: String(c.webVidCm || 12), style: "width:80px", "aria-label": "網頁的影片最寬幾公分" });
+  vcm.onchange = function () { var v = Math.max(4, Math.min(30, parseInt(vcm.value, 10) || 12)); vcm.value = String(v); save({ webVidCm: v }, vcm); };
+  box.appendChild(settingRow("網頁的影片最寬（公分）", "影片最寬＝深色那一條的寬，而且不超過這裡的公分數（4～30，預設 12）。手機比較窄：照手機的寬。螢幕不一樣，實際量起來會差一點", h("div", { class: "sw2" }, [vcm, h("span", { class: "muted" }, ["公分"])])));
   row("webBook", "網頁看手冊：翻頁", "開著＝像一本書，一頁一頁翻（電腦兩頁、手機一頁）。關掉＝整篇往下捲。全部的人一樣（藥師不能自己換）");
   row("lineSwipe", "LINE：好幾張卡片預設「左右滑」", "一個標題有 2 張以上卡片時，預設合成一則左右滑（關掉＝一頁一頁往下排）。每個標題可以在編輯器「📱 LINE：好幾張卡片怎麼排」自己選，自己選的優先");
   var rmBox = h("span", { class: "muted", id: "rmTog", style: "font-size:12.5px" }, ["讀取中…"]);
