@@ -1,5 +1,3 @@
-/* 補藥神器網頁 v11.22.2 beta（清單校對，開發者用）：畫面在 GitHub，資料由網頁專案的 API 給。這個檔沒有任何秘密。 */
-/* v11.20.1：清單校對的網頁放在 GitHub，用 fetch 打網頁專案的 API（跟藥品查詢同一套：鑰匙、裝置碼跟部署 ID 一起算、開發者綁定碼） */
 if(window.top!==window.self){try{document.documentElement.innerHTML="";}catch(e){}throw new Error("framed");}
 function hashParams(){var o={};String(location.hash||"").replace(/^#/,"").split("&").forEach(function(kv){var i=kv.indexOf("=");if(i>0){try{o[decodeURIComponent(kv.slice(0,i))]=decodeURIComponent(kv.slice(i+1));}catch(e){}}});return o;}
 var HP=hashParams(),X=HP.x||"",API="",SYNC_T=null,DKX="";
@@ -7,19 +5,16 @@ var T=HP.dev||"",A=[],PICK=[],FILT="all",CUR=-1,PN=0,PICKN=0,RETRY=false;
 var DK=(function(){var k="";try{k=localStorage.getItem("bdk")||"";}catch(e){k="";}if(/^[0-9a-f]{32}$/.test(k))return k;
  try{var a=new Uint8Array(16);crypto.getRandomValues(a);k=Array.prototype.map.call(a,function(x){return("0"+x.toString(16)).slice(-2);}).join("");localStorage.setItem("bdk",k);if(localStorage.getItem("bdk")!==k)k="";}catch(e){k="";}return k;})();
 function post(fn,a,bg){return fetch(API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({v:1,fn:fn,t:T,dk:DKX,a:a}),credentials:"omit",cache:"no-store",referrerPolicy:"no-referrer",redirect:"follow",keepalive:!!bg}).then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.json();});}
-/* 跟原本 Apps Script 網頁一樣的寫法：api().withSuccessHandler(ok).withFailureHandler(bad).lstData(T) */
 function api(){var ok=function(){},bad=function(){},o={withSuccessHandler:function(f){ok=f;return o;},withFailureHandler:function(f){bad=f;return o;}};
  ["lstData","lstUpload","lstApply","lstDrop","lstDropAll","lstLocFind","lstLocMove","lstLocPhoto"].forEach(function(fn){o[fn]=function(){var a=[].slice.call(arguments,1);
   post(fn,a).then(function(j){if(!j||j.ok!==1){var c=j&&j.code||"",m=j&&j.err||"後端沒有回應";if(c==="tok"||c==="bind"||c==="down"||c==="moved"){halt(m,j.need);return;}bad(m);return;}
    var r=j.r;if(r&&r.sync)syncSoon();ok(r);},
    function(e){bad("連不上後端（"+(e&&e.message||e)+"）");});};});
  return o;}
-/* 寫進工作表1 之後（sync:1）：1.5 秒後在背景通知 LINE 清快取；還沒送就切走、關掉網頁 → 馬上送 */
 function syncNow(){if(!SYNC_T)return;clearTimeout(SYNC_T);SYNC_T=null;post("appSync",[],true).catch(function(){});}
 function syncSoon(){clearTimeout(SYNC_T);SYNC_T=setTimeout(syncNow,1500);}
 document.addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden")syncNow();});
 window.addEventListener("pagehide",syncNow);
-/* 整頁停下來；開發者這台還沒綁定 → 出輸入綁定碼的框（LINE「開發者網頁 綁定」給的 6 位數碼），綁好就重新整理 */
 function halt(m,need){var w=document.querySelector(".w");if(!w)return;
  w.innerHTML='<h1>📋 清單校對</h1><p class="sub" style="font-size:15px;color:inherit">'+esc(m).replace(/\n/g,"<br>")+'</p>'
   +(need?'<form class="bindf" id="bindf" autocomplete="off"><input id="bindc" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 位數碼" aria-label="綁定碼"><button type="submit" id="bindb">綁定</button></form><p class="sub" id="bindm" role="status" style="color:#B33E2E;min-height:1.7em"></p><p class="sub">碼 10 分鐘內有效、只能用一次；錯 5 次鎖 1 小時；最多綁 3 處。這組碼只打在這裡，不要傳給任何人。</p>':'');
@@ -34,7 +29,6 @@ function halt(m,need){var w=document.querySelector(".w");if(!w)return;
    bm.textContent="❌ "+((r&&r.err)||(j&&j.err)||"沒綁成功，再試一次");inp.value="";try{inp.focus();}catch(x){}},
    function(){bb.disabled=false;bm.textContent="❌ 連不上後端，網路好了再試一次";});};}
 function hex(b){return Array.prototype.map.call(new Uint8Array(b),function(x){return("0"+x.toString(16)).slice(-2);}).join("");}
-/* 連結格式對才連；裝置碼跟部署 ID 一起算（每個部署拿到的都不一樣） */
 function gate(cb){
  if(!/^[A-Za-z0-9_-]{20,120}$/.test(X)||!/^[0-9a-f]{32}$/.test(T)){cb("bad");return;}
  if(!window.fetch){cb("old");return;}
@@ -46,7 +40,6 @@ function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return
 function $(id){return document.getElementById(id);}
 function load(){api().withSuccessHandler(function(r){if(r.err){$("cnt").textContent=r.err;return;}A=[];(r.rows||[]).forEach(function(d){d.src="lst";A.push(d);});((r.imp&&r.imp.rows)||[]).forEach(function(d){d.src="imp";A.push(d);});PROB=Array.isArray(r.imp&&r.imp.problems)?r.imp.problems:[];LOADED=true;draw();}).withFailureHandler(function(e){$("cnt").textContent="連不上："+e;}).lstData(T);}
 var PROB=[],LOADED=false;
-/* 選檔、拖曳、貼上三種都走這一條 —— 用的是同一支 shrink，所以辨識準確度完全一樣 */
 function addFiles(list,how){
  if(TAB==="lc")return lcFiles(list);
  var fs=[],i;for(i=0;i<(list||[]).length;i++){var f=list[i];
@@ -59,7 +52,6 @@ function addFiles(list,how){
  return n;}
 $("pick").onclick=function(){$("file").click();};
 $("file").onchange=function(e){addFiles(e.target.files||[],"選檔");e.target.value="";};
-/* 整頁都能拖，不用瞄準那一格 */
 (function(){var depth=0,dz=$("dz"),db=$("dropbox");
  function hasFiles(e){var t=(e.dataTransfer&&e.dataTransfer.types)||[];
   for(var i=0;i<t.length;i++)if(t[i]==="Files")return true;return false;}
@@ -73,17 +65,14 @@ $("file").onchange=function(e){addFiles(e.target.files||[],"選檔");e.target.va
   var n=addFiles((e.dataTransfer&&e.dataTransfer.files)||[],"拖曳");
   if(!n){var mn=$("many");mn.hidden=false;mn.textContent="拖進來的不是圖片檔，沒有收。";}});
  window.addEventListener("blur",hide);})();
-/* 截圖後直接貼上 */
 document.addEventListener("paste",function(e){
  var it=(e.clipboardData&&e.clipboardData.items)||[],fs=[],i;
  for(i=0;i<it.length;i++)if(it[i].kind==="file"){var f=it[i].getAsFile();if(f)fs.push(f);}
  if(!fs.length)return;
  e.preventDefault();addFiles(fs,"貼上");});
-/* 夠小的照片原檔直接送（不重壓，準確度不打折）；太大的才縮到 3000px */
 function shrink(file,cb){var MAXPX=3000,MAXKB=4200,THPX=200;var fr=new FileReader();
  fr.onload=function(){var raw=String(fr.result);var im=new Image();
   im.onload=function(){var w=im.width,h=im.height,lg=Math.max(w,h),kb=Math.round(raw.length*3/4/1024);
-   // 畫面上的縮圖另外做小的，不然 12 張大圖掛在 DOM 上手機會很喘
    var ts=THPX/lg,tc=document.createElement("canvas");
    tc.width=Math.max(1,Math.round(w*ts));tc.height=Math.max(1,Math.round(h*ts));
    tc.getContext("2d").drawImage(im,0,0,tc.width,tc.height);
@@ -183,7 +172,7 @@ $("delall").onclick=function(){var idx=[],ids=[],imp=0;
   if(r&&r.bad&&r.bad.length)alert("有 "+r.bad.length+" 筆刪不掉：\n"+r.bad.join("\n"));})
  .withFailureHandler(function(e){$("delall").disabled=false;alert("刪不掉："+e);}).lstDropAll(T,ids);};
 document.addEventListener("keydown",function(e){if(TAB!=="tb")return;var t=e.target.tagName;if(t==="INPUT"&&e.key!=="Enter")return;
- if(e.target.classList&&e.target.classList.contains("tab"))return;      /* 分頁按鈕上的方向鍵（換分頁）、Enter（按下去換分頁）不是在審卡片：不然會順手把「目前那張」框起來，Enter 還會直接把它寫進去 */
+ if(e.target.classList&&e.target.classList.contains("tab"))return;
  var live=[];A.forEach(function(d,i){if(pass(d))live.push(i);});if(!live.length)return;
  if(CUR<0||live.indexOf(CUR)<0)CUR=live[0];
  var pos=live.indexOf(CUR),k=(e.key||"").toLowerCase();
@@ -193,8 +182,6 @@ document.addEventListener("keydown",function(e){if(TAB!=="tb")return;var t=e.tar
  else if(k==="s"){act(CUR,"skip");look();e.preventDefault();}
  else if(k==="d"){act(CUR,"drop");look();e.preventDefault();}});
 function look(){var el=$("k"+CUR);if(el)el.scrollIntoView({block:"nearest"});}
-/* ═══ ★ 第 17 批：位置查核（開發者去貨架查「這支藥是不是真的放在這一格」）═══
-   打勾只放在這個頁面的記憶體（重新整理就沒了，不寫試算表、不記日期）；「修改」只改位置，改完馬上生效，不記進匯入紀錄。 */
 var TAB="tb",LC=null,LCM={},LCPEND=null,LCBUSY=false;
 function setTab(t,nofocus){TAB=t;
  ["tb","lc"].forEach(function(x){var on=x===t,p=$("pn_"+x),b=$("tab_"+x);
@@ -210,7 +197,6 @@ Array.prototype.forEach.call(document.querySelectorAll(".tab"),function(b){
 function lcMsg(h,cls){var m=$("lcmsg");if(!m)return;m.className="lcmsg"+(cls?" "+cls:"");m.innerHTML=h||"";m.hidden=!h;}
 function lcBusy(on){LCBUSY=!!on;$("lcgo").disabled=!!on;$("lcpick").disabled=!!on;}
 function lcSeen(m,rows){var n=0,t=0;rows.forEach(function(x){t++;if(m.tick[x.code]||m.moved[x.code])n++;});return {n:n,t:t};}
-/* 查一格：text＝使用者打的位置；opt.rec＝照片認出的藥（要先打勾的）；opt.lead＝卡片上面那一段話 */
 function lcGo(text,opt){
  opt=opt||{};
  text=String(text==null?$("lcq").value:text).replace(/^\s+|\s+$/g,"");
@@ -311,7 +297,6 @@ function lcSubmit(){
    lcMoved(code,r);})
   .withFailureHandler(function(e){var ok=$("lcok");if(ok)ok.disabled=false;lcEdMsg("連不上："+esc(e),"bad");})
   .lstLocMove(T,code,val,x.location||"",allow);}
-/* 改好了：改走的那一列留在原位（顯示「→ 已改到 X」，算看過）；拉進這一格的（照片認出、工作表1 寫在別格）排進清單、打勾 */
 function lcMoved(code,r){
  var m=LCM[LC.key],x=lcFind(code),k=String(r.after||"").replace(/\s+/g,"").toUpperCase(),here=k===String(LC.key||"").toUpperCase(),i;
  LC.edit="";LC.confirm="";
@@ -327,7 +312,6 @@ function lcMoved(code,r){
  }
  lcMsg("✅ 位置改好了：<b>"+esc(code)+"</b>　"+esc(r.before||"（空的）")+" → "+esc(r.after)+"<br>快取已更新，藥師現在查就是新位置。（這個修改不記進匯入紀錄）","ok");
  lcDraw();}
-/* 貨架照片：AI 讀位置牌＋認出架上的藥 */
 function lcFiles(list){
  var f=null,i;for(i=0;i<(list||[]).length;i++){var g=list[i];
   if(g&&((g.type||"").indexOf("image/")===0||/\.(jpe?g|png|webp|heic|heif)$/i.test(g.name||""))){f=g;break;}}

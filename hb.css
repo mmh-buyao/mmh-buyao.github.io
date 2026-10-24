@@ -1,4 +1,3 @@
-/* hb.css — 藥戰手冊網頁的樣式（beta22） */
 :root{
   color-scheme: light;
   --bg:#EEF1F4; --panel:#fff; --ink:#1B2430; --ink2:#4A5565; --ink3:#7B8696; --line:#DCE1E8;
@@ -32,7 +31,6 @@ h1{font-size:20px;margin:0 0 4px}
 .btn.sm{padding:3px 9px;font-size:12.5px}
 .btn:disabled{opacity:.45;cursor:default}
 
-/* ───────── Flex 畫出來的卡片 ───────── */
 .fx-bubble{position:relative;flex:none;font-family:inherit;color:#111}
 .fx-car{display:flex;gap:8px;align-items:stretch;overflow-x:auto;padding:2px 2px 8px;max-width:100%;scrollbar-width:thin}
 .fx-box{min-width:0;position:relative}
@@ -43,7 +41,6 @@ h1{font-size:20px;margin:0 0 4px}
 .fx-img{display:block;max-width:100%}
 .fx-sep{height:1px;background:#E0E0E0}
 
-/* ───────── 網頁（藥戰手冊網頁） ───────── */
 .web{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;position:relative}
 .wbar{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--line);background:#fff}
 .wbar .ttl{font-weight:800;color:var(--accent);font-size:16px}
@@ -85,7 +82,6 @@ h1{font-size:20px;margin:0 0 4px}
 .note b.nl{display:block;font-size:12px;letter-spacing:.06em;color:#8A6D00;margin-bottom:2px}
 .foot{font-size:12px;color:#9AA3AF;text-align:center;margin-top:18px}
 
-/* 編輯器 */
 .edit{display:grid;grid-template-columns:230px minmax(360px,1fr) 400px;gap:0;min-height:640px}
 .edit>div{padding:12px;min-width:0}
 .edit .c1{border-right:1px solid var(--line);background:#FAFBFC}
@@ -116,7 +112,6 @@ h1{font-size:20px;margin:0 0 4px}
 .pvwrap{background:#7F9BC3;border-radius:12px;padding:10px;display:flex;justify-content:center;overflow:auto;max-height:560px}
 .pvweb{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow:auto;max-height:560px;margin:0 auto}
 
-/* 表格（管理頁） */
 .tbl{border-collapse:collapse;width:100%;font-size:13px}
 .tbl th,.tbl td{border-bottom:1px solid #E5E9EE;padding:7px 8px;text-align:left;vertical-align:middle}
 .tbl th{font-size:12px;color:var(--ink3);font-weight:600;background:#FAFBFC}
@@ -140,7 +135,6 @@ h1{font-size:20px;margin:0 0 4px}
 @media (max-width:1100px){.edit{grid-template-columns:1fr}.edit .c1,.edit .c3{border:0;border-top:1px solid var(--line)}}
 @media (max-width:760px){.wbody{flex-direction:column}.side{width:auto;border-right:0;border-bottom:1px solid var(--line);max-height:none}}
 
-/* style2.css — 編輯器、管理頁的補充樣式 */
 .chT{padding:5px 8px 5px 30px;font-size:13px;border-radius:8px;cursor:pointer;color:var(--ink2);line-height:1.3}
 .chT:hover{background:#EFF2F5}
 .chT.on{background:var(--accent2);color:var(--accent);font-weight:700}
@@ -172,21 +166,18 @@ h1{font-size:20px;margin:0 0 4px}
 .bigbar{display:flex;gap:10px;align-items:center;background:#fff;border-radius:10px 10px 0 0;padding:8px 12px}
 .bigbody{flex:1;min-height:0;overflow:auto;background:#EEF1F4;border-radius:0 0 10px 10px;padding:12px}
 
-/* style3.css — 第 2 版新增：階梯式內容、關鍵字、搜尋標色、備註頁數、編輯器最上面的工具列、預覽彈出視窗 */
 mark{background:#FFE58F;color:inherit;border-radius:3px;padding:0 1px}
 .pgs{font-size:12px;color:#8A6D00}
 .pgline{margin-top:6px;font-size:13px}
-.pgline.gap{margin-top:1.4em}   /* 備註有文字：文字和頁數小框中間空一行（LINE 也是） */
-.pgline.solo{margin:12px 0}   /* 第 28 批：只寫了頁數：只有頁數小框（沒有黃色的備註框） */
+.pgline.gap{margin-top:1.4em}
+.pgline.solo{margin:12px 0}
 .pgtag{display:inline-flex;align-items:center;flex-wrap:wrap;background:#DDF1EE;border:1px solid #8CCBC5;border-radius:8px;padding:5px 11px;color:#0B5F5B;font-size:13px}
 .pgtag b{color:#064B47;margin-left:.1em}
 
-/* 網頁：表格太寬時，外面那層會出現左右拉條 */
 .tscroll{overflow-x:auto;margin:10px 0}
 .art .tscroll table{margin:0}
 .tsh{font-size:12px;color:var(--ink3);margin:-4px 0 8px}
 
-/* 網頁：階梯式內容 */
 .lad{margin:8px 0}
 .lr{display:flex;gap:6px;margin:5px 0;align-items:flex-start;white-space:pre-wrap}
 .lr .lm{flex:none;color:var(--ink2)}
@@ -196,7 +187,6 @@ mark{background:#FFE58F;color:inherit;border-radius:3px;padding:0 1px}
 .lad figure.lim img{display:block;max-width:min(100%,520px);width:auto;height:auto;border-radius:8px;border:1px solid #E3E7EC;background:#fff;cursor:zoom-in}
 .lad figure.lim figcaption{font-size:12px;color:var(--ink3);margin-top:3px}
 
-/* 網頁：關鍵字 */
 .kwrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0 8px}
 .kwchip{border:1px solid #BFE3DF;background:var(--accent2);color:var(--accent);border-radius:999px;padding:1px 10px;font-size:12.5px}
 .kwp{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:#fff;margin:8px 0;max-width:640px;box-shadow:0 1px 4px rgba(20,40,60,.06)}
@@ -215,7 +205,6 @@ mark{background:#FFE58F;color:inherit;border-radius:3px;padding:0 1px}
 .kwcard:hover{box-shadow:0 2px 8px rgba(20,40,60,.1)}
 .trow .pgs{background:#FFF4D6;border-radius:6px;padding:0 6px}
 
-/* 編輯器：最上面的工具列＋左右兩欄 */
 .edwrap{background:#fff;border:1px solid var(--line);border-radius:14px}
 .edtbw{position:sticky;top:var(--tabsH,58px);z-index:15;background:#fff;border-bottom:1px solid var(--line);border-radius:14px 14px 0 0;box-shadow:0 2px 6px rgba(20,40,60,.06)}
 .edtb{padding:7px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -234,7 +223,6 @@ mark{background:#FFE58F;color:inherit;border-radius:3px;padding:0 1px}
 .chT.kwi{padding-left:10px}
 .pgbox{background:#FFFCF0;border:1px solid #F0DDA0;border-radius:10px;padding:2px 12px 8px;margin-top:8px}
 
-/* 編輯器：階梯式內容 */
 .ladtop{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
 .blk.brk{margin-top:20px;border-top:3px dashed var(--accent)}
 .blk .bh .brkb.on{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -256,7 +244,6 @@ mark{background:#FFE58F;color:inherit;border-radius:3px;padding:0 1px}
 .ib:hover:not(:disabled){background:#EFF2F5}
 .ib:disabled{opacity:.3;cursor:default}
 .ib.bad{color:var(--bad)}
-/* 法條裡的圖片列 */
 .lrow.limg .lmk{padding-top:8px;text-align:center;min-width:3.8em;font-size:16px;font-weight:400}
 .limgb{flex:1 1 220px;min-width:0;max-width:430px}
 .limgb .drop{padding:8px;min-height:56px}
@@ -264,7 +251,6 @@ mark{background:#FFE58F;color:inherit;border-radius:3px;padding:0 1px}
 .limgb .in{margin-top:5px}
 .lrow.limg .drop.hot{box-shadow:0 0 0 3px #BFE3DF}
 
-/* 編輯器：表格欄寬提醒 */
 .twarn{margin:6px 0}
 .tw{font-size:12.5px;border-radius:8px;padding:5px 9px;margin:4px 0}
 .tw.bad{background:#FDECEA;color:#8C1D18;border:1px solid #F3B8B3}
@@ -273,7 +259,6 @@ mark{background:#FFE58F;color:inherit;border-radius:3px;padding:0 1px}
 .tw.note{background:#F1F4F8;color:#4A5565}
 .wseg button{font-size:12.5px}
 
-/* 編輯器：關鍵字 */
 .kpt{display:flex;gap:8px;border:1px solid var(--line);border-radius:10px;padding:8px;margin:6px 0;background:#fff}
 .kpr{display:flex;gap:6px;align-items:center;margin-top:5px}
 .kpr .muted{flex:none;width:64px;font-size:12px}
@@ -281,7 +266,6 @@ mark{background:#FFE58F;color:inherit;border-radius:3px;padding:0 1px}
 .sug{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px 8px;margin:4px 0;background:#FAFBFC}
 .srcl{font-size:13px;padding:3px 0;color:var(--accent)}
 
-/* 預覽：彈出視窗（可以拖、拉大拉小、放到最大、關掉） */
 .pvwin{position:fixed;z-index:40;display:none;flex-direction:column;background:#F6F8FA;border:1px solid #B8C2CE;border-radius:12px;box-shadow:0 12px 36px rgba(15,23,32,.30);resize:both;overflow:hidden;min-width:300px;min-height:260px;max-width:calc(100vw - 8px);max-height:calc(100vh - 8px)}
 .pvwin.max{resize:none}
 .pvh{display:flex;gap:8px;align-items:center;padding:8px 10px;background:#fff;border-bottom:1px solid var(--line);cursor:move;user-select:none;touch-action:none;flex:none;flex-wrap:nowrap}
@@ -294,7 +278,6 @@ mark{background:#FFE58F;color:inherit;border-radius:3px;padding:0 1px}
 @media (max-width:1000px){.edgrid{grid-template-columns:1fr}.edgrid .c1{border-right:0;border-bottom:1px solid var(--line);border-radius:0}}
 @media (max-width:900px){.pvwin{left:0!important;right:0!important;top:auto!important;bottom:0!important;width:auto!important;height:55vh!important;border-radius:14px 14px 0 0;resize:none;max-width:none}}
 
-/* 動畫（網頁播放器：動畫檔、分步動畫）＋ 預覽專用的「模擬減少動態效果」勾選 */
 .rmrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px;font-size:13.5px}
 .rmrow label{display:inline-flex;gap:6px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 10px}
 figure.anim,figure.stepsfig{margin:10px 0;max-width:100%}
@@ -310,7 +293,6 @@ figure.anim,figure.stepsfig{margin:10px 0;max-width:100%}
 .stepdots i.on{background:var(--accent)}
 figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 
-/* 編輯器：動畫塊 */
 .animE .wrow{margin-bottom:8px}
 .animE .tw{margin:6px 0}
 .steplist{display:flex;flex-direction:column;gap:10px;margin:8px 0}
@@ -322,7 +304,6 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .steprow .kbt{display:flex;flex-direction:column;gap:4px}
 .stepopt{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:6px 0}
 
-/* ───── 格式文字（粗體、顏色、大小、標題、分隔線、標註、引用） ───── */
 .rt-b{font-weight:700}
 .rt-i{font-style:italic}
 .rt-u{text-decoration:underline}
@@ -334,7 +315,6 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .art .rt-h{font-weight:700;line-height:1.35;margin:18px 0 6px}
 .art .rt-h1,.art .rt-h2{margin-top:24px}
 .art .rt-h:first-child{margin-top:4px}
-/* 第 27 批：太擠 → 一塊和一塊之間空開一點；一塊一開頭就是大標題的，跟一塊裡面的大標題一樣空 */
 .art>*+*{margin-top:14px}
 .art>*+.txtb>.rt-h1:first-child,.art>*+.txtb>.rt-h2:first-child{margin-top:24px}
 .art .rt-hr{border:0;border-top:1px solid #D5DAE1;margin:12px 0}
@@ -342,7 +322,6 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .art .rt-box .rt-ic{flex:none;line-height:1.5}
 .art .rt-box .rt-bb{flex:1;min-width:0}
 .art .rt-bl{margin:2px 0}
-/* 第 28 批：好幾行的標註：一行一列、中間一條線（跟編輯器裡看到的一樣）；圖示只在第一列 */
 .art .rt-box.rows{display:block;position:relative;padding:0 11px 0 36px}
 .art .rt-box.rows .rt-ic{position:absolute;left:11px;top:8px}
 .art .rt-box.rows .rt-bl{position:relative;margin:0;padding:8px 0}
@@ -353,7 +332,6 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .art .rt-go{display:flex;gap:8px;align-items:baseline;background:#F1F7F6;border-radius:8px;padding:8px 11px;margin:8px 0;color:var(--accent);text-decoration:none;cursor:pointer}
 .art .rt-go b{flex:1;min-width:0}
 .art .rt-go:hover{background:#E3F0EE}
-/* 第 27 批：互相連結（從別的標題連過來的）；連到整章的連結 */
 .backl{margin-top:16px;padding-top:10px;border-top:1px dashed #C9D3DD}
 .pcard .backl{margin-top:0;padding-top:0;border-top:0}
 .backl .bl-h{font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:2px}
@@ -361,7 +339,6 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .backl .rt-go b{flex:1;min-width:0}
 .backl .rt-go:hover{background:#E3F0EE}
 
-/* 編輯器：文字塊（像 Notion 的所見即所得）＋ 第二排「文字格式」按鍵 */
 .fmtbar{display:flex;flex-wrap:wrap;gap:5px 8px;align-items:center}
 .fmtbar .fg{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
 .fmtbar .tblabel{margin-right:2px}
@@ -384,7 +361,6 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .rtsz-b{display:block;width:100%;text-align:left;border:1px solid var(--line);background:#fff;border-radius:7px;padding:4px 14px;margin:3px 0;cursor:pointer;min-width:130px;font:inherit}
 .rtem{display:grid;grid-template-columns:repeat(8,34px);gap:3px}
 .rtem-b{border:1px solid transparent;background:#fff;border-radius:7px;height:34px;font-size:19px;cursor:pointer}
-/* 第 39 批：項目符號、編號樣式、標註框（顏色＋符號）的選單 */
 .rtem-b.on{border-color:var(--accent);background:var(--accent2)}
 .rtem.rtul{grid-template-columns:repeat(7,36px)}
 .rtem-b small{font-size:11px;color:var(--ink3);white-space:nowrap}
@@ -426,11 +402,9 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .rl-go .rl-x{order:2;margin-left:auto}
 .rl-go .rl-goic{order:0}
 .rl-go .rl-gosel{order:1}
-/* 第 27 批：標註、引用、分隔線、連結也能縮排（整個框往右移；以前它們自己的 padding 把縮排蓋掉了） */
 .rl-q.rl-lv1,.rl-box.rl-lv1,.rl-hr.rl-lv1,.rl-go.rl-lv1{margin-left:1.6em}
 .rl-q.rl-lv2,.rl-box.rl-lv2,.rl-hr.rl-lv2,.rl-go.rl-lv2{margin-left:3.2em}
 .rl-q.rl-lv3,.rl-box.rl-lv3,.rl-hr.rl-lv3,.rl-go.rl-lv3{margin-left:4.8em}
-/* 第 27 批：整塊縮排（每一塊的 ⇤ ⇥）：編輯器裡也往右移，看得出層次 */
 .blk[data-ind="1"] .bb2{padding-left:calc(8px + 1.6em)}
 .blk[data-ind="2"] .bb2{padding-left:calc(8px + 3.2em)}
 .blk[data-ind="3"] .bb2{padding-left:calc(8px + 4.8em)}
@@ -439,7 +413,6 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .rtraw{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;min-height:120px;line-height:1.55}
 @media (max-width:900px){.fmtbar{flex-wrap:nowrap;overflow-x:auto;padding-bottom:3px}.fmtbar .fg{flex-wrap:nowrap}.fmtbar .vsep,.fmtbar .fbstat{flex:none}.edtb{flex-wrap:nowrap;overflow-x:auto}.edtb>*{flex:none}.edtb .sp{display:none}}
 
-/* Notion 對照表 */
 .nst{display:inline-block;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:600;white-space:nowrap;border:1px solid transparent}
 .nst-ok{background:#E8F5EC;color:#1B6B36;border-color:#B5DDC2}
 .nst-alt{background:#EAF3FB;color:#1B4F7A;border-color:#BBD7EE}
@@ -453,7 +426,6 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .ntbl tbody tr:first-child td{border-top:0}
 @media (max-width:760px){.ntbl,.ntbl tbody,.ntbl tr,.ntbl td{display:block;width:auto!important}.ntbl thead{display:none}.ntbl tr{border-top:1px solid var(--line);padding:6px 0}.ntbl td{border:0;padding:2px 0}}
 
-/* ───────── 編輯器：「🖼 目錄圖」頁 ───────── */
 .mcv{border:1px solid var(--line);border-radius:12px;background:#EAF5F3;overflow:hidden;user-select:none;-webkit-user-select:none}
 .mcv .catstage{cursor:crosshair}
 .mcv .catstage>img{pointer-events:none}
@@ -495,17 +467,14 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .mi.go:hover{filter:brightness(.97)}
 .mic{flex:none;font-weight:700}
 .pvempty{padding:22px 14px;text-align:center;color:var(--ink3);font-size:13.5px;line-height:1.6;background:#F6F8FA;border-radius:10px}
-/* 第 27 批：編輯器的「🔗 連結」一區 */
 .lkpanel{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#FAFBFC;display:flex;flex-direction:column;gap:8px}
 .lkrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
 .lkchips{display:flex;gap:6px;flex-wrap:wrap}
 .lkchip{border:1px solid #CFE5E2;background:#F1F7F6;color:var(--accent);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer}
 .lkchip:hover{background:#E3F0EE}
 .lkchip.bad{background:#FDECEA;border-color:#F3B8B3;color:var(--bad)}
-/* 第 27 批：圖片裡的字（從搜尋打開時，圖裡有要找的字的那張圖） */
 .art figure.ocrhit{outline:3px solid #FFD54A;outline-offset:4px;border-radius:8px}
 .ocrtag{display:inline-block;margin-top:6px;padding:2px 10px;border-radius:999px;background:#FFF4C2;color:#6B5200;font-size:12.5px;font-weight:700}
-/* 第 28 批：🕘 舊版本（最左上角）、自動存檔、存檔狀態 */
 .edtb .verb{font-weight:700}
 .asck{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink2);white-space:nowrap;cursor:pointer;user-select:none}
 .asck input{margin:0;width:15px;height:15px;accent-color:var(--accent)}
@@ -515,15 +484,12 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .verrow{display:flex;gap:10px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff}
 .vermeta{min-width:0;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
 .verrow .btn{flex:none}
-/* 第 28 批：每張圖下面「圖片裡的字」的狀態 */
 .ocrst{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12.5px;color:var(--ink3);line-height:1.45;overflow-wrap:anywhere}
 .ocrst.ok{color:#1B6B36}
 .ocrst.warn{color:#7A4300;background:#FFF6DB;border:1px solid #F0D78A;border-radius:8px;padding:3px 8px}
 .ocrst .ocrre,.ocrst .ocred{padding:1px 8px;font-size:12px;line-height:18px}
-/* 第 29 批：看全部／改圖片裡的字 */
 .modal .dlg.ocrdlg{max-width:560px;text-align:left}
 .ocrdlg .ocrta{display:block;width:100%;box-sizing:border-box;min-height:200px;max-height:55vh;margin:4px 0 10px;padding:8px 10px;border:1px solid var(--bd,#d6dbe1);border-radius:8px;font-size:14px;line-height:1.6;font-family:inherit;resize:vertical}
-/* 第 28 批：文字裡的圖（一行一張圖：縮圖＋圖說＋圖片裡的字） */
 .rl-img{display:flex;gap:10px;align-items:flex-start;border:1px solid #DCE3EA;border-radius:10px;padding:8px;margin:6px 0;background:#FAFBFC;white-space:normal;cursor:default}
 .rl-img.warn{background:#FFF6DB;border-color:#F0D78A;align-items:center}
 .rl-img.rl-lv1{margin-left:1.6em;padding-left:8px}.rl-img.rl-lv2{margin-left:3.2em;padding-left:8px}.rl-img.rl-lv3{margin-left:4.8em;padding-left:8px}
@@ -534,16 +500,11 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .rl-imgmiss{flex:1;font-size:13px;color:#7A4300}
 .rl-img .rl-x{flex:none}
 .rl-img .ocrst{margin-top:0}
-/* 第 28 批：「⤴ 併到上一塊」 */
 .blk .bh .mrgb{color:var(--accent);border-color:#BFE3DF;background:#F1F7F6}
-/* 第 28 批：大標題旁的符號（編輯器的樣子） */
 .sympv{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#123B3A,#1D5F5B);color:#fff;border-radius:12px;padding:14px 18px;margin-top:6px}
 .sympv img{width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
 .sympv b{font-size:22px;letter-spacing:.04em}
 
-/* ───────── 第 29 批：藥品卡片（補藥神器的藥）─────────
-   網頁：直接打開，像補藥神器網頁電腦版的卡片（CODE、藥名、中文名、學名、劑型圖示；公告；灰底框裡「藥品特徵｜適應症、注意｜照片」三欄）；不給位置。
-   手冊的內文欄夠寬（620 以上）才排三欄，手機、窄的預覽視窗：上下排。顏色照補藥神器的淺色。 */
 .art .drugs{container-type:inline-size;display:flex;flex-direction:column;gap:12px;margin:12px 0}
 .dcard{background:#fff;border:1px solid #E1E5EA;border-radius:16px;padding:14px 16px;box-shadow:0 1px 3px rgba(15,23,32,.06);display:flex;flex-direction:column;gap:10px;min-width:0;color:#3C4043}
 .dcard .dhead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:0 12px;align-items:start}
@@ -577,7 +538,6 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
   .dcard .dinfo{grid-area:i}
   .dcard .dphoto{grid-area:p;width:220px;max-width:none;justify-self:end}
 }
-/* 編輯器：找藥、放進來的藥 */
 .dge{display:flex;flex-direction:column;gap:8px}
 .dge .dgr{display:flex;flex-direction:column;border:1px solid #E1E5EA;border-radius:10px;max-height:320px;overflow:auto;background:#fff}
 .dge .dgr:empty{display:none}
@@ -593,7 +553,6 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .dge .dgcnt{font-size:13px;font-weight:700;color:var(--ink2)}
 .dge .dgmsg{font-size:12.5px;color:#757575;padding:8px 10px}
 
-/* ───────── 第 29 批：表格編輯（合併儲存格、拉欄寬、每一列每一欄的按鍵）、文字裡的表格 ─────────*/
 .tbe .tbedit{margin:4px 0;padding-top:2px}
 .gridX{table-layout:fixed;min-width:420px}
 .gridX col.cg0{width:64px}
@@ -616,7 +575,6 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .gridT.gridX tr:first-child td{background:inherit}
 .tbtools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:6px 0}
 .tbtools .btn[disabled]{opacity:.45;cursor:not-allowed}
-/* 文字裡的表格（編輯器）：表格的樣子＋「✏️ 編輯表格」 */
 .rte .rl[data-k=tbl]{display:block;padding:6px 30px 6px 6px;border:1px dashed #C7CED7;border-radius:8px;margin:4px 0;background:#FAFBFC;position:relative}
 .rte .rl-tblpv{overflow-x:auto;pointer-events:none;font-size:12.5px}
 .rte .rl-tblpv table{margin:0}
@@ -629,19 +587,16 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .rte .rl-tblpv th,.rte .rl-tblpv td{border:1px solid #CBD2DA;padding:4px 8px;text-align:center;white-space:normal}
 .rte .rl-tblpv th{background:#F0F3F6;font-weight:700}
 .rte .rl-tblpv .tscroll{margin:0}
-/* 第 29 批：LINE 好幾張卡片怎麼排（滑動式／一頁一頁） */
 .layw{margin:4px 0 8px}
 .layw .layseg{flex-wrap:wrap}
 .layw.sm{margin:2px 0 6px}
 .layw .layinfo{margin-top:6px;color:var(--ink2)}
-/* 第 30 批：螢光筆（字的底色）——網頁、編輯器一樣 */
 .rt-m{border-radius:.22em;padding:.02em .1em;-webkit-box-decoration-break:clone;box-decoration-break:clone}
 .fb .fbM{font-size:13px;line-height:1;margin-bottom:3px}
 .fb .fbmbar{position:absolute;left:7px;bottom:3px;width:17px;height:5px;border-radius:2px;background:#FFF176;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
 .rtmk .rtmk-s{display:inline-block;padding:1px 6px;border-radius:4px;font-weight:700;color:#1F1F1F;border:1px solid #E1E5EA}
 .rtsw.rtmk{grid-template-columns:repeat(4,56px)}
 .rt-m mark{background:transparent;box-shadow:inset 0 0 0 2px #D97706}
-/* 第 31 批：公式（上下排的分數、次方、下標、根號）——網頁、編輯器一樣 */
 .fx{display:inline-flex;align-items:center;white-space:nowrap;vertical-align:middle;line-height:1.2;margin:0 .1em;max-width:100%;overflow-x:auto;overflow-y:hidden}
 .fx .fxr{display:inline-flex;align-items:center}
 .fx .fxf{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 .15em}
@@ -676,7 +631,6 @@ figure.anim figcaption{font-size:13px;color:var(--ink2);margin-top:4px}
 .fxdlg .fxex small{color:var(--ink3)}
 .fxdlg .fxph{font-size:14px}
 .fxdlg .dlg-b .fxsp{flex:1}
-/* ───────── 第 40 批：流程圖（編輯器自由畫；網頁：電腦整張、手機沒有說明框的那張＋說明框的字）───────── */
 .drw{border:1px solid var(--line);border-radius:10px;background:#fff;padding:8px;display:flex;flex-direction:column;gap:6px}
 .drw-bar{display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center}
 .drw-bar .sp{flex:1}
@@ -715,7 +669,6 @@ body.drw-noscroll{overflow:hidden}
 .drnh{font-weight:700;font-size:.92em;color:#5F6B7A;margin:10px 0 4px}
 .drnote{border:1px solid;border-radius:8px;padding:8px 12px;margin-top:8px}
 @media (max-width:640px){.drawfig.two img{aspect-ratio:var(--ar2,auto)}.drawfig.two .drnotes{display:block}}
-/* ── 第 40 批：字型大小像 Word：[ 12 ▾ ] A▲ A▼ ── */
 .fsz{display:inline-flex;align-items:stretch;height:28px;border:1px solid var(--line);border-radius:7px;background:#fff;overflow:hidden}
 .fsz:focus-within{border-color:#7FB9B3;box-shadow:0 0 0 2px rgba(11,122,117,.15)}
 .fsz-in{width:38px;border:0;outline:0;padding:0 2px 0 7px;font:inherit;font-size:13px;color:var(--ink);background:transparent;text-align:left}
@@ -730,7 +683,6 @@ body.drw-noscroll{overflow:hidden}
 .rtszl-b:hover{background:#F1F5F9}
 .rtszl-b.on{background:var(--accent2);color:var(--accent);font-weight:700}
 .rtszl-b small{font-size:11px;color:var(--ink3);font-weight:400}
-/* ── 第 40 批（一起做的）：網址連結（外部網站）：一個連結一個小框；電腦點了開小視窗 ── */
 .xlinks{display:grid;gap:8px;margin:12px 0}
 .xlink{display:flex;align-items:center;gap:12px;min-width:0;padding:10px 14px;border:1px solid #A9C7E8;border-radius:10px;background:#F2F7FD;color:#174A84;text-decoration:none;max-width:640px}
 .xlink:hover{background:#E6F0FB;border-color:#7FA9D8}
@@ -754,7 +706,6 @@ body.drw-noscroll{overflow:hidden}
 .lk-add{display:flex}
 @media (max-width:640px){.lk-r1{grid-template-columns:1fr}}
 
-/* 第 41 批：每一塊「顯示在哪裡」（LINE、網頁都顯示／只在 LINE／只在網頁） */
 .blk .bh .visb{width:auto;max-width:100%;font-size:12.5px;padding:2px 6px;height:auto;font-weight:600}
 .blk.only-line{border-color:#2BA45A}
 .blk.only-line>.bh{background:#E8F7EE}
@@ -762,7 +713,6 @@ body.drw-noscroll{overflow:hidden}
 .blk.only-web{border-color:#3D7CC9}
 .blk.only-web>.bh{background:#EAF2FB}
 .blk.only-web .bh .visb{border-color:#3D7CC9;color:#1D4ED8;background:#fff}
-/* 第 41 批：文字框（像 Word 的字元框線） */
 .fb .fbX{display:inline-block;border:1.5px solid currentColor;border-radius:2px;padding:0 3px;font-weight:700;font-size:12.5px;line-height:1.25}
 .fb-frame-pick{min-width:18px;padding:0 3px;font-size:10px}
 .rtfr{display:grid;grid-template-columns:repeat(3,96px);gap:5px}
@@ -774,22 +724,17 @@ body.drw-noscroll{overflow:hidden}
 .rtsw-b.on,.rtfr-b.on{outline:2px solid var(--accent);outline-offset:1px}
 .rtfr-row{display:flex;justify-content:flex-end;margin-top:6px}
 .rt-x{display:inline}
-/* 第 41 批：流程圖的連線：線條、粗細、顏色 */
 .drw-lcs{display:inline-flex;gap:3px;align-items:center}
 .drw-lc{min-width:30px;width:30px;padding:4px 0;display:inline-flex;align-items:center;justify-content:center}
 .drw-lc i{display:block;width:20px;height:6px;border-radius:3px}
 .drw-lc.on{outline:2px solid var(--accent);outline-offset:1px}
 
-/* ───────── 目錄圖 第 3 版：標籤（圖示＋名稱）＋圓點，網頁、編輯器共用 ─────────
- * 一個地點 ＝ 一個「物品框」（.mspot，位置大小用佔整張圖的 %）。圓點在框的正中間，標籤在圓點的上／下／左／右。
- * 網頁：看得到的東西放在「鏡頭層」（.catcam，滑過時會放大、移動）；點得到的按鈕放在不動的「點擊層」（.cathit），所以鏡頭一動，滑鼠不會因為東西跑掉而抖動。 */
 .catmap{position:relative;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#EAF5F3;margin-bottom:14px;width:100%}
 .catstage{position:relative;width:100%;line-height:0;container-type:inline-size;--dot:clamp(9px,3.3cqw,15px);--gap:clamp(2px,.9cqw,4px)}
 .catstage>img,.catcam>img{position:absolute;left:0;top:0;width:100%;height:100%;display:block;object-fit:cover;user-select:none;-webkit-user-drag:none}
 .catmap .catstage{overflow:hidden}
 .catcam{position:absolute;inset:0;transform-origin:0 0;will-change:transform;transition:transform .95s cubic-bezier(.2,.7,.15,1)}
 
-/* 標籤＋圓點 */
 .mspot{position:absolute;box-sizing:border-box}
 .mspot .sp-dot{position:absolute;left:50%;top:50%;width:var(--dot);height:var(--dot);margin:calc(var(--dot) / -2) 0 0 calc(var(--dot) / -2);border-radius:50%;background:var(--accent);border:max(1.5px,.55cqw) solid #fff;box-sizing:border-box;box-shadow:0 1px 3px rgba(0,0,0,.4);pointer-events:none;transition:transform .25s}
 .mspot .sp-tag{position:absolute;display:inline-flex;align-items:center;gap:.3em;white-space:nowrap;font-size:clamp(9.5px,3.3cqw,14px);font-weight:700;line-height:1.35;padding:.2em .62em .2em .5em;border-radius:999px;background:rgba(255,255,255,.95);color:var(--accent);border:1px solid #9ED3CD;box-shadow:0 1px 4px rgba(0,0,0,.28);pointer-events:none;transition:background .2s,color .2s,border-color .2s}
@@ -802,7 +747,6 @@ body.drw-noscroll{overflow:hidden}
 .mspot.st-lock .sp-tag{background:#EEF0F3;color:#6B7480;border-color:#C9CFD6}
 .mspot.st-lock .sp-dot{background:#8A94A0}
 
-/* 網頁：滑過（.on ＝ 滑鼠停在上面、或鍵盤選到、或手機點了第一下）：標籤變橘紅色，圓點變大 */
 .spv.on{z-index:3}
 .spv.on .sp-tag{background:#E4572E;color:#fff;border-color:#E4572E}
 .spv.on .sp-dot{transform:scale(1.3)}
@@ -810,9 +754,8 @@ body.drw-noscroll{overflow:hidden}
 .cathit{position:absolute;inset:0;z-index:5}
 .cathit .spot{margin:0;padding:0;border:0;background:transparent;cursor:pointer;font:inherit;border-radius:12px;-webkit-tap-highlight-color:transparent}
 .cathit .spot:focus-visible{outline:3px solid rgba(11,122,117,.6);outline-offset:2px}
-.sp-tag.ghost{opacity:0;pointer-events:auto}   /* 看不見，但佔一樣大的位置：滑鼠停在標籤上也算「停在這個地點」 */
+.sp-tag.ghost{opacity:0;pointer-events:auto}
 
-/* 動態效果（網頁，可以在「🖼 目錄圖」設定關掉）：圓點的光圈、飄浮的光點、底下的說明卡 */
 .fx .spv:not(.st-lock) .sp-dot::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:2px solid var(--accent);opacity:0;animation:spPing 2.8s ease-out infinite;animation-delay:var(--d,0s)}
 @keyframes spPing{0%{transform:scale(.8);opacity:.75}70%,100%{transform:scale(2.4);opacity:0}}
 .dust{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:4}
@@ -831,7 +774,6 @@ body.drw-noscroll{overflow:hidden}
   .catinfo{transition:opacity .2s;transform:translate(-50%,0)}
 }
 
-/* 編輯器：「🖼 目錄圖」畫布（看到的標籤和網頁一樣；虛線框＝物品框，可以拖、可以放大縮小） */
 .mbx{border:2px dashed rgba(11,122,117,.8);background:rgba(11,122,117,.10);border-radius:8px;cursor:move;touch-action:none}
 .mbx:focus-visible{outline:3px solid rgba(11,122,117,.45);outline-offset:1px}
 .mbx.sel{border-style:solid;border-color:#E8590C;background:rgba(232,89,12,.14);box-shadow:0 0 0 2px rgba(255,255,255,.85);z-index:3}
@@ -841,15 +783,13 @@ body.drw-noscroll{overflow:hidden}
 .icopick button{border:1px solid #D5DBE2;background:#fff;border-radius:7px;padding:2px 5px;font-size:15px;line-height:1.2;cursor:pointer}
 .icopick button:hover{border-color:var(--accent)}
 
-/* 第 4 版：3D 環景目錄（裡面的樣子在 pano.css，class 都是 y3d- 開頭） */
 .panowrap{container-type:inline-size;width:100%;margin:0 0 14px}
 .pano{height:clamp(300px,calc(44cqw + 52px),75vh);border-radius:14px;overflow:hidden;box-shadow:0 6px 20px rgba(30,20,10,.18)}
 .pvweb .pano,.pvpano .pano{height:clamp(260px,calc(46cqw + 52px),70vh)}
 .pvpano{container-type:inline-size;width:100%}
 
-/* 3D 環景目錄（網頁）的樣式。class 都用 y3d- 開頭，不會撞到別的。標籤的樣子照「圖二」：白底、綠框、一條線連到圓點、小手。 */
 .y3d{--ln:clamp(14px,2.3cqw,28px);position:relative;width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden;background:#1f1a15;border-radius:inherit;outline:none;touch-action:none;user-select:none;-webkit-user-select:none;container-type:inline-size;cursor:grab;-webkit-tap-highlight-color:transparent}
-.y3d-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;overflow:clip;background:#2a241e}   /* clip：不能被捲動（鍵盤跳到邊邊的按鍵時，畫面才不會整個歪掉） */
+.y3d-stage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;overflow:clip;background:#2a241e}
 .y3d.drag{cursor:grabbing}
 .y3d:focus-visible{box-shadow:inset 0 0 0 3px rgba(11,122,117,.75)}
 .y3d-cv{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -917,31 +857,25 @@ body.drw-noscroll{overflow:hidden}
 .y3d.err::after{content:"圖片載入失敗，請重新整理";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#fff;font-size:14px}
 @container (max-width:520px){.y3d-btn{width:34px;height:34px}.y3d-btns{gap:3px}.y3d-bar{justify-content:center;padding:6px}.y3d-hint{display:none}}
 @media (prefers-reduced-motion:reduce){.y3d-dot::after{animation:none;display:none}.y3d-info{transition:opacity .2s}.y3d-dust{display:none}}
-/* 滿版（首頁）：按鍵列浮在右下角、不佔一排；提示字由首頁自己放 */
 .y3d-float .y3d-bar{position:absolute;right:var(--y3d-br,14px);bottom:var(--y3d-bb,14px);z-index:7;padding:0;background:none;justify-content:flex-end}
 .y3d-float .y3d-hint{display:none}
 .y3d-float .y3d-btns{padding:5px;border-radius:14px;background:rgba(18,14,10,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .y3d-float .y3d-info{bottom:var(--y3d-ib,16px)}
 .y3d-float .y3d-info.top{top:var(--y3d-it,12px);bottom:auto}
-/* 第 25 批：滿版首頁把按鍵列藏起來（靠滑鼠、手指操作）；用鍵盤 Tab 到按鍵時才出現 */
 .y3d-float.y3d-hidectl .y3d-bar{opacity:0;pointer-events:none;transition:opacity .2s}
 .y3d-float.y3d-hidectl .y3d-bar:focus-within{opacity:1;pointer-events:auto}
-/* 這一章還沒有標題（只有開發者會看到；藥師那邊是🔒） */
 .y3d-tag.empty .y3d-pill{border-style:dashed}
 
-/* ═══════════════ 正式版（手冊網頁）才有的樣式：整頁、登入畫面、上面一排、看手冊的版面、浮水印、小視窗 ═══════════════ */
 html,body{background:var(--bg)}
 body{min-height:100vh}
 .app{min-height:100vh}
 .sub{color:var(--ink2);margin:0 0 12px;font-size:13.5px}
 .nowrap{white-space:nowrap}
 
-/* 登入、驗證、申請……（整頁一張卡片） */
 .scr{min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:max(6vh,24px) 16px 40px}
 .scr-in{background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px 22px 18px;max-width:520px;width:100%;box-shadow:0 6px 24px rgba(20,40,60,.08)}
 .scr-logo{display:flex;align-items:center;gap:8px;color:#064742;font-size:17px;margin-bottom:6px}
 .scr-logo span{font-size:24px}
-/* 第 40 批：藥戰手冊的 LOGO（使用者給的圖描成的向量）：登入畫面、上面那條、首頁、章的頁面 */
 .scr-logo img.lg{width:44px;height:44px;flex:none}
 .scr-logo b{font-size:19px;letter-spacing:.04em}
 .hlogo img.lg{width:24px;height:24px;vertical-align:-6px;margin-right:5px}
@@ -951,7 +885,6 @@ body{min-height:100vh}
 .pglogo{display:inline-flex;align-items:center;gap:.3em}
 .pglogo .lgb{width:clamp(30px,3.8vw,42px);height:clamp(30px,3.8vw,42px)}
 .hlogo2{display:flex;align-items:center}
-/* 第 40 批：開場的「載入中」：LOGO＋翻書動畫＋進度條（照真的步驟走） */
 .scr.bootscr{align-items:center;padding-top:0;padding-bottom:0}
 .scr-in.ld,.bootscr .scr-in{text-align:center;max-width:380px;padding:26px 22px 22px}
 .ld-logo svg,.ld-logo img{width:76px;height:76px;display:block;margin:0 auto}
@@ -988,7 +921,6 @@ body{min-height:100vh}
 .lockcode.dead{opacity:.35;text-decoration:line-through}
 .lockrow{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
 .lockkeep{background:var(--warnbg);color:var(--warn);border-radius:10px;padding:8px 12px;font-size:13px}
-/* 第 32 批：代號登入（跟補藥神器網頁一樣：① 代號 → LINE；② 驗證碼打在這裡）、第一次打員工編號＋姓名 */
 .scr.lgscr .scr-in{max-width:880px}
 .lggrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start;margin-top:10px}
 .lgpair,.lgwrap{border:1.5px solid var(--line);border-radius:14px;padding:12px;background:#FAFBFC;text-align:center;min-width:0}
@@ -1013,7 +945,6 @@ body{min-height:100vh}
 .lgm{text-align:left}
 .lgfine{font-size:12.5px;color:var(--ink3);line-height:1.6;margin:10px 0 0}
 @media (max-width:700px){.lggrid{grid-template-columns:1fr}}
-/* 第 36 批：電腦登入（員工編號＋姓名；這台還沒記住你＝② LINE 驗證碼）、管理頁「電腦用的入口連結」 */
 .scr.pcscr .scr-in{max-width:520px}
 .pcbox{border:1.5px solid var(--line);border-radius:14px;padding:14px;background:#FAFBFC;margin-top:10px;min-width:0}
 .pcbox[hidden]{display:none}
@@ -1028,7 +959,6 @@ body{min-height:100vh}
 .pcurl{flex:1 1 260px;min-width:0;font-family:var(--mono);font-size:12.5px}
 .pccfg{flex:1 1 260px;min-width:0;font-family:var(--mono);font-size:12px;line-height:1.4;resize:vertical;word-break:break-all}
 
-/* 上面一排 */
 .hdr{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid var(--line);padding:8px 16px;box-shadow:0 1px 6px rgba(20,40,60,.05)}
 .hrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;max-width:1500px;margin:0 auto}
 .hlogo{font-weight:800;color:var(--accent);font-size:16px;white-space:nowrap}
@@ -1040,12 +970,11 @@ body{min-height:100vh}
 .hdr .idle.soon{background:#FFF1CC;color:#7A5200;font-weight:700}
 .panes{max-width:1500px;margin:0 auto;padding:14px 16px 60px}
 
-/* 看手冊 */
 .vbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
 .vbar .wsearch{flex:1 1 320px;min-width:0}
 .vbar .wsearch .in{flex:1;min-width:0;width:auto}
 .sidebtn{display:none}
-#pane-view .wbody{background:#fff;border:1px solid var(--line);border-radius:14px;min-height:520px}   /* 不能 overflow:hidden：左邊章元清單是 sticky，外層一裁切就會往下掉 */
+#pane-view .wbody{background:#fff;border:1px solid var(--line);border-radius:14px;min-height:520px}
 #pane-view .side{max-height:calc(100vh - var(--tabsH,58px) - 24px);position:sticky;top:calc(var(--tabsH,58px) + 8px);align-self:flex-start;border-radius:14px 0 0 14px}
 #pane-view .main{border-radius:0 14px 14px 0}
 .chI .thi,#edc1 .chI .thi{display:flex;align-items:center;justify-content:center;background:var(--accent2);color:var(--accent);font-weight:800;font-size:15px}
@@ -1069,7 +998,6 @@ body{min-height:100vh}
 [role=button]{cursor:pointer}
 [role=button]:focus-visible,.btn:focus-visible,.tab:focus-visible,a:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
 
-/* 手機：章元清單變成按「☰ 章元」才出現 */
 @media (max-width:760px){
   .hdr{padding:6px 12px}
   .hdr .who{order:5;flex-basis:100%;font-size:12px}
@@ -1084,16 +1012,13 @@ body{min-height:100vh}
   .chhead img{width:84px}
 }
 
-/* 浮水印：蓋住整頁（包括放大的圖），不擋滑鼠。第 41 批：加重（字比較粗、比較密、兩層錯開），怕用別的手機、平板拍；濃度 .11（不影響查閱） */
 .wm{position:fixed;inset:0;pointer-events:none;z-index:220;opacity:var(--wmo,.08);background-repeat:repeat;background-position:0 0,160px 105px}
-body:not(.guard) .wm{opacity:calc(var(--wmo,.08) * .65)}   /* 開發者在「✏️ 編輯」「👥 管理」：再淡一點（不擋編輯）。第 43 批：濃淡照管理頁 ② 的設定（預設「淡」.08；以前 .11） */
+body:not(.guard) .wm{opacity:calc(var(--wmo,.08) * .65)}
 
-/* 第 41 批：看手冊＝內部資料：不能選字、不能長按另存圖片（打字的框、反灰可複製照常） */
 body.guard{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 body.guard img,body.guard svg,body.guard canvas,body.guard video{-webkit-user-drag:none;-webkit-touch-callout:none}
 body.guard input,body.guard textarea,body.guard select,body.guard [contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 body.guard .ycp-t{-webkit-user-select:all;user-select:all;-webkit-touch-callout:default}
-/* 按截圖鍵、切到別的分頁的時候：整個畫面先遮住（不擋滑鼠：點一下就回來） */
 .guardcv{position:fixed;inset:0;z-index:240;display:none;align-items:center;justify-content:center;padding:24px;background:#EEF2F6;pointer-events:none;text-align:center}
 .guardcv.on{display:flex}
 .gcv-in{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:420px;color:#1F2D3A}
@@ -1102,53 +1027,44 @@ body.guard .ycp-t{-webkit-user-select:all;user-select:all;-webkit-touch-callout:
 .gcv-m{margin:0;font-size:15px;line-height:1.6;color:#4B5B6B}
 .lightbox{z-index:150}
 .toast{z-index:210}
-body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area-inset-bottom, 0px))}   /* 第 41 批：下面有跑馬燈：提示放在跑馬燈上面（「🔒 內部資料：不能複製」看得清楚） */
+body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area-inset-bottom, 0px))}
 
-/* 小視窗（確認） */
 .modal{position:fixed;inset:0;background:rgba(15,23,32,.55);display:flex;align-items:center;justify-content:center;z-index:200;padding:16px}
 .modal .dlg{background:#fff;border-radius:14px;padding:18px 20px;max-width:440px;width:100%;box-shadow:0 12px 36px rgba(15,23,32,.3)}
 .modal h3{margin:0 0 8px;font-size:17px}
 .modal .dlg-p p{margin:6px 0;color:var(--ink2)}
 .modal .dlg-b{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px}
 
-/* 編輯器：上傳中 */
 .drop .upl{padding:18px 6px;color:var(--accent);font-weight:700}
 #pane-edit .sub{margin-bottom:10px}
 .dirty{font-size:12.5px;color:#B26A00}
 
-/* 管理 */
-.acts .adcard.on{border-color:#9FD3CE;background:#EAF7F5;color:#0E6B65}   /* 第 42 批：📩 收審核卡 */
-.acts .adcard.off{border-color:#D5DBE2;background:#F3F5F8;color:#6B7684}  /* 🔕 不收審核卡 */
+.acts .adcard.on{border-color:#9FD3CE;background:#EAF7F5;color:#0E6B65}
+.acts .adcard.off{border-color:#D5DBE2;background:#F3F5F8;color:#6B7684}
 #pane-admin .row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
 #pane-admin .adm{flex:1 1 420px;min-width:0}
 .acts{display:flex;gap:6px;flex-wrap:wrap}
 .logscroll{max-height:520px;overflow:auto}
 
-/* 不能列印（內部資料） */
 @media print{
   .app,.wm,.lightbox,.modal,#pvwin,.toast,.guardcv{display:none!important}
   body::before{content:"藥戰手冊是內部資料，不能列印。";display:block;font-size:20px;padding:40px}
 }
 
-/* 編輯器：章元沒有圖 → 放章號 */
 #edc1 .chI .thi{width:38px;height:38px;border-radius:8px;flex:none}
-/* 管理頁的表格不要擠成兩行 */
 #pane-admin .tbl th,#pane-admin .st{white-space:nowrap}
 
-/* ═══════════════ 首頁：滿版調劑台（照參考網站：一打開整個畫面就是調劑台）═══════════════ */
 .hdr .hlogo{border:0;background:none;padding:0;font:inherit;font-weight:800;color:var(--accent);font-size:16px;cursor:pointer;white-space:nowrap}
 .hdr .hlogo:hover{text-decoration:underline}
 .app.home-on .hdr{display:none}
 .app.home-on .panes{padding:0;max-width:none}
 .home{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;background:#14110e;color:#fff;--mqh:34px}
-/* 最上面的跑馬燈（減少動態效果：停住） */
 .mq{flex:none;height:var(--mqh);background:#0b0b0b;color:#fff;overflow:hidden;display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.07)}
 .mq-track{display:flex;flex:none;white-space:nowrap;animation:hbMq 80s linear infinite;will-change:transform}
 .mq-g{display:flex;flex:none;align-items:center}
 .mq-g b{font-weight:800;font-size:14.5px;letter-spacing:.1em;padding:0 20px}
 .mq-ar{font-style:normal;font-weight:800;font-size:15px}
 @keyframes hbMq{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-/* 調劑台（3D／平面）佔滿剩下的畫面 */
 .hstage{position:relative;flex:1 1 auto;min-height:0;overflow:hidden;overflow:clip;background:#1f1a15;--hsh:calc(100dvh - var(--mqh))}
 .hscene{position:absolute;inset:0}
 .hscene .panowrap.full{max-width:none;height:100%;margin:0}
@@ -1157,32 +1073,27 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .hscene.flat .catmap.full{margin:0;max-width:100%}
 .hscene .hload{position:absolute;inset:0;margin:0;border-radius:0}
 .home .y3d{--y3d-it:118px}
-/* 左上：標誌＋提示 */
 .hbrand{position:absolute;left:clamp(12px,2.4vw,30px);top:clamp(10px,2.2vw,24px);z-index:8;display:flex;flex-direction:column;align-items:flex-start;gap:10px;pointer-events:none;max-width:min(60%,520px)}
 .hlogo2{margin:0;font-size:clamp(28px,4vw,52px);font-weight:900;line-height:1.05;letter-spacing:.06em;color:#fff;transform:rotate(-4deg);transform-origin:left center;text-shadow:3px 0 #13312F,-3px 0 #13312F,0 3px #13312F,0 -3px #13312F,2px 2px #13312F,-2px -2px #13312F,2px -2px #13312F,-2px 2px #13312F,0 6px 0 #0B1F1D,0 9px 18px rgba(0,0,0,.45)}
 .hchip{background:rgba(12,16,18,.76);color:#fff;font-weight:700;font-size:clamp(12.5px,1.15vw,15px);line-height:1.35;padding:7px 14px;border-radius:999px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);box-shadow:0 2px 10px rgba(0,0,0,.25)}
 .sr{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
-/* 右上：誰、閒置倒數、登出（開發者多編輯、管理） */
 .hme{position:absolute;right:clamp(10px,2vw,24px);top:clamp(10px,2vw,22px);z-index:8;display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:min(56%,640px)}
 .hwho{display:flex;align-items:center;gap:8px;background:rgba(12,16,18,.76);color:#fff;border-radius:999px;padding:5px 6px 5px 12px;font-size:12.5px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .hwho b{font-weight:700;white-space:nowrap}
 .hwho .idle{background:rgba(255,255,255,.15);color:#fff;border-radius:999px;padding:2px 9px;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.hwho .idle.soon{background:#FFD25E;color:#4A3300;font-weight:700}
+.hwho .idle.soon{background:#FFD25E;color:#4A3300}
 .hwho .idle.short{display:none}
 .home .btn.hbtn{border-radius:999px;border:0;background:rgba(255,255,255,.94);color:#13312F;font-weight:700;padding:6px 12px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
 .home .btn.hbtn:hover{background:#fff}
-/* 左下：搜尋、章元、關鍵字（貼紙一樣的大按鈕） */
 .hdock{position:absolute;left:clamp(12px,2.2vw,26px);bottom:clamp(12px,2vw,22px);z-index:8;display:flex;gap:8px;flex-wrap:wrap}
 .home .btn.hfab{border-radius:999px;background:#fff;color:#13312F;border:2.5px solid #13312F;font-weight:800;font-size:14.5px;padding:8px 16px;box-shadow:0 3px 0 #13312F,0 6px 16px rgba(0,0,0,.3);transition:background .15s,color .15s}
 .home .btn.hfab:hover{background:#E4572E;color:#fff;border-color:#B9401C;box-shadow:0 3px 0 #8E2F13,0 6px 16px rgba(0,0,0,.3)}
 .home .btn.hfab:active{transform:translateY(2px);box-shadow:0 1px 0 #13312F}
 .home .btn:focus-visible{outline:3px solid #E4572E;outline-offset:2px}
-/* 🔍 搜尋（浮在圖上） */
 .hsearch{position:absolute;left:50%;top:clamp(70px,11vh,110px);transform:translateX(-50%);z-index:12;display:flex;gap:6px;align-items:center;width:min(640px,calc(100% - 24px));background:#fff;border-radius:14px;padding:8px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
 .hsearch .in{flex:1;min-width:0;font-size:16px}
 .hsearch .btn{color:var(--ink)}
 .hsearch .btn.pri{color:#fff}
-/* ☰ 章元（從左邊滑出來） */
 .hshade{position:absolute;inset:0;z-index:10;background:rgba(10,8,6,.45)}
 .hdrawer{position:absolute;left:0;top:0;bottom:0;z-index:11;width:min(340px,86%);background:#fff;color:var(--ink);overflow:auto;padding:10px 10px 18px;box-shadow:6px 0 24px rgba(0,0,0,.35);animation:hbDrawer .22s ease-out}
 @keyframes hbDrawer{from{transform:translateX(-100%)}to{transform:none}}
@@ -1191,15 +1102,11 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .hdrawer .chI.lock .thi{background:#EEF0F3;color:#6B7480}
 .hdrawer .chI.lock .t1{color:#6B7480}
 .hdrawer .chT{padding-left:12px;margin-top:6px}
-/* 看內容的時候：右下角浮著「🏠 首頁」 */
 .hhome{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:60;border:0;border-radius:999px;padding:11px 18px;background:#13312F;color:#fff;font:inherit;font-weight:800;font-size:15px;cursor:pointer;box-shadow:0 6px 18px rgba(16,30,28,.35)}
 .hhome:hover{background:#E4572E}
 .hhome:focus-visible{outline:3px solid #E4572E;outline-offset:3px}
-/* 開發者才看得到：這一章還沒有標題（藥師那邊是🔒） */
 .mspot.empty .sp-tag{border-style:dashed}
-/* 中間寬度：說明卡放到左下角那排按鈕的上面 */
 @media (max-width:1100px){.home .y3d{--y3d-ib:76px}}
-/* 手機 */
 @media (max-width:640px){
   .home{--mqh:30px}
   .mq-g b{font-size:13px;padding:0 12px}
@@ -1219,11 +1126,8 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 }
 @media (prefers-reduced-motion:reduce){.mq-track{animation:none}.hdrawer{animation:none}}
 @media print{.home,.hhome{display:none!important}}
-/* 編輯器的目錄圖檢查：說明（不是問題） */
 .mi.info{background:#EAF3FF;color:#1F4E8A;border-color:#BFD7F5}
-/* ═══════════ 章、標題、搜尋、沒有目錄圖時的首頁（第 25 批）：照「圖一」的樣子 ═══════════
-   背景＝這一章在目錄圖上的位置（放大、淡淡的）；上下跑馬燈；左上「‹ 調劑台」；右上標誌；章名兩邊波浪線；粗黑框卡片 */
-.pg{position:relative;min-height:100vh;min-height:100dvh;color:#13312F;--mqh:34px;--pink:#13312F;--pcard:#FBF7EF;--pacc:#E4572E;padding-bottom:calc(var(--mqh) + 86px + env(safe-area-inset-bottom,0px))}
+.pg{position:relative;min-height:100vh;min-height:100dvh;color:#13312F;--mqh:34px;--pink:#13312F;--pcard:#FBF7EF;--pacc:#E4572E;padding-bottom:calc(var(--mqh) + 28px + env(safe-area-inset-bottom,0px))}
 .pgbg{position:fixed;inset:0;z-index:0;background:#0E5B56 linear-gradient(160deg,#0B7A75 0%,#0E5B56 55%,#0A3A37 100%);background-size:cover;background-position:center}
 .pg.has-bg .pgbg{background-color:#1f1a15;background-size:cover;background-position:center;transform:scale(1.03)}
 .pgbg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,22,21,.62) 0%,rgba(8,22,21,.40) 35%,rgba(8,22,21,.55) 100%)}
@@ -1243,9 +1147,7 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .pg .btn.hbtn:hover{background:#fff}
 .pgh{display:flex;align-items:center;justify-content:center;gap:clamp(8px,2.2vw,18px);margin:22px 0 8px;text-align:center}
 .pgh h1{margin:0;min-width:0;font-size:clamp(28px,5.2vw,46px);font-weight:900;letter-spacing:.08em;line-height:1.2;color:#fff;overflow-wrap:anywhere;text-wrap:balance;text-shadow:3px 0 #13312F,-3px 0 #13312F,0 3px #13312F,0 -3px #13312F,2px 2px #13312F,-2px -2px #13312F,2px -2px #13312F,-2px 2px #13312F,0 6px 0 #0B1F1D,0 10px 20px rgba(0,0,0,.4)}
-/* 第 28 批：大標題兩邊的波浪線拿掉；自己上傳的符號（例如藥劑部標誌）放在大標題左邊 */
 .pgsym{flex:none;width:clamp(40px,7vw,64px);height:clamp(40px,7vw,64px);object-fit:contain;filter:drop-shadow(0 3px 6px rgba(0,0,0,.35))}
-/* 第 28 批：章的頁面整章展開——上面的標題清單、每一篇的標題列 */
 .chsec{scroll-margin-top:64px;margin-bottom:22px}
 .chsec-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-bottom:3px solid var(--pink);padding-bottom:8px;margin-bottom:14px}
 .chsec-t{margin:0;font-size:clamp(20px,3.4vw,26px);font-weight:900;color:var(--pink);min-width:0;overflow-wrap:anywhere}
@@ -1256,7 +1158,6 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .pgchip{cursor:pointer;border:2px solid rgba(255,255,255,.55)}
 .pgchip:hover{background:var(--pacc)}
 .pgdev{margin:0 auto 16px;max-width:40em;background:#FFF4D6;color:#5B4300;border:2px dashed #C9A23C;border-radius:14px;padding:9px 13px;font-size:13.5px;line-height:1.5}
-/* 粗黑框卡片（每個標題一張） */
 .pcard{position:relative;background:var(--pcard);border:3px solid var(--pink);border-radius:22px;box-shadow:7px 7px 0 var(--pink);padding:18px 20px 16px;margin:0 7px 22px 0;color:var(--pink);cursor:pointer;transition:transform .12s,box-shadow .12s}
 .pcard:hover{transform:translate(-2px,-2px);box-shadow:9px 9px 0 var(--pink)}
 .pcard:active{transform:translate(3px,3px);box-shadow:3px 3px 0 var(--pink)}
@@ -1280,7 +1181,6 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .pgsearch{display:flex;gap:8px;align-items:center}
 .pgsearch .in{flex:1;min-width:0;font-size:16px;border:2px solid var(--pink);border-radius:999px;padding:8px 14px}
 .pgsearch .pbtn{cursor:pointer;padding:9px 20px}
-/* 標題的內容：一張大卡片 */
 .pgart{background:var(--pcard);border:3px solid var(--pink);border-radius:22px;box-shadow:7px 7px 0 var(--pink);padding:clamp(16px,3vw,28px);margin:0 7px 20px 0;color:var(--ink)}
 .pgart .art{max-width:100%}
 .pgart .art figure img{border-color:#D8CFBE}
@@ -1288,7 +1188,6 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .pgnav.c{justify-content:center}
 .pgnav>*{min-width:0}
 .pgfoot{text-align:center;color:#fff;font-weight:800;letter-spacing:.14em;font-size:13px;margin:8px 0 0;opacity:.9;text-shadow:0 1px 3px rgba(0,0,0,.7)}
-/* 沒有目錄圖時的首頁：章元卡片 */
 .pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:22px 18px;margin-right:7px}
 .ccard{position:relative;background:var(--pcard,#FBF7EF);border:3px solid #13312F;border-radius:20px;box-shadow:6px 6px 0 #13312F;overflow:hidden;cursor:pointer;color:#13312F;display:flex;flex-direction:column;transition:transform .12s,box-shadow .12s}
 .ccard:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 #13312F}
@@ -1302,13 +1201,10 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .cc-t{font-size:18px;font-weight:900;line-height:1.3}
 .cc-it{font-size:13.5px;color:#5B5346;line-height:1.5}
 .cc-n{font-size:12.5px;color:#6A5B45;font-weight:700;margin-top:2px}
-/* 左下角：搜尋、章元；右下角：🏠 首頁（都在下面那條跑馬燈上面） */
-.pgdock{position:fixed;left:clamp(12px,2.2vw,26px);bottom:calc(var(--mqh) + 14px + env(safe-area-inset-bottom,0px));z-index:31;display:flex;gap:8px;flex-wrap:wrap}
 .pg .btn.hfab{border-radius:999px;background:#fff;color:#13312F;border:2.5px solid #13312F;font-weight:800;font-size:14.5px;padding:8px 16px;box-shadow:0 3px 0 #13312F,0 6px 16px rgba(0,0,0,.3);transition:background .15s,color .15s}
 .pg .btn.hfab:hover{background:#E4572E;color:#fff;border-color:#B9401C;box-shadow:0 3px 0 #8E2F13,0 6px 16px rgba(0,0,0,.3)}
 .pg .btn.hfab:active{transform:translateY(2px);box-shadow:0 1px 0 #13312F}
 .pg .btn:focus-visible{outline:3px solid #E4572E;outline-offset:2px}
-.pg .hhome{bottom:calc(var(--mqh) + 14px + env(safe-area-inset-bottom,0px));z-index:31}
 .pg .hshade{position:fixed;z-index:40}
 .pg .hdrawer{position:fixed;z-index:41}
 .pg .hsearch{position:fixed;z-index:42}
@@ -1325,21 +1221,17 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
   .pcard:hover,.pcard.flat:hover,.pcard.flat:active{box-shadow:5px 5px 0 var(--pink)}
   .pgart{padding:14px;border-radius:18px;box-shadow:5px 5px 0 var(--pink);margin-right:5px}
   .pg .btn.hfab{font-size:13.5px;padding:7px 12px}
-  .pg .hhome{padding:9px 14px;font-size:14px}
 }
 @media (prefers-reduced-motion:reduce){.pcard,.ccard{transition:none}.pcard:hover,.ccard:hover{transform:none}}
 @media print{.pg{display:none!important}}
-/* 編輯器：章元背景 */
 .bgrow{display:flex;gap:12px;align-items:center;margin:4px 0 10px}
 .bgth{flex:none;width:120px;aspect-ratio:20/13;border-radius:10px;border:2px solid #13312F;background:#ddd center/cover no-repeat}
 .bgth.none{display:flex;align-items:center;justify-content:center;color:#6B7480;font-size:12.5px;background:#EEF0F3;border-style:dashed}
 .bgwhy{font-size:13px;line-height:1.55;color:var(--ink2);min-width:0}
-/* ───────── 第 25 批：跑馬燈（速度、編輯器預覽）、目錄圖淡一點＋滑到的物品亮起來（平面圖） ───────── */
 .mq-track{animation-duration:var(--mqs,80s)}
 .mqpv{background:#F6F8FA;border:1px solid var(--line);border-radius:10px;padding:10px;display:grid;gap:6px;margin:6px 0 12px;min-width:0;overflow:hidden}
 .mqpv .mq{--mqh:30px;height:30px;border-radius:6px;border-bottom:0}
 .mqpvl{font-size:12.5px;color:var(--ink2);line-height:1.4}
-/* 平面目錄圖：圖本身變淡；物品上疊一塊原本顏色的圖（照物品的形狀挖出來、邊緣淡出；遮罩是程式畫的），平常半透明、滑到時全彩又亮一點 */
 .catcam>img{transition:filter .3s}
 .catmap.dim .catcam>img{filter:saturate(.3) contrast(.9) brightness(1.05)}
 .catmap.foc .catcam>img{filter:brightness(.82)}
@@ -1350,7 +1242,6 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .catmap.dim.foc .catcam .spc{opacity:.2}
 .catmap.foc .catcam .spc.on{opacity:1;filter:brightness(1.22) saturate(1.05)}
 @media (prefers-reduced-motion:reduce){.catcam>img,.catcam .spc{transition:none}}
-/* ───────── 第 26 批：編輯器的物品外框（自動找的形狀）、點選要亮的物品 ───────── */
 .mcv .mshp{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 .mcv .mshp polygon{fill:rgba(46,204,113,.10);stroke:#27ae60;stroke-width:1.4;vector-effect:non-scaling-stroke;stroke-dasharray:4 3}
 .mcv .mshp polygon.on{fill:rgba(46,204,113,.24);stroke:#1e8449;stroke-width:2.6;stroke-dasharray:none}
@@ -1361,7 +1252,6 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .shpst{font-size:12.5px;margin-top:6px;color:#4c5a66;line-height:1.5}
 .shpst.ok{color:#1e8449;font-weight:600}
 .shpst.busy{color:#8a6d00}
-/* ═══════════ 第 32 批：問卷、考試（藥師在網頁上填） ═══════════ */
 .qzfab[hidden]{display:none!important}
 .btn.hfab.qzfab{position:relative}
 .qzdot{position:absolute;top:-8px;right:-8px;min-width:21px;height:21px;padding:0 5px;border-radius:999px;background:#E4572E;color:#fff;font-size:12px;font-weight:900;line-height:17px;text-align:center;border:2px solid #fff;box-sizing:border-box;box-shadow:0 1px 3px rgba(0,0,0,.35)}
@@ -1446,7 +1336,6 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
   .pcard.qzq.miss{box-shadow:5px 5px 0 #C2410C}
 }
 @media (prefers-reduced-motion:reduce){.qzo{transition:none}}
-/* 編輯器的「📋 問卷」 */
 .qeI .th{font-size:20px;display:flex;align-items:center;justify-content:center;background:#F1F4F6}
 .qest{flex:none;font-size:11.5px;font-weight:700;border-radius:999px;padding:1px 8px;background:#EEF0F3;color:#4A5565;white-space:nowrap}
 .qest.open,.qest.ok{background:#DDF3EE;color:#0B6B66}
@@ -1534,14 +1423,12 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .qepvl:first-child{margin-top:0}
 .qzpv{--pink:#13312F;--pcard:#FBF7EF;--pacc:#E4572E;background:#0E5B56 linear-gradient(160deg,#0B7A75 0%,#0E5B56 60%,#0A3A37 100%);padding:14px 10px 4px 12px;border-radius:12px;color:#13312F}
 .qzpv .pcard{margin-bottom:14px}
-/* 第 32 批：編輯器的「📋 複製」「📌 貼上」 */
 .btn.pstb{border-color:var(--accent);color:var(--accent);font-weight:700;background:var(--accent2)}
 .btn.pstb:disabled{opacity:.5}
 .bh .btn.cpb{white-space:nowrap}
 .fmtbar .fb-copy,.fmtbar .fb-paste{white-space:nowrap}
 .modal .dlg-p select.in{margin-top:6px}
 
-/* ───────── 第 32 批：反灰可複製（[cp]…[/cp]）：網頁的灰條＋「📋 複製」（樣式也直接寫在元件上）、編輯器裡的那一條、小視窗 ───────── */
 .ycp-b:hover{filter:brightness(1.1)}
 .ycp-b:focus-visible{outline:2px solid #0B5F5A;outline-offset:2px}
 .rte .rt-cp{background:#EEF1F5;border:1px solid #C5CED8;border-radius:5px;padding:1px 6px;margin:0 2px;cursor:pointer;-webkit-box-decoration-break:clone;box-decoration-break:clone;font-family:var(--mono);font-size:.94em;overflow-wrap:anywhere}
@@ -1551,7 +1438,6 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .cpdlg .cpin{font-size:16px;width:100%;font-family:var(--mono)}
 .cpdlg .cppv{min-height:56px;display:flex;align-items:center;justify-content:center;background:#FAFBFC;border:1px solid var(--line);border-radius:10px;margin:10px 0;padding:10px;overflow-x:auto}
 
-/* 第 34 批追加：開發者網頁「🔒 我的裝置」、綁滿 3 台時選一台換掉 */
 .dvlist{display:grid;gap:8px;margin:8px 0}
 .dvrow{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;text-align:left}
 .dvrow.me{border-color:var(--accent);background:#F4FBF9}
@@ -1564,7 +1450,6 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .dvacts{display:flex;gap:6px;flex:0 0 auto}
 .scr.swscr .scr-in{max-width:620px}
 
-/* 第 37 批：管理頁「⑦ 📤 匯出給 Copilot」（進度條、結果、zip 裡的檔） */
 .exopts{display:flex;flex-wrap:wrap;gap:6px 18px;margin:4px 0 10px;font-size:14px}
 .exopts label{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
 .exprog{margin:10px 0 4px}
@@ -1580,13 +1465,10 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .hint.warn{color:#8A5300}
 @media (prefers-reduced-motion: reduce){.exbar i{transition:none}}
 
-/* ───────── 第 43 批：標題分層（像目錄，最多 3 層）＋上面固定一條「現在讀到哪裡」───────── */
-/* 編輯器左邊的清單：第 2、3 層往右縮；第 1 層有子標題＝粗體 */
 .chT.lv2{padding-left:46px}
 .chT.lv3{padding-left:62px;font-size:12.5px}
 .chT.lv2::before,.chT.lv3::before{content:"└ ";color:#9AA5B1}
 .chT.hd:not(.on){font-weight:700;color:var(--ink)}
-/* 現在讀到哪裡：這一章第 1 層的標題排一排（太多可以左右滑），讀到的那一篇黃底；有分層的章下面一行寫現在這一篇 */
 .pg>.pgwhere{position:sticky;top:var(--mqh);z-index:29;background:rgba(14,18,20,.92);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;border-bottom:2px solid #F2C230;box-shadow:0 4px 14px rgba(0,0,0,.25)}
 .pw-row{display:flex;align-items:center;min-width:0;width:min(100%,1180px);margin:0 auto}
 .pw-ch{flex:none;max-width:34%;border:0;background:transparent;color:#F2C230;font:inherit;font-weight:900;font-size:14px;line-height:1.3;padding:8px 12px 8px max(12px,env(safe-area-inset-left,0px));cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-right:1px solid rgba(255,255,255,.22)}
@@ -1598,7 +1480,6 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .pw-i:hover{color:#fff;background:rgba(255,255,255,.12)}
 .pw-i.on{background:#F2C230;color:#13312F;font-weight:900}
 .pw-i:focus-visible,.pw-ch:focus-visible{outline:2px solid #F2C230;outline-offset:1px}
-/* 第 44 批：第二行＝這一篇底下的子標題排一排（太多可以左右滑），讀到的那一個亮（黃框）；沒有子標題＝▸ 這一篇的名字。高度固定 */
 .pw-sub{display:flex;align-items:center;width:min(100%,1180px);margin:0 auto;height:34px;padding:0 0 4px max(12px,env(safe-area-inset-left,0px));font-size:12.5px;font-weight:700;color:#F6E7B0}
 .pw-sa{flex:none;color:#F2C230;opacity:.85;padding-right:4px}
 .pw-sub.none .pw-sa{display:none}
@@ -1620,25 +1501,20 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 }
 @media (prefers-reduced-motion:reduce){.pw-l,.pw-l2{scroll-behavior:auto}}
 .chsec{scroll-margin-top:calc(var(--mqh) + 60px)}
-/* 章的頁面：分層的章，每一篇的標題照層次變小、往右縮（第 44 批：上面的標題清單拿掉了） */
 .chsec.lv2{margin-left:clamp(8px,2.4vw,22px)}
 .chsec.lv3{margin-left:clamp(16px,4.8vw,44px)}
 .chsec.lv2 .chsec-h{border-bottom-width:2px}
 .chsec.lv2 .chsec-t{font-size:clamp(18px,2.9vw,22px)}
 .chsec.lv3 .chsec-h{border-bottom:2px dashed var(--pink)}
 .chsec.lv3 .chsec-t{font-size:clamp(16.5px,2.5vw,19px)}
-/* 單篇的頁面：章 › 上層的標題（點了打開） */
 .pgpath{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px}
 .pgpath .pgchip.up::before{content:"› ";opacity:.75}
-/* 第 43 批：電腦登入沒有「記住這台電腦」了；員工編號旁邊小字「英文字母大小寫都可以」 */
 .pcaa{font-weight:500;color:var(--ink2);font-size:12px;margin-left:4px}
-/* 第 43 批：管理頁 ⑥ 平常收起來：上面一行狀態（正常／要換 cfg.js），點「看入口連結、cfg.js」才打開 */
 .pcst{margin:0 0 8px;font-size:14px;line-height:1.6;color:var(--ink);overflow-wrap:anywhere}
 .pcst.warn{color:#8A5300;background:#FFF7E6;border:1px solid #F3D9A4;border-radius:10px;padding:8px 12px}
 .pcdet{border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:#FAFBFC}
 .pcdet>summary{cursor:pointer;font-weight:700;color:var(--accent);list-style-position:inside}
 .pcdet[open]>summary{margin-bottom:4px}
-/* ───────── 第 43 批：網址連結的檔案（Word、PDF、Excel、PPT、圖片）：黃色的小框；點了在手冊裡的小視窗看（只能看）───────── */
 .xlink.xfile{border-color:#E3C27A;background:#FFF8E8;color:#7A4B00}
 .xlink.xfile:hover{background:#FFF1D2;border-color:#D4A94F}
 .xlink.xfile:focus-visible{outline:3px solid rgba(180,120,0,.35);outline-offset:2px}
@@ -1657,7 +1533,7 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .fv .btn.fv-z:disabled{opacity:.45}
 .fv .btn.fv-x{background:#E4572E;color:#fff;border:0;font-weight:800}
 .fv-b{flex:1;min-height:0;overflow:auto;padding:14px;display:flex;flex-direction:column;align-items:flex-start;gap:14px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:pan-x pan-y pinch-zoom;overscroll-behavior:contain}
-.fv-p{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18);flex:none;position:relative;margin:0 auto}   /* 放大到比視窗寬：可以往左、往右捲（不用置中：置中會切掉左邊） */
+.fv-p{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.18);flex:none;position:relative;margin:0 auto}
 .fv-p:not(.on)::after{content:"…";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9AA5B1;font-size:28px}
 .fv-cv{display:block}
 .fv-ims{flex:none;margin:0 auto}
@@ -1679,22 +1555,11 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 }
 @media print{.fv{display:none!important}}
 
-/* ── 第 44 批：翻頁閱讀（電腦＝一本書兩頁、手機＝一頁）──
-   整頁不捲（高度＝畫面）；上面一排（‹ 回上一層、📖 翻頁｜📜 捲動、名字、標誌）；中間是書；下面照舊「搜尋、章元」「🏠 首頁」。 */
-.rbkt{display:inline-flex;align-items:center;gap:2px;background:rgba(255,255,255,.94);border-radius:999px;padding:3px;box-shadow:0 2px 8px rgba(0,0,0,.25);flex:none;min-width:0}
-.rbkt-b{display:inline-flex;align-items:center;gap:4px;border:0;background:none;color:#13312F;font:inherit;font-weight:700;font-size:14px;border-radius:999px;padding:5px 11px;cursor:pointer;white-space:nowrap}
-.rbkt-b.on{background:#13312F;color:#fff}
-@media (hover:hover){.rbkt-b:not(.on):hover{background:#E9F3F1}}
-.rbkt-b:focus-visible{outline:3px solid #E4572E;outline-offset:1px}
-.rbkt-n{font-size:12.5px;font-weight:700;color:#3C5B57;padding:0 8px 0 4px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.rbkt-n:empty{display:none}
 .pg.book{display:flex;flex-direction:column;height:100vh;height:100dvh;min-height:0;overflow:hidden;padding-bottom:0}
-.pg.book>.mq:not(.mqb),.pg.book>.pgwhere{flex:none}
-.pg.book .pgcol{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;padding-top:8px;padding-bottom:calc(var(--mqh) + 10px + env(safe-area-inset-bottom,0px))}
-.rbk-head{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
-.rbk-head .pgtop{flex:1 1 440px;min-width:0}
-.rbk-head .pgme{flex:0 1 auto;margin:0}
-.rbk{flex:1 1 auto;min-height:0;display:flex;justify-content:center;align-items:flex-start;margin-top:8px}
+.pg.book>.mq:not(.mqb),.pg.book>.pgwhere,.pg.book>.ptw{flex:none}
+.pg.book .pgcol{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;width:min(100% - 24px,var(--colw,1640px));padding-top:2px;padding-bottom:calc(var(--mqh) + 8px + env(safe-area-inset-bottom,0px))}
+.rbk{flex:1 1 auto;min-height:0;display:flex;justify-content:center;align-items:flex-start;margin-top:4px}
+.rbk.wait .rbk-stage{visibility:hidden}
 .rbk-stage{position:relative;flex:none}
 .rbk:focus{outline:none}
 .rbk-pp{position:absolute;top:0;width:var(--P);height:var(--PH);background:#FBF7EF;box-shadow:0 10px 26px rgba(0,0,0,.35)}
@@ -1703,9 +1568,6 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .rbk.one .rbk-pp.l{border-radius:12px;background:#FBF7EF}
 .rbk.one .rbk-pp.r,.rbk.one .rbk-spine{display:none}
 .rbk-spine{position:absolute;top:0;left:calc(var(--P) - 14px);width:28px;height:var(--PH);pointer-events:none;z-index:3;background:linear-gradient(90deg,rgba(0,0,0,0) 0%,rgba(60,42,20,.10) 38%,rgba(60,42,20,.22) 50%,rgba(60,42,20,.10) 62%,rgba(0,0,0,0) 100%)}
-.rbk-no{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:12px;font-weight:700;color:#8A7B62;font-variant-numeric:tabular-nums;letter-spacing:.06em}
-.rbk-no:not(:empty)::before{content:"— "}
-.rbk-no:not(:empty)::after{content:" —"}
 .rbk-vp{position:absolute;inset:0;overflow:hidden;overflow:clip;z-index:2}
 .rbk-flow{position:absolute;column-fill:auto;will-change:transform;color:var(--ink);font-size:16px;line-height:1.75;orphans:2;widows:2}
 .rbk-flow.rbk-anim{transition:transform .32s cubic-bezier(.2,.7,.2,1)}
@@ -1737,21 +1599,16 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .rbk.tight .rbk-arw{width:32px;height:50px;margin-top:-25px;font-size:26px;background:rgba(19,49,47,.55)}
 .rbk.tight .rbk-arw.p{left:4px}
 .rbk.tight .rbk-arw.n{right:4px}
-/* 一頁（手機）：像電子書，箭頭和「第幾頁／共幾頁」放在紙的最下面那一條（不蓋到字） */
-.rbk.one .rbk-arw{top:auto;bottom:6px;margin-top:0;width:48px;height:30px;border-radius:999px;font-size:22px;background:rgba(19,49,47,.10);color:#13312F;box-shadow:none}
+.rbk.one .rbk-arw{top:auto;bottom:6px;margin-top:0;width:56px;height:30px;border-radius:999px;font-size:22px;background:rgba(19,49,47,.10);color:#13312F;box-shadow:none}
 @media (hover:hover){.rbk.one .rbk-arw:hover{background:#E4572E;color:#fff}}
 .rbk.one .rbk-arw:active{background:#E4572E;color:#fff}
 .rbk.one .rbk-arw.p{left:10px}
 .rbk.one .rbk-arw.n{right:10px}
-.rbk.one .rbk-no{bottom:12px;font-size:13px;letter-spacing:.04em}
-.rbk.one .rbk-no::before,.rbk.one .rbk-no::after{content:none}
-.rbkt-n.vh{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .rbk-stage.bump-r{animation:rbkBumpR .34s ease}
 .rbk-stage.bump-l{animation:rbkBumpL .34s ease}
 @keyframes rbkBumpR{0%,100%{transform:translateX(0)}40%{transform:translateX(-10px)}70%{transform:translateX(4px)}}
 @keyframes rbkBumpL{0%,100%{transform:translateX(0)}40%{transform:translateX(10px)}70%{transform:translateX(-4px)}}
 @media (prefers-reduced-motion:reduce){.rbk-leaf,.rbk-view.s.mv,.rbk-flow.rbk-anim{transition:none}.rbk-stage.bump-r,.rbk-stage.bump-l{animation:none}}
-/* 書裡的內容：卡片、背景圖拿掉，像書上的字；圖、表格、框盡量不切到下一頁；太高的圖縮到一頁放得下 */
 .rbk-flow>.pgh{margin:4px 0 10px;justify-content:flex-start;text-align:left}
 .rbk-flow>.pgh h1,.rbk-flow .pgh h1{color:var(--pink);text-shadow:none;font-size:clamp(24px,3vw,32px);letter-spacing:.04em}
 .rbk-flow>div>.pgh{margin:4px 0 6px;justify-content:flex-start;text-align:left}
@@ -1769,33 +1626,21 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .rbk-flow h2,.rbk-flow h3,.rbk-flow h4{break-after:avoid}
 .rbk-flow figure,.rbk-flow .note,.rbk-flow .xlink,.rbk-flow .pgline,.rbk-flow .drugc,.rbk-flow .rbox,.rbk-flow .ycp,.rbk-flow .anim,.rbk-flow .drawfig,.rbk-flow .box,.rbk-flow tr{break-inside:avoid}
 .rbk-flow img{max-height:calc(var(--fh,600px) - 64px);object-fit:contain}
-/* 表格：書裡不左右捲（可以捲的框不能切到下一頁，太長的表格下面會被切掉）：照頁寬排、字自己換行；很長的表格一列一列接到下一頁 */
+.rbk-flow figure img,.rbk-flow .lad figure.lim img{width:min(100%,var(--iw,100%))!important;height:auto!important;aspect-ratio:var(--ar,4 / 3)!important;object-fit:contain}
+.rbk-flow img[data-nar]{aspect-ratio:4 / 3!important}
 .rbk-flow .tscroll{overflow:visible}
 .rbk-flow .tscroll table{width:100%;max-width:100%}
 .rbk-flow .tscroll th,.rbk-flow .tscroll td{overflow-wrap:anywhere}
 .rbk-flow .animbox{max-height:calc(var(--fh,600px) - 24px)}
-.rbk-flow figure img{width:auto;max-width:100%;margin:0 auto}
+.rbk-flow figure img{max-width:100%;margin:0 auto}
 .rbk-flow .art{max-width:none}
 .rbk-flow .pgfoot{color:#8A7B62;text-shadow:none;opacity:1;margin:14px 0 0}
 .rbk-flow .pgnav{margin:14px 0 6px}
 .rbk-flow .pgnav .pbtn.nav{max-width:100%}
-@media (max-width:640px){
-  .pg.book .pgtop{flex-basis:100%}
-  .rbkt-b{padding:5px 8px}
-  .rbkt-l{display:none}
-  .rbk-flow{font-size:15.5px}
-}
-@media (max-width:400px){   /* 窄的手機：上面那一排（‹ 回上一層、📖📜、標誌）擠得下 */
-  .pg.book .pgtop{gap:6px}
-  .rbkt-b{padding:4px 6px}
-  .pg.book .pgback{padding:6px 11px 6px 9px;letter-spacing:0}
-}
-@media (max-width:340px){.pg.book .pglogo{font-size:0;gap:0}}
-/* ── 第 44 批：電腦（外部瀏覽器）登入＝① 隨機驗證短碼 ② 員工編號＋姓名 ── */
+@media (max-width:640px){.rbk-flow{font-size:15.5px}}
 .pclrow .in.pccode{font-size:17px;letter-spacing:.08em}
 .lgst2.pcnext{margin-top:12px;color:var(--ink3);font-size:13px}
 .pclhint .lglink{font-size:13px;padding:0 2px;vertical-align:baseline}
-/* ── 第 44 批：每章的小動畫（章的頁面最上面；程式畫的線條動畫，或自己上傳的動畫）── */
 .cha{position:relative;max-width:560px;margin:0 auto 16px;background:#FBF7EF;border:3px solid #13312F;border-radius:18px;box-shadow:5px 5px 0 #13312F;padding:8px 10px 4px;overflow:hidden}
 .cha.up{background:#fff;padding:8px}
 .cha.up figure.anim{margin:0}
@@ -1833,7 +1678,6 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 @media (hover:hover){.cha-b:hover{opacity:1}}
 .cha-b:focus-visible{opacity:1;outline:3px solid #E4572E;outline-offset:2px}
 .rbk-flow .cha{box-shadow:none;border-width:2px;margin:0 auto 14px;break-inside:avoid}
-/* 編輯器：章元的「小動畫」 */
 .chaE{border:1px solid var(--line);border-radius:12px;padding:10px;background:#FAFBFC;margin:4px 0 8px}
 .chaE-seg{flex-wrap:wrap;margin-bottom:8px}
 .chaE-b{display:grid;gap:8px}
@@ -1844,7 +1688,6 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .chaE-t svg{display:block;width:100%;height:auto}
 .chaE-n{font-size:12px;font-weight:700;line-height:1.3}
 .chaE-pv .cha{margin:0 auto;max-width:420px}
-/* 第 44 批：合併顯示（兩篇都留著，看的時候合在一起）：編輯器那一區、左邊清單的「⤴」、網頁上併進來的那一篇的小標題 */
 .mgpanel{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#F7FBFA}
 .mgnow{font-size:13.5px;line-height:1.6}
 .mgrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0}
@@ -1854,3 +1697,84 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .chT.mg .mgi{color:#0E7C66;font-weight:700}
 .mgpv{margin:0 0 8px}
 .art .mghd{scroll-margin-top:130px}
+
+.ptw{position:relative;z-index:28}
+.pg:not(.book)>.ptw{position:sticky;top:calc(var(--mqh) + var(--pwh,0px));background:linear-gradient(180deg,rgba(8,22,21,.80),rgba(8,22,21,.66));-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);box-shadow:0 4px 12px rgba(0,0,0,.22)}
+.pgtool{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"l a r";align-items:center;column-gap:12px;width:min(100% - 24px,1640px);margin:0 auto;padding:6px 0;min-height:52px}
+.pt-l{grid-area:l;display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:nowrap}
+.pgtool>.tast{grid-area:a;justify-self:center}
+.pt-r{grid-area:r;display:flex;align-items:center;justify-content:flex-end;gap:10px;min-width:0;flex-wrap:nowrap;overflow:hidden}
+.pt-r .pglogo{transform:none;font-size:clamp(18px,1.9vw,24px)}
+.pt-r .pglogo{flex:none}
+.pt-r .pgme{margin:0;flex-wrap:nowrap;min-width:0;justify-content:flex-end;flex:0 1 auto}
+.pt-r .hbtn{white-space:nowrap;flex:none}
+.pt-r .hwho{min-width:0;max-width:22em}
+.pt-r .hwho b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg .btn.hfab.pt-b{white-space:nowrap;padding:7px 14px}
+.pgtop{margin:0 0 6px}
+@media (max-width:1180px){
+  .pt-r .hwho .hw-e,.pt-r .hwho .hw-d{display:none}
+  .pt-r .hwho .idle{display:none}
+  .pt-r .hwho .idle.short{display:inline-block}
+  .pt-r .hbtn .bl{display:none}
+  .pt-r .pgme .hbtn:last-child .bl{display:inline}
+}
+@media (max-width:920px){.pt-r .pglogo .pl-t{display:none}.pt-r .hwho b{max-width:6em}}
+@media (max-width:760px){
+  .pgtool{grid-template-columns:auto minmax(0,1fr);grid-template-areas:"l a" "r r";row-gap:6px;column-gap:8px;padding:6px 0 4px;width:min(100% - 20px,1640px)}
+  .pgtool>.tast{justify-self:end}
+  .pt-r{justify-content:space-between}
+  .pt-r .pglogo .pl-t{display:inline}
+  .pg .btn.hfab.pt-b{padding:6px 11px;font-size:13.5px}
+}
+@media (max-width:400px){.pt-r .pglogo .pl-t{display:none}}
+@media (max-width:360px){.pg .btn.hfab.pt-b .bl{display:none}.pg .btn.hfab.pt-b{padding:6px 10px}}
+.tast{position:relative;display:flex;align-items:center;gap:6px;min-width:0;--tah:70px}
+@media (max-width:1180px){.tast{--tah:62px}}
+.ta-in{position:relative;flex:none;height:var(--tah);aspect-ratio:360 / 140;background:#FBF7EF;border:2.5px solid #13312F;border-radius:14px;box-shadow:3px 3px 0 rgba(19,49,47,.85);overflow:hidden;cursor:pointer}
+.ta-box{position:absolute;inset:2px 4px 0}
+.ta-box.in{animation:taIn .28s ease}
+@keyframes taIn{from{opacity:0}to{opacity:1}}
+.ta-box svg{display:block;width:100%;height:100%}
+.ta-img{display:block;width:100%;height:100%;object-fit:contain;-webkit-user-drag:none;-webkit-touch-callout:none}
+.ta-pp{position:absolute;right:3px;bottom:3px;width:20px;height:20px;border-radius:50%;border:1.5px solid #13312F;background:rgba(255,255,255,.92);color:#13312F;font:inherit;font-size:9px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;opacity:.7}
+.ta-pp[hidden]{display:none}
+@media (hover:hover){.ta-pp:hover{opacity:1}}
+.ta-x,.ta-o{flex:none;width:26px;height:26px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#13312F;font:inherit;font-size:12px;font-weight:900;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;padding:0}
+.ta-o{display:none;width:34px;height:34px;font-size:16px}
+.tast.off .ta-in,.tast.off .ta-x{display:none}
+.tast.off .ta-o{display:flex}
+.tast.none .ta-in{visibility:hidden}
+.ta-x:focus-visible,.ta-o:focus-visible,.ta-pp:focus-visible{outline:3px solid #E4572E;outline-offset:2px}
+@media (max-width:760px){.tast{--tah:48px}.ta-x{width:24px;height:24px}}
+@media (prefers-reduced-motion:reduce){.ta-box.in{animation:none}}
+@media print{.ptw{display:none!important}}
+.hwho b[role=button],.hdr .who[role=button]{cursor:pointer;border-radius:6px}
+@media (hover:hover){.hwho b[role=button]:hover,.hdr .who[role=button]:hover{text-decoration:underline dotted;text-underline-offset:3px}}
+.hwho b[role=button]:focus-visible,.hdr .who[role=button]:focus-visible{outline:3px solid #E4572E;outline-offset:2px}
+.tab,.btn.hbtn{position:relative}
+.abdot{position:absolute;top:-4px;right:-4px;width:11px;height:11px;border-radius:50%;background:#D93A3F;box-shadow:0 0 0 2px #fff;pointer-events:none}
+.abdot[hidden]{display:none}
+.modal .lgbox{display:flex;flex-direction:column;gap:6px;margin:4px 0 2px;max-height:min(52vh,340px);overflow:auto}
+.lgrow{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:10px;row-gap:1px;align-items:baseline;border:1px solid var(--line);border-radius:10px;padding:7px 10px;color:var(--ink)}
+.lgrow.me{background:#F1F7F4;border-color:#BFD9CC}
+.lgrow .lgt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lgrow .lgd{min-width:0;overflow-wrap:anywhere}
+.lgrow .lgh{grid-column:2;font-size:12px;color:var(--ink3)}
+.modal .lgtip{display:block;font-size:12.5px;color:var(--ink3)}
+.abnote{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#FFF4E5;border:1px solid #F3C98B;color:#5A3A00;border-radius:10px;padding:8px 12px;margin:0 0 12px;font-size:13.5px}
+.abnote[hidden]{display:none}
+.abnote b{font-weight:800}
+.abtbl tr.new td{background:#FFF8EC}
+.abtbl tr.new td:first-child{box-shadow:inset 3px 0 0 #E08A00}
+.abhd{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 8px}
+.abhd .abn{font-weight:700}
+.lgnote{position:fixed;left:50%;bottom:calc(66px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);z-index:205;display:flex;align-items:stretch;max-width:min(560px,calc(100vw - 24px));background:rgba(15,23,32,.94);color:#fff;border-radius:12px;box-shadow:0 8px 24px rgba(15,23,32,.28);font-size:13px;transition:opacity .35s}
+.lgnote.warn{background:#7A2E0E}
+.lgnote.out{opacity:0}
+.lgnote button{background:none;border:0;color:inherit;font:inherit;cursor:pointer}
+.lgnote .lgn-t{flex:1;min-width:0;text-align:left;padding:9px 12px;line-height:1.45}
+.lgnote .lgn-x{flex:none;padding:0 12px;font-size:14px;opacity:.85;border-left:1px solid rgba(255,255,255,.18)}
+.lgnote button:focus-visible{outline:3px solid #FFD25E;outline-offset:-3px;border-radius:10px}
+body:has(.pg>.mq.mqb) .lgnote{bottom:calc(var(--mqh, 34px) + 58px + env(safe-area-inset-bottom, 0px))}
+@media print{.lgnote{display:none!important}}

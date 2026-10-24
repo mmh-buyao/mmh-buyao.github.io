@@ -1,10 +1,5 @@
-/* 補藥神器開發者教學 v11.22.2 beta：開發者專用；不登入、不連任何網站；畫面上的藥、CODE、代號全是編出來的示範。這個檔沒有任何秘密。 */
 (function() {
   "use strict";
-  /* ═══ 補藥神器開發者教學網頁（第 16 批；從藥師版教學改出來，只放開發者用的功能）═══
-     不登入、不連任何網站：沒有 fetch、沒有外部網址，畫面上的藥全是編的示範。藥品卡片、列表卡、平面圖都是用元素＋CSS 畫出來的（五張小圖放在最上面 :root 的 --i-* 變數）。
-     只有兩樣東西會「記」在這支手機裡：學習進度、從 LINE「教學」帶進來的「回聊天室」資訊（見最下面 boot）。
-     排法照氛圍學院：目錄頁（#/）＝章節分組、一課一列；一課的頁（#/l/課名）＝白底區塊一塊接一塊往下捲，最後有「重點回顧」，最下面固定「上一課／下一課」。 */
   var root = document.getElementById("main"), topEl = document.getElementById("top"), botEl = document.getElementById("bot");
   var NS = "buyao_learndev_", mem = {};
   var store = {
@@ -12,16 +7,13 @@
     set: function(k, v) { mem[k] = v; try { localStorage.setItem(NS + k, v); } catch (e) {} },
     del: function(k) { delete mem[k]; try { localStorage.removeItem(NS + k); } catch (e) {} }
   };
-  var REDUCE = false, escFn = null;   /* escFn：目前這一頁「按 Esc 要關掉的東西」（一課的頁＝展開的課名目錄） */
+  var REDUCE = false, escFn = null;
   try { REDUCE = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) {}
-  /* 網頁版的網址：跟這份教學放在 GitHub 的同一個資料夾（教學是 …/learn.html，網頁版是 …/）。只有 http(s) 才算；本機直接開檔案就空著。教「用電腦開網頁版」那一步會寫出來，不用再去問人網址 */
   var APP_URL = "";
   try { if (/^https?:$/.test(location.protocol)) APP_URL = location.origin + location.pathname.replace(/[^\/]*$/, ""); } catch (e) {}
-  var APP_HOST = "";   /* 這一頁的網址列（示範畫面上的網址：LINE 內建瀏覽器的標題下面那一行） */
+  var APP_HOST = "";
   try { if (/^https?:$/.test(location.protocol)) APP_HOST = location.host; } catch (e) {}
 
-  /* ───────── 小工具 ───────── */
-  /* html 這個欄位不用；所有字都走 text／文字節點。**粗體** 用 rich() 拆開再一段一段接，不會把任何東西當成網頁碼 */
   function el(tag, attrs, kids) {
     var e = document.createElement(tag), k, v;
     attrs = attrs || {};
@@ -49,9 +41,6 @@
     return f;
   }
 
-  /* ───────── 從 LINE 帶進來的資訊（網址 # 後面；讀完就從網址列拿掉）─────────
-     b＝官方帳號的 ID（@xxxx，給「在 LINE 試試看」開聊天室用）；c／n／l／f＝LINE 那邊挑的一個真的品項藥品的 CODE／中文名／位置／家族字。
-     都只用來組「回 LINE 聊天室」的連結和顯示一句話；不合格式的一律當沒有。 */
   var S = { b: "", c: "", n: "", l: "", f: "" };
   function clean(k, v) {
     v = String(v === null || v === undefined ? "" : v);
@@ -79,7 +68,6 @@
     return text ? "https://line.me/R/oaMessage/" + S.b + "/?" + encodeURIComponent(text) : "https://line.me/R/ti/p/" + S.b;
   }
 
-  /* ───────── 學習進度（哪幾課學過了）───────── */
   function getDone() {
     var o = {};
     try { o = JSON.parse(store.get("done") || "{}") || {}; } catch (e) { o = {}; }
@@ -93,41 +81,30 @@
     return true;
   }
 
-  /* ───────── 課程內容 ─────────
-     每一課：id、ch（第幾章）、name、secs（一塊一塊的白底區塊：t 標題、p 說明、d 示範區、note 淺藍說明框、warn 黃色提醒、tips 三個小提醒；tipsFirst＝改成放在示範區前面的「步驟 1、2、3」）、
-     keys（示範區下面灰底的「記住 n 件事」）、tryp（動手試試）、recap（重點回顧）。
-     示範區 d：chat＝LINE 聊天的假畫面（ch＝可以點選的幾種情況；每種有 m 聊天內容、n 下面的說明；一種就只有重播鍵）、anat＝在真的卡片上點名稱看每一塊、
-     plan＝平面圖上點名稱看每一塊、turn＝「大門在你哪一邊，圖要怎麼轉」、qbar＝LINE 輸入列、sim＝練習聊天室（自己打字、按送出，深色框說明機器人怎麼找；pre 只打前幾個字的範例字（第一個也是自動示範的那個）、ex 其他查法的範例字、bad 故意打錯的字）。
-     聊天內容 m：me 自己說的、bot 官方帳號回的、dc 一張藥品卡片、car 一排卡片（往左滑）、ll 列表卡、ask「是這個藥品？」卡、pl 大張平面圖、
-     act 一句動作說明、pic 照片、voice 語音、hand 手寫。卡片都是照真的卡片畫的示意，藥名、位置全是編的。 */
   function me(t) { return { w: "me", t: t }; }
   function bot(t) { return { w: "bot", t: t }; }
-  /* act：一句動作說明（👆 按「…」）。示範的時候，這句一出來，會有一隻手指在上一張卡片（或畫面）裡「按」那一顆按鍵：
-     tap 不寫＝照句子裡第一個「」裡的字，在前面的卡片找一樣寫著這幾個字的那一塊；寫一個選擇器（字串）＝在前面的卡片找這個；寫 [選擇器, 第幾個] ＝同樣的選擇器找到好幾個，要第幾個；寫 false ＝這句不按（按的東西不在聊天室裡）。 */
   function act(t, tap) { return { w: "act", t: t, tap: tap }; }
-  function pic(label, kind) { return { w: "me", pic: label, k: kind || "t" }; }   /* 您傳的照片：kind t 藥盒、w 瓶身、three 好幾盒、blur 模糊的 */
+  function pic(label, kind) { return { w: "me", pic: label, k: kind || "t" }; }
   function voice() { return { w: "me", voice: "0:03" }; }
   function hand(lines) { return { w: "me", note: lines }; }
   function dc(code, o) { return { w: "dc", c: code, o: o || {} }; }
   function car(codes, o) { return { w: "car", cs: codes.map(function(c) { return { c: c, o: o || {} }; }) }; }
   function ll(spec) { return { w: "ll", s: spec }; }
   function ask(codes, shown, how) { return { w: "ask", cs: codes, shown: shown, how: how || "" }; }
-  function sheet(codes) { return { w: "tb", cs: codes }; }   /* 超過 5 個品項的「總表」卡（照片、手寫讀到太多行的時候） */
-  function nf(kw) { return { w: "nf", kw: kw }; }   /* 「查無」卡：最上面黃色框 */
+  function sheet(codes) { return { w: "tb", cs: codes }; }
+  function nf(kw) { return { w: "nf", kw: kw }; }
   function bigplan(hit) { return { w: "pl", hit: hit || "K2" }; }
-  function cdc() { return { w: "cd" }; }   /* LINE 回的「🔐 補藥神器 網頁驗證碼」卡片（用電腦開網頁版那一段） */
-  function br(o) { return { w: "br", o: o || {} }; }   /* 電腦的瀏覽器視窗（網頁的代號登入畫面）。o.st：load 剛打開、code 有代號、copied 按了複製、type 打好 6 位數、ok 登入成功；o.hot：code／copy／input／go 圈起來的那一塊 */
-  function lp(o) { return { w: "lp", o: o || {} }; }   /* LINE 內建瀏覽器裡的這份教學。o.pg：toc 目錄頁、lesson 一課的頁；o.hot：row／stage／next／title／close */
-  function qb(k) { return { w: "qb", k: k }; }   /* LINE 的輸入框（上面一排小按鈕＋下面的輸入框），k＝圈起來的那顆按鈕（web／guide／notice／bug）：「按輸入框上面的…」那一步，先畫出它在哪裡，手指再去按 */
-  function gd(o) { return { w: "gd", o: o || {} }; }   /* LINE 回的「📖 補藥神器　教學」卡片（有藍色的「開始學習」）。o.hot：圈起「開始學習」 */
+  function cdc() { return { w: "cd" }; }
+  function br(o) { return { w: "br", o: o || {} }; }
+  function lp(o) { return { w: "lp", o: o || {} }; }
+  function qb(k) { return { w: "qb", k: k }; }
+  function gd(o) { return { w: "gd", o: o || {} }; }
   function jn(k) { return { w: "jn", k: k }; }
-  function sc(k, hot) { return { w: "sc", k: k, hot: !!hot }; }   /* 第 21 批：同事手機的截圖（page＝LINE 聊天頁整頁、scan＝掃描畫面）；hot＝畫面上有手指要按的地方（掃描鈕） */
-  function fr(o) { return { w: "fr", o: o || {} }; }   /* 第 21 批：掃到 QR 之後 LINE 跳出的「補藥神器」小視窗（綠色的「加入」）。o.hot：圈起「加入」 */
-  /* 第 21 批：同事一加入，官方帳號自己送的歡迎文字（字照 07_操作.gs 的 _followWelcomeText_(false, true)；AI 提醒那句照 02 的 PHOTO_AI_WARN_SHORT）。放在課程資料前面，課程資料才拿得到 */
-  var FW = "👋 歡迎使用補藥神器！\n\n這裡可以查藥品放在哪裡：\n・打字：CODE、藥名（中文或英文前幾個字）、學名或位置（例如 K2）\n・拍照：藥盒、鋁箔、瓶身，或手寫的藥名\n・語音：按住麥克風，講藥名或 CODE\n\n⚠️ AI 可能讀錯，請核對藥櫃標籤紙。\n\n輸入框上面那排按鈕一直都在：\n・🌐 網頁：開網頁版\n・📖 教學：功能教學\n・📢 藥品通知：停止供貨、改包裝、缺貨\n・🛠 BUG：回報問題\n・👥 加入補藥神器：邀請同事一起用\n\n第一次用，先按下面卡片的「開始學習」。";   /* LINE 回的「加入補藥神器」兩則（照 07_操作.gs 的 _joinQrCard_、_joinStepsCard_）。k：qr＝「👥 邀請同事一起用」（QR）、steps＝「加入只要 3 步」（第 21 批起：左右滑的 4 張圖卡） */
-  var DEMO_SIX = "482915";   /* 編的 6 位數驗證碼（跟 cdEl 那張卡片是同一組） */
-  var DEMO_CODE = "Kd7mPq4Xr";   /* 編的示範代號：9 個英數字（沒有 I O l o 0 1），真的代號是網頁每次向後端要的，這一組領不到任何東西 */
-  /* 編出來的藥（b 商品名、z 中文名、g 學名、f 劑型、w 水劑、ind 適應症、feat 藥品特徵、loc 位置、ph 有沒有照片） */
+  function sc(k, hot) { return { w: "sc", k: k, hot: !!hot }; }
+  function fr(o) { return { w: "fr", o: o || {} }; }
+  var FW = "👋 歡迎使用補藥神器！\n\n這裡可以查藥品放在哪裡：\n・打字：CODE、藥名（中文或英文前幾個字）、學名或位置（例如 K2）\n・拍照：藥盒、鋁箔、瓶身，或手寫的藥名\n・語音：按住麥克風，講藥名或 CODE\n\n⚠️ AI 可能讀錯，請核對藥櫃標籤紙。\n\n輸入框上面那排按鈕一直都在：\n・🌐 網頁：開網頁版\n・📖 教學：功能教學\n・📢 藥品通知：停止供貨、改包裝、缺貨\n・🛠 BUG：回報問題\n・👥 加入補藥神器：邀請同事一起用\n\n第一次用，先按下面卡片的「開始學習」。";
+  var DEMO_SIX = "482915";
+  var DEMO_CODE = "Kd7mPq4Xr";
   var DR = {
     "90101": { b: "TESTOLOL* 25MG TAB", z: "測試洛爾錠 25 毫克", g: "TESTOLOL HCL", f: "錠劑", w: 0, ind: "高血壓、心絞痛", feat: "白色圓形錠，一面有刻痕", loc: "K2", ph: 1 },
     "90102": { b: "DEMOSYRUP* 60ML", z: "示範康糖漿 60 毫升", g: "SAMPLEXIN", f: "口服液", w: 1, ind: "咳嗽、化痰", feat: "透明棕色瓶", loc: "水棧一", ph: 1 },
@@ -148,24 +125,12 @@
     "90118": { b: "EXAMPLOL* 40MG TAB", z: "範例洛錠 40 毫克", g: "EXAMPLOL", f: "錠劑", w: 0, ind: "高血脂", loc: "B1", ph: 0 },
     "90119": { b: "SAMPLEGEL* 20MG CAP", z: "示範凝膠囊 20 毫克", g: "SAMPLEGEL", f: "膠囊", w: 0, ind: "胃潰瘍", loc: "B1", ph: 1 }
   };
-  /* ───────── 開發者教學：幾種新畫面（第 16 批）─────────
-     ① gc＝LINE 卡片（Flex 訊息）：跟真的卡片同一套尺寸（文字 xxs 11、xs 13、sm 14、md 16、lg 19…；留白 xs 2、sm 4、md 8、lg 12…），
-       --u＝卡片寬度的 1/374（跟藥品卡片同一個單位，放在多窄的畫面裡都等比例縮放）；giga（大張，開發者的格子、✏️ 選單）＝374 份，
-       mega（小張，一次改多項、公告、匯入的總覽和逐筆確認）＝300 份；用「節點」一層一層描述（文字 gt、直排 gx、橫排 gh、按鈕 gbtn、分隔線 gsep）。
-     ② qr＝輸入框上面那一排小按鈕（quick reply）：畫在聊天室的最下面，長得跟「釘住的按鈕」那一課的輸入列一樣（一排、放不下就左右滑），
-       下面有輸入框；旁邊寫「輸入框上面會出現」。
-     ③ sh＝Google 試算表（手機 App 的樣子）：分頁、欄名、列號、格子；紅底＝有問題的列，右上角的黑三角＝這一格有註解。
-     ④ cmds＝指令清單（維護、進階兩課）：一行「指令」＋「做什麼」。
-     全部用 el()／文字節點畫，不拼網頁碼。範例資料（藥名、代號、驗證碼）全是編的。 */
   var GZ = { xxs: 11, xs: 13, sm: 14, md: 16, lg: 19, xl: 22, xxl: 29, "3xl": 35 };
   var GP = { none: 0, xs: 2, sm: 4, md: 8, lg: 12, xl: 16, xxl: 20 };
   var GR = { none: 0, xs: 2, sm: 4, md: 6, lg: 10, xl: 14 };
   function gu(px) { return "calc(" + px + " * var(--u))"; }
   function gnum(v, tbl, d) { return typeof v === "number" ? v : (tbl[v] === undefined ? d : tbl[v]); }
   function gmix(a, b) { var k; if (b) for (k in b) a[k] = b[k]; return a; }
-  /* 節點的寫法：文字 gt("字", {z 字級, b 粗體, c 顏色, m 上面留白, a 對齊, f 比例, nw 不換行})；
-     文字還可以：mono 等寬字、ls 字距（em）、u 底線、rich（字裡面 **這樣** 的地方變粗體）；直排 gx([…], {bg 底色, r 圓角, p 內距（px／py 只有左右／上下）, bd 框線顏色（bs＝線的樣子，例 "dashed"；bw＝線的粗細，預設 1.5）, hh 固定高度（例 34）, op 透明度, sp 子項之間的距離, m, f, w 寬（wp＝佔上一層的百分比）, jc, ai, ar 長寬比（例 "3 / 4"）, pos 讓裡面有 abs 的子項浮在上面, abs 浮在角落 {t 上, r 右, b 下, l 左}, cls 多加一個 class 名})；橫排 gh 同上；
-     按鈕 gbtn("字", {pri 綠底、bg／c 自己指定顏色、bd 框線；畫出來的 class 叫 g1／g2，不能叫 sec——藥師版有一個 .sec 是整個「一節」的樣式})；分隔線 gsep({m, c}) */
   function gt(text, o) { return gmix({ k: "t", t: text }, o); }
   function gx(kids, o) { return gmix({ k: "b", kids: kids }, o); }
   function gh(kids, o) { var n = gx(kids, o); n.h = 1; return n; }
@@ -178,9 +143,6 @@
     else if (n.kids) n.kids.forEach(function(c) { gtexts(c, out); });
     return out;
   }
-  /* 練習聊天室（_learn_dev_sim.js 的畫面）裡的卡片是「活的」：有 send 的那一格（格子的每一列、「👀 預覽、存檔」、「✏️ 修改」的欄位按鈕…）可以點、可以用鍵盤按（Tab 走過去、Enter 或空白鍵），
-     點下去 = 跟真的 LINE 上點那顆按鈕一樣，丟給練習聊天室的機器人。gAct＝畫這一串訊息的時候「點下去要找誰」（練習聊天室畫之前才設、畫完就清掉）；課文裡靜態的示範沒有設，卡片就只是畫面。
-     send＝{ m: 送出的字 }（message 按鈕）或 { p: postback 的字, d: 聊天室多出來的那句字（沒有就不多）, fill: 輸入框要先填好的字 }。 */
   var gAct = null;
   function gwire(e, n) {
     var h = gAct, lab = n.al || gtexts(n, []).join("，"), send = n.send;
@@ -188,7 +150,7 @@
     e.setAttribute("role", "button");
     e.setAttribute("tabindex", "0");
     e.setAttribute("aria-label", lab);
-    e.setAttribute("data-send", send.p !== undefined ? "p:" + send.p : send.web !== undefined ? "web:" + send.web : "m:" + send.m);   /* 測試用：這顆按鈕按下去送的是什麼（p:＋postback 的字，或 m:＋打出去的字） */
+    e.setAttribute("data-send", send.p !== undefined ? "p:" + send.p : send.web !== undefined ? "web:" + send.web : "m:" + send.m);
     on(e, "click", function() { h(send, lab); });
     on(e, "keydown", function(ev) { if (ev.key === "Enter" || ev.key === " " || ev.keyCode === 13 || ev.keyCode === 32) { ev.preventDefault(); h(send, lab); } });
   }
@@ -234,7 +196,7 @@
       (n.kids || []).forEach(function(c, i) { e.appendChild(gnode(c, !!n.h, g, i === 0)); });
     }
     if (n.ar) e.style.aspectRatio = n.ar;
-    if (n.hh !== undefined) e.style.height = gu(n.hh);   /* 固定高度（Flex 的 height；例：位置查核每一列的打勾框 34、照片 52）*/
+    if (n.hh !== undefined) e.style.height = gu(n.hh);
     if (n.cls) e.className += " " + n.cls;
     if (n.send && gAct) gwire(e, n);
     fl = n.f !== undefined ? n.f : (parentH ? 1 : 0);
@@ -242,7 +204,6 @@
     if (n.w !== undefined) { e.style.width = gu(n.w); e.style.flex = "0 0 auto"; }
     if (n.wp !== undefined) { e.style.width = n.wp + "%"; e.style.flex = "0 0 auto"; }
     if (n.abs) {
-      /* 浮在上一層（要有 pos）的角落：abs＝{ t 上, r 右, b 下, l 左 }（單位同 --u；沒寫的那一邊不管）。不佔位置，所以不留白 */
       e.style.position = "absolute";
       e.style.flex = "none";
       ["t:top", "r:right", "b:bottom", "l:left"].forEach(function(kv) { var p = kv.split(":"); if (n.abs[p[0]] !== undefined) e.style[p[1]] = gu(n.abs[p[0]]); });
@@ -254,16 +215,12 @@
     }
     return e;
   }
-  /* 訊息的種類 w：gc＝LINE 卡片（跟機器人的訊息一樣，帶頭像）、wp＝瀏覽器裡的網頁畫面（照 gc 的畫法，但不帶頭像——那不是 LINE 的訊息，要有 m.bar 網址列）、qr＝輸入框上面的小按鈕。
-     一張卡片：m.kids＝上面（body）、m.foot＝最下面（footer，通常是按鈕）、m.pad＝body 的內距、m.sp＝body 裡每一項的距離、
-     m.size＝"mega"（小張，300 份寬；不寫就是 giga，整個聊天室那麼寬）、m.alt＝給讀屏的一句話；
-     畫「瀏覽器裡的網頁」也用這個：m.bar＝上面一條網址列的字（有的話，卡片上面多一條灰色的）、m.bg＝整張的底色（網頁的底色） */
   function gcEl(m) {
     var all = [], card, body;
     (m.kids || []).forEach(function(n) { gtexts(n, all); });
     (m.foot || []).forEach(function(n) { gtexts(n, all); });
     if (m.bar) all.unshift("瀏覽器的網址列：" + m.bar);
-    card = el("div", { class: "gk", role: gAct ? "group" : "img", "aria-label": m.alt || ((m.bar ? "網頁畫面示意：" : gAct ? "LINE 卡片：" : "LINE 卡片示意：") + all.join("；")) });   /* 活的卡片裡有按鈕，不能是 img（讀屏軟體會把裡面的按鈕當成圖的一部分，讀不到） */
+    card = el("div", { class: "gk", role: gAct ? "group" : "img", "aria-label": m.alt || ((m.bar ? "網頁畫面示意：" : gAct ? "LINE 卡片：" : "LINE 卡片示意：") + all.join("；")) });
     if (m.size === "mega") card.style.width = gu(300);
     if (m.bg) card.style.background = m.bg;
     if (m.bar) card.appendChild(el("div", { class: "gk-bar", "aria-hidden": "true" }, [el("span", { text: "🔒" }), el("span", { text: m.bar })]));
@@ -272,8 +229,6 @@
     if (m.foot && m.foot.length) card.appendChild(gnode(gx(m.foot, { p: 13, sp: "sm" }), false, 0, true));
     return card;
   }
-  /* 輸入框上面的小按鈕（LINE 的 quick reply）：照「釘住的按鈕」那一課的輸入列畫——一排小按鈕（放不下就左右滑），下面是輸入框；
-     items 每一項是字，或 { t: 字, on: 1 }（粉紅色＝這一顆值得注意）；cap＝上面那一行小字（不寫就是「輸入框上面會出現這幾顆小按鈕」） */
   function qrEl(m) {
     var names = m.items.map(function(x) { return typeof x === "string" ? x : x.t; });
     var cap = m.cap || "輸入框上面會出現這幾顆小按鈕";
@@ -291,7 +246,6 @@
     row.setAttribute("aria-hidden", "true");
     return el("div", { class: "qrw" }, [el("div", { class: "qrl", "aria-hidden": "true", text: "⬇ " + cap }), bar]);
   }
-  /* Google 試算表：m.tabs 全部分頁、m.tab 現在這一頁、m.cols 欄名、m.rows 每一列（第一列＝標題列；m.nohd＝這一頁沒有標題列，第一列也是資料）、m.bad 紅底的列（從 0 算）、m.nt 有註解的格 [列, 欄]、m.note 下面的說明、m.cap 給讀屏的一句話 */
   function shEl(m) {
     var cols = m.cols || m.rows[0].map(function(x, i) { return "ABCDEFGHIJ".charAt(i); });
     var bad = m.bad || [], nts = m.nt || [];
@@ -309,13 +263,11 @@
     if (m.note) kids.push(el("div", { class: "sh-n", text: m.note }));
     return el("div", { class: "shw" }, kids);
   }
-  /* 指令清單：每一項 [指令, 做什麼] */
   function cmdsEl(items) {
     return el("ul", { class: "cmds" }, items.map(function(it) { return el("li", {}, [el("b", { text: it[0] }), el("span", { text: it[1] })]); }));
   }
-  /* 示範區（secView 用）：試算表（d.k＝sh）、指令清單（d.k＝cmds）；回傳 [示範區, 下面的說明框]，跟別的示範區一樣 */
   function devDemo(d) {
-    if (d.k === "dsim") return demoDsim(d);   /* 練習聊天室（_learn_dev_sim.js） */
+    if (d.k === "dsim") return demoDsim(d);
     var body = d.k === "sh" ? shEl(d) : cmdsEl(d.items);
     var stage = el("div", { class: "stage" }, [
       el("div", { class: "stage-h" }, [el("span", { class: "stage-t", text: d.ttl || (d.k === "sh" ? "試算表長這樣" : "指令") })]),
@@ -324,9 +276,6 @@
     ]);
     return [stage, noteBox("")];
   }
-  /* ───── 練習聊天室的藥品卡片（o.row）灰底框裡的東西：照真的卡片的順序（01 的 extraBox_）─────
-     ⚠️ 注意（紅框）→ 曾用藥品（試算表裡用換行分的，卡片上也一行一個）→ 適應症 → 藥品特徵（沒有照片：一列；有照片：特徵超過 12 個字、或不是水劑，放在照片上面的藍框，不然放在照片旁邊的小框）→ 照片。
-     全部都沒有、也沒有照片，就沒有這個灰底框。回 { el: 灰底框, said: 給讀屏的幾句話 }；沒有回 null。 */
   function devBr(v) { return String(v === null || v === undefined ? "" : v).replace(/<br\s*\/?>/gi, "\n").replace(/\r\n?/g, "\n"); }
   function devOldOf(v) {
     var s = devBr(v).trim(), list = s ? s.split(/\s*[»>,、\n]\s*/).filter(function(x) { return x !== ""; }) : [];
@@ -382,20 +331,17 @@
     pan.appendChild(row);
     return { el: pan, said: said };
   }
-  /* 一張開發者版的藥品卡片。o.over＝只在畫這一張的時候，把這支藥的幾個欄位換成別的（例：改位置之後的那張卡）；o.row＝練習聊天室裡這支藥現在的樣子（新建的、改過的；課文裡畫的藥不用）：
-     灰底框改用 devExtras 畫（多了「注意」「曾用藥品」，順序照真的）、位置沒有平面圖（這一頁的示意圖只有 K2、B1、棧一）就不畫地圖（真的卡片：位置沒有登記平面圖，就只有粉紅色的位置框）；
-     o.edit＝最下面多一顆「✏️ 修改」（跟真的卡片一樣：footer 留白 10、按鈕內距 9）；練習聊天室（gAct）裡那顆是真的按鈕（postback edit=CODE） */
-  function devPlanHits() {   /* 平面圖指定「棧左」「棧中」「棧右」：紅框亮在棧板最上面那一排（PBLK 的前三塊）。藥師版那一頁只有 K2、B1、棧一三個紅框；PHIT 在這一段之後才建好，所以用到的時候才補 */
+  function devPlanHits() {
     if (!PHIT["棧左"]) { PHIT["棧左"] = PBLK[0].slice(0, 4); PHIT["棧中"] = PBLK[1].slice(0, 4); PHIT["棧右"] = PBLK[2].slice(0, 4); }
   }
   function devLc(code, o) {
     var saved = DR[code], had = Object.prototype.hasOwnProperty.call(DR, code), cd, ed, ex = null, base, lr, gen, lt, lb, lz, loc, map, mp = o.map || "", oo = o;
     devPlanHits();
-    if (mp && PHIT[mp]) { oo = gmix({}, o); oo.hit = mp; }   /* 平面圖指定棧左／棧中／棧右：紅框亮在棧板最上面那一排的那一塊 */
+    if (mp && PHIT[mp]) { oo = gmix({}, o); oo.hit = mp; }
     if (o.row) {
       base = gmix({}, o.row);
       ex = devExtras(base, !!o.note);
-      base.feat = ""; base.ind = ""; base.ph = 0;   /* 灰底框自己畫，不用藥師版 lcCard 那一套 */
+      base.feat = ""; base.ind = ""; base.ph = 0;
       DR[code] = gmix(base, o.over || {});
     } else if (o.over) DR[code] = gmix(gmix({}, saved), o.over);
     try { cd = lcCard(code, oo); } finally { if (had) DR[code] = saved; else delete DR[code]; }
@@ -404,11 +350,11 @@
       if (ex && lr) cd.insertBefore(ex.el, lr);
       if (ex && ex.said.length) cd.setAttribute("aria-label", cd.getAttribute("aria-label") + "；" + ex.said.join("；"));
       gen = cd.querySelector(".lc-gen");
-      if (gen && !gen.textContent) gen.textContent = "\u00a0";   /* 學名是空的：真的卡片寫一個空白字，還是佔一行的高度 */
+      if (gen && !gen.textContent) gen.textContent = "\u00a0";
       lt = cd.querySelector(".lc-lt");
-      if (lt && !lt.textContent) lt.textContent = "-";   /* 位置是空的：真的卡片寫「-」（locationBox_ 的 r.location || "-"） */
+      if (lt && !lt.textContent) lt.textContent = "-";
       lb = cd.querySelector(".lc-brand");
-      if (lb && !lb.textContent) lb.textContent = "-";   /* 商品名、中文名是空的（批次匯入的新藥可以只有其中一個）：真的卡片也寫「-」（r.brand || "-"、r.chName || "-"） */
+      if (lb && !lb.textContent) lb.textContent = "-";
       lz = cd.querySelector(".lc-zh");
       if (lz && !lz.textContent) lz.textContent = "-";
       if (mp === "none" || (!mp && !o.hit && !o.spots && !PHIT[o.row.loc])) {
@@ -418,7 +364,6 @@
         if (loc) loc.className += " solo";
         if (mp === "none") cd.setAttribute("aria-label", cd.getAttribute("aria-label") + "；這支藥設成沒有平面圖，卡片上沒有地圖");
       } else if (mp) {
-        /* 開發者指定了平面圖（「平面圖 CODE 櫃名」或 ✏️ 修改 → 🗺 平面圖）：這一頁的示意圖只畫得出棧板最上面一排（棧左、棧中、棧右）；其他櫃名只能在示意圖上標一個名字 */
         map = cd.querySelector(".lc-map");
         if (map) map.appendChild(el("div", { class: "lc-mcap", "data-part": "mapcap", text: PHIT[mp] ? "🗺 " + mp : "🗺 " + mp + "（示意）" }));
         cd.setAttribute("aria-label", cd.getAttribute("aria-label") + "；平面圖指定為「" + mp + "」" + (PHIT[mp] ? "" : "（這張示意圖不會換，真的卡片會換成那張平面圖）"));
@@ -432,8 +377,6 @@
     }
     return cd;
   }
-  /* 貨架照片（位置查核傳的）：一張拍起來的貨架——上面一條位置牌（AI 讀到的字；空的＝牌子被擋住）、下面一排藥盒（盒子上的藥名）、最下面是木板；
-     dark＝光線太暗，整張暗暗的、盒子上的字看不清楚。畫面是 CSS 畫的，不是照片；m.what＝讀屏用的「貨架」 */
   function rkEl(m) {
     var boxes = m.shelf || [], said;
     said = m.dark ? "光線太暗，看不清楚" : (m.sign ? "架上的位置牌寫著「" + m.sign + "」" : "位置牌被擋住了，看不到") + "，架上有：" + boxes.join("、");
@@ -445,44 +388,37 @@
     ]);
   }
   function devIsEd(o) { return !!o && !!(o.edit || o.over || o.row); }
-  /* bubble0 的外掛：認得 gc／qr，以及「帶 ✏️ 修改 的藥品卡片」（一張、或一排）；不認得就回 null，照原本的畫 */
   function devBubble(m) {
     var w = m.w;
     if (w === "gc") return el("div", { class: "lcw" }, [gcEl(m)]);
     if (w === "wp") return el("div", { class: "lcw wpw" }, [gcEl(m)]);
     if (w === "qr") return qrEl(m);
-    if (w === "gcar") return carEl(m.cs.map(gcEl), m.cs.length + " 張卡片，往左滑看下一張");   /* 位置查核一格超過 12 個品項：一頁一張卡片，往左滑 */
+    if (w === "gcar") return carEl(m.cs.map(gcEl), m.cs.length + " 張卡片，往左滑看下一張");
     if (m.shelf) return rkEl(m);
     if (w === "dc" && devIsEd(m.o)) return el("div", { class: "lcw" }, [devLc(m.c, m.o)]);
     if (w === "car" && m.cs.some(function(x) { return devIsEd(x.o); })) return carEl(m.cs.map(function(x) { return devLc(x.c, x.o || {}); }), m.cs.length + " 張藥品卡片，往左滑看下一張");
     return null;
   }
 
-  /* ───────── 開發者教學：照 LINE 上真的開發者卡片畫（第 16 批）─────────
-     每一張都是照程式裡組卡片的那一段（06_行動指令.gs 的新藥格子、✏️ 修改、一次改多項、公告；08_匯入.gs 的匯入總覽、逐筆確認、🔧 開發者功能）的文字、顏色、字級、順序畫的；
-     示範用的藥、CODE、位置全是編的，也不會真的改到任何資料。 */
   DR["90120"] = { b: "NEWTESTIN* 10MG TAB", z: "新測寧錠 10 毫克", g: "", f: "錠劑", w: 0, ind: "高血壓", feat: "", loc: "K2", ph: 0 };
   DR["90121"] = { b: "NEWSAMPLE* 5MG TAB", z: "新樣本錠 5 毫克", g: "", f: "錠劑", w: 0, ind: "", feat: "", loc: "B1", ph: 0 };
   var GREEN = "#1B7F5C", GBG = "#EFF3F0";
-  /* 90101 有同成分的 90114、90115 → 真的藥品卡片上有紫色、收起來的「藥品家族」框（打開才看得到裡面）。開發者課裡每一張 90101 的卡片都照這樣畫 */
   var dcBase = dc;
   dc = function(code, o) {
     var o2 = {}, k;
     for (k in (o || {})) o2[k] = o[k];
-    if (code === "90101" && !o2.fam && !o2.row) o2.fam = FAM1;   /* 練習聊天室（o.row）的藥品家族是現場照試算表排的（dsFam） */
+    if (code === "90101" && !o2.fam && !o2.row) o2.fam = FAM1;
     return dcBase(code, o2);
   };
   function gcut(s, n) {
     var t = String(s === null || s === undefined ? "" : s).replace(/\s+/g, " ").trim();
     return t.length > (n || 58) ? t.substring(0, n || 58) + "…" : t;
   }
-  /* 一顆「欄位按鈕」（✏️ 修改選單、一次改多項、新藥格子底下那種淺綠色的方塊） */
   function gfld(label, o) {
     o = o || {};
     return gx([gt(label, { z: o.z || (label.length > 6 ? "xs" : "sm"), b: 1, c: o.c || GREEN, a: "center", nw: 1 })], gmix({ f: 1, bg: o.bg || GBG, r: "md", p: o.p || 11 }, o.box));
   }
 
-  /* ① 新藥：8 格 ───────────────────────── */
   var WZS = [
     { k: "code", n: "CODE", hint: "例：22975" },
     { k: "brand", n: "商品名", hint: "例：CURAM" },
@@ -493,7 +429,6 @@
     { k: "note", n: "適應症", hint: "例：抗生素", skip: 1 },
     { k: "feat", n: "特徵", hint: "例：白色橢圓 有刻痕", skip: 1 }
   ];
-  /* d＝已經答過的格子（有這個 key＝答過了，空字串＝跳過）、cur＝黃色的那一格 */
   function wizCard(d, cur) {
     var filled = 0, need = 0, kids, bottom;
     WZS.forEach(function(s) { if (d[s.k]) filled++; if (!s.skip && !d[s.k]) need++; });
@@ -518,9 +453,6 @@
     return { w: "gc", pad: 14, kids: kids, alt: "新增藥品的格子：已填 " + filled + "／8" + (need ? "，必填還差 " + need + " 格" : "，必填都填好了") + (cur ? "，黃色的是「" + WZS.filter(function(s) { return s.k === cur; })[0].n + "」那一格" : "") };
   }
 
-  /* ② ✏️ 改（點卡片下面的「✏️ 修改」）：18 顆欄位按鈕，兩顆一排 ─────────────────────────
-     o＝練習聊天室才有：o.row 這支藥現在的樣子、o.kinds 每一顆按下去送 effill（手機先把「欄位名＋現在的內容」填進輸入框）還是 ef（位置、劑型有快速按鈕；公告類別、照片…各走各的）；
-     有 o.kinds 的卡片是活的（每一顆都能點），課文裡畫的沒有。 */
   var EFL = ["曾用藥品", "商品名", "注意", "小藥庫位置", "適應症", "劑型", "藥品外觀", "📷 換照片", "中文", "藥品特徵", "學名", "公告類別", "藥品查詢參考網站", "公告補充說明", "📷 公告照片", "📍 各區位置", "🗺 平面圖", "📖 縮寫"];
   var EFK = ["old", "brand", "pair", "loc", "note", "form", "photo", "pic", "zh", "feat", "gen", "nk", "ref", "nm", "npic", "zones", "map", "abbr"];
   function editMenuCard(code, notice, o) {
@@ -543,9 +475,7 @@
     return { w: "gc", pad: 14, kids: kids, alt: "「✏️ 改 " + code + "」的選單：最上面一顆「📝 一次改多項」，下面 18 顆欄位按鈕（" + EFL.join("、") + "）" };
   }
 
-  /* ③ 📝 一次改多項：A～J 十列，每一列右邊一顆「改」；改過的列變綠、寫「✅ 已寫進去」＋「原本：…」 ───────────────────────── */
   var MEFR = [["A", "商品名", "brand"], ["B", "中文", "zh"], ["C", "小藥庫位置", "loc"], ["D", "藥品特徵", "feat"], ["E", "學名", "gen"], ["F", "藥品照片", "pic"], ["G", "公告類別", "nk"], ["H", "公告補充說明", "nm"], ["I", "曾用藥品", "old"], ["J", "縮寫", "abbr"]];
-  /* vals＝每一欄現在的值、was＝這一輪改過的欄位 → 原本的值、head＝上面的一行說明；o＝練習聊天室才有：o.row 這支藥現在的樣子、o.live 每一顆「改」都能點 */
   function mefCard(code, vals, was, head, o) {
     o = o || {};
     var r = o.row || DR[code], n = 0, kids, k, row, live = !!o.live;
@@ -577,7 +507,7 @@
         else if (kk === "nk") one = sd("mefnk=" + code, f[0] + " " + f[1] + " 那一列的「" + (ch ? "再改" : "改") + "」：點一下，出現五種公告的卡片", "「" + f[1] + "」那一列的「" + (ch ? "再改" : "改") + "」");
         else one = sd("meffill=" + code + "|" + kk, f[0] + " " + f[1] + " 那一列的「" + (ch ? "再改" : "改") + "」：點一下，輸入框先填好「欄位名＋現在的內容」", "「" + f[1] + "」那一列的「" + (ch ? "再改" : "改") + "」");
       }
-      btns = kk === "pic" ? [gfld("網址", { z: "sm", box: gmix({ w: 56, f: 0 }, one), p: 9 }), gfld("📷 傳", { z: "sm", box: gmix({ w: 64, f: 0 }, two), p: 9 })] : [gfld(ch ? "再改" : "改", { z: "sm", box: gmix({ w: ch ? 58 : 52, f: 0, cls: "mefb" }, one), p: 9 })];   /* cls：課文要讓手指按第幾列的「改」（藥品照片那一列是「網址」「📷 傳」，沒有這個 class） */
+      btns = kk === "pic" ? [gfld("網址", { z: "sm", box: gmix({ w: 56, f: 0 }, one), p: 9 }), gfld("📷 傳", { z: "sm", box: gmix({ w: 64, f: 0 }, two), p: 9 })] : [gfld(ch ? "再改" : "改", { z: "sm", box: gmix({ w: ch ? 58 : 52, f: 0, cls: "mefb" }, one), p: 9 })];
       row = gx([gh([gx(left, { f: 1 })].concat(btns), { sp: "sm", pt: 10, pb: 10, ai: "center" }), gsep({ m: "none" })], { m: i === 0 && !head && n === 0 ? "md" : "none" });
       kids.push(row);
     });
@@ -585,7 +515,6 @@
     return { w: "gc", size: "mega", pad: 16, kids: kids, alt: "「📝 一次改 " + code + "」的卡片：A 到 J 十列（" + MEFR.map(function(f) { return f[0] + " " + f[1]; }).join("、") + "），每一列右邊一顆「改」；改過的列變綠色" };
   }
 
-  /* ④ 📢 公告類別（從「一次改多項」進來的那張）：五顆按鈕，現在掛著的那顆是綠底；o.live＝練習聊天室裡每一顆都能點 ───────────────────────── */
   var NKS = { "1": "停止供貨", "2": "改包裝通知", "3": "製廠缺貨", "4": "換廠", "5": "給慢箋" };
   function nkCard(code, cur, o) {
     var live = !!(o && o.live);
@@ -603,7 +532,6 @@
     kids.push(gh([gfld("🗑 移除公告", { z: "xs", c: "#C0392B", bg: "#FDECEC", box: sd("mefnkset=" + code + "|0", "🗑 移除公告：點一下，公告和補充說明都清掉", "「🗑 移除公告」") }), gfld("← 不改，回去", { z: "xs", c: "#8A8A8A", box: sd("mef=" + code, "← 不改，回去：回到一次改多項的卡片", "「← 不改，回去」") })], { m: "lg", sp: "sm" }));
     return { w: "gc", size: "mega", pad: 16, kids: kids, alt: "「📢 " + code + " 的公告」：五顆按鈕（1 停止供貨、2 改包裝通知、3 製廠缺貨、4 換廠、5 給慢箋），" + (cur ? "現在掛著的是 " + cur + " " + NKS[cur] : "現在沒有公告") + "，最下面「🗑 移除公告」和「← 不改，回去」" };
   }
-  /* ④-2 ＋ 其他欄位（一次改多項那張卡的「＋ 其他欄位」）：剩下四欄（注意、適應症、劑型、藥品查詢參考網站），兩顆一排，最下面「← 回「一次改多項」」。練習聊天室才用得到 */
   function mefMoreCard(code, o) {
     var live = !!(o && o.live), more = [["pair", "注意"], ["note", "適應症"], ["form", "劑型"], ["ref", "藥品查詢參考網站"]], kids, i;
     function fb(x) { return gfld(x[1], live ? { box: { send: { p: "meffill=" + code + "|" + x[0], a: "「" + x[1] + "」" }, al: x[1] + "：點一下，輸入框先填好「欄位名＋現在的內容」" } } : {}); }
@@ -617,12 +545,10 @@
     return { w: "gc", size: "mega", pad: 16, kids: kids, alt: "「＋ 其他欄位 " + code + "」：" + more.map(function(x) { return x[1]; }).join("、") + " 四顆按鈕，最下面「← 回「一次改多項」」" };
   }
 
-  /* ⑤ 匯入：總覽卡、逐筆確認卡（08_匯入.gs 的 _impOverviewBubble_、_impRowBubble_）───────────────────────── */
   function impCnt(n, label, c, bg) {
     return gx([gt(String(n), { z: "lg", b: 1, c: c, a: "center" }), gt(label, { z: "xxs", c: "#4B5563", a: "center" })], { f: 1, bg: bg, r: "md", p: 6 });
   }
-  function impBtn(label, pri, send) { return gbtn(label, gmix(pri ? { pri: 1 } : {}, send ? { send: { m: send }, al: label } : null)); }   /* send＝練習聊天室裡這顆是真的按鈕：按下去等於打那句字（真的 LINE 的 message 按鈕） */
-  /* o：{ b 批次、total 讀了幾列、add、upd、nc、pb、how 怎麼對欄的（不寫＝第一列的欄位名稱）、map 對欄那句、warns 有問題的列（寫好的一句一句，最多 4 句）、more 還有幾筆有問題沒列出來、cut 這批太大先做前幾筆之後還有幾筆留著、count 接下來幾筆、live 練習聊天室裡的按鈕是活的 } */
+  function impBtn(label, pri, send) { return gbtn(label, gmix(pri ? { pri: 1 } : {}, send ? { send: { m: send }, al: label } : null)); }
   function impOverview(o) {
     var kids = [
       gt("匯入總覽　批次 #" + o.b, { z: "md", b: 1, c: "#1F2933" }),
@@ -637,8 +563,6 @@
     kids.push(gt("接下來 " + o.count + " 筆會一筆一筆給您看，按「對」才寫入。", { z: "xs", c: "#6B7684" }));
     return { w: "gc", size: "mega", pad: 13, sp: "sm", kids: kids, foot: [impBtn("開始逐筆確認（第 1／" + o.count + "）", 1, o.live ? "開始逐筆確認" : ""), impBtn("取消（什麼都不寫）", 0, o.live ? "取消匯入" : "")], alt: "匯入總覽卡：讀了 " + o.total + " 列，新增 " + o.add + "、修改 " + o.upd + "、沒變 " + o.nc + "、有問題 " + o.pb + "；最下面兩顆按鈕「開始逐筆確認」「取消」" };
   }
-  /* o：{ i 第幾筆、total 共幾筆、add 新增還是修改、code、title（商品名或中文名）、head 右上角那句（不寫＝照真的：新增寫「工作表1 沒有這支 → 新增」、修改寫「改 N 格」）、
-        kv: [[標籤, 原本或 "", 現在, 有沒有整理過]]（新增：照真的順序 商品名、中文名、學名、位置、劑型、參考網站、公告類別、公告補充，只列有值的；修改：只列要改的格，原本是空的也要把第 4 個寫 1）、cur 現在（修改才有，例：商品名　位置　劑型）、warns、live 練習聊天室裡的按鈕是活的 } */
   function impRow(o) {
     var kids = [
       gh([gt("第 " + o.i + "／" + o.total + " 筆", { z: "xs", c: "#6B7684", f: 3 }), gt(o.head || (o.add ? "工作表1 沒有這支 → 新增" : "改 " + o.kv.length + " 格"), { z: "xs", c: o.add ? "#1E8E5A" : "#1E5C86", a: "end", f: 4 })]),
@@ -654,8 +578,6 @@
     return { w: "gc", size: "mega", pad: 13, sp: "sm", kids: kids, foot: [impBtn("✅ 對，寫入", 1, o.live ? "對" : ""), impBtn("✏️ 改一格", 0, o.live ? "改一格" : ""), impBtn("⏭ 跳過（留在待匯入）", 0, o.live ? "跳過" : ""), impBtn("⏹ 先停（其餘留在待匯入）", 0, o.live ? "先停" : "")], alt: "逐筆確認卡：第 " + o.i + "／" + o.total + " 筆，" + (o.add ? "新增 " : "修改 ") + o.code + " " + o.title + "；最下面四顆按鈕「對，寫入」「改一格」「跳過」「先停」" };
   }
 
-  /* ⑥ 🔧 開發者功能（輸入框上面的「🔧 開發者」按下去）：9 顆，兩顆一排，綠色的兩顆是最常用的 ───────────────────────── */
-  /* live＝練習聊天室裡的活的選單：每一顆按下去等於送出 it[2]（真的 LINE 上那一顆按鈕送的字，08 的 _devMenu_）*/
   function devMenuCard(ocrOn, newOn, v2On, live) {
     var items = [["➕ 新增藥品", 1, "新藥"], ["📮 回覆回報", 1, "回報"], ["🩺 體檢", 0, "體檢"], ["⏱ 速度", 0, "速度"], [ocrOn ? "🔬 OCR接手 ✅全院" : "🔬 OCR接手（已關）", 0, ocrOn ? "OCR接手 關" : "OCR接手"], ["📋 清單校對", 0, "清單校對"], [newOn ? "🎴 新卡片 ✅全院" : "🎴 新卡片（已關）", 0, newOn ? "舊卡片" : "新卡片"], [v2On ? "🎤 語音V2 ✅全院" : "🎤 語音V2（已關）", 0, v2On ? "語音V2 關" : "語音V2"], ["👥 開發者", 0, "開發者 管理"]], kids, i;
     function b(it) { return gx([gt(it[0], { z: "sm", b: 1, c: it[1] ? "#FFFFFF" : "#1F2933", a: "center" })], gmix({ f: 1, bg: it[1] ? "#06C755" : "#F1F3F6", r: "md", p: 11 }, live ? { send: { m: it[2] } } : {})); }
@@ -669,12 +591,7 @@
   }
 
 
-  /* ⑦ 開發者網頁（第 6 課）：LINE 這邊四張卡（連結卡、綁定碼卡、驗證碼卡、新裝置通知卡）＋瀏覽器裡的畫面（還沒綁定、代號登入、登入之後）
-        LINE 的卡：文字照 09_網頁版.gs 的 _cmdWeb_／_cmdWebBind_／_lcCard_／_lcNote_；網頁：照 _app_page.html 的 bindForm／renderPair／codeForm 和它的顏色。
-        網頁的畫面是另一種訊息（w:"wp"）：不帶機器人頭像——那不是 LINE 的訊息，是換到瀏覽器看到的；上面一條灰色的是網址列。 */
   var WBC = { blue: "#1F6FD0", red: "#B0392B", bg: "#EEF2F6", edge: "#708392", line: "#D1DBE5", ink: "#14202B", ink2: "#3F5566", mute: "#7A8C9A", hint: "#566B7B", soft: "#E4EEFA", url: "demo.github.io/buyao/", id: "demo01" };
-  /* LINE 的連結卡：o.dev＝開發者版（不寫就是開發者版）、o.force＝剛打過「重發」（多一句「已換新連結」）、o.days＝還剩幾天（不寫＝30）；
-     o.live＝練習聊天室裡這張是活的：值是這條連結的鑰匙編號，「打開網頁」按下去會在練習的瀏覽器打開它，「🔑 拿綁定碼」等於打「開發者網頁 綁定」 */
   function webLinkCard(o) {
     o = o || {};
     var dev = o.dev !== false, f = o.force ? "\n（已換新連結，舊的已失效）" : "", days = o.days || 30, kids, L;
@@ -694,7 +611,6 @@
     return { w: "gc", pad: 13, kids: kids, foot: [gbtn("打開網頁", gmix({ pri: 1, bg: WBC.blue }, o.live ? { send: { web: (dev ? "dev:" : "app:") + o.live }, al: "打開網頁：在你選的那一台打開這條連結" } : null))].concat(dev ? [gbtn("🔑 拿綁定碼", o.live ? { send: { m: "開發者網頁 綁定" }, al: "🔑 拿綁定碼：等於幫你打「開發者網頁 綁定」" } : null)] : []),
       alt: "「" + (dev ? "🛠 補藥神器 開發者網頁" : "🌐 補藥神器 網頁版") + "」卡片：" + (dev ? "開發者網頁多了藥品卡片右上角的 ✏️、連結只能自己用、每一台要先綁定（最多 3 處）" : "藥師版網頁，電腦手機都能開") + "；最下面" + (dev ? "兩顆按鈕「打開網頁」「🔑 拿綁定碼」" : "一顆按鈕「打開網頁」") };
   }
-  /* 「開發者網頁 綁定」：6 位數綁定碼 */
   function wbBindCard(code, o) {
     o = o || {};
     var L = ["在要綁的那台（LINE 裡、手機瀏覽器、電腦、主畫面捷徑）打開開發者網頁，把這 6 位數打進去。", "10 分鐘內有效、只能用一次（再拿新的，這組就作廢），只對你現在這條開發者連結有效；最多綁 3 處。", "⚠️ 這組碼只打在補藥神器網頁上，不要傳給任何人（包括自稱開發者、客服的人）。"];
@@ -703,7 +619,6 @@
     return { w: "gc", pad: 13, kids: kids, foot: [gbtn("打開開發者網頁", gmix({ pri: 1, bg: WBC.blue }, o.live ? { send: { web: "dev:" + o.live }, al: "打開開發者網頁：在你選的那一台打開這條連結" } : null))],
       alt: "「🔑 開發者網頁綁定碼」卡片：6 位數的碼 " + code + "，10 分鐘內有效、只能用一次、最多綁 3 處；最下面一顆按鈕「打開開發者網頁」" };
   }
-  /* 把代號貼進 LINE 之後回的「驗證碼」卡（像銀行簡訊；開發者版是藍色）：v＝6 位數驗證碼、code＝網頁上的代號、lab＝網頁自己報的名稱 */
   function wbCodeCard(v, code, lab, devV) {
     var dev = devV !== false, warn = dev ? "⚠️ 這組碼進得了開發者版（能改資料）。請只打在剛剛那個網頁上，不要告訴任何人（包括自稱客服、開發者的人）。" : "⚠️ 請只打在剛剛那個網頁上，不要告訴任何人（包括自稱客服的人）。";
     var L = ["給「代號 " + code + "」那個網頁用的" + (lab ? "（網頁自己報的名稱：" + lab + "）" : "") + "：回到那個網頁輸入，換別的瀏覽器打沒用。", "從網頁上出現代號那一刻起算，要在網頁的倒數歸零前輸入完；超過了，網頁會自己換一組新的代號，到時把新的代號再貼進來就好。", "不是你自己剛在網頁上看到這組代號的？不要輸入。", warn];
@@ -711,7 +626,6 @@
     L.forEach(function(s) { kids.push(gt(s, { z: "sm", c: s === warn ? WBC.red : "#666666", m: "sm" })); });
     return { w: "gc", pad: 13, kids: kids, alt: "「" + (dev ? "🛠 開發者版 網頁驗證碼" : "🔐 補藥神器 網頁驗證碼") + "」卡片：6 位數的驗證碼 " + v + "，限時 5 分鐘、只能用一次；只能打回出現代號 " + code + " 的那個網頁，換別的瀏覽器打沒用；沒有按鈕" };
   }
-  /* 有新裝置登入開發者網頁，LINE 推播給開發者的通知卡 */
   function wbNewDevCard(at, lab, n, o) {
     o = o || {};
     var L = ["剛剛 " + at + "，有一台新裝置用驗證碼登入了開發者網頁（能改資料）。", "裝置（瀏覽器自己報的，不一定是真的）：" + lab + "\n已綁裝置：" + n + "／3 台", "是你自己 → 不用理會。\n不是你 → 按下面的按鈕：舊連結和所有已綁的裝置馬上失效（要再用開發者網頁，重新拿連結或驗證碼）。"];
@@ -720,9 +634,7 @@
     return { w: "gc", pad: 13, kids: kids, foot: [gbtn("不是我，全部作廢", gmix({ pri: 1, bg: WBC.red }, o.live ? { send: { m: "開發者網頁 重發" }, al: "不是我，全部作廢：等於幫你打「開發者網頁 重發」" } : null))],
       alt: "「🔔 開發者網頁有新裝置登入」卡片：" + at + " 有一台新裝置（" + lab + "）登入，已綁 " + n + "／3 台；是自己就不用理會；最下面一顆紅色按鈕「不是我，全部作廢」" };
   }
-  /* 瀏覽器裡的畫面共用的外框：灰色網址列＋網頁的底色 */
   function wbPage(kids, alt, o) { return gmix({ w: "wp", bar: WBC.url, bg: WBC.bg, pad: 16, kids: kids, alt: alt }, o); }
-  /* 網頁：開發者版這台還沒綁定（bindForm）。o.typed＝輸入框裡已經打的字、o.err＝紅字（"❌ " 是網頁自己加的）、o.wait＝灰字（確認中…） */
   function wbBind(o) {
     o = o || {};
     var kids = [
@@ -737,7 +649,6 @@
     kids.push(gt("碼 10 分鐘內有效、只能用一次；錯 5 次鎖 1 小時；最多綁 3 處。\n這組碼只打在這裡，不要傳給任何人。", { z: 12.5, c: WBC.mute, a: "center", m: 10 }));
     return wbPage(kids, "網頁畫面：「🔒 這台還沒綁定開發者版。在 LINE 打『開發者網頁 綁定』，把拿到的 6 位數碼打在下面」，一個輸入框（" + (o.typed ? "已打 " + o.typed : "寫著 6 位數碼") + "）和藍色的「綁定」鍵" + (o.err ? "，下面紅字：" + o.err : "") + (o.wait ? "，下面灰字：" + o.wait : "") + "；最下面小字：碼 10 分鐘內有效、只能用一次，錯 5 次鎖 1 小時，最多綁 3 處", { pad: 20 });
   }
-  /* 網頁：代號登入（codeForm＋renderPair）。o.dev 開發者版（6 位數字代號，上面多一個「🛠 開發者登入」小標籤）、o.code 代號、o.left 倒數、o.typed 驗證碼輸入框裡的字、o.err 紅字 */
   function wbLogin(o) {
     var dev = o.dev !== false, shown = dev ? o.code.slice(0, 3) + " " + o.code.slice(3) : o.code, pair, step2, kids;
     pair = gx((dev ? [gx([gt("🛠 開發者登入", { z: 13, b: 1, c: WBC.ink })], { bg: WBC.soft, r: 20, px: 12, py: 2, m: 0 })] : []).concat([
@@ -759,7 +670,6 @@
     ]);
     return wbPage(kids, "網頁畫面：代號登入。" + (dev ? "上面一個「🛠 開發者登入」小標籤，" : "") + "①把這組" + (dev ? "開發者代號 " : "代號 ") + o.code + " 打進 LINE 補藥神器（一對一，不是群組），下面有「複製代號」鍵和倒數 " + o.left + "；" + (o.noStep2 ? "" : "②LINE 回的 6 位數驗證碼打在輸入框（" + (o.typed ? "已打 " + o.typed : "寫著 LINE 給你的 6 位數") + "），按藍色的「登入」鍵" + (o.err ? "，下面紅字：" + o.err : "") + "；") + "最下面小字說明 5 分鐘內要完成，小連結「" + (dev ? "← 回藥師登入" : "開發者登入") + "」", { pad: 16 });
   }
-  /* 網頁：登入／綁定好了，回到首頁（開發者版：標題下面多一個「開發者版」小標籤） */
   function wbHome(hint) {
     var kids = [
       gh([
@@ -776,15 +686,12 @@
     return wbPage(kids, "網頁畫面：登入好了，回到開發者版首頁。左上「補藥神器」下面有「開發者版」小標籤，一個搜尋框（可以打字，右邊有 🎤 和 📷 兩個鍵），下面一行小字「" + (hint || "✅ 這台綁好了，以後在這裡直接開就好（不用再輸入）。") + "」", { pad: 14 });
   }
 
-  /* ⑧ 清單校對的網頁（lst.html；第 4 課）：照 _lst_page.html 的樣子和顏色（底 #F2F5F5、藍綠 #1B5C74、綠 #1B7A5A、紅 #B33E2E）。也是瀏覽器裡的畫面（w:"wp"） */
   var LSC = { bg: "#F2F5F5", ink: "#152020", ink2: "#3E5150", mute: "#6B807F", line: "#D6DFDF", edge: "#BCCACA", g: "#1B7A5A", b: "#1B5C74", r: "#B33E2E", soft: "#E8EDED", newbg: "#DCEFE7", url: "demo.github.io/buyao/lst.html" };
   function lstBtn(t, k, o) {
     var st = k === "y" ? { bg: LSC.g, c: "#FFFFFF", bd: LSC.g } : k === "no" ? { bg: "#FFFFFF", c: LSC.r, bd: LSC.r } : { bg: "#FFFFFF", c: LSC.ink2, bd: LSC.edge };
     return gx([gt(t, { z: 15.5, b: k !== "sk", c: st.c, a: "center" })], gmix({ bg: st.bg, bd: st.bd, r: 8, py: 12, jc: "center" }, o));
   }
   function lstChip(t, on) { return gx([gt(t, { z: 12.5, c: on ? "#FFFFFF" : LSC.mute, nw: 1 })], { bg: on ? LSC.b : "#FFFFFF", bd: on ? LSC.b : LSC.edge, r: 20, px: 11, py: 5, f: 0 }); }
-  /* 一張要審的卡：d＝{ code, nm, isNew（true＝表上沒有）, hand（手寫改的）, chg: [[欄位, 工作表1 原本的, 清單讀到的]], v: [[欄位, 值]]（表上沒有的才有，下面幾格可以改） }；
-     d.res＝按完之後那一行結果 { t 字, ok 綠字還是紅字 }（卡片會變淡、按鈕拿掉） */
   function lstItem(d) {
     var isNew = !!d.isNew, body = [], card = [];
     card.push(gh([
@@ -816,7 +723,6 @@
     }
     return gx(card, { bg: "#FFFFFF", bd: LSC.line, r: 10, op: d.res ? 0.55 : undefined });
   }
-  /* 審核頁（📋 待審清單）：o＝{ nl 待審幾筆、ni 待匯入分頁幾筆、f 選的篩選（0 全部、1 不一樣、2 表上沒有）、photo 那一張的標題（例：📷 第 1 張　09/15 10:12）、items 要畫的卡、alt } */
   function lstPage(o) {
     var kids = [
       gt("📋 清單校對", { z: 20, b: 1, c: LSC.ink }),
@@ -829,8 +735,6 @@
     kids.push(gx([gh([lstBtn("✅ 全部寫進（" + o.items.filter(function(d) { return !d.res; }).length + "）", "y", { f: 2 }), lstBtn("🗑 全部刪除", "no", { f: 1 })], { sp: 8 })], { m: 14 }));
     return gmix({ w: "wp", bar: LSC.url, bg: LSC.bg, pad: 14, kids: kids, alt: o.alt }, {});
   }
-  /* 縮圖一格（lst.html 的 .th）：淺灰底、3:4、右上角圓形的 ✕（拿掉這一張）、左下角第幾張、右下角檔案大小 K；
-     照片的地方畫成一張印出來的表格（淺色的線），因為真的是拿手機拍下來的那一張。i＝第幾張（從 0）、kb＝大小 */
   function lstThumb(i, kb) {
     var rows = [], k;
     for (k = 0; k < 9; k++) {
@@ -842,10 +746,6 @@
       gh([gt(String(i + 1), { z: 11, c: "#FFFFFF", mono: 1, f: 0 }), gt(kb + "K", { z: 11, c: "#FFFFFF", mono: 1, f: 0 })], { abs: { l: 0, r: 0, b: 0 }, bg: "rgba(20,32,32,.72)", px: 5, py: 3.6, jc: "space-between", sp: 4 })
     ], { pos: 1, ar: "3 / 4", bg: LSC.soft, bd: LSC.line, r: 7, f: 1 });
   }
-  /* 多張上傳頁（lst.html 的「① 上傳照片」那一張白卡）：
-     o.pick＝選好、還沒送出的照片，每一張的大小（K）[246, 231, …]，沒有就不畫縮圖；o.retry＝按鈕寫「🔁 重試這 N 張」（上次有失敗）；
-     o.rows＝進度列 [[圖示, 檔名, 右邊那段字, "ok"｜"bad"｜""], …]（沒寫＝還沒按「開始辨識」）；o.pct＝進度條走到幾 %；o.end＝最後一行 [圖示, 字]。
-     在跑的時候，縮圖和「開始辨識」都還在（按鍵不能按了，看起來一樣）；全部成功之後縮圖就清空，只剩進度列。 */
   function lstUpPage(o) {
     var pick = o.pick || [], n = pick.length, inner = [
       gt("① 上傳照片", { z: 12, c: LSC.mute, ls: 0.1, mono: 1 }),
@@ -874,8 +774,6 @@
     return gmix({ w: "wp", bar: LSC.url, bg: LSC.bg, pad: 14, kids: kids, alt: o.alt }, {});
   }
 
-  /* ⑨ 位置查核的網頁分頁（lst.html 的第二個分頁「📍 位置查核」；第 4 課後半）：照 _lst_page.html 的 .tabs／.lcq／.lcsum／.lcr／.lce 畫。
-     一列 x＝{ code, brand, zh, form, ph（有藥品照片）, water, tick（打勾）, moved（改去哪了，例 "K3"）, ed（這一列下面開著改位置的框：{ cur 現在在哪、sel 選單選了什麼、inp 輸入框裡的字、ce 確認那句、ok 按鍵的字 }）} */
   function lstLcRow(x) {
     var mv = !!x.moved, on = !!x.tick || mv, ck, thumb, txt, head, e = x.ed, kids = [], ed;
     ck = gx(on ? [gt(mv ? "→" : "✓", { z: 18, b: 1, c: mv ? "#B26B00" : "#FFFFFF", a: "center" })] : [], { w: 30, hh: 30, r: 8, bw: 2, bd: mv ? "#D98E04" : on ? LSC.g : "#9AA7A6", bg: mv ? "#FFF3D6" : on ? LSC.g : "#FFFFFF", jc: "center", cls: "lkt" });
@@ -903,8 +801,6 @@
     }
     return gx(kids, {});
   }
-  /* 整個分頁：o＝{ q 查詢框裡的字（沒寫＝提示字）、msg 查詢框下面那一行 { t, k "ok"｜"bad"｜"" }（沒寫＝不畫）、
-       loc 這一格（沒寫＝只畫上面查詢的部分）、seen 已看幾支、total 這一格一共幾支（顯示的）、sub 「這一格有…」那一行、rows 每一列（lstLcRow）、alt } */
   function lstLcPage(o) {
     var tab = function(t, on) { return gx([gt(t, { z: 14, b: 1, c: on ? "#FFFFFF" : LSC.ink2, a: "center" })], { f: 1, bg: on ? LSC.b : undefined, bd: on ? LSC.b : LSC.edge, bw: 1, r: 8, py: 12, jc: "center" }); };
     var kids = [
@@ -943,21 +839,11 @@
     return gmix({ w: "wp", bar: LSC.url, bg: LSC.bg, pad: 14, kids: kids, alt: o.alt }, {});
   }
 
-  /* ───────── 開發者練習聊天室：機器人的「引擎」（第 17 批）─────────
-     開發者教學每一課最後的「換你打打看」：自己在輸入框打字、或點輸入框上面的小按鈕、卡片上的按鈕，機器人就照真的 LINE 程式碼回；
-     這一頁的「機器人」是一支純函式（SIMDEV 標記之間，沒有碰畫面、沒有碰網路），測試會單獨拿出來跑，也會把同一串輸入同時丟給真的 LINE 程式碼，逐則比對回的字和小按鈕。
-     dsNew()＝一個全新的練習世界（編的藥品表、沒有任何待匯入、沒有改過的紀錄）；dsRun(S, ev)＝送出一個動作，回 { msgs, q, fill, trail, sheet, reply }：
-       ev＝{ t: "text", v: 打的字 } 或 { t: "pb", v: postback 的字, d: 按下去聊天室會多出來的那句字（沒有就不多）}，
-       或練習專用的兩種：{ t: "img" }（傳一張照片給機器人）、{ t: "sim", v: 代號 }（在雲端硬碟上做一件事，沒有傳給機器人；代號見 dsActs）；
-       msgs＝聊天室多出來的訊息（我打的字、機器人回的字和卡片，跟課文裡畫的是同一種）；q＝輸入框上面的小按鈕 [{ l: 字, m: 送出的字 } 或 { l, p: postback, d: 聊天室多出來的字 }]；
-       fill＝按下去之後輸入框要先填好的字（手機的 fillInText）；trail／sheet／reply＝深色框「背後發生的事」要寫的三樣（機器人一步一步看了什麼、試算表動了沒有、機器人回了什麼）。
-     這裡面的每一句機器人說的話，都照 06_行動指令.gs（新藥格子、✏️ 修改）、08_匯入.gs（匯入、復原、開發者指令）裡拼字串的那一句寫；練習的是「編的」試算表，什麼都不會真的寫。 */
-  /*SIMDEV*/
   var DS_CANCEL = ["取消", "不用了", "算了", "cancel"], DS_BACK = ["上一步", "回上一步", "上一題", "返回"], DS_SKIP = ["跳過", "略過", "沒有", "不填", "-", "－"];
   var DS_FORMS = ["錠劑", "膠囊", "口服液", "注射劑", "藥膏", "眼藥水", "栓劑", "貼片", "粉劑"];
-  var DS_NEWCODES = { "90120": 1, "90121": 1 };   /* 課文畫面用的新藥（DR 裡有，但練習的試算表一開始沒有；要自己用「新藥」建） */
-  var DS_LCK_MORE = 4;   /* 清單校對那一課（dsNew 的第二個參數）：K2 多出來的備用藥（真的試算表的測試世界也加同樣 4 支：tools/learn_dev_line.js 的 buildWorld o.lckBig） */
-  var DS_FILL = [["K2", 5], ["K3", 5]];   /* 備用藥 90201～90210（跟真的試算表一樣）：墊在課文那幾支藥後面，K2、K3 各 5 支，所以常用位置、新建的那一列是第幾列，都跟真的 LINE 一樣 */
+  var DS_NEWCODES = { "90120": 1, "90121": 1 };
+  var DS_LCK_MORE = 4;
+  var DS_FILL = [["K2", 5], ["K3", 5]];
   var DS_STEPS = [
     { key: "code", name: "CODE", ask: "CODE 是多少？", hint: "例：22975" },
     { key: "brand", name: "商品名", ask: "商品名（英文）？", hint: "例：CURAM" },
@@ -969,24 +855,22 @@
     { key: "feat", name: "特徵", ask: "藥品特徵？", hint: "例：白色橢圓 有刻痕", skip: 1 }
   ];
   var DS_ALIAS = { "code": "code", "CODE": "code", "Code": "code", "代碼": "code", "商品名": "brand", "英文名": "brand", "英文": "brand", "位置": "loc", "小藥庫位置": "loc", "藥位": "loc", "劑型": "form", "中文名": "zh", "中文": "zh", "學名": "gen", "成分": "gen", "特徵": "feat", "藥品特徵": "feat", "適應症": "note" };
-  var DS_BAR = [{ l: "🔧 開發者", m: "開發者" }];   /* 每一則回覆最下面「標準那排」小按鈕裡，練習聊天室做得到的只有這一顆（網頁、教學、藥品通知、BUG 在練習裡不做） */
+  var DS_BAR = [{ l: "🔧 開發者", m: "開發者" }];
   function dsIn(text, list) {
     var t = String(text === null || text === undefined ? "" : text).trim().replace(/\s+/g, ""), i;
     for (i = 0; i < list.length; i++) if (list[i] === t) return true;
     return false;
   }
-  function dsNorm(v) {   /* 01 的 normCode：去頭尾空白；有小數點就拿掉結尾的 .0 */
+  function dsNorm(v) {
     var s = v === null || v === undefined ? "" : String(v).trim();
     if (s.indexOf(".") >= 0) s = s.replace(/\.0+$/, "");
     return s;
   }
   function dsStep(k) { var i; for (i = 0; i < DS_STEPS.length; i++) if (DS_STEPS[i].key === k) return DS_STEPS[i]; return null; }
   function dsHas(d, k) { return Object.prototype.hasOwnProperty.call(d || {}, k); }
-  function dsIsWater(r) { var f = String(r.f || ""); return f.indexOf("水") >= 0 || f.indexOf("液") >= 0; }   /* 圖示（藥丸／水滴）和藥品特徵放哪裡，真的卡片只看劑型（01 的 formIconUrl、featOnTop_） */
-  function dsPhotoUrl(c) { return "https://drive.google.com/thumbnail?id=p" + c + "abcdefghij123&sz=w1000"; }   /* 練習用的假照片網址（有照片的藥，「工作表2」藥品外觀那格長這樣；編的，打不開） */
-  function dsPhOk(photo) { return /^https?:\/\/\S/i.test(String(photo === null || photo === undefined ? "" : photo).trim()); }   /* 01 的 photoUrlByCode_：https:// 開頭才當照片 */
-  /* 一支藥一列：b 商品名、z 中文、g 學名、f 劑型、w 水劑圖示、ind 適應症、feat 特徵、loc 位置、ph 有沒有照片（photo 是 https 網址才算）、
-     nk 公告類別（1~5）、nm 公告補充說明、old 曾用藥品、pair 注意、ref 藥品查詢參考網站、photo 藥品外觀那一格（照片網址）、npic 公告照片那一格（網址）。試算表兩張工作表的欄，合在一起放 */
+  function dsIsWater(r) { var f = String(r.f || ""); return f.indexOf("水") >= 0 || f.indexOf("液") >= 0; }
+  function dsPhotoUrl(c) { return "https://drive.google.com/thumbnail?id=p" + c + "abcdefghij123&sz=w1000"; }
+  function dsPhOk(photo) { return /^https?:\/\/\S/i.test(String(photo === null || photo === undefined ? "" : photo).trim()); }
   function dsRowOf(b, z, g, f, ind, feat, loc, photo) {
     var r = { b: b, z: z, g: g, f: f, w: 0, ind: ind || "", feat: feat || "", loc: loc, ph: 0, nk: "", nm: "", old: "", pair: "", ref: "", photo: photo || "", npic: "" };
     r.w = dsIsWater(r) ? 1 : 0;
@@ -1006,26 +890,19 @@
       rows[c] = dsRowOf("FILLER* " + n, "備用藥" + n, "", "錠劑", "", "", DS_FILL[i][0], "");
       order.push(c);
     }
-    if (lck) for (j = 0; j < DS_LCK_MORE; j++) {   /* 清單校對那一課（位置查核）：K2 再多 4 支備用藥（90211～90214）→ 這一格 14 支，一頁放不下（一頁 12 列），示範「第 1/2 頁、往左滑」 */
+    if (lck) for (j = 0; j < DS_LCK_MORE; j++) {
       c = String(n++);
       rows[c] = dsRowOf("FILLER* " + n, "備用藥" + n, "", "錠劑", "", "", "K2", "");
       order.push(c);
     }
-    /* wiz＝新藥的格子、fld＝「正在改某一格」、mef＝一次改多項這一輪改過哪幾項、mefOpen＝一次改多項那張卡開著（記 CODE）、imp＝匯入／復原的狀態、log＝匯入紀錄、seq＝批次號用的假時鐘、day＝假日期（09/15）往後過了幾天（只有「清單校對」那一課的「時間過了 3 天」會動它）、abbr＝開發者加的縮寫、pend＝「待匯入」分頁（_learn_dev_sim_imp.js）、ops＝開發者的維護指令用的（全院開關、雲端資料夾、平面圖設定、開發者名單、待審清單…；_learn_dev_sim_ops.js 起頭的幾個檔） */
     return { rows: rows, order: order, wiz: null, fld: null, mef: null, mefOpen: "", imp: null, log: [], seq: 0, day: 0, abbr: {}, pend: dsPendLoad(pendKey), ops: dsoNew(rows, order) };
   }
-  /* 試算表「工作表1」裡這支藥在第幾列（第 1 列是標題）；沒有回 -1（04 的 _findRowByCode_） */
   function dsRowNo(S, code) { var c = dsNorm(code), i; if (!c) return -1; for (i = 0; i < S.order.length; i++) if (S.order[i] === c) return i + 2; return -1; }
-  /* 輸入框上面「常用位置」：試算表裡出現最多次的（同票照字排），最多 9 個、字數不超過 20（06 的 _commonLocs_）；K2、K3 加上真的試算表裡那些沒畫出來的藥 */
   function dsLocCount(S) {
     var cnt = {}, i, l;
-    for (i = 0; i < S.order.length; i++) { if (!S.order[i]) continue; l = String(S.rows[S.order[i]].loc || "").trim(); if (!l) continue; cnt[l] = (cnt[l] || 0) + 1; }   /* order 裡的空字串＝被「復原」清空的那一列（列還在，只是空的） */
+    for (i = 0; i < S.order.length; i++) { if (!S.order[i]) continue; l = String(S.rows[S.order[i]].loc || "").trim(); if (!l) continue; cnt[l] = (cnt[l] || 0) + 1; }
     return cnt;
   }
-  /* 「索引快取」＝某個時間點試算表的樣子（01 的 getIndex_：先看快取，沒有才從試算表重讀，讀完存回快取）。
-     批次匯入直接寫格子，不會清快取（08 的 _impApply_），所以匯入進行中，快取裡還是舊的樣子，要等整批做完才重建（_impFinish_）。
-     S.idxSnap 三種狀態：沒有（null）＝跟試算表一樣新（平常都是這樣）；物件＝匯入進行中拍下來的舊樣子（rows、order 跟 S 一樣的形狀）；
-     false＝匯入進行中被清空了（_efWrite_ 每寫一格就 clearDrugCache），下一次有人讀索引才從試算表重建、再記住。 */
   function dsSnap(S) {
     var rows = {}, k, f, o;
     for (k in S.rows) { o = {}; for (f in S.rows[k]) o[f] = S.rows[k][f]; rows[k] = o; }
@@ -1035,7 +912,6 @@
     if (S.idxSnap === false) S.idxSnap = dsSnap(S);
     return S.idxSnap || S;
   }
-  /* 輸入框上面的「常用位置」讀的是索引快取（06 的 _commonLocs_） */
   function dsCommonLocs(S, n) {
     var cnt = dsLocCount(dsIdx(S)), arr = [], out = [], i, l;
     for (l in cnt) arr.push([l, cnt[l]]);
@@ -1043,7 +919,6 @@
     for (i = 0; i < arr.length && out.length < (n || 9); i++) if (arr[i][0].length <= 20) out.push(arr[i][0]);
     return out;
   }
-  /* 真的程式寫一格就 clearDrugCache()（06 的 _efWrite_、新藥存檔）。匯入進行中清空＝空的（false），平常清空→下一次讀就重建＝跟試算表一樣新（null）；clearDrugCache＋warmCache（匯入收尾、復原）＝馬上重建＝null */
   function dsCacheClear(S) { S.idxSnap = S.imp ? false : null; }
   function dsCacheWarm(S) { S.idxSnap = null; }
   function dsQuick(S, kind) {
@@ -1052,15 +927,12 @@
     for (i = 0; i < a.length; i++) q.push({ l: a[i], m: a[i] });
     return q;
   }
-  /* 聊天室裡「我自己動作的回聲」（👆 點了…、👥 假裝在群組）：不是機器人回的話，只是告訴你剛剛做了什麼。echo 這個記號讓 dwbReplied 分得出「機器人真的回了話」和「只有回聲」；
-     「練習不示範」那種說明（act）不是回聲：真的機器人在那裡會回一則話，所以算有回話 */
   function dsEcho(t) { var m = act(t); m.echo = 1; return m; }
   function dsX() { return { msgs: [], q: null, fill: null, trail: [], sheet: "", reply: "", wrote: 0, efLog: [], lb: "", mefOn: "", keep: 0, say: "", qKeep: 0 }; }
   function dsT(X, ok, t) { X.trail.push({ ok: ok, t: t }); }
   function dsSend(X, msgs, q) { var i; for (i = 0; i < msgs.length; i++) X.msgs.push(msgs[i]); X.q = q === undefined ? null : q; }
   function dsBar(X) { if (!X.q) X.q = DS_BAR.slice(); return X; }
 
-  /* ───── ① 新藥：8 格（06 的 _wizXxx_）───── */
   function dsWizNext(st) { var i; for (i = 0; i < DS_STEPS.length; i++) if (!dsHas(st.data, DS_STEPS[i].key)) return DS_STEPS[i].key; return ""; }
   function dsWizCur(st) { if (st.cur && dsStep(st.cur)) return st.cur; return dsWizNext(st); }
   function dsWizNeed(st) { var out = [], i; for (i = 0; i < DS_STEPS.length; i++) if (!DS_STEPS[i].skip && !st.data[DS_STEPS[i].key]) out.push(DS_STEPS[i].name); return out; }
@@ -1071,7 +943,6 @@
     return q.slice(0, 13);
   }
   function dsWizGrid(S, st) { return wizCard(st.data, dsWizCur(st)); }
-  /* 送格子（lead＝格子上面先說的一句）；dup＝CODE 已經有了的那個 CODE（先給那支藥的卡片再給格子） */
   function dsWizAsk(S, X, lead, dup) {
     var ms = [];
     if (lead) ms.push(bot(String(lead).substring(0, 4900)));
@@ -1079,7 +950,7 @@
     ms.push(dsWizGrid(S, S.wiz));
     dsSend(X, ms, dsWizQuick(S, S.wiz));
   }
-  function dsWizFieldOf(text) {   /* 「位置 K2」「中文名：煩多閃」→ { key, value, bare }；開頭不是欄位名回 null */
+  function dsWizFieldOf(text) {
     var t = String(text || "").trim(), m = t.match(/^(\S+?)(?:[\s:：]+([\s\S]*))?$/), key, rest;
     if (!m) return null;
     key = DS_ALIAS[m[1]];
@@ -1087,7 +958,6 @@
     rest = (m[2] || "").trim();
     return { key: key, value: rest, bare: !rest };
   }
-  /* 一格填進去（CODE 要檢查）。好了回 null；不行回 { lead, dup } */
   function dsWizPut(S, st, key, val) {
     var cur = dsStep(key), c, digits, dup;
     if (!cur) return { lead: "" };
@@ -1135,7 +1005,6 @@
     st.stage = "preview"; st.cur = ""; st.pv = false;
     dsWizPreview(S, X);
   }
-  /* 填完之後：有要說的話 → 說＋格子；每一格都答過了、或是從預覽過來改的（st.pv）→ 出預覽；不然回格子 */
   function dsWizAfter(S, X, lead, dup) {
     var st = S.wiz;
     if (!lead && (!dsWizNext(st) || (st.pv && !dsWizNeed(st).length))) {
@@ -1165,11 +1034,10 @@
       dsSend(X, [bot("CODE " + code + " 剛才已經被建進去了 🤔\n打「" + code + "」看一下，要改內容就點卡片下面的「✏️ 修改」。")]);
       return;
     }
-    row = dsRowOf(d.brand || "", d.zh || "", d.gen || "", d.form || "", d.note || "", d.feat || "", d.loc || "", "");   /* 新藥的位置照打的字存（跟真的 _wizSave_ 一樣；「✏️ 修改」才會統一成半形大寫）*/
+    row = dsRowOf(d.brand || "", d.zh || "", d.gen || "", d.form || "", d.note || "", d.feat || "", d.loc || "", "");
     S.rows[code] = row; S.order.push(code);
     dsCacheClear(S);
     ex = d.note || d.feat ? "（適應症／特徵也一起寫進「工作表2」了）" : "";
-    /* 記進「匯入紀錄」：新增是「整列」一筆（復原會把這一列清空），適應症、特徵各一筆（復原改回空的）；這一則回覆完一起寫 */
     X.efLog.push({ act: "新增", code: code, label: "整列", before: "", after: [d.brand, d.zh, d.loc, d.form, d.gen].map(function(v) { return v || ""; }).join("｜") });
     if (d.note) X.efLog.push({ code: code, label: "適應症", before: "", after: d.note });
     if (d.feat) X.efLog.push({ code: code, label: "藥品特徵", before: "", after: d.feat });
@@ -1183,7 +1051,6 @@
     X.wrote = 1;
     X.reply = "「已新增」那句＋這支藥的卡片（開發者的卡片多一顆「✏️ 修改」）＋第一顆小按鈕「↩️ 復原 " + code + "」";
   }
-  /* 「改 位置」「位置 K9」「好幾行」「預覽」「存檔」「取消」…（06 的 _wizStep_）*/
   function dsWizStep(S, X, text) {
     var st = S.wiz, t = String(text || "").trim(), flat = t.replace(/\s+/g, ""), body, lines, multi, multiOk, pf, key, val, r, leads, dupCode, i, steps = DS_STEPS, at;
     if (dsIn(t, DS_CANCEL)) {
@@ -1277,8 +1144,6 @@
     X.fill = (dsStep(key).name + " " + (st.data[key] || "")).substring(0, 290);
   }
 
-  /* ───── ② 查一支藥（開發者的卡片多一顆「✏️ 修改」）───── */
-  /* 卡片上黃色的公告框要寫什麼（01 的 _noticeText_）：公告類別（1~5 或中文）＋補充說明；只有補充沒有類別就只寫補充 */
   function dsNoteOf(r) {
     var k = r.nk === null || r.nk === undefined ? "" : String(r.nk).trim(), m = r.nm === null || r.nm === undefined ? "" : dsBrNl(r.nm).trim(), one, name, n;
     if (!k && !m) return "";
@@ -1299,12 +1164,11 @@
   }
   function dsCardO(S, code) { var r = S.rows[code], o = { edit: 1, row: r, fam: dsFam(S, code) }, n = dsNoteOf(r), m = dsaMapOf(S, code); if (n) o.note = n; if (m) o.map = m; if (!o.fam) delete o.fam; return o; }
   function dsCard(S, code) { return dc(code, dsCardO(S, code)); }
-  function dsLocNorm(v) {   /* 06 的 _locNorm_：全形轉半形、英文字母大寫、空白合成一個 */
+  function dsLocNorm(v) {
     return String(v === null || v === undefined ? "" : v).replace(/[！-～]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 65248); }).replace(/[a-z]/g, function(ch) { return ch.toUpperCase(); }).replace(/\s+/g, " ").trim();
   }
-  /* 匯入紀錄：新增的一筆（復原會把這一列清空）；回批次號（月日-時分秒毫秒，練習用假時鐘一次加 1 秒） */
   function dsP2(x) { return (x < 10 ? "0" : "") + x; }
-  function dsMD(S, sep) {   /* 練習用假日期的「月日」（預設 09/15；S.day＝往後過了幾天）；sep 是月日中間的字 */
+  function dsMD(S, sep) {
     var d = new Date(Date.UTC(2026, 8, 15 + (S && S.day ? S.day : 0)));
     return dsP2(d.getUTCMonth() + 1) + (sep || "") + dsP2(d.getUTCDate());
   }
@@ -1312,14 +1176,11 @@
     var n = ++S.seq, sec = 45 * 60 + 30 + n;
     return dsMD(S) + "-10" + dsP2(Math.floor(sec / 60) % 60) + dsP2(sec % 60) + "123";
   }
-  function dsClock(S) {   /* 「匯入紀錄」的時間欄（月/日 時:分:秒）；練習用假時鐘，跟批次號同一個秒數 */
+  function dsClock(S) {
     var sec = 45 * 60 + 30 + S.seq;
     return dsMD(S, "/") + " 10:" + dsP2(Math.floor(sec / 60) % 60) + ":" + dsP2(sec % 60);
   }
-  /* ───── ② 查一支藥 ─────
-     找藥照藥師教學那一課的搜尋（_learn_page.html 的 SIMSEARCH：CODE 一模一樣 → 名字有這幾個字 → 空格符號拿掉再比 → 容許打錯字），只是「藥」換成這個練習的試算表（新建的、改過的都算）。
-     查位置（K2、B1…整格列出來）、加符號的整批查詢、一次查好幾個 CODE、藥師的指令（教學、公告…）是藥師教學教的，這裡只回一句說明。 */
-  function dsIndex(S) {   /* 排成真的那份索引的樣子（試算表的順序；新建的在最後面） */
+  function dsIndex(S) {
     return S.order.filter(Boolean).map(function(c) {
       var r = S.rows[c], b = String(r.b).toUpperCase(), z = String(r.z).toUpperCase(), g = String(r.g).toUpperCase(), l = String(r.loc).toUpperCase();
       return { c: c, b: b, z: z, g: g, loc: l, hay: [c, b, z, g].join("\t"), all: [c, b, z, g, l, String(r.f).toUpperCase()].join("\t") };
@@ -1328,7 +1189,7 @@
   function dsQuery(S, t) {
     var saved = SIM_ROWS, r;
     SIM_ROWS = dsIndex(S);
-    try { r = dsaAbbrFix(S, simQuery(t)); } finally { SIM_ROWS = saved; }   /* 縮寫展開（01 的 searchDrug 的 _expandAbbr_／_abbrDevFirst_）：_learn_dev_sim_adv.js */
+    try { r = dsaAbbrFix(S, simQuery(t)); } finally { SIM_ROWS = saved; }
     return r;
   }
   function dsSearch(S, X, t) {
@@ -1371,16 +1232,11 @@
     return X;
   }
 
-  /* ───── 這一步「可以這樣打」的範例字（畫面上點一下，就幫你打好、直接送出）─────
-     填新藥的途中：黃色那一格的例子；預覽的時候：存檔、改位置；改某一欄的途中：那一欄的新內容；一次改多項的卡片開著：「中文 …」「A …」；
-     沒有進行中的流程回 []，畫面改用這一課自己的起手字（d.ex）。 */
   var DS_EX = { brand: "NEWTESTIN* 10MG TAB", loc: "K9", zh: "新測寧錠 10 毫克", gen: "Newtestin 10mg", note: "高血壓", feat: "白色圓形 有刻痕" };
   var DS_MULTI = "商品名 NEWTESTIN* 10MG TAB\n位置 K2\n劑型 錠劑\n中文名 新測寧錠 10 毫克";
-  /* 改某一欄的時候，輸入框裡打的範例（值就好，欄位名手機會先幫你填） */
   var DS_FEX = { brand: "TESTOLOL* 50MG TAB", zh: "測試洛爾錠 50 毫克", loc: "k9", form: "膠囊", gen: "TESTOLOL HCL 50MG", feat: "白色圓形 有刻痕", note: "高血壓", pair: "不可和 XX 併用", old: "舊藥名 TESTOLOL*", nm: "新包裝 8/1 起", ref: "https://example.org/drug/90101" };
   var DS_MEX = "中文 測試洛爾錠 50 毫克";
   var DS_MEX3 = "A TESTOLOL* 50MG TAB\nB 測試洛爾錠 50 毫克\nC k9";
-  /* 匯入進行中，輸入框上面的範例字：總覽 → 開始／取消；逐筆確認 → 對、改一格、跳過、先停；改一格 → 那一欄的新內容（08 的 _impFlow_ 這三關會把每一句話都接走） */
   var DS_IMP_EX = { brand: "NEWTESTIN* 20MG TAB", zh: "新測寧錠 20 毫克", loc: "B1", form: "膠囊", gen: "Newtestin 20mg", ref: "https://example.org/drug/90130", nk: "4 換廠", nm: "新包裝 8/1 起" };
   function dsImpSug(im) {
     var q, i, pick = "", row;
@@ -1417,8 +1273,6 @@
     return out;
   }
 
-  /* ───── 動作進來的總入口 ───── */
-  /* 還沒有做的功能（匯入、開發者選單、體檢…）：說一聲在哪一課，不動任何東西 */
   function dsLater(X, what, where) {
     dsSend(X, [act("練習聊天室這一課沒有做「" + what + "」：" + where)]);
     X.sheet = "沒動"; X.reply = "（這一課不示範）";
@@ -1427,16 +1281,15 @@
   var DS_DEVWORDS = "藥品家族|備用卡片|健檢|體檢|版本更新|速度|照片型號|照片速度|語音速度|文字速度|OCR辨識|ocr辨識|OCR接手|ocr接手|清單校對|位置查核|平面圖|縮圖|雙軌|清暫存|語音嚴格|語音寬鬆|語音狀態|語音V2|新卡片|舊卡片|多筆查詢|單筆查詢|同步平面圖|平面圖設定|語音v2|縮寫|清快取|同步照片|觸發器|平面圖診斷|圖文選單";
   var DS_DEVRE = new RegExp("^(" + DS_DEVWORDS + ")");
   var DS_IMPWORD_RE = new RegExp("^(匯入|開始匯入|復原|" + DS_DEVWORDS + "|開發者|我的代號|我的ID|我的id)");
-  /* 08 的 _impFlow_：匯入、復原、開發者指令。回 true＝這句話處理掉了 */
   function dsImpFlow(S, X, t, flat) {
     var st = S.imp, isWord = DS_IMPWORD_RE.test(flat), joinM;
-    if (dsMefLooks(S, t)) return false;   /* 「一次改」卡片開著，打「縮寫 HCTZ」是改那支藥的縮寫，不是叫開發者指令 */
-    if (dskText(S, X, t, flat, st)) return true;   /* 第 17 批 13 的 _lckText_：「位置查核」指令、等新位置的那一句、在清單校對／位置查核裡打一個位置（沒有位置查核的旗標、也不是「位置查核」開頭的話一進來就放行）*/
+    if (dsMefLooks(S, t)) return false;
+    if (dskText(S, X, t, flat, st)) return true;
     if (!st && !isWord) return false;
     if (/^(我的代號|我的ID|我的id)$/.test(flat)) return dsaMyId(S, X);
-    joinM = flat.match(/^開發者碼(\d{4,8})$/);   /* 打邀請碼：每個人都可以打（對方還不是開發者也能打）；你自己打，只會說「本來就在名單裡」 */
+    joinM = flat.match(/^開發者碼(\d{4,8})$/);
     if (joinM) return dsaJoin(S, X, DSA_SELF, joinM[1]);
-    if (st && st.stage === "edit") return dsImpEditStage(S, X, st, t, flat);   /* 等新內容的時候，打什麼都算新內容 */
+    if (st && st.stage === "edit") return dsImpEditStage(S, X, st, t, flat);
     if (st && st.stage === "undo") {
       if (/^確定復原/.test(flat)) { S.imp = null; dsUndoRun(S, X, st.target); return true; }
       S.imp = null;
@@ -1448,7 +1301,7 @@
       }
     }
     if (/^(匯入|開始匯入)$/.test(flat)) {
-      if (st && st.stage === "confirm" && st.i < st.rows.length) {   /* 逐筆確認做到一半又打「匯入」：回到停的那一筆，不重讀 */
+      if (st && st.stage === "confirm" && st.i < st.rows.length) {
         dsT(X, 1, "是「匯入」，而且上次逐筆確認還沒做完（停在第 " + (st.i + 1) + " 筆）→ 不重新讀，回到那一筆");
         X.sheet = "沒動";
         dsImpShowRow(S, X, st, "上次停在這一筆（第 " + (st.i + 1) + "／" + st.rows.length + "）：");
@@ -1465,7 +1318,6 @@
     if (!st) return false;
     return dsImpStep(S, X, st, t, flat);
   }
-  /* 06 的 _mobileFlow_：改某一欄 → 新藥的格子 → 新藥 → 怎麼改 → 一次改多項那張卡開著 */
   function dsMobileFlow(S, X, raw, t, flat) {
     if ((S.wiz || S.fld) && t.charAt(0) === "/") { S.wiz = null; S.fld = null; return false; }
     if (S.fld) return dsEfApply(S, X, t);
@@ -1474,10 +1326,9 @@
     if (/^(怎麼改|如何修改|改資料)$/.test(flat)) { dsHowEdit(S, X); return true; }
     return dsMefTypeIn(S, X, raw);
   }
-  /* 06 的 _mobilePostback_：卡片上的按鈕、輸入框上面的小按鈕（postback）按下去 */
   function dsPostback(S, X, v) {
     var p;
-    if (v.indexOf("lck=") === 0) return dskPostback(S, X, v);   /* 位置查核卡片上的按鈕（打勾、修改、選新位置…）*/
+    if (v.indexOf("lck=") === 0) return dskPostback(S, X, v);
     if (v.indexOf("wizfill=") === 0) { dsWizFillPick(S, X, v.replace(/^wizfill=/, "")); return true; }
     if (v === "wiz=preview") { dsWizGoPreview(S, X); return true; }
     if (v === "wiz=save") { dsWizSave(S, X); return true; }
@@ -1503,40 +1354,35 @@
       dsSend(X, [bot("這個按鈕練習聊天室沒有做。")]);
       return dsBar(X);
     }
-    if (ev.t === "img") {   /* 傳一張照片（練習專用的按鈕）：我說的是一張照片，機器人先看有沒有在等照片（02 的 _picFlow_） */
-      if (ev.v && S.ops.lstUi) { dslImg(S, X, String(ev.v)); return X; }   /* 清單校對那一課傳的是一張印出來的清單，不是一瓶藥 */
+    if (ev.t === "img") {
+      if (ev.v && S.ops.lstUi) { dslImg(S, X, String(ev.v)); return X; }
       X.msgs.push(pic("一瓶藥的照片", "w"));
       dspRecv(S, X);
       return X;
     }
-    if (ev.t === "web") { dslWeb(S, X, ev); return X; }   /* 在清單校對的網頁上做的事（練習專用的畫面）：沒有傳給機器人，聊天室原樣留著 */
-    if (ev.t === "dwb") { dwbEvent(S, X, ev); return X; }   /* 在開發者網頁上做的事、開發者網頁那一課的練習專用按鈕（_learn_dev_sim_web.js）：網頁那一頭沒有傳給機器人 */
+    if (ev.t === "web") { dslWeb(S, X, ev); return X; }
+    if (ev.t === "dwb") { dwbEvent(S, X, ev); return X; }
     if (ev.t === "sim") {
       v = String(ev.v || "");
       if (v.indexOf("oth:") === 0) dsaOth(S, X, v); else if (v.indexOf("lst:") === 0) dslTime(S, X, v); else dspSim(S, X, v);
       return X;
-    }   /* 在雲端硬碟上做的事（練習專用的按鈕）：沒有傳給機器人 */
+    }
     raw = String(ev.v === null || ev.v === undefined ? "" : ev.v);
     t = raw.trim();
     flat = t.replace(/\s+/g, "");
     X.msgs.push(me(String(ev.v)));
     if (dsImpFlow(S, X, t, flat)) return X;
     if (dsMobileFlow(S, X, raw, t, flat)) return X;
-    if (dwbLine(S, X, raw, t, flat)) return X;   /* 開發者網頁：「開發者網頁」「…重發」「…綁定」、貼代號、「驗證碼登入 關／開」、「開發者網頁 設定」 */
+    if (dwbLine(S, X, raw, t, flat)) return X;
     return dsSearch(S, X, t);
   }
-  /* 每一則回覆最下面，機器人自己沒有放小按鈕的，會接上「標準那排」（練習聊天室做得到的只有「🔧 開發者」）；
-     這一則改過的格子，回覆完一次記進「匯入紀錄」（真的是 doPost 回覆完才寫，不讓人多等）。keep＝這一則機器人什麼都沒回（只有輸入框被填好字），聊天室、小按鈕都留著；qKeep＝這一則是「對方」（另一個人）看到的，輸入框上面的小按鈕是你的，不動 */
   function dsRun(S, ev) {
     var X = dsRun0(S, ev);
     dsEfFlush(S, X);
-    if (S.ops.oth || S.ops.lstUi) dsaStamp(S);   /* 進階指令那一課：記下「做到哪」每一份暫存最後一次變動的時間，「時間過了…」才知道哪些要過期 */
+    if (S.ops.oth || S.ops.lstUi) dsaStamp(S);
     dsStdBar(S, ev, X);
     return X;
   }
-  /* 每一則回覆最下面接「標準那排」（自己沒有放小按鈕的才接，真的 _attachQuickBar_：if (last.quickReply) return）。
-     開發者網頁那一課：那排的「🌐 網頁」要帶你的鑰匙（_appQuickTok_），順手把鑰匙的 30 天往後推（_learn_dev_sim_web.js 的 dwbQuick）。自己放了小按鈕的回覆（例如「你是不是要找…」）不會去算。
-     獨立成一個函式，是為了測試（tools/learn_dev_sim_h.js）可以直接呼叫它，跟真的 LINE 專案比「這一則話之後，標準那排接了沒、鑰匙有沒有被發或續期」 */
   function dsStdBar(S, ev, X) {
     if (!X.q && !X.keep && !X.qKeep) {
       X.q = DS_BAR.slice();
@@ -1544,13 +1390,7 @@
     }
     return X;
   }
-  /*/SIMDEV*/
 
-  /* ───────── 練習聊天室的畫面（第 17 批）─────────
-     輸入框（<textarea>：Enter 送出、Shift＋Enter 或旁邊的「↵」換行；輸入法選字中的 Enter 不算送出）在最上面，下面依序：這一步輸入框上面會出現的小按鈕、範例字、聊天室（只放最新這一輪：我說的／點的、機器人回的）。
-     聊天室裡的卡片是活的（gAct）：格子的每一列、「👀 預覽、存檔」、「✏️ 修改」…都是真的按鈕（Tab 走得到，Enter／空白鍵按得下去），點下去等於在真的 LINE 上點那一顆。
-     深色的框「背後發生的事」把引擎給的每一步寫成白話；「重播」把聊天室、練習用的試算表、輸入框全部清空，再自動示範一遍。
-     不用 <form>、打的字只用 textContent 放進畫面，不存、不傳（頁面本來就不連網）。裝置設定「減少動態」：不等、不跳動畫，一次全出。 */
   var dsN = 0;
   function demoDsim(d) {
     var hid = "dsh" + (++dsN), timers = [], curKey = d.pend || "sample", S = dsNew(curKey, !!d.lst);
@@ -1561,12 +1401,12 @@
     var qbar = el("div", { class: "dsq", role: "group", "aria-label": "輸入框上面的小按鈕" });
     var sgl = el("div", { class: "simgl", "aria-hidden": "true" });
     var sgr = el("div", { class: "picks", role: "group", "aria-label": "範例字" });
-    var shBox = null, shTbl = null, shPre = null, shBtns = [];   /* 練習用的試算表（d.sheet＝匯入那一課才有）：換資料的按鈕、「待匯入」分頁現在的樣子 */
-    var actRow = el("div", { class: "dsact", role: "group", "aria-label": "練習專用的按鈕（真的 LINE 沒有這些）" });   /* 練習專用的按鈕：現在需要「傳一張照片」、或這一課有「假裝另一個人」的時候才出現（dsActs） */
+    var shBox = null, shTbl = null, shPre = null, shBtns = [];
+    var actRow = el("div", { class: "dsact", role: "group", "aria-label": "練習專用的按鈕（真的 LINE 沒有這些）" });
     var actLab = el("div", { class: "simgl", "aria-hidden": "true", text: "練習專用的按鈕（真的 LINE 沒有這個，要自己拍照、選照片）：" });
     var actBox = el("div", { class: "simg dsactg" }, [actLab, actRow]);
-    var drBox = null, drList = null, drActs = null;   /* 練習用的雲端照片資料夾（d.drive＝日常維護那一課才有）：資料夾裡現在有什麼、「在雲端硬碟上做的事」的按鈕 */
-    var webP = d.lst ? dswMake(function() { return S; }, function(ev) { run(ev); }) : d.web ? dwbMake(function() { return S; }, function(ev) { run(ev); }) : null;   /* 練習用的網頁（d.lst＝清單校對那一課才有：聊天室裡按「📤 多張上傳」「📋 待審清單」才打開；d.web＝開發者網頁那一課：四台裝置的瀏覽器，一開始就在聊天室下面） */
+    var drBox = null, drList = null, drActs = null;
+    var webP = d.lst ? dswMake(function() { return S; }, function(ev) { run(ev); }) : d.web ? dwbMake(function() { return S; }, function(ev) { run(ev); }) : null;
     function webDraw() { if (webP) webP.draw(); }
     function clearTimers() { timers.forEach(function(t) { clearTimeout(t.id); }); timers = []; }
     function after(ms, fn, anim) {
@@ -1574,7 +1414,6 @@
       t.id = setTimeout(function() { timers = timers.filter(function(x) { return x !== t; }); fn(); }, ms);
       timers.push(t);
     }
-    /* 機器人這一輪的回覆還在一則一則出現（動畫）時，又點了前面那張卡片上的按鈕、而且機器人這次什麼都沒回：先讓還沒出現的那幾則一次出完，再處理這一下 */
     function flushAnim() {
       var run_ = timers.filter(function(t) { return t.anim; });
       timers = timers.filter(function(t) { return !t.anim; });
@@ -1635,7 +1474,6 @@
       chat.style.minHeight = "";
       chat.appendChild(el("p", { class: "sim-empty", text: "👆 在上面的輸入框打字，按「送出」（或點下面的範例字）。機器人的回覆會出現在這裡。" + (d.lst ? "按了「📤 多張上傳」或「📋 待審清單」，聊天室下面的練習網頁就會打開。" : "") + (d.sheet ? "聊天室下面有練習用的試算表，也可以換一份貼進去的資料。" : "") + (d.web ? "聊天室下面有練習用的瀏覽器：四台裝置各自開網頁，LINE 卡片上的「打開網頁」按下去，就在你選的那一台打開。" : "") }));
     }
-    /* 「待匯入」分頁現在的樣子：S.pend 一列一列畫出來（沒有的列補空白，至少 4 列）；紅底＝機器人說有問題的列，A 欄那一格有註解（原因寫在表格下面，手機上沒有「把游標移上去」） */
     function sheetDraw() {
       var rows, pv, width, n, i, j, r, cells, cols = [], vals = [], bad = [], nts = [], nots = [], label = "", w;
       if (!shBox) return;
@@ -1658,7 +1496,6 @@
       shTbl.appendChild(w);
       shBtns.forEach(function(b) { b.b.setAttribute("aria-pressed", b.k === S.pend.key ? "true" : "false"); });
     }
-    /* 練習專用的按鈕（傳一張照片）：現在用不到就整排藏起來 */
     function actDraw(focusId) {
       var ln = dsActs(S).filter(function(a) { return a.w === "line" || a.w === "oth" || a.w === "web"; }), hit = null;
       actRow.textContent = "";
@@ -1669,9 +1506,8 @@
       });
       actLab.textContent = d.web ? "練習專用的按鈕（真的 LINE 沒有這個）：換「你在哪裡打字」、假裝「藥師」做的事；聊天室裡畫的是藥師看到的，不是你的聊天室：" : d.oth ? "練習專用的按鈕（真的 LINE 沒有這個）：用來假裝「另一個人」做的事，聊天室裡畫的是他看到的，不是你的聊天室：" : d.lst ? "練習專用的按鈕（真的 LINE 沒有這個，要自己拍清單、拍貨架、等時間過去）：傳一張編好的清單或貨架照片、讓時間往前走：" : "練習專用的按鈕（真的 LINE 沒有這個，要自己拍照、選照片）：";
       actBox.hidden = !ln.length;
-      if (hit) { try { hit.focus({ preventScroll: true }); } catch (e) {} }   /* 剛按的那顆（機器人這一則什麼都沒回，像「時間過了」）還在，焦點留在它身上 */
+      if (hit) { try { hit.focus({ preventScroll: true }); } catch (e) {} }
     }
-    /* 雲端照片資料夾現在的樣子：每個檔案和它跟試算表對得上沒有（字寫出來，不只靠顏色）；子資料夾（舊照片、公告照片）和裡面的檔案；下面是「在雲端硬碟上做的事」 */
     var DR_BD = { ok: "試算表已對上", "new": "還沒對上試算表", dup: "重複：同一支藥兩個檔案", bad: "檔名不是 CODE", none: "試算表沒有這支藥" };
     function driveDraw(focusId) {
       var v, ul, hit = null, first = null;
@@ -1720,7 +1556,6 @@
       driveDraw();
       if (webP) webP.reset();
     }
-    /* 聊天室裡卡片上的按鈕：{ m } 是 message 按鈕（等於打那句字，不動輸入框裡打到一半的字）；{ p, d, a } 是 postback（d＝聊天室多出來的那句字，a＝給「背後發生的事」的名稱） */
     function card(send, lab) {
       if (send.web !== undefined) run({ t: "dwb", w: "link", v: send.web, a: "LINE 卡片上的「" + String(lab).split("：")[0] + "」" });
       else if (send.m !== undefined) run({ t: "text", v: send.m });
@@ -1734,7 +1569,7 @@
         return;
       }
       say("");
-      hold = !!focused && focused !== document.body && (chat.contains(focused) || qbar.contains(focused) || sgr.contains(focused) || actBox.contains(focused));   /* 按的那顆按鈕馬上會被換掉：焦點要接住 */
+      hold = !!focused && focused !== document.body && (chat.contains(focused) || qbar.contains(focused) || sgr.contains(focused) || actBox.contains(focused));
       inDr = !!drBox && !!focused && drBox.contains(focused);
       drId = inDr && focused.getAttribute ? focused.getAttribute("data-act") || "" : "";
       inAct = !!focused && actBox.contains(focused);
@@ -1742,7 +1577,6 @@
       X = dsRun(S, ev);
       who = ev.t === "text" ? { pre: "你送出：", t: "「" + String(ev.v).replace(/\s*\n\s*/g, " ⏎ ").substring(0, 60) + "」" } : ev.t === "img" ? { pre: "你傳了：", t: ev.v ? (String(ev.a || "").replace(/^📷\s*傳/, "") || "一張清單的照片") : "一張照片" } : ev.t === "sim" ? { pre: "你做了：", t: ev.a || "一件事" } : ev.t === "dwb" ? (ev.w === "act" ? { pre: "你做了：", t: ev.a || "一件事" } : { pre: "你在網頁上：", t: ev.a || "做了一件事" }) : { pre: "你點了：", t: ev.a || (ev.d ? "「" + ev.d + "」" : "一顆按鈕") };
       if (X.keep) {
-        /* 機器人什麼都沒回（一次改多項那張卡上按「改」：手機的輸入框已經先填好字了）：聊天室、輸入框上面的小按鈕原樣留著，只有「背後發生的事」和輸入框動 */
         flushAnim();
         netShow(X, who);
         sheetDraw();
@@ -1764,18 +1598,18 @@
       try { rows = msgs.map(function(m, j) { return bubble(m, !REDUCE, fl[j]); }); } finally { gAct = null; }
       last = rows.length - 1;
       if (ev.t === "text" && fromInput) { input.value = ""; grow(); }
-      chat.style.minHeight = chat.offsetHeight + "px";   /* 換內容的時候先撐住原本的高度，下面的東西不會先縮上去再長下來 */
+      chat.style.minHeight = chat.offsetHeight + "px";
       chat.textContent = "";
       chat.appendChild(rows[0]);
       net.setAttribute("aria-busy", "true");
-      if (X.fill !== null && X.fill !== undefined) {   /* 點了卡片上的一格：手機的輸入框先填好「欄位名＋現在的內容」，游標在最後面（跟真的 LINE 一樣會開鍵盤） */
+      if (X.fill !== null && X.fill !== undefined) {
         input.value = X.fill;
         grow();
         try { input.focus({ preventScroll: true }); input.setSelectionRange(X.fill.length, X.fill.length); } catch (e) {}
       } else if (hold) {
         try { (coarse() ? chat : input).focus({ preventScroll: true }); } catch (e) {}
       } else if (coarse() && document.activeElement === input) {
-        try { input.blur(); } catch (e) {}   /* 手機：收起鍵盤，結果才看得到 */
+        try { input.blur(); } catch (e) {}
       }
       fin = function() { if (!X.qKeep) qBtns(X.q); chips(); netShow(X, who); sheetDraw(); actDraw(); driveDraw(); webDraw(); if (X.say) say(X.say); chat.style.minHeight = ""; };
       if (REDUCE || last === 0) {
@@ -1805,10 +1639,10 @@
       clearTimers();
       input.value = w;
       grow();
-      if (REDUCE) sendInput(); else after(260, sendInput);   /* 先讓你看到字被填進輸入框，再送出 */
+      if (REDUCE) sendInput(); else after(260, sendInput);
     }
     on(input, "keydown", function(ev) {
-      if ((ev.key === "Enter" || ev.keyCode === 13) && !ev.shiftKey && !ev.isComposing && ev.keyCode !== 229) { ev.preventDefault(); sendInput(); }   /* 輸入法選字中按 Enter 是「選好字」，不是「送出」 */
+      if ((ev.key === "Enter" || ev.keyCode === 13) && !ev.shiftKey && !ev.isComposing && ev.keyCode !== 229) { ev.preventDefault(); sendInput(); }
     });
     on(input, "input", grow);
     var nl = on(el("button", { type: "button", class: "dsnl", "aria-label": "換行（在輸入框裡多一行）", text: "↵" }), "click", function() {
@@ -1866,18 +1700,10 @@
       el("p", { class: "capn", text: "練習用的假聊天室：藥名、位置、代號都是編的；打的字不會存，也不會傳到任何地方，練習的試算表什麼都不會真的寫。按「重播」或重新整理，就回到一開始。" })
     ]);
     reset();
-    return [stage, net, { max: 1, note: net, ms: function() { return 2600; } }];   /* 同藥師版：點範例字之後，字填進輸入框、查詢中、回覆一則一則跳出來，大約這麼久 */
+    return [stage, net, { max: 1, note: net, ms: function() { return 2600; } }];
   }
 
-  /* ───────── 開發者練習聊天室：✏️ 修改、一次改多項、復原（第 17 批）─────────
-     這一段接在 _learn_dev_sim.js 後面，也是一支沒碰畫面的純函式（SIMDEV 標記之間）：dsRun0 照真的 LINE 的順序，把進來的字／按鈕交給這裡。
-     每一句機器人說的話、每一顆小按鈕、每一個判斷，都照 06_行動指令.gs（_efMenu_、_efPick_、_efPrompt_、_efApply_、_efWrite_、_efDone_、一次改多項 _mefXxx_）、
-     08_匯入.gs（_impUndoCmd_、_impUndoPlan_、_impUndoRun_）、01_程式碼.gs（_noticeText_）寫；練習的是「編的」試算表，什麼都不會真的寫。
-     X（一次進來的動作的結果）多的三樣，跟真的程式裡的「這一則訊息」變數一樣：X.efLog（_EF_LOG：這一則改了哪幾格，回覆完一起記進「匯入紀錄」）、X.lb（_EF_LOG_B：這一則的批次號）、
-     X.mefOn（_MEF_ON：這一趟是從「一次改多項」那張卡進來的，寫完回卡片）；X.keep＝這一則機器人什麼都沒回（只有輸入框被填好字），聊天室裡上一張卡片要留著。 */
-  /*SIMDEV*/
   var DS_NK = { "1": "停止供貨", "2": "改包裝通知", "3": "製廠缺貨", "4": "換廠", "5": "給慢箋" };
-  /* ✏️ 改 選單的 18 顆（06 的 _efFields_；sheet＝改的是工作表幾，0＝不在試算表裡；multi＝可以好幾行）—— 順序就是卡片上由左到右、由上到下 */
   var DS_EF = [
     { k: "old", label: "曾用藥品", sheet: 2, multi: 1 },
     { k: "brand", label: "商品名", sheet: 1 },
@@ -1899,8 +1725,7 @@
     { k: "abbr", label: "📖 縮寫", sheet: 0, abbr: 1 }
   ];
   var DS_EFCOL = { brand: "b", zh: "z", gen: "g", form: "f", loc: "loc", note: "ind", feat: "feat", pair: "pair", photo: "photo", npic: "npic", nm: "nm", nk: "nk", old: "old", ref: "ref" };
-  var DS_ABBR = { "APAP": "acetaminophen", "ASA": "aspirin", "HCTZ": "hydrochlorothiazide", "MTX": "methotrexate", "NTG": "nitroglycerin", "KCL": "potassium chloride", "MGO": "magnesium oxide", "MGSO4": "magnesium sulfate", "MSO4": "morphine sulfate", "MS": "morphine sulfate", "FESO4": "ferrous sulfate", "ZNSO4": "zinc sulfate", "DM": "dextromethorphan", "IBU": "ibuprofen", "DIG": "digoxin", "PDN": "prednisone", "HC": "hydrocortisone", "COD": "codeine", "INH": "isoniazid", "PCN": "penicillin", "EES": "erythromycin ethylsuccinate", "ISDN": "isosorbide dinitrate", "ISMN": "isosorbide mononitrate", "NAC": "acetylcysteine", "AZT": "zidovudine", "SMZTMP": "sulfamethoxazole trimethoprim", "TMPSMX": "sulfamethoxazole trimethoprim", "VPA": "valproic acid", "CBZ": "carbamazepine", "PHT": "phenytoin", "DPH": "phenytoin", "PB": "phenobarbital", "LEV": "levetiracetam", "GBP": "gabapentin", "LTG": "lamotrigine", "MPH": "methylphenidate", "MMF": "mycophenolate mofetil", "CSA": "cyclosporine", "TAC": "tacrolimus", "CTX": "cyclophosphamide", "5FU": "fluorouracil", "6MP": "mercaptopurine", "CDDP": "cisplatin", "CBDCA": "carboplatin", "VCR": "vincristine", "VBL": "vinblastine", "ARAC": "cytarabine", "BLM": "bleomycin", "VP16": "etoposide", "PTX": "paclitaxel", "GEM": "gemcitabine", "TAM": "tamoxifen", "MVI": "multivitamin", "MOM": "magnesium hydroxide", "ORS": "oral rehydration solution" };   /* 01 的 DRUG_ABBR（內建的藥品縮寫） */
-  /* 開發者加的縮寫（06 的 _efAbbrAll_／_efAbbrMine_／_abbrWrite_／_efAbbrApply_）：存在 S.abbr（縮寫 → 商品名），跟著商品名走、不在試算表裡（所以改完沒有「↩️ 復原」） */
+  var DS_ABBR = { "APAP": "acetaminophen", "ASA": "aspirin", "HCTZ": "hydrochlorothiazide", "MTX": "methotrexate", "NTG": "nitroglycerin", "KCL": "potassium chloride", "MGO": "magnesium oxide", "MGSO4": "magnesium sulfate", "MSO4": "morphine sulfate", "MS": "morphine sulfate", "FESO4": "ferrous sulfate", "ZNSO4": "zinc sulfate", "DM": "dextromethorphan", "IBU": "ibuprofen", "DIG": "digoxin", "PDN": "prednisone", "HC": "hydrocortisone", "COD": "codeine", "INH": "isoniazid", "PCN": "penicillin", "EES": "erythromycin ethylsuccinate", "ISDN": "isosorbide dinitrate", "ISMN": "isosorbide mononitrate", "NAC": "acetylcysteine", "AZT": "zidovudine", "SMZTMP": "sulfamethoxazole trimethoprim", "TMPSMX": "sulfamethoxazole trimethoprim", "VPA": "valproic acid", "CBZ": "carbamazepine", "PHT": "phenytoin", "DPH": "phenytoin", "PB": "phenobarbital", "LEV": "levetiracetam", "GBP": "gabapentin", "LTG": "lamotrigine", "MPH": "methylphenidate", "MMF": "mycophenolate mofetil", "CSA": "cyclosporine", "TAC": "tacrolimus", "CTX": "cyclophosphamide", "5FU": "fluorouracil", "6MP": "mercaptopurine", "CDDP": "cisplatin", "CBDCA": "carboplatin", "VCR": "vincristine", "VBL": "vinblastine", "ARAC": "cytarabine", "BLM": "bleomycin", "VP16": "etoposide", "PTX": "paclitaxel", "GEM": "gemcitabine", "TAM": "tamoxifen", "MVI": "multivitamin", "MOM": "magnesium hydroxide", "ORS": "oral rehydration solution" };
   function dsAbbrBrand(S, c) { var r = S.rows[dsNorm(c)]; return r ? String(r.b === null || r.b === undefined ? "" : r.b).trim() : ""; }
   function dsAbbrMine(S, brand) {
     var out = [], k;
@@ -1935,7 +1760,6 @@
     }
     return { label: "縮寫", before: before.join("、") || "沒有", after: dsAbbrMine(S, brand).join("、"), notes: notes, bad: bad };
   }
-  /* 縮寫那一格送出（06 的 _efAbbrApply_）：回 true */
   function dsEfAbbrApply(S, X, t) {
     var st = S.fld, c = st.code, r, d;
     if (dsIn(t, DS_CANCEL)) {
@@ -1961,7 +1785,6 @@
     X.sheet = "改縮寫表（不在試算表裡）";
     return true;
   }
-  /* 一次改多項：卡片上 A～J 十列的欄位（MEF_FIELDS）、直接打字用的欄位名（MEF_ALIAS）、按「改」先填進輸入框的欄位名（MEF_WORD） */
   var DS_MEF_FIELDS = ["brand", "zh", "loc", "feat", "gen", "pic", "nk", "nm", "old", "abbr"];
   var DS_MEF_LABEL = { brand: "商品名", zh: "中文", loc: "小藥庫位置", feat: "藥品特徵", gen: "學名", pic: "藥品照片", nk: "公告類別", nm: "公告補充說明", old: "曾用藥品", abbr: "縮寫" };
   var DS_MEF_ALIAS = {
@@ -1979,12 +1802,10 @@
   function dsBrNl(v) { return String(v === null || v === undefined ? "" : v).replace(/<br\s*\/?>/gi, "\n").replace(/\r\n?/g, "\n"); }
   function dsEfFind(k) { var i; for (i = 0; i < DS_EF.length; i++) if (DS_EF[i].k === k) return DS_EF[i]; return null; }
   function dsEfMulti(k) { var f = dsEfFind(k === "pic" ? "photo" : k); return !!(f && f.multi); }
-  /* 改了劑型 → 圖示（藥丸／水滴）跟著換；改了藥品外觀那一格 → 是 https 網址才算有照片（01 的 photoUrlByCode_） */
   function dsRowFix(r, k) {
     if (k === "form") r.w = dsIsWater(r) ? 1 : 0;
     if (k === "photo") r.ph = dsPhOk(r.photo) ? 1 : 0;
   }
-  /* 這支藥現在這一格的值（06 的 _efNow_） */
   function dsEfNow(S, c, k) {
     var r = S.rows[c], col = DS_EFCOL[k], v;
     if (!r || !col) return "";
@@ -1992,7 +1813,6 @@
     return v === null || v === undefined ? "" : String(v);
   }
   function dsMefNow(S, c, k) { return k === "abbr" ? dsAbbrMine(S, dsAbbrBrand(S, c)).join("、") : dsEfNow(S, c, k === "pic" ? "photo" : k); }
-  /* 按鍵按下去先填進輸入框的字：「欄位名 現在的值」（06 的 _mefFill_）；沒有欄位名的（📷 換照片、各區位置…）回 null */
   function dsMefFill(S, c, k) {
     var w = DS_MEF_WORD[k], v;
     if (!w) return null;
@@ -2001,13 +1821,11 @@
     return (w + " " + v).substring(0, 288);
   }
   function dsEfFillOk(f) { return !!f && !f.pic && !f.notice && !f.map && f.k !== "loc" && f.k !== "form"; }
-  /* 「✏️ 改」選單每一顆按下去送什麼：有欄位名可以先填的走 effill=，其他走 ef= */
   function dsEfKinds(S, c) {
     var o = {}, i, f;
     for (i = 0; i < DS_EF.length; i++) { f = DS_EF[i]; o[f.k] = dsEfFillOk(f) && dsMefFill(S, c, f.k) ? "effill" : "ef"; }
     return o;
   }
-  /* 送出的字前面還帶著自動填進去的欄位名（「商品名 XXX」）→ 拿掉只留值（06 的 _efStripWord_） */
   function dsEfStrip(text, k) {
     var t = String(text === null || text === undefined ? "" : text), kk = k === "pic" ? "photo" : k, m = t.match(/^([^\s:：]+)(?:[\s:：]+([\s\S]*))?$/), a;
     if (!m) return { t: t, hit: false };
@@ -2015,7 +1833,6 @@
     if (a !== kk) return { t: t, hit: false };
     return { t: (m[2] || "").trim(), hit: true };
   }
-  /* 寫一格（06 的 _efWrite_）：位置統一成半形大寫；改了的記在這一則的 X.efLog；從「一次改多項」進來的，記一筆讓卡片上那一項打得出勾 */
   function dsEfWrite(S, X, c, k, value) {
     var f = dsEfFind(k), r = S.rows[c], col = DS_EFCOL[k], before, v = value;
     if (!f) return { err: "認不出這個欄位" };
@@ -2030,7 +1847,6 @@
     if (X.mefOn && dsNorm(X.mefOn) === c) { dsMefNote(S, X, c, k, before); dsMefBatch(S, X, c); }
     return { label: f.label, before: before, after: v, row: dsRowNo(S, c) };
   }
-  /* 這一則有記到這支藥 → 批次號（第一次要的時候才編一個，同一則共用）；沒有 → 空字串（06 的 _efLogBatchFor_） */
   function dsBatchFor(S, X, code) {
     var c = dsNorm(code), i, hit = false;
     for (i = 0; i < X.efLog.length; i++) if (X.efLog[i].code === c) hit = true;
@@ -2038,13 +1854,11 @@
     if (!X.lb) X.lb = dsBatchId(S);
     return X.lb;
   }
-  /* 改完那一則最下面放「↩️ 復原 CODE」，後面接原本那排小按鈕（06 的 _efUndoAttach_） */
   function dsEfUndo(S, X, code, items, batch) {
     var b = batch || dsBatchFor(S, X, code);
     if (!b) return items;
     return [{ l: "↩️ 復原 " + dsNorm(code), m: "復原 #" + b }].concat(items).slice(0, 13);
   }
-  /* 回覆完，這一則改過的格子一次記進「匯入紀錄」（06 的 _efLogFlush_）：同一則共用一個批次號；一次改多項那一輪用同一個 */
   function dsEfFlush(S, X) {
     var i, x, b, at;
     if (!X.efLog.length) return 0;
@@ -2056,7 +1870,6 @@
     }
     return X.efLog.length;
   }
-  /* 一次改多項「這一輪改過哪幾項」只是拿來打勾（純快取）；這一輪的批次號也記在這裡，最後那顆「↩️ 復原」一次改回整輪 */
   function dsMefNote(S, X, c, k, before) {
     var d = S.mef && S.mef.code === c ? S.mef : null;
     if (!d) d = S.mef = { code: c, b: {}, ord: [], lb: "" };
@@ -2081,14 +1894,13 @@
     if (k === "photo") return s ? "已有照片" : "";
     return s;
   }
-  function dsMefNoticeNum(word) {   /* 公告類別：打「換廠」也要認得，不是只認 1~5 */
+  function dsMefNoticeNum(word) {
     var w = String(word || "").replace(/\s+/g, ""), n;
     if (/^[1-5]$/.test(w)) return w;
     for (n in DS_NK) if (DS_NK[n] === w) return n;
     return "";
   }
 
-  /* ───── 點「✏️ 修改」→ 18 顆欄位的選單（06 的 _efMenu_）───── */
   function dsEfMenu(S, X, code) {
     var c = dsNorm(code), r = S.rows[c], n;
     if (!r) { dsSend(X, [bot("找不到 CODE " + c + " 😥")]); X.sheet = "沒動"; X.reply = "「找不到 CODE」"; dsT(X, 0, "「工作表1」裡有 CODE " + c + " 嗎？沒有"); return; }
@@ -2099,7 +1911,6 @@
     X.sheet = "沒動（只是列選單）";
     X.reply = "✏️ 選單卡片：最上面「📝 一次改多項」，下面 18 顆欄位按鈕";
   }
-  /* 「現在是：…」那一則（06 的 _efPrompt_）：多行的欄位多教「一句一句」的打法；append＝按了「↵ 再加一句」 */
   function dsEfPrompt(S, X, c, f, mode) {
     var k = f.k, now = dsBrNl(dsMefNow(S, c, k)).trim(), multi = dsEfMulti(k), text, q = [];
     text = (mode === "append" ? "↵ " : "✏️ ") + c + "　" + f.label + "\n\n現在是：" + (now ? (multi && now.indexOf("\n") >= 0 ? "\n" + now : now) : "（空的）") + "\n\n";
@@ -2115,22 +1926,20 @@
     q.push({ l: "取消", m: "取消" });
     dsSend(X, [bot(text)], q);
   }
-  /* 沒做的欄位（各區位置）：說一聲，什麼都不動 */
   function dsEfLater(S, X, f) {
     S.fld = null;
     dsSend(X, [act("練習聊天室這一課沒有做「" + f.label + "」：真的 LINE 會給你六區位置的小卡。其他欄位都可以點點看。")]);
     X.sheet = "沒動"; X.reply = "（這一格練習不示範）";
     dsT(X, 1, "這一格（" + f.label + "）練習聊天室沒有做，不會改任何東西");
   }
-  /* ef=CODE|k：點一顆欄位（位置、劑型走這條：現在是…＋常用選項；公告類別：5 種＋移除；其他沒有欄位名可以填的） */
   function dsEfPick(S, X, code, k, mef) {
     var c = dsNorm(code), f = dsEfFind(k), q, now, i, ns = [];
     if (!f) { dsSend(X, [bot("認不出這個欄位 🤔")]); X.sheet = "沒動"; X.reply = "「認不出這個欄位」"; return; }
     if (f.pic) { dspPicAsk(S, X, c, mef); return; }
     if (f.npic) { dspNpicAsk(S, X, c); return; }
     if (f.zones) { dsEfLater(S, X, f); return; }
-    if (f.map) { dsaMapAsk(S, X, c); return; }   /* 🗺 平面圖（06 的 _efMapAsk_）：_learn_dev_sim_adv.js */
-    if (f.abbr) { dsEfFillPick(S, X, c, k); return; }   /* 📖 縮寫的按鈕真的卡片上是 effill（先填欄位名）；ef= 那條（_efAbbrAsk_）卡片上沒有按鈕送它，這裡一樣走先填欄位名的做法 */
+    if (f.map) { dsaMapAsk(S, X, c); return; }
+    if (f.abbr) { dsEfFillPick(S, X, c, k); return; }
     S.wiz = null;
     S.fld = { code: c, k: k };
     if (mef) S.fld.mef = 1;
@@ -2154,7 +1963,6 @@
     dsSend(X, [bot("✏️ " + c + "　" + f.label + "\n\n現在是：" + (now ? now : "（空的）") + "\n\n請直接打新的內容送出就好。")], q);
     X.reply = "「現在是：…」＋輸入框上面" + (f.quick ? "常用的" + (f.quick === "loc" ? "位置" : "劑型") + "選項、" : "") + "「🗑 清空這一欄」「取消」";
   }
-  /* effill=CODE|k：輸入框已經先填好「欄位名 現在的值」→ 記住現在改哪一欄，再回「現在是：…」（電腦版 LINE 不會自動填，所以還是回） */
   function dsEfFillPick(S, X, code, k) {
     var c = dsNorm(code), f = dsEfFind(k), fill;
     if (!f || !c) { X.keep = 1; return; }
@@ -2172,7 +1980,6 @@
     if (fill !== null) X.fill = fill;
     dsEfPrompt(S, X, c, f, "fill");
   }
-  /* efapp=CODE|k：「↵ 再加一句」→ 接下來打的那一句接在現在內容後面新的一行 */
   function dsEfAppPick(S, X, code, k) {
     var c = dsNorm(code), f = dsEfFind(k);
     if (!f || !c || !dsEfMulti(k)) { X.keep = 1; return; }
@@ -2182,7 +1989,6 @@
     X.sheet = "沒動"; X.reply = "「現在是：…」＋「打下一句送出」";
     dsEfPrompt(S, X, c, f, "append");
   }
-  /* 改完（06 的 _efDone_）：一次改多項進來的回那張卡；不然「✅ CODE 欄位 改前 改後」＋新卡片＋小按鈕（多行的欄位最前面多一顆「↵ 再加一句」，改錯了多一顆「↩️ 復原」） */
   function dsEfDone(S, X, code, res) {
     var c = dsNorm(code), msgs = [], q;
     if (X.mefOn && dsNorm(X.mefOn) === c) { dsMefCard(S, X, c, res); return; }
@@ -2194,9 +2000,8 @@
     X.wrote = X.efLog.length ? 1 : 0;
     X.sheet = X.efLog.length ? "改 1 格（" + c + "　" + (res ? res.label : "") + "）" : "沒動（跟原本一樣）";
     X.reply = "「✅ 已改」那句（改前、改後）＋這支藥的新卡片" + (X.efLog.length ? "＋第一顆小按鈕「↩️ 復原 " + c + "」" : "");
-    if (!(res && res.ns)) dsT(X, 1, X.efLog.length ? "寫進「工作表" + (res && dsEfFind(res.k || "") && dsEfFind(res.k).sheet === 1 ? "1" : "2") + "」，記進「匯入紀錄」（批次 #" + (X.lb || dsBatchFor(S, X, c)) + "），7 天內可以復原" : "新舊一樣，沒有寫");   /* ns＝這一項不在試算表裡（縮寫、平面圖）：呼叫的人自己寫過那一行說明了 */
+    if (!(res && res.ns)) dsT(X, 1, X.efLog.length ? "寫進「工作表" + (res && dsEfFind(res.k || "") && dsEfFind(res.k).sheet === 1 ? "1" : "2") + "」，記進「匯入紀錄」（批次 #" + (X.lb || dsBatchFor(S, X, c)) + "），7 天內可以復原" : "新舊一樣，沒有寫");
   }
-  /* 打字進來的內容（06 的 _efApply_）：回 true＝這句話處理掉了；false＝不是在改欄位，照一般查藥 */
   function dsEfApply(S, X, text) {
     var st = S.fld, t = String(text || "").trim(), c = st.code, f = dsEfFind(st.k), sw, nowV, flatN, a, byName, m, extra, kindName, res, value, q, ns, i;
     if (st.mef) X.mefOn = c;
@@ -2295,7 +2100,6 @@
     X.sheet = "沒動"; X.reply = "怎麼改資料的說明";
   }
 
-  /* ───── 一次改多項（06 的 _mefXxx_）───── */
   function dsMefVals(S, c) {
     var v = {}, i, k, dk;
     for (i = 0; i < DS_MEF_FIELDS.length; i++) { k = DS_MEF_FIELDS[i]; dk = k === "pic" ? "photo" : k; v[k] = dsMefShow(dk, dsMefNow(S, c, dk)); }
@@ -2304,7 +2108,7 @@
   function dsMefCard(S, X, code, res, headNote) {
     var c = dsNorm(code), r = S.rows[c], d, was = {}, i, k, msgs = [];
     if (!r) { dsSend(X, [bot("找不到 CODE " + c + " 😥")]); X.sheet = "沒動"; X.reply = "「找不到 CODE」"; return; }
-    S.mefOpen = c;   /* 記住「這張卡開著」，接下來直接打「中文 XXX」就收 */
+    S.mefOpen = c;
     d = S.mef && S.mef.code === c ? S.mef : null;
     if (d) for (i = 0; i < d.ord.length; i++) { k = d.ord[i]; was[k === "photo" ? "pic" : k] = d.b[k]; }
     if (res) msgs.push(bot("✅ " + c + "　" + res.label + "\n　改前：" + (res.before === "" ? "（空）" : dsMefCut(res.before, 80)) + "\n　改後：" + (res.after === "" ? "（空）" : dsMefCut(res.after, 80))));
@@ -2321,7 +2125,6 @@
     X.sheet = "沒動（只是開卡片）";
     X.reply = "📝 一次改多項的卡片（A～J 十列，每一列右邊一顆「改」）";
   }
-  /* meffill=CODE|k：一次改多項那張卡上按「改」——手機的輸入框已經先填好「欄位名 現在的內容」，機器人不回話（回了只會把卡片擠上去）。接下來直接打、或改好送出，卡片開著就會收 */
   function dsMefFillPick(S, X, code, k) {
     var c = dsNorm(code), fill = c && k ? dsMefFill(S, c, k) : null;
     X.keep = 1;
@@ -2332,7 +2135,6 @@
     X.sheet = "沒動（還沒送出新內容）";
     X.reply = "（不回話）卡片留在聊天室，輸入框先填好字";
   }
-  /* 卡片開著、每一行都是「欄位名 內容」→ 回 { code, jobs }；不然 null（照一般查藥）（06 的 _mefParse_） */
   function dsMefParse(S, raw) {
     var c = S.mefOpen, lines, jobs = [], i, ln, m, k;
     if (!c) return null;
@@ -2351,7 +2153,6 @@
     }
     return jobs.length ? { code: c, jobs: jobs } : null;
   }
-  /* 06 的 _mefTypeInLooks_：這句是不是在改欄位（一次改多項開著，或按了 ✏️ 的按鍵把欄位名填進輸入框送回來） */
   function dsMefLooks(S, raw) {
     if (dsMefParse(S, raw)) return true;
     if (S.fld && S.fld.fill && S.fld.k && dsEfStrip(raw, S.fld.k).hit) return true;
@@ -2445,13 +2246,10 @@
     X.reply = (n > 0 ? "「這一輪改了 " + n + " 項」那句＋" : "") + "這支藥的新卡片" + (lb ? "＋第一顆小按鈕「↩️ 復原 " + c + "」（一次改回整輪）" : "");
   }
 
-  /* ───── 復原（08 的 _impUndoCmd_、_impUndoPlan_、_impUndoRun_）───── */
   function dsImpNorm(v) {
     if (v === null || v === undefined) return "";
     return String(v).replace(/[！-～]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 65248); }).replace(/　/g, " ").replace(/[\r\n\t]+/g, " ").replace(/\s+/g, " ").trim();
   }
-  /* 匯入紀錄「欄位」那一欄的字 → 是哪一欄（08 的 _impFieldByLabel_）：匯入用的名稱（CODE、中文名、商品名、位置…）先找；找不到再找 ✏️ 改 的欄位名（藥品特徵、適應症、小藥庫位置…）。
-     raw＝匯入用的名稱而且有對到試算表的一欄（寫回去不經過「位置統一成半形大寫」） */
   var DS_UNDO_LABEL = { "CODE": "code", "中文名": "zh", "商品名": "brand", "位置": "loc", "劑型": "form", "學名": "gen", "參考網站": "ref", "公告類別": "nk", "公告補充": "nm" };
   var DS_UNDO_RAW = { code: 1, zh: 1, brand: 1, loc: 1, form: 1, gen: 1, ref: 1 };
   function dsUndoField(label) {
@@ -2542,7 +2340,7 @@
       x = plan.restore[i];
       r = S.rows[x.code];
       if (!r) continue;
-      dsEfPut(S, x.code, x.k, x.k === "loc" && !x.raw ? dsLocNorm(x.oldV) : x.oldV);   /* ✏️ 改的欄位名走 _efWrite_（位置統一成半形大寫）；匯入用的名稱直接寫那一格 */
+      dsEfPut(S, x.code, x.k, x.k === "loc" && !x.raw ? dsLocNorm(x.oldV) : x.oldV);
       done++;
       S.log.push({ b: bid, at: at, u: "示範甲", act: "復原", code: x.code, field: x.field, oldV: x.now, newV: x.oldV, how: "復原 " + target });
     }
@@ -2557,7 +2355,7 @@
       cleared++;
     }
     dsTrimOrder(S);
-    dsCacheWarm(S);   /* 08 的 _impUndoRun_ 最後 clearDrugCache＋warmCache */
+    dsCacheWarm(S);
     dsSend(X, [bot("↩️ 復原完成：改回 " + done + " 格、清空 " + cleared + " 列" + (plan.skipped.length ? "、" + plan.skipped.length + " 格因為後來又改過而沒動" : "") + "。\n快取已更新。")]);
     dsT(X, 1, "按了「確定復原」→ 把每一格改回舊值" + (cleared ? "，新增的那幾列清空" : ""));
     dsT(X, 1, "復原也記進「匯入紀錄」（動作＝復原），快取更新");
@@ -2565,7 +2363,6 @@
     X.sheet = "改回 " + done + " 格、清空 " + cleared + " 列";
     X.reply = "「↩️ 復原完成：改回 " + done + " 格、清空 " + cleared + " 列」";
   }
-  /* 復原時直接把舊值放回那一格（不再記一筆 ✏️ 的紀錄；位置用同一套統一寫法） */
   function dsEfPut(S, c, k, v) {
     var r = S.rows[c], col = DS_EFCOL[k];
     if (!r || !col) return;
@@ -2573,14 +2370,7 @@
     dsRowFix(r, k);
   }
   function dsTrimOrder(S) { while (S.order.length && !S.order[S.order.length - 1]) S.order.pop(); }
-  /*/SIMDEV*/
 
-  /* ───────── 開發者練習聊天室：藥品家族（第 17 批）─────────
-     藥品卡片上紫色的「藥品家族」框：院內其他「同成分」的藥，分「💊 同成分不同劑量」「🔁 同成分不同劑型」「🏷 同成分同劑量」，複方還有「➕ … 的成分」「🧩 … 的成分」。
-     照 01_程式碼.gs 的 _ingToks_、_formLabel_、_doseKey_、_sameIngredient_、_sameSections_ 一個字一個字搬過來（整套搬，不是簡化版）：成分看學名（拿掉括號、鹽類、劑型字、數字單位，再排序）、
-     劑型先看中文名（有「錠」就是錠）、再看商品名的英文（TAB、CAP…）、最後才看劑型那一格；劑量看商品名（沒有再看中文名）的「25MG」「60ML」。
-     所以改了學名、商品名、中文名、劑型，家族框就跟真的一樣跟著變。成分字、劑型字的字表是從原始碼直接複製的。 */
-  /*SIMDEV*/
   var DS_SAME_DROP = [ "prolonged", "release", "extended", "modified", "delayed", "sustained", "controlled", "slow", "enteric", "coated", "film", "chewable", "dispersible", "effervescent", "orodispersible", "sublingual", "retard", "eq", "to", "as", "base", "equivalent", "equal", "micronised", "micronized", "concentrate", "vial", "amp", "ampoule", "ampule", "bottle", "bag", "premix", "premixed", "for", "of", "and", "with", "in", "the", "usp", "bp", "ph", "eur", "jp", "dry", "lyophilized", "lyophilised", "sterile", "compound", "complex", "extract", "emulsion", "emul", "spray", "inhaler", "inhalation", "inh", "nasal", "ophthalmic", "ophth", "oph", "eye", "ear", "otic", "topical", "rectal", "vaginal", "enema", "suppository", "supp", "lotion", "shampoo", "foam", "aerosol", "mdi", "dpi", "pen", "prefilled", "syringe", "kit", "sachet", "packet", "lozenge", "troche", "gum", "elixir", "tincture", "drop", "chewing", "freshmint", "mediated", "coated", "od", "odt", "plus", "forte", "mite", "junior", "kids", "pediatric", "paediatric", "adult" ];
   var DS_SAME_SYN = { amoxycillin: "amoxicillin", mesalamine: "mesalazine", paracetamol: "acetaminophen", albuterol: "salbutamol", cyclosporine: "ciclosporin", cyclosporin: "ciclosporin", rifampicin: "rifampin", epinephrine: "adrenaline", norepinephrine: "noradrenaline", frusemide: "furosemide", glyburide: "glibenclamide", lignocaine: "lidocaine", cefalexin: "cephalexin", oestradiol: "estradiol", ethinyloestradiol: "ethinylestradiol", beclometasone: "beclomethasone", indometacin: "indomethacin", thiamin: "thiamine", sulphasalazine: "sulfasalazine", salazosulphapyridine: "sulfasalazine", sulphamethoxazole: "sulfamethoxazole", acetylsalicylic: "aspirin", hctz: "hydrochlorothiazide", hct: "hydrochlorothiazide", vit: "vitamin", nacl: "sodiumchloride", kcl: "potassiumchloride", nahco3: "sodiumbicarbonate", caco3: "calciumcarbonate", mgso4: "magnesiumsulfate", mgo: "magnesiumoxide", dextrose: "glucose" };
   var DS_SAME_ABBR = [ "inah", "inh", "mtx", "emb", "pza", "rif", "rmp", "atra", "hpmc", "asa", "ldt", "cfu", "hdm", "ppm", "ftu", "vp16", "sq", "usp" ];
@@ -2601,7 +2391,6 @@
     } while (t !== prev);
     return t.replace(/[()（）\[\]【】]/g, " ");
   }
-  /* 學名 → 成分字（排好序、去重複）：AMOXYCILLIN (TRIHYDRATE)⏎CLAVULANATE POTASSIUM → ["amoxicillin","clavulanate"]（01 的 _ingToks_） */
   function dsIngToks(generic) {
     var g = dsBrNl(generic).replace(/\n+/g, " \n ").trim(), segs, toks = [], fin = [], i, j, k, raw, kept, base, w, onlyIons, x;
     if (!g) return [];
@@ -2642,7 +2431,6 @@
     var x = String(w === null || w === undefined ? "" : w).toLowerCase().replace(/[^a-z0-9]/g, "");
     return dsOwn(DS_SAME_SYN, x) ? DS_SAME_SYN[x] : x;
   }
-  /* 成分字 → 用那支藥學名裡原本的寫法顯示（01 的 _ingShowMany_）：clavulanate → CLAVULANATE；polymyxin＋b → POLYMYXIN B */
   function dsIngShowMany(toks, generic) {
     var left = toks.slice(), out = [], g, segs, i, j, k, words, norm, base, bi, ws, w;
     function clean(x) { return x.replace(/[^A-Za-z0-9\u3400-\u9fff]/g, "").toUpperCase(); }
@@ -2693,7 +2481,6 @@
     out.sort(function(a, b) { return b.rows.length - a.rows.length || a.n - b.n || dsCmpStr(a.name, b.name); });
     return out;
   }
-  /* 劑量：從商品名抓「數字＋單位」（5MG、0.15%、100MG/ML）或「70/5600」這種；商品名沒寫就看中文名；都沒有就空字串（01 的 _doseKey_） */
   function dsDoseKeyOf(brand) {
     var b = String(brand === null || brand === undefined ? "" : brand).toUpperCase().replace(/[０-９．％／]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 65248); }), out = [], re = /(\d+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)*)\s*(MG\/ML|MCG\/ML|UG\/ML|G\/ML|MG\/G|MG|MCG|UG|GM|G|ML|IU|U|MEQ|MMOL|%)?/g, m;
     while ((m = re.exec(b)) !== null) {
@@ -2716,7 +2503,6 @@
     if (u === "MCG" || u === "UG") v /= 1000; else if (u === "G" || u === "GM") v *= 1000; else if (u === "%") v *= 10;
     return v;
   }
-  /* 劑型：先看中文名、再看英文（TAB、CAP、SOLN…）、最後用工作表的劑型欄（01 的 _formLabel_、_isWater_） */
   function dsWaterReal(r) {
     var f = String(r && r.form || ""), l = String(r && r.location || "");
     return f.indexOf("水") >= 0 || f.indexOf("液") >= 0 || l.indexOf("水") === 0;
@@ -2731,7 +2517,6 @@
     return dsWaterReal(r) ? "水" : "錠";
   }
   function dsFormRank(label) { var i = DS_FORM_ORDER.indexOf(String(label || "")); return i < 0 ? DS_FORM_ORDER.length : i; }
-  /* 其他同成分的藥 → { dose, form, brand, combo, part }（01 的 _sameIngredient_）；list＝全部的藥（試算表的順序），每一個是 { code, brand, chName, generic, form, location, toks } */
   function dsSameIngredient(r, list) {
     var out = { dose: [], form: [], brand: [], combo: [], part: [] }, myToks = r.toks, key, code, myForm, myDose, seen = {}, i, j, x, cand = {}, codes, comboG = {}, partG = {}, xt, mine, theirs, name, t;
     if (!myToks.length) return out;
@@ -2774,7 +2559,6 @@
     out.brand.sort(function(a, b) { return dsCmpStr(a.brand, b.brand); });
     return out;
   }
-  /* 卡片要畫的段：固定三段 ＋ 一個多出來的成分一段 ＋ 一個少掉的成分一段 → [{ title, rows, rest }]（01 的 _sameSections_；一個方向最多 6 段，再多算在最後一段的「另外還有」） */
   function dsSameSections(same) {
     var secs = [], t = [["dose", "💊 同成分不同劑量"], ["form", "🔁 同成分不同劑型"], ["brand", "🏷 同成分同劑量"]], dirs = [["combo", "➕ ", " 的成分"], ["part", "🧩 ", " 的成分"]], s, d, i, list, groups, rest;
     for (s = 0; s < t.length; s++) {
@@ -2796,7 +2580,6 @@
     x.toks = dsIngToks(x.generic);
     return x;
   }
-  /* 藥品家族（藥品卡片上紫色、收起來的框）：回 { cats: [[段名, [CODE…]], …], rest } 或 null（沒有同成分的藥＝沒有這個框）。row＝這支藥還沒存進試算表（新藥預覽）時，拿暫時的那一列來比 */
   function dsFam(S, code, row) {
     var list = [], i, c, secs, cats = [], rest = 0, total = 0, me_;
     for (i = 0; i < S.order.length; i++) {
@@ -2813,15 +2596,7 @@
     }
     return total ? { cats: cats, rest: rest } : null;
   }
-  /*/SIMDEV*/
 
-  /* ───────── 開發者練習聊天室：批次匯入（第 17 批）─────────
-     這一段接在 _learn_dev_sim_edit.js 後面，也是一支沒碰畫面的純函式（SIMDEV 標記之間）：dsImpFlow（在 _learn_dev_sim.js）把「匯入」「開始逐筆確認」「對」「改一格」「跳過」「先停」…交給這裡。
-     每一句機器人說的話、每一顆小按鈕、每一個判斷，都照 08_匯入.gs（_impMapCols_、_impRead_、_impStart_、_impOverviewBubble_、_impRowBubble_、_impApply_、_impFlow_…）寫；
-     練習的是「編的」試算表：S.pend＝「待匯入」分頁（一列一個 { c: 這一列每一格的字, bad: 紅底那一列的註解（沒有＝空字串） }），貼什麼進去由畫面上方的按鈕換（DS_IMP_PRESETS）；
-     寫進去的是 S.rows／S.order（工作表1、2）和 S.log（匯入紀錄），都是練習用的，什麼都不會真的寫。
-     S.imp＝匯入的狀態（真的存在快取裡 30 分鐘）：{ b 批次、stage overview／confirm／edit、rows 要確認的列、i 現在第幾筆、ok／okAdd／okUpd／cells 寫了多少、sk 跳過的、nc 沒變幾筆、pb 有問題幾筆、cut 太大留下幾筆… }。 */
-  /*SIMDEV*/
   var DS_IMP_MAX = 300, DS_IMP_USER = "…9a2c4f";
   var DS_IMP_HEAD = ["CODE", "商品名", "位置", "劑型", "中文名", "學名", "參考網站", "公告類別", "公告補充"];
   var DS_IMP_FIELDS = [
@@ -2846,7 +2621,6 @@
     [/PATCH|貼片|貼布/i, "貼片"],
     [/POWDER|PWD|GRANULE|粉|散劑|顆粒/i, "粉劑"]
   ];
-  /* 練習用的「待匯入」分頁，畫面上方的按鈕可以換：第一份跟課文第 1 節畫的一模一樣（5 列：2 支新藥、1 支改位置、1 列 CODE 打錯、1 列跟工作表1 一模一樣） */
   var DS_IMP_SAMPLE = [
     ["CODE", "商品名", "位置", "劑型", "中文名"],
     ["90130.0", "NEWTESTIN* 20MG TAB", "k2", "F.C. TAB", "新測寧錠 20 毫克"],
@@ -2855,7 +2629,6 @@
     ["12A45", "NEWSAMPLE* 5MG TAB", "K2", "錠劑", "新樣本錠 5 毫克"],
     ["90103", "MODELPRIL* 5MG TAB", "B1", "錠劑", ""]
   ];
-  /* 各種有問題的列：CODE 不對、CODE 是空的、同一批 CODE 出現第 2 次、新藥商品名和中文名都空、參考網站不像網址；另外有 2 支新藥（劑型自動對、新位置、公告）、1 列修改（公告）、1 列沒變 */
   var DS_IMP_BAD = [
     ["CODE", "商品名", "位置", "劑型", "中文名", "參考網站", "公告類別", "公告補充"],
     ["90140", "PRESETOL* 10MG CAP", "c3", "CAP", "預設醇膠囊 10 毫克", "https://example.org/drug/90140", "3", "廠商缺貨，預計下月到"],
@@ -2868,7 +2641,6 @@
     ["90102", "DEMOSYRUP* 60ML", "水棧一", "口服液", "示範康糖漿 60 毫升", "", "", ""],
     ["90104", "SAMPLESPOT* 20MG TAB", "k2", "TAB", "", "", "4", "換新包裝"]
   ];
-  /* 沒有第一列欄位名稱：機器人看每一欄的內容猜（全是數字的是 CODE、像 K2 的是位置、劑型的字、中文、英文…） */
   var DS_IMP_GUESS = [
     ["90144", "GUESSIT* 10MG TAB", "B1", "錠劑", "猜猜看錠 10 毫克"],
     ["90145", "GUESSAGAIN* 5MG CAP", "C3", "膠囊", "再猜膠囊 5 毫克"],
@@ -2889,7 +2661,6 @@
     return { key: p.key, hd: p.hd, rows: rows };
   }
   function dsCol(v) { return v === null || v === undefined ? "" : String(v); }
-  /* 試算表 getLastRow／getLastColumn／getValues：最後一個有字的列、欄；values 是補成長方形的字（08 的 _impRead_ 開頭） */
   function dsPendValues(S) {
     var rows = S.pend.rows, last = 0, width = 1, i, j, out = [], row;
     for (i = 0; i < rows.length; i++) for (j = 0; j < rows[i].c.length; j++) if (dsCol(rows[i].c[j]) !== "") { if (i + 1 > last) last = i + 1; if (j + 1 > width) width = j + 1; }
@@ -2902,7 +2673,6 @@
   }
   function dsPendLast(S) { return dsPendValues(S).last; }
   function dsImpFieldByKey(k) { var i; for (i = 0; i < DS_IMP_FIELDS.length; i++) if (DS_IMP_FIELDS[i].k === k) return DS_IMP_FIELDS[i]; return null; }
-  /* 08 的 _impFieldByLabel_：匯入用的名稱先找；找不到再找 ✏️ 改 的欄位名（復原要用，工作表1／2 的欄才算） */
   function dsImpFieldByLabel(label) {
     var t = String(label === null || label === undefined ? "" : label).trim(), i, f;
     for (i = 0; i < DS_IMP_FIELDS.length; i++) if (DS_IMP_FIELDS[i].label === t) return DS_IMP_FIELDS[i];
@@ -2928,7 +2698,6 @@
     for (i = 0; i < DS_IMP_FORM_MAP.length; i++) if (DS_IMP_FORM_MAP[i][0].test(s)) return { v: DS_IMP_FORM_MAP[i][1], sure: false };
     return { v: s, sure: false, unknown: true };
   }
-  /* 工作表1 裡出現過的位置（大小寫、空白不分）→ 第一次出現的寫法 */
   function dsImpKnownLocs(S) {
     var known = {}, i, l, key;
     for (i = 0; i < S.order.length; i++) {
@@ -2955,7 +2724,6 @@
     if (!m) return { brand: b, zh: z, split: false };
     return { brand: m[1].trim(), zh: m[2].trim(), split: true };
   }
-  /* 對欄：第一列有 2 個以上認得的欄位名稱（而且有 CODE）→ 照名稱；不然看每一欄的內容猜（08 的 _impMapCols_） */
   function dsImpMapCols(values) {
     var width = values[0] ? values[0].length : 0, map = {}, hits = 0, head = values[0] || [], guess = {}, stat = [], c, h, i, r, s, f, n, digit, loc, cjk, latin, lower, form;
     for (c = 0; c < width; c++) {
@@ -3014,7 +2782,6 @@
     }
     return parts.join("　");
   }
-  /* 今天的第幾批：匯入紀錄最近 400 列裡，「月日-」開頭的批次號有幾種，加 1（✏️ 改的批次號也是月日開頭，一起算）（08 的 _impBatchId_） */
   function dsImpBatchId(S) {
     var day = dsMD(S), n = 0, seen = {}, from, i, v, k;
     if (S.log.length > 0) {
@@ -3028,8 +2795,6 @@
     return day + "-" + (n + 1);
   }
 
-  /* ───── ① 讀「待匯入」、一列一列分類（08 的 _impRead_）───── */
-  /* 「現在是什麼」是從索引來的（01 的 _buildIndex_ 讀工作表1 的 G 欄）：不是 http:// 或 https:// 開頭的網址（例如亂打的字）索引裡不收，當成空的；最多 500 字 */
   function dsImpCurRef(v) { var s = String(v === null || v === undefined ? "" : v).replace(/^\s+|\s+$/g, ""); return /^https?:\/\/\S+$/i.test(s) ? s.substring(0, 500) : ""; }
   function dsImpRead(S) {
     var pv = dsPendValues(S), values = pv.values, width = pv.width, any = false, rows = [], problems = [], nochange = [], seenCode = {}, total = 0;
@@ -3040,7 +2805,7 @@
     if (!any) return { err: "empty" };
     m = dsImpMapCols(values);
     if (m.fail) return { err: "nomap", map: m };
-    ix = dsIdx(S);   /* 「工作表1 有沒有這支」「現在是什麼」「見過的位置」都是讀索引快取（getIndex_），不是直接讀試算表 */
+    ix = dsIdx(S);
     known = dsImpKnownLocs(ix);
     start = m.hasHeader ? 1 : 0;
     for (r = start; r < values.length; r++) {
@@ -3089,7 +2854,6 @@
     }
     return { map: m, rows: rows, problems: problems, nochange: nochange, total: total };
   }
-  /* 沒變的列從「待匯入」刪掉（由下往上刪，列號才不會跑掉）；有問題的列塗紅底、CODE 那一格加註解 */
   function dsImpDeleteRows(S, ns) {
     var sorted = ns.slice().sort(function(a, b) { return b - a; }), i;
     for (i = 0; i < sorted.length; i++) if (sorted[i] >= 1 && sorted[i] <= S.pend.rows.length) S.pend.rows.splice(sorted[i] - 1, 1);
@@ -3103,7 +2867,6 @@
     }
   }
 
-  /* ───── ② 總覽卡、逐筆確認卡、輸入框上面的小按鈕（08 的 _impOverviewBubble_、_impRowBubble_、_impRowQuick_）───── */
   function dsImp400(s) { return (s === null || s === undefined || s === "" ? "-" : String(s)).substring(0, 400); }
   function dsImpOverviewCard(st, read, addN, updN) {
     var warns = [], i;
@@ -3144,7 +2907,6 @@
     dsSend(X, ms, dsImpRowQuick(st));
   }
 
-  /* ───── ③ 開始：打「匯入」（08 的 _impStart_）───── */
   function dsImpStart(S, X) {
     var read = dsImpRead(S), rows, cut = 0, ncN, shiftOf, i, addN = 0, updN = 0, st, t, marked = 0;
     X.sheet = "沒動";
@@ -3200,11 +2962,10 @@
   }
   function dsImpCount(rows, kind) { var n = 0, i; for (i = 0; i < rows.length; i++) if (rows[i].kind === kind) n++; return n; }
 
-  /* ───── ④ 按「對」：真的寫進工作表1、2，記進「匯入紀錄」（08 的 _impApply_、_impRemoveStagingRow_）───── */
   function dsImpSafe(v) { return v === null || v === undefined ? "" : String(v); }
   function dsImpApply(S, X, st, row) {
     var prev = S.idxSnap, res;
-    if (prev === null || prev === undefined) S.idxSnap = dsSnap(S);   /* 快取是熱的、跟試算表一樣新 → 先拍下來：這一批直接寫的格子，索引裡要等快取重建才看得到 */
+    if (prev === null || prev === undefined) S.idxSnap = dsSnap(S);
     res = dsImpApply0(S, X, st, row);
     if (res.err) S.idxSnap = prev;
     return res;
@@ -3238,7 +2999,7 @@
       if (want === null) continue;
       before = dsEfNow(S, row.code, k);
       dsEfPut(S, row.code, k, dsImpSafe(want));
-      dsCacheClear(S);   /* 公告類別、公告補充走 _efWrite_，寫完就 clearDrugCache（上面直接寫格子的不會） */
+      dsCacheClear(S);
       cells++;
       logs.push({ act: "修改", code: row.code, field: extras[i][1], oldV: before, newV: want, how: "對" });
     }
@@ -3265,7 +3026,6 @@
     dsImpShift(st, n);
   }
 
-  /* ───── ⑤ 做完了／先停：完工報告（08 的 _impSummary_、_impFinish_、_impNext_）───── */
   function dsImpSummary(st, stopped) {
     var t = (stopped ? "⏹ 先停在第 " + (st.i + 1) + " 筆。" : "🏁 批次 #" + st.b + " 完成。") + "\n";
     t += "　寫入 " + st.ok + " 筆（新增 " + st.okAdd + "、修改 " + st.okUpd + "，共 " + st.cells + " 格）\n";
@@ -3280,7 +3040,7 @@
   function dsImpFinish(S, X, st, stopped) {
     var q = [];
     S.imp = null;
-    if (st.ok) dsCacheWarm(S);   /* 08 的 _impFinish_：寫了東西，clearDrugCache＋warmCache，索引重建 */
+    if (st.ok) dsCacheWarm(S);
     if (st.last) q.push({ l: "查一下 " + st.last, m: st.last });
     if (st.ok) q.push({ l: "復原這一批", m: "復原 #" + st.b });
     q.push({ l: "健檢", m: "健檢" });
@@ -3301,7 +3061,6 @@
     return row.code + "　" + parts.join("、");
   }
 
-  /* ───── ⑥ 改一格（08 的 _impEditAsk_、_impEditApply_）───── */
   function dsImpEditAsk(S, X, st, field) {
     var row = st.rows[st.i], now = "", q = [], i, locs, n;
     st.edit = field.k;
@@ -3354,8 +3113,6 @@
     X.reply = "「已改…請再看一次」＋這一筆更新後的卡片（你自己改的不再標成整理過）";
   }
 
-  /* ───── ⑦ 匯入進行中，每一句話怎麼分派（08 的 _impFlow_ 後半）：st＝進行中的匯入狀態；回 true＝這句處理掉了 ───── */
-  /* 正在「改一格」（等新內容）：除了「不改了」「取消」，打什麼都算新內容（連「匯入」「復原」都是；跟真的一樣，這一關在最前面） */
   function dsImpEditStage(S, X, st, t, flat) {
     if (/^(不改了|取消)$/.test(flat)) {
       st.edit = null;
@@ -3369,7 +3126,6 @@
     dsImpEditApply(S, X, st, t);
     return true;
   }
-  /* 總覽、逐筆確認（取消、開始逐筆確認、對、跳過、先停、改一格…）；其他情況回 false */
   function dsImpStep(S, X, st, t, flat) {
     var row, res, prefix, q, em, f, i;
     if (/^取消(匯入)?$/.test(flat)) {
@@ -3474,21 +3230,12 @@
     }
     return false;
   }
-  /*/SIMDEV*/
 
-  /* ───────── 開發者的維護指令（第 17 批；第 4～6 課「日常維護」「進階指令」「清單校對」的練習聊天室）─────────
-     這一個檔放「指令怎麼分」和最常用的幾組：🔧 開發者選單、全院開關（新卡片、語音、OCR、多筆查詢、平面圖設定）、🩺 體檢、⏱ 速度、⏰ 觸發器、清快取。
-     照片（同步、換照片）、縮寫／平面圖／開發者管理、清單校對各有自己的檔（_learn_dev_sim_photo.js、_learn_dev_sim_adv.js、_learn_dev_sim_lst.js）。
-     這裡每一句機器人說的話，都照 08_匯入.gs 的 _impDevCmd_（和它用到的小函式）拼字串的那一句寫；
-     「數字會變的」（版本、各段花幾秒、最近幾次查詢）是編的固定一份「一切正常」的樣子，tools/learn_dev_sim_test.js 對這幾則只比第一行和下面的小按鈕。
-     開發者指令的回覆最後都多一行「⏱ 這一句花了幾秒」（08 的 _devReply_）；沒有帶小按鈕的，下面接「標準那排」（練習聊天室只有「🔧 開發者」那一顆）。 */
-  /*SIMDEV*/
   var DSO_SPEED_CHIPS = [["⏱ 速度", "速度"], ["⌨️ 文字速度", "文字速度"], ["📷 照片速度", "照片速度"], ["🎤 語音速度", "語音速度"], ["🔬 速度 詳細", "速度 詳細"]];
   var DSO_CHK_CHIPS = [["📦 版本更新＋清快取", "版本更新＋清快取"], ["🩺 開始體檢", "健檢"]];
   var DSO_SPEED_EXIT = "🚪 已離開速度。\n要再看：按「🔧 開發者」→「⏱ 速度」，或直接打「速度」。";
   var DSO_CHK_EXIT = "🚪 已離開體檢。\n要再用：按「🔧 開發者」→「🩺 體檢」，或直接打「體檢」。";
   var DSO_CHK_MENU = "🩺 體檢　要做哪一個？\n・📦 版本更新＋清快取：先清快取（清掉馬上重建），再列 LINE 四個檔、網頁專案兩個檔的版本對不對，和 GitHub 網頁打不打得開（不測 AI，換完程式按一下就知道有沒有貼齊）；第一次會把程式自己寫的搬到使用者屬性\n・🩺 開始體檢：上面那些全部＋所有項目檢查一次（約 10～20 秒）";
-  /* 一排小按鈕（08 的 _groupQuick_）：這一顆自己（here）不放，最後一顆「🚪 退出」 */
   function dsoGroupQ(chips, exitText, here) {
     var q = [], i;
     for (i = 0; i < chips.length; i++) if (chips[i][1] !== here) q.push({ l: chips[i][0], m: chips[i][1] });
@@ -3496,9 +3243,7 @@
     return q;
   }
   function dsoTail(a, b) { return "\n\n⏱ " + a + " 秒（＋程式外 " + b + " 秒）"; }
-  /* 開發者指令的一則回覆（08 的 _devReply_）：字＋最後那一行「⏱」，小按鈕 q（沒給＝標準那排） */
   function dsoRep(X, text, q, a, b) { dsSend(X, [bot(String(text).substring(0, 4800) + dsoTail(a, b))], q || null); }
-  /* 深色框「背後發生的事」：trail 幾句（都是「做到了」）、試算表動了沒有、機器人回了什麼 */
   function dsoNet(X, trail, sheet, reply) {
     var i;
     for (i = 0; i < trail.length; i++) dsT(X, 1, trail[i]);
@@ -3506,14 +3251,9 @@
     X.reply = reply;
   }
   function dsoNew(rows, order) {
-    /* 全院開關的現在狀態（跟真的一開始一樣：新卡片、OCR接手、多筆查詢、平面圖設定、語音嚴格都是開的；語音V2 是關的）；drive＝練習用的雲端照片資料夾（_learn_dev_sim_photo.js）；
-       maps＝平面圖設定（CODE → 櫃名／公藥）、dev＝開發者名單和邀請碼（_learn_dev_sim_adv.js）、oth＝這一課要不要出現「假裝另一個人」的練習專用按鈕（畫面在 reset 時設）、
-       lst＝清單校對的狀態（校對模式開著嗎、待審清單、網頁現在的樣子；_learn_dev_sim_lst.js、_learn_dev_sim_lw.js）、lstUi＝這一課要不要出現「傳清單照片」「網頁」（畫面在 reset 時設）、
-       web＝開發者網頁那一課的狀態（鑰匙、綁定、代號、四台裝置的瀏覽器；_learn_dev_sim_web.js）、webUi＝這一課要不要出現網頁面板（畫面在 reset 時設；沒設的課，打網頁的指令只說一聲在哪一課） */
     return { card: 1, ocr: 1, v2: 0, strict: 1, multi: 1, mapfix: 1, drive: dspDriveNew(rows, order), maps: {}, dev: dsaDevNew(), oth: 0, lst: dslNew(), lstUi: 0, web: dwbNew(), webUi: 0 };
   }
 
-  /* ───── 🔧 開發者（輸入框上面那一顆）：九顆按鈕的選單 ───── */
   function dsoMenu(S, X) {
     var o = S.ops;
     dsSend(X, [devMenuCard(!!o.ocr, !!o.card, !!o.v2, true)]);
@@ -3521,7 +3261,6 @@
     return true;
   }
 
-  /* ───── 全院開關（打一次開、再打一次換回去；立刻生效，不用重新部署）───── */
   var DSO_FLAGS = [
     { re: /^(語音嚴格|語音寬鬆)/, key: "strict", lab: "語音嚴格／寬鬆", tm: ["0.7", "0.2"] },
     { re: /^(多筆查詢|單筆查詢)/, key: "multi", lab: "多筆查詢／單筆查詢", tm: ["0.8", "0.2"] },
@@ -3543,7 +3282,6 @@
     mapOn: function(n) { return "🗺 「修改 → 平面圖」的設定**全院生效**（含藥師）\n\n您在卡片上按「✏️ 修改 → 🗺 平面圖」設完，\n藥師下一則訊息就看得到，不用出版本。\n\n目前已設定 " + n + " 個品項。\n打「平面圖」看是哪些；打「平面圖設定 關」可以整院停用。"; },
     mapOff: "🗺 「修改 → 平面圖」的設定**全部停用**（全院）\n\n所有藥品都回到自動判斷（跟著小藥庫位置走）。\n您設過的內容沒有被刪掉，只是暫時不吃。\n\n打「平面圖設定 開」恢復。"
   };
-  /* 一個開關：照打的字決定開還是關，記起來，回「現在是開還是關」那一段（08 的 _impDevCmd_ 裡 _flagSet_ 那幾段）*/
   function dsoFlag(S, X, f, flat) {
     var o = S.ops, on, text, name;
     if (f.key === "strict") { on = /^語音嚴格/.test(flat); text = on ? DSO_TXT.strictOn : DSO_TXT.strictOff; }
@@ -3567,7 +3305,6 @@
     return true;
   }
 
-  /* ───── 🩺 體檢、📦 版本更新＋清快取 ───── */
   function dsoChkMenu(S, X) {
     dsSend(X, [bot(DSO_CHK_MENU)], dsoGroupQ(DSO_CHK_CHIPS, "體檢 退出", "體檢"));
     dsoNet(X, ["是「體檢」→ 先問要做哪一個，下面換成一排小按鈕（版本更新＋清快取、開始體檢、退出）"], "沒動", "一段說明＋三顆小按鈕");
@@ -3596,7 +3333,6 @@
     return true;
   }
 
-  /* ───── ⏱ 速度（LINE 上實際的時間；練習聊天室這幾份是編的一份「最近幾次」）───── */
   var DSO_SPD = {
     all: "⏱ 速度（LINE 上實際的時間，新的在上）\n\n⌨️ 打字（目標 2 秒）　最近 2 次　平均 465 ms　超過 2 秒 0 次\n　【09/15 10:12】「90101」 410 ms ✅　程式外 180 ms　索引 記憶體\n　【09/15 10:09】「testolol」 520 ms ✅　程式外 210 ms　索引 快取\n\n📷 照片（印刷目標 6 秒、手寫 8 秒）　最近 1 張\n　【09/15 10:05】 藥師等 4.2 秒　印刷　AI 1 次 3.1 秒　程式外 220 ms\n\n🎤 語音（目標 6 秒）　最近 1 句\n　【09/15 09:58】 3.4 秒　✅ 查到　程式外 150 ms\n\n怎麼看：超過目標幾乎都是「程式外」（Google 冷啟動，靠保溫觸發器）或 AI 那一趟。照片的「藥師等」＝回覆送出去那一刻；「全部做完」多出來的是回覆之後才做的清暫存、記帳。\n每段細節：按下面的小按鍵，或打「文字速度」「照片速度」「語音速度」「速度 詳細」。",
     text: "⌨️ 文字速度（最近 2 次，新的在上；目標 2 秒）\n\n【09/15 10:12】0.4 秒　「90101」→ 1 筆　程式外 180 ms\n　查詢比對 0.0s\n\n【09/15 10:09】0.5 秒　「testolol」→ 1 筆　程式外 210 ms\n　查詢比對 0.0s\n\n怎麼看：取索引大＝那次重讀試算表（保溫沒跑）；查詢比對大＝跟關鍵字有關；回覆LINE 大＝LINE 那頭慢；程式外大（>1.5 秒）＝冷啟動、排隊；📮＝回覆 LINE 失敗、改用推播（括號裡是原因）。",
@@ -3632,7 +3368,6 @@
     return true;
   }
 
-  /* ───── ⏰ 觸發器（部署新版本之後打一次：重新建好 6 個定時工作）───── */
   var DSO_TRIG = "⏰ 觸發器　1.9 秒\n✅ 6 項觸發器都建好了\n   ・autoSyncPhotos　每 2 小時　自動同步新照片\n   ・warmCache　　　 每 15 分鐘　保持快取是熱的\n   ・pingSelf　　　　每 1 分鐘　　保持網頁環境是熱的、順便看有沒有新版\n   ・dailyCleanup　　每天凌晨 3 點　清語音紀錄與 OCR 殘留暫存檔\n   ・autoClean　　　 每天 6、9、13、17、21 點　自動清快取（清完馬上重建）、速度紀錄、AI 塞車記號\n   ・onSheetChange　 改試算表時　改完下一句查詢就是新資料\n以後新照片丟進雲端硬碟就好，不用再執行任何東西。\n※ pingSelf 需要「網頁應用程式」已經部署過，否則記錄會說取不到網址。\n\n（完整內容在 Apps Script 的執行記錄）";
   function dsoTrig(S, X) {
     dsoRep(X, DSO_TRIG, null, "2.1", "0.2");
@@ -3640,7 +3375,6 @@
     return true;
   }
 
-  /* ───── 指令分派（照 08 的 _impDevCmd_ 的順序：前面的字先中；開頭是這些字就算，「速度很慢」也是速度）───── */
   function dsoLaterWord(X, what, where) { dsLater(X, what, where); return true; }
   function dsoDevCmd(S, X, t, flat) {
     var i;
@@ -3670,28 +3404,15 @@
     if (/^觸發器/.test(flat)) return dsoTrig(S, X);
     return false;
   }
-  /*/SIMDEV*/
 
-  /* ───────── 照片：☁️ 雲端照片資料夾、「同步照片」、「📷 換照片」、「📷 公告照片」（第 17 批；第 5 課「日常維護」的練習聊天室，第 2 課「✏️ 修改」點到 📷 也會走這裡）─────────
-     練習用的雲端資料夾（S.ops.drive）是一份編的清單：
-       files＝照片資料夾本身的檔案 [{ name, id }]；hasOld／old＝裡面有沒有「舊照片」子資料夾、裡面放了哪些；
-       nz＝「公告照片」子資料夾（沒有就是 null）{ files, hasOld, old }；n＝編新檔案代號用的計數。
-     每一句機器人說的話、每一個判斷，都照 03_維護工具.gs（syncOnePhoto_、syncDrivePhotos、_listDriveFolder_、_codeFromFileName_）、
-     06_行動指令.gs（_picAsk_、_picFlow_、_npicAsk_、_npicFlow_、_picSave_、_efApply_ 裡 pic／npic 那兩段）、08_匯入.gs（_impDevCmd_ 的「同步照片」）寫；
-     練習的是「編的」資料夾，什麼都不會真的寫到雲端硬碟。
-     「在雲端硬碟上做的事」（放進一張照片、再放一個、刪掉）和「傳一張照片給機器人」是練習聊天室專用的按鈕（真的 LINE 沒有這些按鈕，要自己去雲端硬碟、自己拍照），
-     由 dsActs 列出來；dsRun 收到 { t: "sim", v: 代號 }（雲端上做的事）或 { t: "img" }（傳照片）就接到這裡。 */
-  /*SIMDEV*/
-  var DSP_EXTS = ["jpeg", "jpg", "png", "JPG", "JPEG", "PNG", "webp", "gif", "heic"];   /* 06 的 _picSave_：搬舊照片時找的副檔名，照這個順序 */
-  var DSP_BAD = "藥盒照片1.jpeg";   /* 練習專用：檔名不是 CODE 的檔案 */
-  function dspUrl(id) { return "https://drive.google.com/thumbnail?id=" + id + "&sz=w1000"; }   /* 03 的 _driveUrl_ */
+  var DSP_EXTS = ["jpeg", "jpg", "png", "JPG", "JPEG", "PNG", "webp", "gif", "heic"];
+  var DSP_BAD = "藥盒照片1.jpeg";
+  function dspUrl(id) { return "https://drive.google.com/thumbnail?id=" + id + "&sz=w1000"; }
   function dspIdOf(url) { var m = String(url === null || url === undefined ? "" : url).match(/[?&]id=([A-Za-z0-9_-]+)/); return m ? m[1] : ""; }
-  function dspCode(name) {   /* 03 的 _codeFromFileName_：拿掉最後的副檔名，剩下 3～8 位數字才算 CODE */
+  function dspCode(name) {
     var base = String(name === null || name === undefined ? "" : name).replace(/\.[^.]+$/, "").trim();
     return /^\d{3,8}$/.test(base) ? base : "";
   }
-  /* 一開始的資料夾：每一支「有照片」的藥一個檔案（檔名＝CODE.jpeg，編號跟試算表那一格的網址對得上）；
-     只有 90101 例外——雲端那一張是比較新的（有人刪掉舊的、重傳了一張），試算表那一格還是舊網址，所以第一次「同步照片 90101」是「已更新」 */
   function dspDriveNew(rows, order) {
     var files = [], i, c, id;
     for (i = 0; i < order.length; i++) {
@@ -3703,7 +3424,7 @@
     }
     return { files: files, hasOld: false, old: [], nz: null, n: 0 };
   }
-  function dspNewId(S, c, kind) {   /* 新檔案的編號：只要跟舊的不一樣，而且是英數字、15 個字以上（03 的解析認得）*/
+  function dspNewId(S, c, kind) {
     var d = S.ops.drive;
     d.n++;
     return (kind === "npic" ? "m" : "q") + c + "x" + (d.n < 10 ? "0" : "") + d.n + "abcdefghij";
@@ -3713,9 +3434,8 @@
     for (i = 0; i < fs.length; i++) if (dspCode(fs[i].name) === code) out.push(fs[i]);
     return out;
   }
-  function dspTag(S) { return dsMD(S) + "-10" + dsClock(S).substring(9, 11); }   /* 搬到「舊照片」時加在檔名裡的時間（MMdd-HHmm；練習用假時鐘，跟批次號同一個鐘）*/
+  function dspTag(S) { return dsMD(S) + "-10" + dsClock(S).substring(9, 11); }
 
-  /* 06 的 _picSave_：存進照片資料夾（公告照片＝照片資料夾底下的「公告照片」子資料夾，檔名 CODE_公告）；同名的舊檔改名成 CODE_舊_MMdd-HHmm.副檔名、搬到「舊照片」；回 { name, url, moved } */
   function dspSave(S, c, kind) {
     var d = S.ops.drive, base = kind === "npic" ? c + "_公告" : c, box, e, i, f, nn, id, name, moved = [], tag = dspTag(S);
     if (kind === "npic") {
@@ -3740,7 +3460,6 @@
     return { name: name, url: dspUrl(id), moved: moved };
   }
 
-  /* ───── 同步照片 CODE：只同步這一支（08 的 _impDevCmd_ 裡 /^同步照片(\d{3,8})$/；03 的 syncOnePhoto_）───── */
   function dspSyncOne(S, X, code) {
     var hits = dspHits(S, code), why = "", url, changed, row = S.rows[code], ms;
     dsT(X, 1, "是「同步照片 " + code + "」→ 只同步這一支（後面接 3～8 位數字）");
@@ -3759,7 +3478,7 @@
       row.photo = url;
       dsRowFix(row, "photo");
     } else changed = true;
-    dsCacheClear(S);   /* 改了格子或沒改，都清快取（03 的 syncOnePhoto_ 最後一步）；這一條不是 ✏️ 的入口，所以不記進「匯入紀錄」、也沒有「↩️ 復原」*/
+    dsCacheClear(S);
     dsT(X, 1, changed ? "把它的網址寫進「工作表2」的藥品外觀（跟原本不一樣，換成新的）" : "它的網址跟試算表上的一樣 → 格子不用改，只是把快取清掉重建");
     if (changed) dsT(X, 1, "這一種不記進「匯入紀錄」（✏️ 修改、📷 換照片才會記），所以不能用「復原」");
     ms = [bot("🖼 " + code + " 照片已更新（雲端 " + hits[0].name + "）" + (changed ? "" : "\n（網址跟原本一樣，只是重新整理了快取）") + "\n新照片要幾秒鐘才會出現，卡片上還是舊圖的話再查一次就好。")];
@@ -3771,8 +3490,7 @@
     return true;
   }
 
-  /* ───── 同步照片／同步照片 全部：整個資料夾對一遍（03 的 syncDrivePhotos；寫整欄，不記進「匯入紀錄」）───── */
-  function dspListing(S) {   /* 資料夾裡看得到的東西：檔案＋子資料夾（Drive API 不分檔案或資料夾，子資料夾也會列進來）*/
+  function dspListing(S) {
     var d = S.ops.drive, out = d.files.slice();
     if (d.hasOld) out.push({ name: "舊照片", id: "oldfolder" });
     if (d.nz) out.push({ name: "公告照片", id: "noticefolder" });
@@ -3831,7 +3549,6 @@
     return dspSyncAll(S, X, flat);
   }
 
-  /* ───── 📷 換照片、📷 公告照片：問（06 的 _picAsk_、_npicAsk_）───── */
   function dspPicAsk(S, X, c, mef) {
     var r = S.rows[c], name = r ? String(r.b || r.z || "") : "";
     S.fld = { code: c, k: "pic" };
@@ -3853,7 +3570,6 @@
     X.say = "輸入框下面多了一顆「📷 傳一張照片給機器人」（練習專用）。";
   }
 
-  /* ───── 等照片的時候打了字（06 的 _efApply_ 裡 pic／npic 那兩段）───── */
   function dspPicText(S, X, t, st) {
     var c = st.code, flat = String(t).replace(/\s+/g, "");
     if (dsIn(t, DS_CANCEL) || /^(不換了|不換|不用了)$/.test(flat)) {
@@ -3893,7 +3609,6 @@
     return true;
   }
 
-  /* ───── 傳來一張照片（02 的 _picFlow_ 先看有沒有在等；沒有才是平常的拍照查藥）───── */
   function dspRecv(S, X) {
     var st = S.fld, c, wasMef, saved, w, ok, ms, kind, q;
     if (!st || (st.k !== "pic" && st.k !== "npic")) {
@@ -3932,8 +3647,7 @@
     return true;
   }
 
-  /* ───── 練習專用的按鈕（真的 LINE 沒有）：w＝line（聊天室裡的動作）／drive（在雲端硬碟上做的事）───── */
-  function dspNextNew(S) {   /* 下一支「試算表沒照片、雲端也沒檔案」的藥 */
+  function dspNextNew(S) {
     var cands = ["90103", "90104", "90106", "90107", "90109"], i;
     for (i = 0; i < cands.length; i++) if (S.rows[cands[i]] && !S.rows[cands[i]].ph && !dspHits(S, cands[i]).length) return cands[i];
     return "";
@@ -3941,9 +3655,9 @@
   function dsActs(S) {
     var out = [], f = S.fld, d = S.ops.drive, c, i, has = {}, one;
     if (f && (f.k === "pic" || f.k === "npic")) out.push({ id: "img", w: "line", l: "📷 傳一張照片給機器人" });
-    if (S.ops.oth) out = out.concat(dsaOthActs(S));   /* 進階指令那一課：假裝「另一個人」做的事（打「我的代號」、打邀請碼） */
-    if (S.ops.lstUi) out = out.concat(dslActs(S));   /* 清單校對那一課：傳一張清單的照片、讓時間過去 */
-    if (S.ops.webUi) out = out.concat(dwbActs(S));   /* 開發者網頁那一課：換在哪裡打字、假裝藥師做的事 */
+    if (S.ops.oth) out = out.concat(dsaOthActs(S));
+    if (S.ops.lstUi) out = out.concat(dslActs(S));
+    if (S.ops.webUi) out = out.concat(dwbActs(S));
     for (i = 0; i < d.files.length; i++) has[d.files[i].name] = d.files[i];
     c = dspNextNew(S);
     if (c) out.push({ id: "put:" + c, w: "drive", l: "＋ 放進 " + c + ".jpeg" });
@@ -3953,7 +3667,6 @@
     if (one) out.push({ id: "del:" + one, w: "drive", l: "🗑 刪掉 " + one + ".jpeg" });
     return out;
   }
-  /* 雲端硬碟上做的事：機器人不知道（沒有傳給它），所以 X.keep＝聊天室原樣留著，只有「雲端資料夾」那一塊和深色框動 */
   function dspSim(S, X, id) {
     var d = S.ops.drive, p = id.split(":"), kind = p[0], c = p[1] || "", name, f, i, say = "";
     X.keep = 1;
@@ -3982,7 +3695,6 @@
     X.reply = "（不回話）這一步是你在雲端硬碟上做的，沒有傳給機器人";
     X.say = say;
   }
-  /* 畫面上「雲端資料夾」那一塊要畫的東西：每個檔案和它跟試算表對得上沒有（ok 已對上／new 還沒對上／dup 同一支藥兩個檔案／bad 檔名不是 CODE／none 試算表沒有這支藥），和子資料夾 */
   function dspView(S) {
     var d = S.ops.drive, files = [], subs = [], i, f, c, r, st;
     for (i = 0; i < d.files.length; i++) {
@@ -3998,25 +3710,15 @@
     if (d.nz) subs.push({ name: "公告照片", files: d.nz.files.map(function(x) { return x.name; }), old: d.nz.hasOld ? d.nz.old.map(function(x) { return x.name; }) : null });
     return { files: files, subs: subs };
   }
-  /*/SIMDEV*/
 
-  /* ───────── 開發者的進階指令（第 17 批；第 6 課「進階指令」的練習聊天室）─────────
-     這一個檔放四組：📖 縮寫（08 的 _abbrCmd_，加上查詢時真的展開縮寫：01 的 _expandAbbr_／_abbrDevFirst_／_abbrMergeFirst_）、
-     🗺 平面圖（08 的 _mapFixCmd_、06 的 _efMapAsk_／_efMapApply_；設定完卡片上的地圖跟著變）、🪪 我的代號、
-     👥 開發者 管理／邀請／名單／移除／加／碼（08 的 _devCmd_、_devJoin_、_devAdd_、_devListText_、_devRmList_）。
-     這裡每一句機器人說的話，都照上面那些函式拼字串的那一句寫；tools/learn_dev_sim_test.js 把同一串輸入丟給真的 LINE 程式碼逐句比對。
-     「另一個人」做的事（對方打「我的代號」、對方打邀請碼）：真的要請另一個人用他的手機做，練習聊天室用「練習專用的按鈕」假裝（_learn_dev_sim_photo.js 的 dsActs 把按鈕列出來），
-     聊天室裡畫的是「對方看到的」，輸入框上面的小按鈕不動（那是你的）。 */
-  /*SIMDEV*/
-  var DSA_SELF = "Udemo0001practice", DSA_INV = "Udemo0002invitee";   /* 練習用的假 LINE 代號：你自己、被邀請的對方（真的是 U 開頭加 32 個英數字） */
-  var DSA_CODES = ["482913", "715306", "260847", "938521", "174069", "603152", "829470", "351986"];   /* 邀請碼：真的是亂數 6 位數，這裡編幾組輪流用 */
+  var DSA_SELF = "Udemo0001practice", DSA_INV = "Udemo0002invitee";
+  var DSA_CODES = ["482913", "715306", "260847", "938521", "174069", "603152", "829470", "351986"];
   var DSA_FAIL_MAX = 3;
   var DSA_DEVG_CHIPS = [["➕ 邀請開發者", "開發者 邀請"], ["👥 開發者名單", "開發者 名單"], ["➖ 開發者移除", "開發者 移除"]];
   var DSA_DEVG_EXIT = "開發者 退出";
   var DSA_DEVG_EXIT_TEXT = "🚪 已離開開發者。\n要再用：按「🔧 開發者」→「👥 開發者」。";
   var DSA_DEVG_MENU = "👥 開發者　要做哪一個？\n・➕ 邀請開發者：給一組 6 位數邀請碼（10 分鐘內有效、只能用一次）\n・👥 開發者名單：現在有誰、最近的異動\n・➖ 開發者移除：從名單挑一位移除（會先問一次）";
   var DSA_NOSHEET = "沒動（開發者名單存在機器人的「指令碼屬性」，不在試算表裡）";
-  /* 平面圖的櫃名（01 的 MAPS 的鍵；網址不用）：錠櫃、水櫃的單字母，和名字比較長的其他櫃 */
   var DSA_MAP_TAB = "A C D E F G H I J K L M N O P Q R S T".split(" ");
   var DSA_MAP_WAT = "A B C D G H I J K L M N O P".split(" ");
   var DSA_MAP_OTH = ["上鎖藥櫃", "撥補品項", "庫鐵架", "A棧", "棧板A區", "棧板B區", "棧板C區", "棧板門口", "棧板（靠近門口）", "棧左", "棧中", "棧右", "水棧一", "水棧二", "水棧三", "水棧四", "水棧五", "麻藥後面冰", "麻藥後棧板"];
@@ -4030,19 +3732,16 @@
     return o;
   })();
   var DSA_MAP_HOW = "用法：\n　平面圖 27211 錠A　指定用小藥庫錠A櫃那張\n　平面圖 27211 公藥　設成沒有平面圖\n　平面圖 27211 自動　取消設定，回到跟著工作表1 的位置走\n　平面圖 清空　　　全部取消";
-  function dsaMapNames() {   /* 08 的 _mapFixNamesText_（雲端硬碟資料夾裡的圖練習聊天室沒有，所以沒有「雲端」那一行） */
+  function dsaMapNames() {
     return "可以用的櫃名：\n　錠櫃　" + DSA_MAP_TAB.map(function(x) { return "錠" + x; }).join(" ") + "\n　水櫃　" + DSA_MAP_WAT.map(function(x) { return "水" + x; }).join(" ") + "\n　其他　" + DSA_MAP_OTH.join(" ") + "\n　沒有平面圖　公藥";
   }
-  function dsaPerson(id) { return id === DSA_SELF ? "示範甲" : id === DSA_INV ? "示範乙" : "示範丙"; }   /* LINE 查得到的顯示名稱（練習用編的；不認得的代號一律叫示範丙） */
-  /* now＝練習用的「經過幾秒」（邀請碼 10 分鐘、打錯 3 次鎖 1 小時都靠它算；只有「⏰ 時間過了…」的按鈕會讓它往前走）；invs＝還有效的邀請碼 [{ code, by, exp }]；fails＝每個人打錯的次數 { n, exp } */
+  function dsaPerson(id) { return id === DSA_SELF ? "示範甲" : id === DSA_INV ? "示範乙" : "示範丙"; }
   function dsaDevNew() { return { list: [DSA_SELF], meta: {}, log: [], invs: [], fails: {}, n: 0, now: 0, sig: {}, at: {} }; }
-  function dsaExpire(d) {   /* 過了時間的邀請碼、打錯的次數，拿掉（真的是快取自己過期） */
+  function dsaExpire(d) {
     var k;
     d.invs = d.invs.filter(function(v) { return v.exp > d.now; });
     for (k in d.fails) if (dsOwn(d.fails, k) && d.fails[k].exp <= d.now) delete d.fails[k];
   }
-  /* 「做到哪」的暫存（新藥填到一半、改某一格、一次改多項、匯入）：真的是存在快取裡，過了時間自己消失（06 的 WIZ_TTL_SEC／FLD_TTL_SEC／MEF_OPEN_SEC、08 的 IMP_TTL_SEC）。
-     練習聊天室的「時間過了…」按鈕要讓它們一起過期：每一則動作做完，記下每一份暫存最後一次變動是在練習時鐘的哪一秒（dsaStamp）；時間往前走的時候，超過的就清掉（dsaAge） */
   var DSA_TTL = { wiz: 1800, fld: 900, mef: 900, mefOpen: 900, imp: 1800 };
   function dsaSig(v) { return v === null || v === undefined || v === "" ? "" : JSON.stringify(v); }
   function dsaStamp(S) {
@@ -4056,14 +3755,13 @@
     var d = S.ops.dev, k;
     for (k in DSA_TTL) if (dsOwn(DSA_TTL, k) && dsaSig(S[k]) && d.now - (d.at[k] || 0) >= DSA_TTL[k]) S[k] = k === "mefOpen" ? "" : null;
   }
-  function dsaSay(X, text, q) { dsSend(X, [bot(String(text).substring(0, 4900))], q || null); }   /* 開發者管理那幾句是直接回字（replyText），不像別的開發者指令後面多一行「⏱」 */
+  function dsaSay(X, text, q) { dsSend(X, [bot(String(text).substring(0, 4900))], q || null); }
   function dsaDevQ(here) { return dsoGroupQ(DSA_DEVG_CHIPS, DSA_DEVG_EXIT, here); }
-  function dsaNow(S) { return dsClock(S).substring(0, 11); }   /* 「月/日 時:分」 */
+  function dsaNow(S) { return dsClock(S).substring(0, 11); }
   function dsaImul(a, b) {
     var ah = (a >>> 16) & 0xffff, al = a & 0xffff, bh = (b >>> 16) & 0xffff, bl = b & 0xffff;
     return ((al * bl) + (((ah * bl + al * bh) << 16) >>> 0) | 0);
   }
-  /* 移除確認用的記號（08 的 _devTag_）：從這個人的代號算出 4 個字 */
   function dsaTag(id) {
     var s = String(id === null || id === undefined ? "" : id), h = 2166136261, i;
     for (i = 0; i < s.length; i++) {
@@ -4072,7 +3770,6 @@
     }
     return ("0000" + (h % 1679616).toString(36)).slice(-4);
   }
-  /* 小按鍵上的字最多 20 個（08 的 _chipLabel_；表情符號不切一半） */
   function dsaChip(s) {
     var out = "", i = 0, ch;
     s = String(s === null || s === undefined ? "" : s);
@@ -4085,7 +3782,6 @@
     }
     return out;
   }
-  /* 名單上沒有名字的人，補上 LINE 的顯示名稱（08 的 _devFillNames_） */
   function dsaFill(S) {
     var d = S.ops.dev, i, id;
     for (i = 0; i < d.list.length; i++) {
@@ -4095,7 +3791,6 @@
       d.meta[id].name = dsaPerson(id);
     }
   }
-  /* 「由誰邀請」「最近的異動」要顯示的名字（08 的 _devWho_）：紀錄裡有名字就用；沒有就先照完整的找、再找開頭相同的那一位；都沒有才顯示代號前面幾個字 */
   function dsaWho(S, short, nm) {
     var meta = S.ops.dev.meta, s = String(short === null || short === undefined ? "" : short), k;
     if (nm) return nm;
@@ -4104,13 +3799,12 @@
     for (k in meta) if (dsOwn(meta, k) && k.indexOf(s) === 0 && meta[k] && meta[k].name) return meta[k].name;
     return s + "…";
   }
-  function dsaLog(S, act, who, by, nm) {   /* 08 的 _devLog_：最近的異動，最多留 20 筆 */
+  function dsaLog(S, act, who, by, nm) {
     var d = S.ops.dev, ent = { at: dsaNow(S), act: act, who: String(who || "").substring(0, 10), by: String(by || "").substring(0, 10) };
     if (nm) ent.nm = String(nm).substring(0, 30);
     d.log.unshift(ent);
     d.log = d.log.slice(0, 20);
   }
-  /* 把一個人加進開發者名單（08 的 _devAdd_）：回 { ok, why } 或 { ok, name } */
   function dsaAdd(S, id, by) {
     var d = S.ops.dev, nm;
     if (d.list.indexOf(id) >= 0) return { ok: false, why: "這個人已經在名單裡了" };
@@ -4121,7 +3815,6 @@
     dsaLog(S, "加入", id, by, nm);
     return { ok: true, name: nm };
   }
-  /* 名單那一段字（08 的 _devListText_） */
   function dsaListText(S, userId) {
     var d = S.ops.dev, i, id, m, who, t;
     dsaFill(S);
@@ -4139,7 +3832,6 @@
     t += "\n\n移除：按「➖ 開發者移除」（或打「開發者 移除 2」，用上面的編號）\n邀請：按「➕ 邀請開發者」";
     return t;
   }
-  /* ➖ 開發者移除 的名單（08 的 _devRmList_）：每個人一顆「➖ 移除 2 王小明」（自己沒有）；head＝最前面多一句（編號打錯） */
   function dsaRmList(S, X, head) {
     var d = S.ops.dev, i, id, m, who, self, canRm, L, q = [];
     dsaFill(S);
@@ -4159,7 +3851,6 @@
     q.push({ l: "🚪 退出", m: DSA_DEVG_EXIT });
     dsaSay(X, L.join("\n"), q);
   }
-  /* 打「開發者 碼 482913」（08 的 _devJoin_）：誰打的、打哪一組。對方還不是開發者也能打；連續打錯 3 次鎖 1 小時 */
   function dsaJoin(S, X, who, code) {
     var d = S.ops.dev, fails = dsOwn(d.fails, who) ? d.fails[who].n : 0, inv = null, i, r, nm = dsaPerson(who);
     for (i = 0; i < d.invs.length; i++) if (d.invs[i].code === code) inv = d.invs[i];
@@ -4191,7 +3882,6 @@
     dsoNet(X, [], "改「指令碼屬性」的開發者名單（不在試算表裡）", "「✅ …您現在是開發者了」＋多了哪些功能");
     return true;
   }
-  /* 打「我的代號」（08 的 _impFlow_ 最前面那一段；每個人都可以打，不用是開發者） */
   function dsaMyIdText(id) { return "🪪 您的代號（LINE ID）\n" + id + "\n\n把這一串傳給開發者，他打「開發者 加 " + id + "」就能把您加進開發者。"; }
   function dsaMyId(S, X) {
     dsaSay(X, dsaMyIdText(DSA_SELF));
@@ -4199,7 +3889,6 @@
     dsoNet(X, [], "沒動", "「🪪 您的代號（LINE ID）」＋那一串代號＋怎麼把它交給開發者");
     return true;
   }
-  /* 08 的 _devCmd_：開發者 管理／邀請／名單／加／移除／退出 */
   function dsaDevCmd(S, X, t, flat) {
     var d = S.ops.dev, m, r, i, code, gone, goneName, who, tag, list, k;
     if (/^開發者(退出|結束|離開)$/.test(flat)) {
@@ -4305,12 +3994,9 @@
       dsoNet(X, [], DSA_NOSHEET, "「移除要用名單上的編號」＋名單");
       return true;
     }
-    return false;   /* 認不得的（例：「開發者 邀請 abc」）→ 不是這一組指令，照一般查藥 */
+    return false;
   }
 
-  /* ───── 練習專用：假裝是「另一個人」做的事（真的要請對方用他的手機）─────
-     oth:me　對方打「我的代號」　oth:join　對方打你剛給的邀請碼　oth:bad　對方打一組錯的碼　oth:time　時間過了 1 小時（碼過期、打錯的次數歸零）
-     畫在聊天室裡的是「對方看到的」；輸入框上面的小按鈕不動（那是你的） */
   function dsaOthActs(S) {
     var d = S.ops.dev, last = d.invs.length ? d.invs[d.invs.length - 1] : null, out = [], k, anyFail = false;
     for (k in d.fails) if (dsOwn(d.fails, k)) anyFail = true;
@@ -4324,7 +4010,7 @@
   function dsaOthNote() { return act("📲 假裝是另一個人：下面是「對方」（示範乙）在他自己跟補藥神器的聊天室裡看到的，不是你的聊天室。"); }
   function dsaOth(S, X, id) {
     var d = S.ops.dev, last = d.invs.length ? d.invs[d.invs.length - 1] : null, code;
-    X.qKeep = 1;   /* 輸入框上面的小按鈕是你的，不動 */
+    X.qKeep = 1;
     if (id === "oth:me") {
       X.msgs.push(dsaOthNote());
       X.msgs.push(me("我的代號"));
@@ -4359,8 +4045,6 @@
     return X;
   }
 
-  /* ───── 📖 縮寫（08 的 _abbrCmd_）─────
-     縮寫存在 S.abbr（縮寫 → 全名），跟 ✏️ → 📖 縮寫 是同一份（_learn_dev_sim_edit.js 的 dsAbbrWrite）。 */
   function dsaAbbrList(S) {
     var keys = [], k, i, out = [];
     for (k in S.abbr) if (dsOwn(S.abbr, k)) keys.push(k);
@@ -4409,10 +4093,8 @@
     return true;
   }
   function dsaAbbrCount(S) { return dsAbbrCount(S); }
-  /* 查詢時展開縮寫（01 的 searchDrug：把縮寫指到的全名當成最後一次「一模一樣」的比對；整句剛好是「開發者加的縮寫」→ 它指到的藥排最前面，見 _abbrDevFirst_）。
-     r＝simQuery 的結果；回新的結果（加了 abbr：{ k 縮寫, to 展開成什麼, first 是排最前面還是改查它 }），不用展開就原樣回 */
   function dsaAbbrKey(s) { return String(s === null || s === undefined ? "" : s).toUpperCase().replace(/[^A-Z0-9]/g, ""); }
-  function dsaAbbrFirst(S, norm, k) {   /* _abbrDevFirst_：只有整句是英數字、是開發者加的（不是內建的）縮寫、不是全數字才算；回它指到的那幾支（沒有就空的） */
+  function dsaAbbrFirst(S, norm, k) {
     var brand, one;
     if (!/^[A-Za-z0-9]+$/.test(norm)) return [];
     if (/^\d+$/.test(k)) return [];
@@ -4434,7 +4116,7 @@
     if (!ex) return r;
     exact = r.kind === "code" || r.kind === "loc" || r.kind === "locText" || r.kind === "name";
     first = dsaAbbrFirst(S, norm, k);
-    if (exact) {   /* 前面「一模一樣」的比對就有結果了：除非是位置查詢，縮寫指到的藥排在最前面，後面接原本查到的（最多 12 筆） */
+    if (exact) {
       if (!first.length || r.kind === "code" || r.kind === "loc" || (r.kind === "locText" && r.kws && r.kws.length === 1)) return r;
       merged = [];
       seen = {};
@@ -4448,7 +4130,7 @@
       out.abbr = { k: k, to: ex, first: 1 };
       return out;
     }
-    one = simOnce(ex, "exact");   /* 照原樣找不到：展開後的全名是最後一次「一模一樣」的比對（放在拿掉符號、容許打錯字之前） */
+    one = simOnce(ex, "exact");
     if (!one || (one.how !== "code" && one.how !== "name")) return r;
     out = one;
     out.q = r.q;
@@ -4460,9 +4142,8 @@
     return out;
   }
 
-  /* ───── 🗺 平面圖（08 的 _mapFixCmd_、06 的 _efMapAsk_／_efMapApply_）───── */
   function dsaMapNone(v) { return /^(公藥|無|沒有|沒圖|無圖|none|x)$/i.test(String(v === null || v === undefined ? "" : v).trim()); }
-  function dsaMapOk(v) {   /* 01 的 _mapFixUrl_：櫃名對得上 MAPS 才算（練習聊天室沒有雲端硬碟資料夾的圖） */
+  function dsaMapOk(v) {
     var n = String(v === null || v === undefined ? "" : v).trim(), m;
     if (!n) return false;
     if (DSA_MAPSET[n]) return true;
@@ -4479,7 +4160,6 @@
     return out.join("\n");
   }
   function dsaMapCount(S) { var n = 0, k; for (k in S.ops.maps) if (dsOwn(S.ops.maps, k)) n++; return n; }
-  /* 卡片上要畫什麼地圖：沒指定（或整院停用了）回 ""；指定「沒有平面圖」回 "none"；指定某一櫃回櫃名 */
   function dsaMapOf(S, c) {
     var v;
     if (!S.ops.mapfix || !S.ops.maps || !dsOwn(S.ops.maps, c)) return "";
@@ -4539,7 +4219,6 @@
     X.trail = trail.map(function(p) { return { ok: p[0], t: p[1] }; }).concat(X.trail);
     return true;
   }
-  /* ✏️ 修改 → 🗺 平面圖：問（06 的 _efMapAsk_）*/
   function dsaMapAsk(S, X, c) {
     var now = S.ops.maps[c] || "", cur = now ? (dsaMapNone(now) ? "現在設成：沒有平面圖" : "現在設成：" + now) : "現在：自動判斷（跟著小藥庫位置走）";
     S.wiz = null;
@@ -4549,7 +4228,6 @@
     X.reply = "「🗺 " + c + " 的平面圖」＋現在是什麼＋輸入框上面 7 顆（棧左、棧中、棧右、平、沒平、自動、取消）";
     dsSend(X, [bot("🗺 " + c + " 的平面圖\n\n" + cur + "\n\n・「棧左」「棧中」「棧右」＝直接指定棧板哪一塊（按一下就好）\n・「平」＝其他櫃位，我再問您哪一櫃\n・「沒平」＝公藥那種，沒有平面圖\n・「自動」＝取消設定，跟著小藥庫位置自己判斷\n\n★ 設完**全院立刻生效**，藥師馬上看得到。")], [{ l: "棧左", m: "棧左" }, { l: "棧中", m: "棧中" }, { l: "棧右", m: "棧右" }, { l: "平", m: "平" }, { l: "沒平", m: "沒平" }, { l: "自動", m: "自動" }, { l: "取消", m: "取消" }]);
   }
-  /* 打字進來（06 的 _efMapApply_）：回 true */
   function dsaMapApply(S, X, t, st) {
     var c = st.code, flat = String(t || "").replace(/\s+/g, ""), o = S.ops.maps, before, q, name;
     if (dsIn(t, DS_CANCEL)) {
@@ -4608,21 +4286,10 @@
     dsT(X, 1, "平面圖的設定存在機器人的「平面圖設定」裡，不在試算表 → 不會記進「匯入紀錄」、也沒有「↩️ 復原」");
     X.sheet = "改平面圖設定（不在試算表裡）";
   }
-  /*/SIMDEV*/
 
-  /* ───────── 開發者的清單校對（第 17 批；第 4 課「清單校對」的練習聊天室，LINE 這一半）─────────
-     這一個檔放：假的「印出來的清單」（練習用的五張紙，每一張是 AI 看照片讀出來的樣子）、拿清單去對工作表1 的演算法（08 的 _lstParse_／_lstDiff_／_lstSim_）、
-     待審清單（08 的 _lstGet_／_lstAdd_／_lstSave_）、聊天室裡的 LINE 這一半：打「清單校對」「清單校對 保留」「清單校對 清空」「清單校對 結束」（08 的 _impDevCmd_ 裡 /^清單校對/ 那一段）、
-     傳一張清單的照片（08 的 _lstFlow_），和網頁那一半背後的函式（08 的 lstData／lstUpload／lstApply／lstDrop／lstDropAll）。
-     網頁畫面本身（上傳、一筆一筆審、全部寫進、全部刪除）在 _learn_dev_sim_lw.js。
-     每一句機器人說的話都照上面那些函式拼字串的那一句寫；tools/learn_dev_sim_test.js 的 G 段把同一串輸入丟給真的 LINE 程式碼（AI 那一趟換成這幾張紙的內容）逐句比對。
-     練習的是「編的」試算表和「編的」紙：什麼都不會真的寫；AI 讀照片的那一趟，練習聊天室直接給這張紙上的內容。 */
-  /*SIMDEV*/
   var DSL_SAME = 0.8, DSL_SUSPECT = 0.4, DSL_SHIFT_MIN = 8, DSL_SHIFT_RATE = 0.5, DSL_KEEP_DAYS = 3;
-  var DSL_USER = "示範甲";   /* 網頁「寫進工作表1」記進「匯入紀錄」的操作者是開發者的名字；批次號是「校對＋月日」（dslBatch：練習用的假日期是 09/15，「時間過了 3 天」會往後走） */
+  var DSL_USER = "示範甲";
   function dslBatch(S) { return "校對" + dsMD(S); }
-  /* 五張練習用的紙。lines＝AI 把照片讀成的字（一行一個品項：code、商品名、位置，用 Tab 隔開；最後多一個 H＝紅筆手改的）；show＝聊天室裡那張照片上看得到的幾行；
-     kb／sec＝照片大小、AI 花的秒數（真的是量出來的，練習用編的）；err＝AI 那一趟失敗的原因（沒有就是讀得出來） */
   var DSL_PAPERS = [
     { key: "A", label: "清單 A（一般的一張）", file: "清單A.jpg", kb: 312, sec: 4.8, show: ["K3　90101", "C3　90105", "B1　90131", "⋮"], lines: [
       "90101\tTESTOLOL* 25MG TAB\tK3\tH",
@@ -4675,7 +4342,6 @@
     { key: "E", label: "清單 E（AI 剛好塞車）", file: "清單E.jpg", kb: 301, sec: 0, show: ["K3　90112", "K3　90114", "⋮"], err: "HTTP 503", lines: [] }
   ];
   function dslPaper(key) { var i; for (i = 0; i < DSL_PAPERS.length; i++) if (DSL_PAPERS[i].key === key) return DSL_PAPERS[i]; return null; }
-  /* ───── 拿清單去對工作表1（08 的 _lstParse_、_lstNorm_、_lstSim_、_lstDiff_）───── */
   function dslParse(text) {
     var rows = [], bad = [], lines = String(text === null || text === undefined ? "" : text).split(/\r?\n/), i, ln, f, code, brand, loc, hand;
     for (i = 0; i < lines.length; i++) {
@@ -4695,11 +4361,11 @@
     }
     return { rows: rows, bad: bad };
   }
-  function dslNorm(s) {   /* 全形轉半形、大寫，拿掉空白和 * · ・ ． . - _ */
+  function dslNorm(s) {
     return String(s === null || s === undefined || s === "" ? "" : s).toUpperCase().replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(c) { return String.fromCharCode(c.charCodeAt(0) - 65248); }).replace(/[\s*·・．.\-_]/g, "");
   }
   function dslNe(a, b) { return dslNorm(a) !== dslNorm(b); }
-  function dslSim(a, b) {   /* 1 － 編輯距離 ÷ 較長那串：1＝一模一樣 */
+  function dslSim(a, b) {
     var x = dslNorm(a), y = dslNorm(b), n = x.length, m = y.length, prev = [], cur = [], i, j;
     if (!x && !y) return 1;
     if (!x || !y) return 0;
@@ -4712,7 +4378,7 @@
     }
     return 1 - prev[m] / Math.max(n, m);
   }
-  function dslSheetIdx(S) {   /* 工作表1 現在的樣子：CODE → { brand, loc }，和出現過的位置（_lstDiff_ 是直接讀試算表，不是讀快取）*/
+  function dslSheetIdx(S) {
     var byCode = {}, locSet = {}, i, c, r, L;
     for (i = 0; i < S.order.length; i++) {
       c = S.order[i];
@@ -4745,7 +4411,6 @@
     shifted = matched >= DSL_SHIFT_MIN && locDiff / matched > DSL_SHIFT_RATE;
     return { diffs: shifted ? [] : out, same: same, odd: odd, suspect: suspect, matched: matched, locDiff: locDiff, shifted: shifted };
   }
-  /* AI 看照片那一趟（08 的 _lstRead_）：練習聊天室直接給這張紙上的字；每一個 code 只留第一次出現的 */
   function dslRead(P) {
     var got, seen = {}, uniq = [], i;
     if (P.err) return { rows: [], bad: [], passes: 1, err: P.err, fr: "" };
@@ -4758,11 +4423,8 @@
     return { rows: uniq, bad: got.bad, passes: 1, err: "", fr: "STOP" };
   }
 
-  /* ───── 待審清單（08 的 _lstGet_、_lstAdd_、_lstSave_、_lstPn_）───── */
-  /* st＝清單校對的狀態：mode＝校對模式開著嗎（真的是快取裡的 lsttry 旗標，30 分鐘）、pend＝待審清單（新的在最前面）、pn＝LINE 這邊傳到第幾張（真的是快取裡的計數，6 小時）、
-     page＝網頁現在的樣子（_learn_dev_sim_lw.js）、add＝最近一次存進待審的結果 { add 新增幾筆, rep 換掉原本幾筆 } */
   function dslNew() { return { mode: 0, pend: [], pn: 0, page: dslPageNew(), add: { add: 0, rep: 0 }, lck: dskNew() }; }
-  function dslGet(S) {   /* 待審超過 3 天的自動清掉 */
+  function dslGet(S) {
     var L = S.ops.lst, keep = [], i;
     for (i = 0; i < L.pend.length; i++) if ((L.pend[i].age || 0) < DSL_KEEP_DAYS) keep.push(L.pend[i]);
     L.pend = keep;
@@ -4771,7 +4433,6 @@
   function dslCount(S) { return dslGet(S).length; }
   function dslClear(S) { var n = dslGet(S).length; S.ops.lst.pend = []; return n; }
   function dslCopy(o) { return JSON.parse(JSON.stringify(o)); }
-  /* 存進待審：同一支藥同一種（code|kind）已經在待審裡的，原地換成新的；沒有的才放到最前面。回待審總共幾筆 */
   function dslAdd(S, diffs, when, pn) {
     var L = S.ops.lst, arr = dslGet(S), add = 0, rep = 0, i, j, d, k, at;
     for (i = 0; i < diffs.length; i++) {
@@ -4791,9 +4452,8 @@
   function dslPn(S) { return ++S.ops.lst.pn; }
   function dslOn(S) { return !!S.ops.lst.mode; }
 
-  /* ───── 聊天室裡的 LINE 這一半 ───── */
   var DSL_QCHIPS = [["📤 多張上傳", "up"], ["📋 待審清單", "rv"], ["📍 位置查核", "位置查核"], ["💾 保留清單", "清單校對 保留"], ["🗑 不保留清單", "清單校對 清空"], ["🚪 退出", "清單校對 結束"]];
-  function dslQuick() {   /* 08 的 _lstQuick_：前兩顆是開網頁（練習聊天室打開下面那一塊網頁），後四顆是打字（📍 位置查核＝打「位置查核」） */
+  function dslQuick() {
     var q = [], i, c;
     for (i = 0; i < DSL_QCHIPS.length; i++) {
       c = DSL_QCHIPS[i];
@@ -4804,11 +4464,10 @@
   function dslMenuText(n, ni) {
     return "📋 清單校對：三種都可以 ——\n\n" + "📤 多張上傳（建議）：按下面的按鍵開網頁，一次選好幾張一起送，跑完直接在同一頁審。\n" + "📷 一張一張：直接在這裡傳照片（位置清單那種表格），我會累積。\n" + "📍 位置查核：去貨架查某一格，按「📍 位置查核」，打位置（例如 A1）或傳貨架照片，逐支打勾、不在的當場改位置。\n\n" + "每張我會用 code 逐列對工作表1，回「讀到幾筆／一樣幾筆／不一樣幾筆」，\n" + "然後按「待審網站」在網頁上一筆一筆按「寫進工作表1」。\n\n" + "・整張兩欄也讀得出來，但一次拍一欄會更準\n" + "・紅筆手改的會標出來（劃掉的算舊的）\n" + "・「表上沒有」的可以直接按「匯入工作表1」新增\n" + "・寫進去的都記在「匯入紀錄」，7 天內打「復原」可還原\n\n" + (n ? "目前待審 " + n + " 筆（3 天後自動清掉）。\n" : "目前沒有待審。\n") + (ni ? "📥 待匯入分頁有 " + ni + " 筆，也在「待審網站」裡。\n" : "") + "★ 這 30 分鐘內您傳的照片一律走校對，就算 OCR辨識 開著也不會出卡片（v10.22.1 修）。\n\n" + "🔒 下面兩個網頁按鍵用的是你的開發者連結：只在綁定過的地方打得開（最多 3 處）。新的地方打開後，打「開發者網頁 綁定」拿 6 位數碼輸入。";
   }
-  function dslImpCount(S) {   /* 待匯入分頁有幾列要審（08 的 _lstImpRows_().rows.length） */
+  function dslImpCount(S) {
     var rd = dsImpRead(S);
     return rd.err ? 0 : rd.rows.length;
   }
-  /* 08 的 _impDevCmd_ 裡 /^清單校對/ 那一段 */
   function dslCmd(S, X, t, flat) {
     var L = S.ops.lst, n, ni, nc, lckHad;
     dsT(X, 1, "是「清單校對」這個開發者指令（藥師打沒有用）");
@@ -4858,16 +4517,13 @@
     X.reply = "說明（三種做法：網頁多張上傳、聊天室一張一張傳、位置查核）＋下面六顆小按鈕（前兩顆開網頁，「📍 位置查核」進位置查核，後三顆管清單和校對模式）";
     return true;
   }
-  /* 聊天室裡看到的那張紙（您傳的照片，上面一行一個品項） */
   function dslBubble(P) { return prn(P.show.slice()); }
-  /* 傳一張照片（練習專用的按鈕：五張清單 A～E、六張貨架照片 S1～S6）：02 的 _picFlow_ 先看有沒有在等某支藥的照片；再看是不是位置查核（13 的 _lckFlow_）；
-     再看是不是校對模式（08 的 _lstFlow_）；都不是才是平常的拍照查藥 */
   function dslImg(S, X, key) {
     var P = dslPaper(key), SH = P ? null : dskShelf(key), L = S.ops.lst, rd, df, left, kb, ln, show, i, d, cg, nEdit, nNew, w, t;
     X.msgs.push(SH ? dskShelfMsg(SH) : dslBubble(P));
-    if (S.fld && (S.fld.k === "pic" || S.fld.k === "npic")) { dspRecv(S, X); return true; }   /* 在等某支藥的照片：這張照片就是那支藥的照片 */
+    if (S.fld && (S.fld.k === "pic" || S.fld.k === "npic")) { dspRecv(S, X); return true; }
     dsT(X, 1, "收到一張照片 → 先看有沒有在等某支藥的照片（📷 換照片）：沒有");
-    if (L.lck.mode) return dskPhotoFlow(S, X, SH || dskPaperAsShelf(P));   /* 位置查核模式（30 分鐘內按過「📍 位置查核」或打過位置）：不管是貨架還是紙，都交給位置查核 */
+    if (L.lck.mode) return dskPhotoFlow(S, X, SH || dskPaperAsShelf(P));
     dsT(X, 0, "再看是不是在位置查核裡（30 分鐘內按過「📍 位置查核」或打過一個位置）：不是");
     if (!L.mode) {
       dsT(X, 0, "再看是不是在校對模式（30 分鐘內打過「清單校對」）：不是 → 這張照片會當成平常的「拍照查藥」");
@@ -4943,8 +4599,7 @@
     return true;
   }
 
-  /* ───── 網頁那一半背後的函式（08 的 lstData／lstUpload／lstApply／lstDrop／lstDropAll；網頁用「開發者網頁」的鑰匙呼叫，練習聊天室略過驗證）───── */
-  function dslImpRows(S) {   /* 08 的 _lstImpRows_：「待匯入」分頁上要審的列 */
+  function dslImpRows(S) {
     var rd = dsImpRead(S), out = [], i, j, r, c, f, chg;
     if (rd.err) return { rows: [], problems: rd.err !== "empty" ? [{ n: "-", why: rd.err === "nomap" ? "待匯入分頁的標題列認不出來（要有 CODE／商品名／位置…）" : rd.err }] : [] };
     for (i = 0; i < rd.rows.length; i++) {
@@ -4971,7 +4626,6 @@
     left = dslAdd(S, df.diffs, dsaNow(S), Math.max(0, Math.min(999, parseInt(pn, 10) || 0)));
     return { read: rd.rows.length, edit: edit, neu: neu, bad: rd.bad.length, left: left, full: left >= 500, passes: rd.passes, sec: P.sec };
   }
-  /* 在「待匯入」分頁上找這個 CODE 的那一列（08 的 lstApply／lstDrop 的 imp_ 那一段） */
   function dslImpFind(S, code) {
     var rd = dsImpRead(S), i, row = null;
     if (rd.err) return { rd: null, row: null };
@@ -5070,7 +4724,6 @@
     return { ok: true, n: n, left: left, bad: bad };
   }
 
-  /* ───── 練習專用的按鈕（真的 LINE 沒有）：傳一張清單的照片、讓時間過去 ───── */
   var DSL_SHORT = { A: "一般", B: "另一頁", C: "紙彎了", D: "有看不懂的行", E: "AI 塞車" };
   function dslActs(S) {
     var L = S.ops.lst, K = L.lck, out = [], i, p;
@@ -5078,13 +4731,12 @@
       p = DSL_PAPERS[i];
       out.push({ id: "lst:" + p.key, w: "line", l: "📷 傳清單 " + p.key + "（" + DSL_SHORT[p.key] + "）", v: p.key });
     }
-    out = out.concat(dskActs(S));   /* 六張貨架照片（位置查核）*/
+    out = out.concat(dskActs(S));
     if (L.mode || K.mode || K.edit || K.pend) out.push({ id: "lst:min30", w: "oth", l: "⏰ 時間過了 30 分鐘" });
     if (dskHasSt(K) || L.pn) out.push({ id: "lst:hour7", w: "oth", l: "⏰ 時間過了 7 小時" });
     if (dslCount(S) || L.mode || L.pn || dskAny(S)) out.push({ id: "lst:day3", w: "oth", l: "⏰ 時間過了 3 天" });
     return out;
   }
-  /* 做到一半的事（新藥填到一半、改某一格、一次改多項、匯入／復原確認）有幾件還在 */
   function dslHalf(S) {
     var out = [];
     if (S.wiz) out.push("新藥填到一半");
@@ -5093,13 +4745,12 @@
     if (S.imp) out.push("匯入／復原確認");
     return out;
   }
-  /* 時間往前走 sec 秒（練習時鐘是 _learn_dev_sim_adv.js 那一個）：邀請碼、「做到一半」的暫存（新藥 30 分鐘、改某一格 15 分鐘、一次改多項 15 分鐘、匯入 30 分鐘）跟著過期；回過期的有哪幾件 */
   function dslClockGo(S, sec) {
     var d = S.ops.dev, before = dslHalf(S), after, out = [], i;
     d.now += sec;
     dsaExpire(d);
     dsaAge(S);
-    dskAge(S);   /* 位置查核的旗標（30 分鐘）、等新位置（10 分鐘）、打勾的暫存（6 小時）*/
+    dskAge(S);
     after = dslHalf(S);
     for (i = 0; i < before.length; i++) if (after.indexOf(before[i]) < 0) out.push(before[i]);
     return out;
@@ -5114,7 +4765,7 @@
       lost = dslClockGo(S, hour ? 7 * 3600 : 31 * 60);
       lk = dskLost(snap, dskSnap(S));
       if (L.mode) { L.mode = 0; flags.push("「正在校對」的旗標（30 分鐘）"); }
-      if (hour) L.pn = 0;   /* LINE 這邊「傳到第幾張」的計數只留 6 小時 */
+      if (hour) L.pn = 0;
       tail = lost.length ? "另外，" + lost.join("、") + "的暫存也過期了（新藥 30 分鐘、改某一格 15 分鐘、匯入 30 分鐘）。" : "";
       if (lk.length || flags.length) {
         X.say = "時間過了 " + (hour ? "7 小時" : "30 分鐘") + "：" + flags.concat(lk).join("、") + "過期了。現在傳照片又是平常的「拍照查藥」；待審清單不受影響。" + (!hour && dskHasSt(dskK(S)) ? "位置查核打的勾還留著（要 6 小時才過期）。" : "") + tail;
@@ -5134,8 +4785,8 @@
       for (i = 0; i < L.pend.length; i++) L.pend[i].age = (L.pend[i].age || 0) + 3;
       i = before - dslGet(S).length;
       L.mode = 0;
-      L.pn = 0;   /* LINE 這邊「傳到第幾張」的計數只留 6 小時，「正在校對」的旗標只留 30 分鐘：3 天後都沒了 */
-      S.day = (S.day || 0) + 3;   /* 假日期往後走 3 天：之後寫進工作表1 的批次號是新的那一天（「校對MMdd」） */
+      L.pn = 0;
+      S.day = (S.day || 0) + 3;
       X.say = "時間過了 3 天：待審清單裡超過 3 天的都清掉了（" + i + " 筆）；「正在校對」的旗標早就過期，位置查核打的勾（6 小時）也不見了，LINE 這邊「傳到第幾張」也從頭算。" + (lost.length ? lost.join("、") + "的暫存也過期了。" : "");
       dsT(X, 1, "過了 3 天：待審清單裡超過 3 天的，下一次有人讀待審清單的時候順便清掉（這裡清了 " + i + " 筆；還沒寫進工作表1 的，不能找回）");
       dsT(X, 1, "「正在校對」的旗標（30 分鐘）、位置查核打的勾（6 小時）和 LINE 這邊「傳到第幾張」的計數（6 小時）早就過期了");
@@ -5146,26 +4797,14 @@
     }
     return X;
   }
-  /*/SIMDEV*/
 
-  /* ───────── 開發者的位置查核（第 17 批；第 4 課「清單校對」的練習聊天室，位置查核這一半：LINE）─────────
-     開發者定期去貨架查「這支藥是不是真的放在這一格」：在「清單校對」裡按「📍 位置查核」，打一個位置（例如 K2）或傳一張貨架照片（要拍到架上的「位置牌」和藥品），
-     機器人把這一格的藥列成一張卡（跟藥師打位置查到的是同一批、同一個順序），開發者邊看邊一支一支打勾；不在這一格的，按那一列的「修改」當場改位置。
-     這一個檔放：假的「貨架照片」（練習用的六張，每一張是 AI 看照片讀出來的樣子）、這一格的藥怎麼找（13_位置查核.gs 的 _lckKey_／_lckAllLocs_／_lckCanon_／_lckRowsAt_）、
-     改位置（_lckMove_，只改「位置」那一格、不記匯入紀錄）、打勾的暫存（_lckStGet_／_lckStSet_／_lckStart_／_lckView_）、LINE 的卡片（_lckRowBox_／_lckBubbleOf_／_lckMsgs_／_lckPickMsg_）、
-     文字、按鍵、照片三個入口（_lckText_／_lckPostback_／_lckFlow_）。網頁那一半（清單校對網頁的「位置查核」分頁）在 _learn_dev_sim_lw.js，兩邊共用這裡的找藥、改位置、認照片。
-     每一句機器人說的話都照 13_位置查核.gs 拼字串的那一句寫；tools/learn_dev_sim_test.js 的 L 段把同一串輸入丟給真的 LINE 程式碼（AI 那兩趟換成這幾張照片的內容）逐句比對。
-     練習的是「編的」試算表和「編的」照片：改位置只改練習的試算表，什麼都不會真的寫；AI 看照片那兩趟，練習聊天室直接給這張照片上的內容。 */
-  /*SIMDEV*/
-  var DSK_MODE_SEC = 1800, DSK_STATE_SEC = 21600, DSK_EDIT_SEC = 600, DSK_PEND_SEC = 600;   /* 位置查核的旗標 30 分鐘、打勾的暫存 6 小時、等新位置那一句 10 分鐘、照片先記著的藥 10 分鐘（13 的 LCK_MODE_SEC…） */
+  var DSK_MODE_SEC = 1800, DSK_STATE_SEC = 21600, DSK_EDIT_SEC = 600, DSK_PEND_SEC = 600;
   var DSK_STATE_LOCS = 12, DSK_SHOW_MAX = 60, DSK_OTHER_MAX = 12, DSK_PICK_PER = 36, DSK_PICK_BUBBLES = 6, DSK_COLS = 4, DSK_PAGE = 12, DSK_LOC_MAX = 200;
-  var DSK_CAR_BYTES = 45000, DSK_BASE_BYTES = 600, DSK_ROW_BYTES = 1650;   /* 一則訊息的輪播不超過 45 KB（AGG_CAR_BYTES）；練習聊天室沒有真的 JSON，用「一張卡 ≈ 600 ＋ 每列 1650 位元組」估（真的量過 5～36 列，差在 5% 以內） */
+  var DSK_CAR_BYTES = 45000, DSK_BASE_BYTES = 600, DSK_ROW_BYTES = 1650;
   var DSK_GREEN = "#1B7A5A", DSK_AMBER = "#B26B00";
-  var DSK_LOC_RE = /^(水)?[A-Z]{1,2}[0-9]{1,3}$/;   /* 01 的 LOC_CODE_RE：像 K2、B1、水A3 的位置，比的時候要「完全一樣」；其他名稱（棧中、水棧一）是「包含」 */
+  var DSK_LOC_RE = /^(水)?[A-Z]{1,2}[0-9]{1,3}$/;
   var DSK_ERR_DARK = "這張照片讀不出藥品：光線亮一點、字對焦清楚再拍一次", DSK_ERR_BUSY = "AI 那邊剛才塞車了，等十幾秒再傳一次";
   var DSK_MENU_TEXT = "📍 位置查核\n\n" + "打一個位置（例如 A1），或傳一張貨架照片（要拍到架上的「位置牌」和藥品）。\n" + "我會把這一格的藥列出來，你邊看邊一支一支打勾；不在這格的，按那一列的「修改」當場改位置。\n\n" + "・打勾只放在暫存，不寫進工作表1，也不記日期\n" + "・改位置不記進匯入紀錄（沒有 7 天內復原），改完馬上更新快取，藥師現在查就是新位置\n" + "・照片裡認出來、工作表1 也寫這一格的，會先幫你打勾";
-  /* 六張練習用的貨架照片。sign＝架上位置牌的字（AI 讀到的；空字串＝牌子被擋住／太暗沒讀到）、rec＝AI 在架上認出來的藥（CODE；認藥失敗就是空的）、recErr＝認藥失敗的原因（沒有＝認得出來）、
-     sec＝AI 花的秒數（量出來的，練習用編的）、kb＝照片大小、show＝聊天室裡那張照片上看得到的幾個藥盒 */
   var DSK_SHELF = [
     { key: "S1", short: "K2 整格", sign: "K2", sec: 6.8, kb: 418, rec: ["90101", "90104", "90108", "90111", "90112"], show: ["TESTOLOL*", "SAMPLESPOT*", "EXAMPLIDE*", "SAMPLEXIN* 250", "SAMPLEXIN* 500"] },
     { key: "S2", short: "B1", sign: "B1", sec: 6.1, kb: 392, rec: ["90103", "90116", "90117"], show: ["MODELPRIL*", "SAMPLECOR*", "MODELTAB*"] },
@@ -5175,28 +4814,22 @@
     { key: "S6", short: "太暗了", sign: "", sec: 4.7, kb: 296, rec: [], recErr: DSK_ERR_DARK, show: ["▒▒▒", "▒▒▒"], dark: 1 }
   ];
   function dskShelf(key) { var i; for (i = 0; i < DSK_SHELF.length; i++) if (DSK_SHELF[i].key === key) return DSK_SHELF[i]; return null; }
-  /* 聊天室裡那張貨架照片（您傳的照片）：牌子上的字、架上的幾個藥盒；rkEl 在 _learn_dev_ui.js 畫 */
   function dskShelfMsg(P) { return { w: "me", shelf: P.show.slice(), sign: P.sign, dark: !!P.dark, what: "貨架" }; }
-  /* 在「清單校對」模式（不是位置查核）傳了貨架照片：機器人把它當清單讀，這種照片上沒有 code 表格，讀到 0 筆（02 的 _lstFlow_）。回一張「清單」的樣子給 dslImg 用 */
   function dskAsPaper(P) { return { key: P.key, kb: P.kb, sec: 3.4, lines: [], show: P.show.slice() }; }
-  /* 在位置查核模式傳了一張清單的紙：沒有位置牌，也認不出藥（紙上是字，不是架上的藥盒） */
   function dskPaperAsShelf(P) { return { key: P.key, kb: P.kb, sign: "", sec: P.sec, rec: [], recErr: DSK_ERR_DARK }; }
 
-  /* ───── 狀態：st＝打勾的暫存（13 的 lckst_，6 小時）、mode／edit／pend＝三個旗標（lckmode_ 30 分鐘、lckedit_ 10 分鐘、lckpend_ 10 分鐘）─────
-     at 都是練習時鐘（S.ops.dev.now，秒）。時間只會因為「⏰ 時間過了…」的按鈕往前走（dslClockGo 叫 dskAge）。 */
   function dskNew() { return { mode: 0, modeAt: 0, edit: null, editAt: 0, pend: null, pendAt: 0, st: {}, stAt: 0, seq: 0 }; }
   function dskK(S) { return S.ops.lst.lck; }
   function dskNow(S) { return S.ops.dev.now; }
   function dskHasSt(K) { return Object.keys(K.st).length > 0; }
   function dskAny(S) { var K = dskK(S); return !!(K.mode || K.edit || K.pend || dskHasSt(K)); }
-  function dskAge(S) {   /* 過了時間的旗標、暫存拿掉（真的是快取自己過期） */
+  function dskAge(S) {
     var K = dskK(S), now = dskNow(S);
     if (K.mode && now - K.modeAt >= DSK_MODE_SEC) K.mode = 0;
     if (K.edit && now - K.editAt >= DSK_EDIT_SEC) K.edit = null;
     if (K.pend && now - K.pendAt >= DSK_PEND_SEC) K.pend = null;
     if (dskHasSt(K) && now - K.stAt >= DSK_STATE_SEC) K.st = {};
   }
-  /* 這個動作做到哪（時間過去要說「哪些東西過期了」）：旗標三個、暫存一份 */
   function dskSnap(S) { var K = dskK(S); return { mode: !!K.mode, edit: !!K.edit, pend: !!K.pend, st: dskHasSt(K) }; }
   function dskLost(a, b) {
     var out = [];
@@ -5206,17 +4839,15 @@
     if (a.st && !b.st) out.push("位置查核打的勾（6 小時）");
     return out;
   }
-  function dskTouch(S) { var K = dskK(S); K.mode = 1; K.modeAt = dskNow(S); S.ops.lst.mode = 1; }   /* 13 的 _lckTouch_：位置查核和清單校對兩個旗標一起重新算 30 分鐘 */
-  /* 打「清單校對 結束」「位置查核 結束」：旗標、暫存、等新位置、照片先記著的藥全部清掉；有清到東西回 true（13 的 _lckLeave_） */
+  function dskTouch(S) { var K = dskK(S); K.mode = 1; K.modeAt = dskNow(S); S.ops.lst.mode = 1; }
   function dskLeave(S) {
     var K = dskK(S), had = !!(K.mode || K.edit || K.pend) || dskHasSt(K);
     S.ops.lst.lck = dskNew();
     return had;
   }
-  /* 回到「表格照片」模式（打「清單校對」）：貨架照片模式、等新位置、照片先記著的藥關掉；打勾的暫存還留著 */
   function dskBackToList(S) { var K = dskK(S); K.mode = 0; K.edit = null; K.pend = null; }
   function dskStGet(S) { return dslCopy(dskK(S).st); }
-  function dskStSet(S, all) {   /* 13 的 _lckStSet_：最多留最近用過的 12 個位置；每寫一次，6 小時重新算 */
+  function dskStSet(S, all) {
     var K = dskK(S), ks = Object.keys(all), i;
     if (ks.length > DSK_STATE_LOCS) {
       ks.sort(function(a, b) { return (all[b].t || 0) - (all[a].t || 0); });
@@ -5231,15 +4862,12 @@
     return { a: dskArr(s.a), k: dskArr(s.k), o: dskArr(s.o), m: s.m && typeof s.m === "object" ? s.m : {}, t: s.t || 0 };
   }
 
-  /* ───── 找這一格的藥、改位置（兩邊共用）───── */
-  /* 打進來的位置整理成「一個鍵」：全形轉半形、英文大寫、空白拿掉（a 1 → A1）。不能當位置的（空的、超過 20 字、有「|」、控制字元、開頭是 = + - @ 會被試算表當公式）回空字串 */
   function dskKey(v) {
     var s = dsLocNorm(v === null || v === undefined ? "" : v).replace(/\s+/g, "");
     if (!s || s.length > 20) return "";
     if (/[|\u0000-\u001f]/.test(s) || /^[=+\-@]/.test(s)) return "";
     return s;
   }
-  /* 位置的排法（01 的 _buyLocKey_）：A1、A2…B1…（g=1 代碼樣式），再來是其他名稱（g=2，照字排） */
   function dskBuyKey(loc) {
     var v = String(loc === null || loc === undefined ? "" : loc).trim(), m;
     if (!v) return { g: 3, a: "", n: 0, name: "（位置未登錄）" };
@@ -5247,13 +4875,12 @@
     if (m) return { g: 1, a: m[1], n: parseInt(m[2], 10), name: m[1] + " 區" };
     return { g: 2, a: v, n: 0, name: v };
   }
-  function dskFind(ix, c) {   /* 01 的 findByCode_：這支藥現在在不在（索引快取裡） */
+  function dskFind(ix, c) {
     var i;
     if (!c) return null;
     for (i = 0; i < ix.order.length; i++) if (ix.order[i] === c) return ix.rows[c] || null;
     return null;
   }
-  /* 工作表1 裡所有出現過的位置：[{ loc（最常見的寫法）, key, n（幾支藥）}]，照 dskBuyKey 排。讀的是索引快取（_lckAllLocs_ 的 getIndex_） */
   function dskAllLocs(S) {
     var ix = dsIdx(S), map = {}, out = [], i, c, loc, key, m, k, s, best, bn;
     for (i = 0; i < ix.order.length; i++) {
@@ -5282,7 +4909,6 @@
     });
     return out;
   }
-  /* 這個鍵是不是工作表1 出現過的位置：先照字面比；比不到再把 - . · 之類的符號去掉比（A-1 當作 A1）。回 {loc, key, n} 或 null */
   function dskCanon(S, key) {
     var all, i, lk;
     if (!key) return null;
@@ -5293,7 +4919,6 @@
     for (i = 0; i < all.length; i++) if (dslNorm(all[i].key) === lk) return all[i];
     return null;
   }
-  /* 這一格的藥：跟藥師打位置查到的是同一批、同一個順序（代碼樣式的位置要完全一樣，後面接括號的不算；其他名稱是「包含」） */
   function dskLocHit(kw, locUp) {
     if (!locUp) return false;
     if (DSK_LOC_RE.test(kw)) return locUp === kw || locUp.replace(/[（(].*$/, "").trim() === kw;
@@ -5310,8 +4935,6 @@
     }
     return out;
   }
-  /* 把一支藥的位置改掉（兩邊共用）。回 {ok, code, before, after, known, same?}、{err}，或 {confirm, key}（新位置工作表1 還沒有人用，要呼叫的人先問過）。
-     oldLoc＝呼叫的人畫面上看到的舊位置（不給就不檢查）：不一樣表示別人剛改過，不蓋過去。只改「位置」那一格，走 ✏️ 修改同一支（dsEfWrite：自動大寫、改完清快取），但不記進匯入紀錄 */
   function dskMove(S, X, code, newLoc, oldLoc, allowNew) {
     var c = dsNorm(code), row, before, key, canon, want, keep, res;
     if (!c || c.length > 30) return { err: "CODE 不對" };
@@ -5326,7 +4949,7 @@
     want = canon ? canon.loc : key;
     if (dskKey(before) === dskKey(want)) return { ok: true, same: true, code: c, before: before, after: before, known: !!canon };
     if (!canon && !allowNew) return { confirm: true, key: key };
-    keep = X.efLog;   /* 這一次不記匯入紀錄：LINE 的 ✏️ 修改把改過的格子先記在 X.efLog、回覆完才寫進「匯入紀錄」，這裡先放掉再還回去 */
+    keep = X.efLog;
     X.efLog = [];
     res = dsEfWrite(S, X, c, "loc", want);
     X.efLog = keep;
@@ -5334,7 +4957,6 @@
     return { ok: true, code: c, before: before, after: want, known: !!canon };
   }
 
-  /* ───── 這一格怎麼排：原料 → 要畫的東西 ───── */
   function dskRaw(S, key) {
     var all = dskStGet(S), st = dskStOf(all, key), cur = dskRowsAt(S, key), ix = dsIdx(S), byCode = {}, more, i, c, r;
     for (i = 0; i < cur.length; i++) byCode[cur[i].code] = cur[i].r;
@@ -5348,7 +4970,6 @@
     return { key: key, all: all, st: st, cur: cur, byCode: byCode };
   }
   function dskRowName(e) { return String(e.r.b || e.r.z || e.code || ""); }
-  /* 原料＋勾選狀態 → list（這一格的藥，改走的留在原位；後面接「照片認出但寫在別格」）、數字 */
   function dskView(raw) {
     var st = raw.st, curSet = {}, main = [], got = {}, oth = [], shown, seen = 0, moved = 0, movedAll = 0, dropped = [], i, c, r;
     function add(code) {
@@ -5376,7 +4997,6 @@
     for (i = DSK_SHOW_MAX; i < main.length; i++) dropped.push(dskRowName(main[i]));
     return { key: raw.key, list: shown.concat(oth), total: shown.length, cur: main.length - movedAll, moved: moved, seen: seen, dropped: dropped, otherN: oth.length };
   }
-  /* 第一次打開這一格（或又打了一次位置）：把「現在這一格有哪些藥」記成原本的樣子；打勾的留著（只留還在這一格的）、改走的清掉 */
   function dskStart(S, key, cur, extra) {
     var K = dskK(S), all = dskStGet(S), st = dskStOf(all, key), codes = [], here = {}, i, c;
     for (i = 0; i < cur.length; i++) { c = cur[i].code; codes.push(c); here[c] = 1; }
@@ -5394,7 +5014,6 @@
     dskStSet(S, all);
     return st;
   }
-  /* 認出來的藥分成兩邊：工作表1 也寫這一格的（先打勾）、工作表1 寫在別格的（列在最後一段） */
   function dskClassify(S, key, recCodes) {
     var here = {}, rows = dskRowsAt(S, key), yes = [], other = [], seen = {}, i, c;
     for (i = 0; i < rows.length; i++) here[rows[i].code] = 1;
@@ -5407,8 +5026,7 @@
     return { yes: yes, other: other.slice(0, DSK_OTHER_MAX) };
   }
 
-  /* ───── LINE 的卡片（13 的 _lckGroups_／_lckRowBox_／_lckBubbleOf_；跟藥師打位置查到的同一種版面，每一列多了打勾框和「修改」）───── */
-  function dskIsWater(r) {   /* 13 的 _isWater_：劑型有「水」或「液」、或位置開頭是「水」→ 水劑類（改走到「水棧一」的藥也會跑到水劑類） */
+  function dskIsWater(r) {
     var f = String(r.f || ""), l = String(r.loc || "");
     return f.indexOf("水") >= 0 || f.indexOf("液") >= 0 || l.indexOf("水") === 0;
   }
@@ -5440,7 +5058,6 @@
       gx([gt(moved ? "再改" : "修改", { z: "xs", b: 1, c: "#C0392B", a: "center" })], { w: 50, hh: 34, r: 8, bw: 1, bd: "#C0392B", jc: "center", cls: "lkm", send: { p: "lck=m|" + key + "|" + code, a: "「" + code + "」右邊的「" + (moved ? "再改" : "修改") + "」" }, al: code + "：" + (moved ? "再改位置" : "修改位置") })];
     return gh(cells, { sp: "sm", p: 8, ai: "center", bg: moved ? "#FFF8E6" : on ? "#EEF7F2" : "#FFFFFF" });
   }
-  /* 一頁的卡片（一頁 12 列；太大才一級一級縮的那幾層，練習用的假藥名短，用不到） */
   function dskBubbleOf(view, page, pages, ents, drop) {
     var key = view.key, last = page === pages - 1, sub = "這一格有 " + view.cur + " 個品項", done, body, groups, n = 0, g, i, oth;
     if (view.moved) sub += "（已改走 " + view.moved + "）";
@@ -5474,12 +5091,12 @@
     return { w: "gc", pad: 14, kids: body, rows: ents.length, alt: "位置查核的卡片：" + key + "，" + sub + "，已看 " + view.seen + "/" + view.total + "；每一列左邊一個打勾框、中間藥名（點了查卡片）、右邊一顆「修改」" };
   }
   function dskPageCount(view) { return Math.max(1, Math.ceil(view.list.length / DSK_PAGE)); }
-  function dskPageMsg(view, p) {   /* 第 p 頁（從 0 數）的卡片 */
+  function dskPageMsg(view, p) {
     var pages = dskPageCount(view);
     return dskBubbleOf(view, p, pages, view.list.slice(p * DSK_PAGE, (p + 1) * DSK_PAGE), p === pages - 1 ? view.dropped.slice() : []);
   }
   function dskCarBytes(bs) { var n = 30, i; for (i = 0; i < bs.length; i++) n += DSK_BASE_BYTES + DSK_ROW_BYTES * bs[i].rows + 1; return n; }
-  function dskPack(bubbles) {   /* 01 的 _packByBytes_：依位元組上限把卡片分成幾疊 */
+  function dskPack(bubbles) {
     var packs = [], cur = [], i;
     for (i = 0; i < bubbles.length; i++) {
       cur.push(bubbles[i]);
@@ -5488,7 +5105,6 @@
     if (cur.length) packs.push(cur);
     return packs;
   }
-  /* 整格的輪播（每頁一張卡片，往左滑）：最多回 maxMsgs 則訊息 */
   function dskMsgs(view, maxMsgs) {
     var pages = dskPageCount(view), bubbles = [], p, packs, out = [], i;
     for (p = 0; p < pages; p++) bubbles.push(dskPageMsg(view, p));
@@ -5501,7 +5117,6 @@
     for (i = 0; i < view.list.length; i++) if (view.list[i].code === code) return Math.floor(i / DSK_PAGE);
     return 0;
   }
-  /* 輸入框上面的小按鈕（13 的 _lckQuick_）：有指定的位置才有「📑 全部重送」「↺ 清掉勾選」；🌐 網頁版（練習聊天室打開下面那一塊網頁，帶著這一格） */
   function dskQuick(S, key) {
     var q = [];
     if (key) {
@@ -5515,8 +5130,6 @@
   }
   function dskReply(S, X, msgs, key) { dsSend(X, msgs, dskQuick(S, key)); }
 
-  /* ───── 動作：列出一格、重送、打勾、修改 ───── */
-  /* 打了一個位置（或照片讀出位置牌）→ 列出這一格。o: { extra（照片：{yes, other}）, lead（卡片前面的一段話）} */
   function dskShow(S, X, key, o) {
     var cur = dskRowsAt(S, key), known, raw, view, msgs = [], cars, i;
     o = o || {};
@@ -5542,7 +5155,6 @@
     X.sheet = "沒動（打勾只放在機器人的暫存，不寫進工作表1、不記日期）";
     X.reply = (o.lead ? "一段說明＋" : "") + "這一格的卡片（" + view.list.length + " 列，已看 " + view.seen + "/" + view.total + "）＋下面小按鈕（📑 全部重送、↺ 清掉勾選、🌐 網頁版、📋 回表格校對、🚪 退出）";
   }
-  /* 重送卡片（打勾、改位置、全部重送之後）：只送動到的那一頁；all＝整格 */
   function dskResend(S, X, key, code, o) {
     var raw, view, msgs = [], cars, i;
     o = o || {};
@@ -5558,10 +5170,9 @@
     dskReply(S, X, msgs, key);
     return view;
   }
-  /* 按「打勾」：打勾 ⇄ 取消（改走的不能打勾，只能「再改」） */
   function dskToggle(S, X, key, code) {
     var all = dskStGet(S), st = dskStOf(all, key), at, view;
-    if (!st.a.length && !st.k.length) {   /* 暫存過期了（超過 6 小時）→ 重新開這一格 */
+    if (!st.a.length && !st.k.length) {
       dsT(X, 0, "這一格的暫存已經不見了（打勾的暫存只留 6 小時）→ 不能接著勾，重新開這一格");
       dskShow(S, X, key, { lead: "（勾選的暫存已經過期，這一格重新開始）" });
       return;
@@ -5580,7 +5191,6 @@
     X.sheet = "沒動（打勾只放在機器人的暫存）";
     X.reply = "動到的那一頁卡片（已看 " + view.seen + "/" + view.total + (view.seen >= view.total && view.total > 0 ? "，全部看完了" : "") + "）＋下面小按鈕";
   }
-  /* 「選新位置」的清單：每個位置一顆小按鍵（一排 4 顆），按 A 區、B 區…分段；一張卡片最多 36 顆，多的往左滑 */
   function dskPickMsg(locs, key, code) {
     var seq = [], lastG = "", shown = locs.slice(0, DSK_PICK_PER * DSK_PICK_BUBBLES), bubbles = [], body = null, chips = 0, rowCells = [], curG = "", i, bk, g, x;
     for (i = 0; i < shown.length; i++) {
@@ -5627,7 +5237,6 @@
     if (!bubbles.length) return null;
     return bubbles.length === 1 ? bubbles[0] : { w: "gcar", cs: bubbles };
   }
-  /* 按「修改」：出一張「選新位置」的清單（所有位置，點一個就改），也可以直接打字 */
   function dskAskMove(S, X, key, code) {
     var K = dskK(S), row = dskFind(dsIdx(S), code), now, nowKey, locs, here, at, msgs, pk;
     if (!row) {
@@ -5644,7 +5253,7 @@
     nowKey = dskKey(now);
     locs = dskAllLocs(S).filter(function(x) { return x.key !== nowKey; });
     here = dskCanon(S, key);
-    if (here && here.key !== nowKey) {   /* 從別格拉進這一格的（照片認出來寫在別格的）：這一格排第一個 */
+    if (here && here.key !== nowKey) {
       at = -1;
       locs.forEach(function(x, i) { if (at < 0 && x.key === here.key) at = i; });
       if (at > 0) locs.unshift(locs.splice(at, 1)[0]);
@@ -5657,7 +5266,6 @@
     X.sheet = "沒動（還沒選新位置）";
     X.reply = "「✏️ 修改位置」說明＋「選新位置」的小按鍵清單＋下面一顆「取消，不改了」";
   }
-  /* 真的改（LINE）：改完把這一格重排、清快取；新位置工作表1 沒人用過 → 先問一次 */
   function dskDoMove(S, X, key, code, newLoc, allowNew) {
     var K = dskK(S), row0 = dskFind(dsIdx(S), code), res, all, st, inHere, ki, oi, brand, lead, q, view;
     res = dskMove(S, X, code, newLoc, undefined, allowNew);
@@ -5682,7 +5290,7 @@
     if (!res.same) {
       inHere = dskKey(res.after) === dskKey(key);
       ki = st.k.indexOf(code);
-      if (inHere) {   /* 從別格拉進這一格：現在它確實在這一格，也看過了 → 打勾，加進原本的清單 */
+      if (inHere) {
         if (st.o.indexOf(code) >= 0) st.o.splice(st.o.indexOf(code), 1);
         if (ki < 0) st.k.push(code);
         if (st.a.indexOf(code) < 0) st.a.push(code);
@@ -5709,7 +5317,6 @@
     X.wrote = res.same ? 0 : 1;
     X.reply = "「" + (res.same ? "👌 本來就在…" : "✅ 位置改好了") + "」＋動到的那一頁卡片（已看 " + view.seen + "/" + view.total + "）＋下面小按鈕";
   }
-  /* 按鍵（postback）：lck=動作|位置|CODE|… */
   function dskPostback(S, X, v) {
     var K = dskK(S), p, act_, key, code, all, st, nm;
     if (String(v).indexOf("lck=") !== 0) return false;
@@ -5758,7 +5365,6 @@
     return true;
   }
 
-  /* ───── 文字：「位置查核」指令、等新位置的那一句、在清單校對／位置查核裡打了一個位置（13 的 _lckText_）───── */
   function dskEnter(S, X) {
     dskTouch(S);
     dsT(X, 1, "進入位置查核：接下來 30 分鐘內，你打一個位置就列出那一格，傳的照片當成貨架照片（旗標跟清單校對的一起算）");
@@ -5766,7 +5372,6 @@
     X.sheet = "沒動";
     X.reply = "位置查核的說明＋下面三顆小按鈕（🌐 網頁版、📋 回表格校對、🚪 退出）";
   }
-  /* st＝匯入逐筆確認的狀態：確認到一半不搶字（打「位置查核」開頭的指令才算）。處理掉回 true；不是位置查核的事回 false（照原本往下走） */
   function dskText(S, X, t, flat, st) {
     var K = dskK(S), isCmd = /^位置查核/.test(flat), editRaw = K.edit, inMode = !!K.mode || !!S.ops.lst.mode, rest, key, key2, had, extra, pc;
     if (!isCmd && !editRaw && !inMode) return false;
@@ -5803,7 +5408,7 @@
         X.sheet = "沒動"; X.reply = "「好，沒改。」＋下面小按鈕";
         return true;
       }
-      if (/^\d{4,6}$/.test(flat)) {   /* 打了 CODE 之類（不像位置）→ 當成要查別的：等新位置的狀態取消，免得之後隨手打的位置被當成「新位置」把藥改走 */
+      if (/^\d{4,6}$/.test(flat)) {
         K.edit = null;
         dsT(X, 0, "打的是 CODE（不像位置）→ 當成要查別的藥，「正在改」的記號丟掉，免得之後隨手打的字被當成新位置");
         return false;
@@ -5813,7 +5418,7 @@
       return true;
     }
     key2 = dskKey(t);
-    if (key2 && (DSK_LOC_RE.test(key2) || dskCanon(S, key2))) {   /* 在清單校對／位置查核裡打了一個位置 */
+    if (key2 && (DSK_LOC_RE.test(key2) || dskCanon(S, key2))) {
       extra = null;
       dsT(X, 1, "正在清單校對／位置查核裡（30 分鐘內）→ 這句話先給位置查核看");
       dsT(X, 1, "「" + key2 + "」像一個位置（英文字母加數字，或工作表1 出現過的名稱）→ 列出那一格");
@@ -5829,7 +5434,6 @@
     return false;
   }
 
-  /* ───── 照片（13 的 _lckFlow_）：ph＝{ sign, rec, recErr, sec }（一張貨架照片 AI 讀出來的樣子，DSK_SHELF 的一格，或 dskPaperAsShelf）───── */
   function dskPhotoFlow(S, X, ph) {
     var K = dskK(S), label = ph.sign || "", key = dskKey(label), canon = key ? dskCanon(S, key) : null, ix = dsIdx(S), recCodes = [], codes = [], cls, i, c, rec;
     for (i = 0; i < (ph.rec || []).length; i++) if (dskFind(ix, ph.rec[i])) recCodes.push(ph.rec[i]);
@@ -5842,7 +5446,7 @@
       return true;
     }
     rec = recCodes;
-    if (!canon) {   /* 牌子沒讀到、或牌子上的字工作表1 沒有人用 → 請開發者打位置，認出來的藥先記著 */
+    if (!canon) {
       for (i = 0; i < rec.length; i++) { c = dsNorm(rec[i]); if (c && codes.indexOf(c) < 0) codes.push(c); }
       K.pend = { c: codes.slice(0, 40) };
       K.pendAt = dskNow(S);
@@ -5860,7 +5464,6 @@
     return true;
   }
 
-  /* 輸入框下面「這一步可以這樣打」的範例字：等新位置 → 挑一個有的位置、一個沒有的（會問一次）、取消；照片先記著 → 打一格；在位置查核／清單校對裡 → 打一格、或退出 */
   function dskSug(S) {
     var K = dskK(S);
     if (K.edit) return ["A3", "Z9", "取消"];
@@ -5868,7 +5471,6 @@
     if (K.mode || S.ops.lst.mode) return ["K2", "B1", "位置查核 結束"];
     return [];
   }
-  /* ───── 練習專用的按鈕（真的 LINE 沒有）：傳一張貨架照片 ───── */
   function dskActs(S) {
     var out = [], i, p;
     for (i = 0; i < DSK_SHELF.length; i++) {
@@ -5877,33 +5479,11 @@
     }
     return out;
   }
-  /*/SIMDEV*/
 
-  /* ───────── 開發者的清單校對：網頁那一半（第 17 批；真的網頁是 GitHub 上的 lst.html，原始碼 _lst_page.html）─────────
-     分兩段：
-     ① 網頁現在的樣子（頁面狀態）和每一個動作。照 _lst_page.html 的全域變數 A、PICK、FILT、CUR、PN、PICKN、RETRY、PROB 和函式 load、draw、act、res、run 一個一個對：
-        　・「待審清單」是網頁打開（或重新整理）那一刻讀回來的一份複本，之後 LINE 這邊再傳的照片，網頁要重新整理才看得到；
-        　・畫面上的卡片是 draw() 那一刻排好的；按「✅ 寫進」「❌ 不要」只在那張卡片下面加一行結果、把卡片變淡，不會重排（所以上面的「待審 N 筆」也不會馬上變）；
-        　・「⏭ 跳過」只把卡片在這個網頁裡藏起來，沒有告訴後端——待審清單裡還在，重新整理又會出現；
-        　・真的網頁用瀏覽器的 confirm()／alert() 視窗，這裡畫成頁面裡的一個框（教學頁面不用跳出視窗）。
-        純函式（SIMDEV 之間），Node 測試也直接跑它，和真的網頁專案（lstData、lstUpload、lstApply、lstDrop、lstDropAll）、真的網頁逐步比對。
-     ②′ 同一個網頁的第二個分頁「📍 位置查核」（第 17 批；真的網頁的 TAB、LC、LCM、LCPEND 和函式 setTab、lcGo、lcShow、lcDraw、lcTick、lcOpen、lcSubmit、lcMoved、lcPhoto 一個一個對）：
-        　・這一格的藥、打的勾、「改走了」都只放在網頁的記憶體（LCM，一個位置一份）：重新整理、關掉網頁就沒了；打勾不寫進工作表1、不寫日期；
-        　・每查一次（lcGo），這一格的藥重新問後端（lstLocFind）；勾選留著（只留還在這一格的）、「改走」的標記清掉；
-        　・「修改」呼叫後端 lstLocMove，只改「位置」那一格、不記進匯入紀錄；新位置工作表1 從來沒出現過 → 後端先不改，網頁問你一次；
-        　・貨架照片呼叫後端 lstLocPhoto（AI 讀位置牌＋認出架上的藥），認出的藥先打勾；牌子沒讀到 → 認出的藥先記著（LCPEND），等你打位置；
-        　・和 LINE 位置查核共用 _learn_dev_sim_lck.js 的找藥（dskRowsAt）、改位置（dskMove）、六張練習用的貨架照片（DSK_SHELF）。
-     ② 畫面（dswMake）：用真的按鈕、輸入格畫出來，點下去就是上面的動作。選照片不是真的選檔，是從五張編好的清單（位置查核那一頁是六張貨架照片）挑。 */
-  /*SIMDEV*/
   var DSL_CHIPS = [["all", "全部"], ["edit", "🟡 不一樣"], ["new", "🔵 表上沒有"], ["hand", "✍️ 手寫改的"]];
   var DSL_FIELDS = [["brand", "商品名"], ["loc", "位置"], ["form", "劑型"], ["zh", "中文名"], ["gen", "學名"]];
   var DSL_LC_FOOT = "點左邊的框＝打勾　·　不在這格＝修改";
   function dslPageNew() {
-    /* open＝網頁打開了嗎、v＝從哪顆按鈕開的（up＝多張上傳、rv＝待審清單、lc＝位置查核）、hv／hl＝網址 # 後面帶的 v 和 l（重新整理會再用一次）、loaded＝讀回待審清單了嗎、A＝讀回來的複本（每一筆多一個 src：lst＝LINE 傳照片累積的、imp＝「待匯入」分頁）、
-       shown＝畫面上排出來的是 A 的第幾筆、heads＝每一段的標題（第幾筆卡片前面）、curDraw＝畫面排出來那一刻「目前這一筆」、drawId＝畫面重排了幾次、
-       pick＝選好還沒送的照片、pickn＝選過幾張（編號不重複）、pn＝這個網頁送到第幾張、retry＝上一輪有沒成功的、prog＝辨識進度、ask＝等你回答的確認框、alert＝跳出來的提醒。
-       位置查核：tab＝現在是哪個分頁（tb＝表格校對、lc＝位置查核）、lcq／lcqRev＝查詢框裡的字（lcqRev 變了才把字寫進框）、lcmsg＝查詢框下面那一行話、LC＝現在查的這一格（TAB 的 LC）、LCM＝每一格各一份「打的勾、改走的、照片認出寫在別格的」、
-       lcpend＝照片先記著的藥（LCPEND）、lcDrawId／lcEd＝這一塊重畫了幾次、這一次重畫之後改位置那個框的樣子 */
     return { open: 0, v: "", hv: "", hl: "", loaded: 0, A: [], prob: [], shown: [], heads: {}, nl: 0, ni: 0, filt: "all", cur: -1, curDraw: -1, drawId: 0, pick: [], pickn: 0, pn: 0, retry: 0, prog: null, ask: null, alert: "",
       tab: "tb", lcq: "", lcqRev: 0, lcmsg: null, LC: null, LCM: {}, lcpend: null, lcDrawId: 0, lcRev: 0, lcEd: { val: "", rev: 0, em: null } };
   }
@@ -5916,7 +5496,6 @@
     return !dslIsNew(d);
   }
   function dslNextCur(P) { var n = -1; P.A.forEach(function(d, i) { if (n < 0 && dslPass(P, d)) n = i; }); P.cur = n; }
-  /* 畫面重排（draw）：重新數「待審幾筆、待匯入分頁幾筆」、排出要顯示哪幾張卡片、分段標題；重排之後每張卡片都是新的（上一輪的結果行、打到一半的字都不見） */
   function dslDraw(P) {
     var nl = 0, ni = 0, shown = [], secId = "", heads = {};
     P.A.forEach(function(d) { if (!d.gone) { if (d.src === "lst") nl++; else ni++; } });
@@ -5931,7 +5510,6 @@
     P.A.forEach(function(d) { d.res = null; });
     P.nl = nl; P.ni = ni; P.shown = shown; P.heads = heads; P.curDraw = P.cur; P.drawId++;
   }
-  /* 網頁向後端要待審清單（lstData）：複本放進 A，排一次畫面 */
   function dslLoad(S) {
     var P = S.ops.lst.page, r = dslWebData(S);
     P.A = [];
@@ -5942,7 +5520,6 @@
     dslDraw(P);
     return r;
   }
-  /* 一張卡片上每一格「綠框裡可以改的字」原本是什麼（真的網頁 inputs()／chgRows() 一開始填的字） */
   function dslCardVals(d) {
     var out = {}, i, c;
     if (dslIsNew(d)) {
@@ -5964,7 +5541,6 @@
   }
   function dslGoText(P) { return (P.retry ? "🔁 重試這 " : "🔍 開始辨識（") + P.pick.length + (P.retry ? " 張" : " 張）"); }
   function dslRes(d, cls, txt) { d.res = { cls: cls, txt: txt }; }
-  /* 這一次後端寫進了哪些格子（匯入紀錄新多的幾列）：給「背後發生的事」用 */
   function dslLogSince(S, n) {
     var out = [], i, e;
     for (i = n; i < S.log.length; i++) {
@@ -5973,7 +5549,6 @@
     }
     return out;
   }
-  /* 按一下「✅ 寫進工作表1／📥 匯入工作表1」：真的網頁把這張卡片上綠框裡的字一起送給 lstApply */
   function dslDoOk(S, X, P, d, vals, all) {
     var n0 = S.log.length, r = dslWebApply(S, d.id, dslMerge(dslCardVals(d), vals)), w;
     dsT(X, 1, "網頁呼叫後端 lstApply：" + d.code + (d.src === "imp" ? "（「待匯入」分頁那一列）" : "（待審清單那一筆）") + "，連同這張卡片上綠框裡的字（你改過的就用你改的）");
@@ -5994,15 +5569,13 @@
   function dslDoDrop(S, X, P, d) {
     var r = dslWebDrop(S, d.id);
     dsT(X, 1, d.src === "imp" ? "網頁呼叫後端 lstDrop：把「待匯入」分頁上 " + d.code + " 那一列刪掉（分頁上的列，不能復原；沒有寫進工作表1）" : "網頁呼叫後端 lstDrop：把 " + d.code + " 這一筆從待審清單拿掉（沒有寫進工作表1，工作表1 不會變）");
-    dslRes(d, "bad", (r && r.msg) || "已移掉");   /* 真的網頁就是這樣：成功也用紅字「已移掉」 */
+    dslRes(d, "bad", (r && r.msg) || "已移掉");
     d.gone = true;
     dslNextCur(P);
   }
   function dslLiveIdx(P) { var out = []; P.A.forEach(function(d, i) { if (dslPass(P, d)) out.push(i); }); return out; }
   function dslSheetTail(X, text) { X.sheet = text; }
 
-  /* ───── 位置查核分頁：後端三支（13 的 lstLocFind、lstLocMove、lstLocPhoto；和 LINE 的位置查核共用找藥、改位置）───── */
-  /* 後端回給網頁的一列（_lckRowOut_＝_appLite_）：thumb＝有照片就有縮圖（真的是照片網址，練習用 1／0） */
   function dslLcRowOut(code, r) {
     return { code: code, brand: String(r.b || ""), chName: String(r.z || ""), location: String(r.loc === null || r.loc === undefined ? "" : r.loc), form: String(r.f || ""), kind: dskIsWater(r) ? "水" : "錠", thumb: dsPhOk(r.photo) ? 1 : 0 };
   }
@@ -6014,14 +5587,12 @@
     for (i = 0; i < rows.length; i++) out.push(dslLcRowOut(rows[i].code, rows[i].r));
     return { key: key, loc: canon ? canon.loc : key, known: !!canon, n: out.length, capped: rows.length >= DSK_LOC_MAX, rows: out, locs: dskAllLocs(S).map(function(x) { return { loc: x.loc, n: x.n }; }) };
   }
-  /* 改位置：只改位置那一格，不記匯入紀錄；改完馬上清快取、馬上重建（_lstRefresh_），回 sync:1（網頁在背景再叫 LINE 專案清一次） */
   function dslLocMove(S, code, newLoc, oldLoc, allowNew) {
     var X0 = dsX(), res = dskMove(S, X0, code, newLoc, oldLoc, !!allowNew);
     if (res.err || res.confirm) return res;
-    if (!res.same) { dsCacheWarm(S); res.sync = 1; }      /* 一樣（沒寫任何東西）就沒有 sync：真的 _webSyncTail_ 只有寫過才帶 sync:1 */
+    if (!res.same) { dsCacheWarm(S); res.sync = 1; }
     return res;
   }
-  /* 貨架照片（練習用的六張，DSK_SHELF）：位置牌上的字、工作表1 認得的位置、照片裡認出的藥。牌子沒讀到、藥也認不出來 → { err }（lstLocPhoto 的 ph.err） */
   function dslLocPhoto(S, key) {
     var p = dskShelf(key), label, k, canon, ix, rec = [], seen = {}, i, c, row;
     if (!p) return { err: "照片資料讀不出來，請再選一次" };
@@ -6042,11 +5613,9 @@
     return { label: label, key: canon ? canon.key : "", loc: canon ? canon.loc : "", rec: rec, recErr: p.recErr || "", sec: p.sec };
   }
 
-  /* ───── 位置查核分頁：網頁自己的事（lcMsg、lcGo、lcShow、lcDraw、lcTick、lcOpen、lcSubmit、lcMoved、lcPhoto）───── */
-  /* 查詢框下面那一行話：parts＝一段一段的字（字串裡的換行就是 <br>；{ b: 字 } 是粗體），cls＝"ok"／"bad"／""；沒有字＝收起來 */
   function dslLcMsg(P, parts, cls) { P.lcmsg = parts && parts.length ? { parts: parts, cls: cls || "" } : null; }
   function dslLcMsgText(P) { var s = "", i; if (!P.lcmsg) return ""; for (i = 0; i < P.lcmsg.parts.length; i++) s += typeof P.lcmsg.parts[i] === "string" ? P.lcmsg.parts[i] : P.lcmsg.parts[i].b; return s; }
-  function dslLcDraw(P) { P.lcDrawId++; P.lcEd = { val: "", rev: ++P.lcRev, em: null }; }   /* lcDraw：這一塊整個重畫，改位置的框也是新的（選單回到第一項、輸入框是空的、狀態那一行沒字） */
+  function dslLcDraw(P) { P.lcDrawId++; P.lcEd = { val: "", rev: ++P.lcRev, em: null }; }
   function dslLcEdMsg(P, t, cls) { P.lcEd.em = t ? { t: t, cls: cls || "" } : null; }
   function dslLcSeen(m, rows) { var n = 0, t = 0; rows.forEach(function(x) { t++; if (m.tick[x.code] || m.moved[x.code]) n++; }); return { n: n, t: t }; }
   function dslLcRows(m) { return m.a.map(function(c) { return m.by[c]; }).filter(Boolean); }
@@ -6056,7 +5625,6 @@
     for (i = 0; i < m.other.length; i++) if (m.other[i].code === code) return m.other[i];
     return null;
   }
-  /* 查一格：text＝打的位置；opt.rec＝照片認出的藥（要先打勾的）；opt.lead＝卡片上面那一段話 */
   function dslLcGo(S, X, text, opt) {
     var P = S.ops.lst.page, rec, lead, r;
     opt = opt || {};
@@ -6215,7 +5783,6 @@
     }
     dslLcMoved(S, X, code, r);
   }
-  /* 改好了：改走的那一列留在原位（顯示「→ 已改到 X」，算看過）；拉進這一格的（照片認出、工作表1 寫在別格）排進清單、打勾 */
   function dslLcMoved(S, X, code, r) {
     var P = S.ops.lst.page, LC = P.LC, m = P.LCM[LC.key], x = dslLcRowOf(m, code), k = String(r.after || "").replace(/\s+/g, "").toUpperCase(), here = k === String(LC.key || "").toUpperCase(), i, oi = -1, sn;
     LC.edit = "";
@@ -6248,7 +5815,6 @@
     X.wrote = 1;
     X.reply = "（網頁畫面）「✅ 位置改好了：" + code + "　" + (r.before || "（空的）") + " → " + r.after + "」，" + (here ? "這一列打勾" : "這一列顯示「→ 已改到 " + r.after + "」");
   }
-  /* 貨架照片：網頁把照片送給後端（lstLocPhoto）→ AI 讀位置牌＋認出架上的藥 */
   function dslLcPhoto(S, X, key) {
     var P = S.ops.lst.page, p = dskShelf(key), ph, rec;
     if (!p) return;
@@ -6273,13 +5839,11 @@
     dsT(X, 1, rec.length ? "認出的 " + rec.length + " 支藥先記在網頁的記憶體；你接著在上面打這一格的位置，就用它們先打勾" : "沒有認出的藥；你接著打位置就好");
     X.sheet = "沒動"; X.reply = "（網頁畫面）查詢框下面紅字請你打這一格的位置" + (rec.length ? "（認出的藥先記著）" : "");
   }
-  /* 網頁上的一個動作。ev.w＝動作；i＝第幾張卡片；vals＝卡片上綠框現在的字；key＝挑哪一張紙。回的一律是「網頁自己的事」，聊天室不動（X.keep） */
   function dslWeb(S, X, ev) {
     var L = S.ops.lst, w = String(ev.w || ""), P = L.page, d, i, p, r, ids, n0, imp, fail, rows, all, ask, hv, hl, vp;
     X.keep = 1;
     X.sheet = "沒動"; X.reply = "（網頁畫面）";
     if (w === "open" || w === "reload") {
-      /* 網址 # 後面帶的 v（up＝多張上傳、rv＝待審清單、lc＝位置查核）和 l（位置查核要查哪一格）：重新整理會再用一次同樣的網址 */
       if (w === "reload" && P.open) { hv = P.hv; hl = P.hl; }
       else { vp = String(ev.v || "").split(":"); hv = vp[0] === "up" || vp[0] === "lc" ? vp[0] : "rv"; hl = hv === "lc" && vp.length > 1 ? vp.slice(1).join(":") : ""; }
       L.page = dslPageNew();
@@ -6307,7 +5871,7 @@
       }
       return;
     }
-    if (w === "close") {   /* 關掉網頁（瀏覽器的分頁關掉）：網頁裡記著的東西全部不見；後端的待審清單還在 */
+    if (w === "close") {
       L.page = dslPageNew();
       dsT(X, 1, "關掉網頁：網頁裡記著的東西（選好的照片、跳過的卡片、打到一半的字）全部不見；後端的待審清單還在，下次打開又讀得回來");
       X.sheet = "沒動"; X.reply = "（網頁畫面）網頁關掉了";
@@ -6319,11 +5883,11 @@
       return;
     }
     ask = w === "yes" ? P.ask : null;
-    if (w !== "yes") P.ask = null;   /* 確認框沒回答、去按別的＝當作取消 */
+    if (w !== "yes") P.ask = null;
     P.alert = "";
     if (w === "ack") { dsT(X, 1, "關掉提醒"); X.sheet = "沒動"; X.reply = "（網頁畫面）提醒收起來"; return; }
     if (w === "no") { dsT(X, 1, "按了「取消」：什麼都沒做"); X.sheet = "沒動"; X.reply = "（網頁畫面）確認框收起來"; return; }
-    if (w === "tab") {   /* 換分頁（setTab）：表格校對那一塊換回來時會重新排一次（draw） */
+    if (w === "tab") {
       P.tab = ev.tab === "lc" ? "lc" : "tb";
       if (P.tab === "tb" && P.loaded) dslDraw(P);
       dsT(X, 1, "按了「" + (P.tab === "lc" ? "📍 位置查核" : "📋 表格校對") + "」分頁：網頁自己換一塊畫面，沒有問後端" + (P.tab === "tb" && P.loaded ? "；「表格校對」那一塊重新排一次（卡片上打到一半的字、寫過的結果那一行都不見了，寫過的卡片也不會再出現）" : "；查詢框拿到焦點"));
@@ -6493,7 +6057,6 @@
       return;
     }
   }
-  /* 畫面要畫的東西（純資料）：UI 照這個畫，Node 測試也拿它跟真的網頁比 */
   function dslCardView(P, i) {
     var d = P.A[i], nw = dslIsNew(d), vals = dslCardVals(d), c, f;
     c = { i: i, id: d.id, code: d.code, brand: d.brand || (d.v && d.v.brand) || "", src: d.src, isNew: nw, tag: nw ? "🔵 表上沒有" : "🟡 不一樣", hand: !!d.hand, warns: (d.w || []).slice(), note: "", fields: [], head: P.heads[i] || null,
@@ -6511,7 +6074,6 @@
     }
     return c;
   }
-  /* 位置查核分頁要畫的東西（lcDraw、lcRow、lcEditor）*/
   function dslLcEditorView(P, x) {
     var LC = P.LC, cur = String(x.location || "").replace(/\s+/g, "").toUpperCase(), byA = {}, order = [], opts = [], groups = [];
     (LC.locs || []).forEach(function(l) {
@@ -6562,21 +6124,13 @@
     v.empty = P.loaded && !P.shown.length;
     v.prob = P.shown.length ? P.prob.map(function(x) { return { n: x.n, why: x.why }; }) : [];
     v.alln = P.shown.length;
-    v.sticky = P.shown.length > 0 && P.tab === "tb";   /* 「全部寫進」那一排只在「表格校對」分頁（TAB!=="tb" 就藏起來） */
+    v.sticky = P.shown.length > 0 && P.tab === "tb";
     v.up = { picks: P.pick.map(function(x, j) { return { i: j, k: x.k, key: x.key, name: x.name, kb: x.kb }; }), many: dslManyText(P), go: dslGoText(P), hasPick: P.pick.length > 0, retry: !!P.retry, prog: P.prog };
     v.ask = P.ask ? { k: P.ask.k, text: P.ask.text, i: P.ask.i } : null;
     v.alert = P.alert;
     return v;
   }
-  /*/SIMDEV*/
 
-  /* ───────── ② 畫面（dswMake）─────────
-     getS()＝現在的練習世界（重播會換一份）；send(ev)＝把網頁上做的事交給練習聊天室（ev＝{ t: "web", w: 動作, … }，a＝給「背後發生的事」看的名稱）。
-     回傳 { el, draw, reset }：draw() 照 dslView(S) 把網頁畫出來——
-       ・畫面重排（drawId 變了、或整個網頁是新的）才重畫待審的卡片；沒重排的時候只在卡片下面加「結果」那一行、把卡片變淡（打到一半的字原樣留著），跟真的網頁的 draw()／res() 一樣；
-       ・按的那顆按鈕被換掉的時候，焦點接給下一張卡片（或原本打開確認框的那顆）；確認框、提醒框長在按下去的地方旁邊，開出來焦點就在「確定」上、按 Esc 等於取消；
-       ・選照片不是真的選檔：「📷 選照片」展開一排編好的清單照片（虛線框＝練習專用）。
-     不存、不傳：打的字只用 value／textContent 放進畫面。 */
   var dswSeq = 0;
   var DSW_URL = "demo.github.io/buyao/lst.html";
   function dswMake(getS, send) {
@@ -6606,13 +6160,11 @@
       for (k = 0; k < cs.length; k++) o[cs[k].getAttribute("data-i")] = valsOf(cs[k]);
       return o;
     }
-    /* 瀏覽器上面那一條：網址、重新整理、關掉（真的瀏覽器才有，網頁自己沒有；練習才放在這裡） */
     var chrome = el("div", { class: "dsw-chrome" }, [
       el("span", { class: "dsw-url" }, [el("span", { "aria-hidden": "true", text: "🔒" }), el("span", { text: DSW_URL })]),
       btn("↻ 重新整理", "dsw-cb", "reload", function() { go({ t: "web", w: "reload", a: "瀏覽器的「重新整理」" }); }, { "aria-label": "瀏覽器的重新整理：網頁整個重新載入" }),
       btn("✕ 關掉網頁", "dsw-cb", "close", function() { go({ t: "web", w: "close", a: "「關掉網頁」" }); }, { "aria-label": "關掉這個網頁（瀏覽器的分頁關掉）" })
     ]);
-    /* 兩個分頁（真的網頁的 .tabs）：📋 表格校對（原本整個網頁）、📍 位置查核（第 17 批）。方向鍵左右換分頁，沒選到的那個 tabindex=-1（Tab 鍵只停在選到的） */
     var tabsEl = el("div", { class: "dsw-tabs", role: "tablist", "aria-label": "清單校對的功能" });
     var pnTb = el("div", { class: "dsw-pn", id: "dswp-tb" + uid, role: "tabpanel", "aria-labelledby": "dswt-tb" + uid });
     var pnLc = el("div", { class: "dsw-pn", id: "dswp-lc" + uid, role: "tabpanel", "aria-labelledby": "dswt-lc" + uid, hidden: true });
@@ -6641,7 +6193,6 @@
     pnTb.appendChild(bar);
     pnTb.appendChild(listEl);
     pnTb.appendChild(endEl);
-    /* 📍 位置查核那一頁：查詢框、貨架照片、查詢框下面那一行話、這一格的藥 */
     var lcCard = el("div", { class: "dsw-c dsw-up" });
     var lcIn = el("input", { type: "text", class: "dsw-lcin", "data-fk": "lcq", maxlength: "20", placeholder: "位置，例如 A1", "aria-label": "位置", enterkeyhint: "search", autocapitalize: "characters", autocomplete: "off", spellcheck: "false" });
     var lcPkBox = el("div", { class: "dsw-pk", id: "dswlcpk" + uid, role: "group", "aria-label": "練習專用：挑一張編好的貨架照片", hidden: true });
@@ -6660,7 +6211,6 @@
     root.appendChild(idle);
     root.appendChild(win);
 
-    /* ① 上傳照片那一張白卡：選好的照片（縮圖）、按鈕、辨識進度 */
     function upDraw(v) {
       var u = v.up, row, pk, th, fill, pl, tr;
       upBox.textContent = "";
@@ -6708,7 +6258,6 @@
         upBox.appendChild(el("div", { class: "dsw-prog", role: "group", "aria-label": "辨識進度" }, [tr, pl]));
       }
     }
-    /* 結果那一行（真的網頁的 res()）：拿掉按鈕、加一行字、整張變淡 */
     function annot(card, r) {
       var a = card.querySelector(".dsw-acts"), x = card.querySelector(".dsw-res");
       if (a) a.parentNode.removeChild(a);
@@ -6749,7 +6298,6 @@
       if (c.res) annot(card, c.res);
       return card;
     }
-    /* 篩選＋計數那一條、待審的卡片（畫面重排時才整個重畫） */
     function listDraw(v) {
       bar.textContent = "";
       listEl.textContent = "";
@@ -6777,7 +6325,6 @@
         if (card) annot(card, c.res);
       });
     }
-    /* 最下面「全部寫進」「全部刪除」（真的網頁釘在螢幕最下面；這裡跟在最後一張卡片後面） */
     function endDraw(v) {
       var sg = v.sticky ? String(v.alln) : "";
       if (sg === ui.end && (rowEl ? rowEl.parentNode === endEl : !sg)) return;
@@ -6791,7 +6338,6 @@
       ]);
       endEl.appendChild(rowEl);
     }
-    /* 確認框、提醒框：真的網頁是瀏覽器跳出來的視窗，這裡長在按下去的地方旁邊；開出來焦點在「確定」，按 Esc 等於取消 */
     function dropNode(n) { if (n && n.parentNode) n.parentNode.removeChild(n); }
     function overlays(v) {
       var sg = v.ask ? v.ask.k + "|" + (v.ask.i === undefined ? "" : v.ask.i) + "|" + v.ask.text : "", host, ref, y, a;
@@ -6824,10 +6370,9 @@
         try { alertNode.querySelector("button").focus({ preventScroll: true }); } catch (e) {}
       }
     }
-    /* ───── 📍 位置查核那一頁的畫面 ───── */
     var lcPickBtn = null;
     function clip12(t) { t = String(t === null || t === undefined ? "" : t).replace(/\s+/g, " ").trim(); return t.length > 12 ? t.substring(0, 12) + "…" : t; }
-    function brText(parent, t) {   /* 字串裡的換行＝<br>（真的網頁那一行話裡的 <br>；textContent 裡沒有空白，兩邊才對得起來） */
+    function brText(parent, t) {
       var parts = String(t).split("\n"), i;
       for (i = 0; i < parts.length; i++) {
         if (i > 0) parent.appendChild(el("br"));
@@ -6863,7 +6408,6 @@
       lcMsgEl.className = "dsw-lcmsg" + (v.msg.cls ? " " + v.msg.cls : "");
       v.msg.parts.forEach(function(p) { if (typeof p === "string") brText(lcMsgEl, p); else lcMsgEl.appendChild(el("b", { text: p.b })); });
     }
-    /* 改位置的框（lcEditor＋lcWire）：下拉選單選一個＝填進輸入框；打字；按「改成這個位置」或在輸入框按 Enter；「取消」 */
     function edEl(ed) {
       var sel = el("select", { class: "dsw-sel", "data-fk": "lcsel", "aria-label": "從清單選一個新位置" }), inp = el("input", { type: "text", class: "dsw-lcn", "data-fk": "lcnew", maxlength: "20", autocomplete: "off", autocapitalize: "characters", spellcheck: "false", placeholder: "或打字，例 A2", "aria-label": "新位置" }), box, okb, cxb;
       ed.opts.forEach(function(o) { sel.appendChild(el("option", { value: o.v, text: o.t })); });
@@ -6919,7 +6463,6 @@
       }
       return row;
     }
-    /* 這一格整個重畫（lcDraw）：摘要、分段標題、每一列、最下面「↺ 清掉勾選」 */
     function lcResDraw(v) {
       var r = v.res, card;
       lcRes.textContent = "";
@@ -6934,7 +6477,6 @@
       card.appendChild(el("div", { class: "dsw-lcfoot" }, [r.foot, "　", btn("↺ 清掉勾選", "dsw-sk dsw-sm", "lcclr", function() { go({ t: "web", w: "lcclr", a: "網頁上的「↺ 清掉勾選」" }); })]));
       lcRes.appendChild(card);
     }
-    /* 打勾不重畫（lcTick）：只換這一列的顏色、框的打勾、上面的「已看」；改位置的框的提醒、按鈕字、狀態那一行也是原地換 */
     function lcPatch(v) {
       var r = v.res, rows, k, sn, rw, byCode = {};
       if (!r) return;
@@ -6981,7 +6523,6 @@
       try { t.focus({ preventScroll: true }); } catch (e) { return false; }
       return document.activeElement === t;
     }
-    /* 按的那顆按鈕被換掉了（卡片拿掉按鈕、畫面重排、確認框收起來）：焦點接給「下一張還沒處理的卡片」或原本打開確認框的那顆，最後才是整個網頁 */
     function restoreFocus(fk) {
       var m, i, k, cs, nxt = null, b;
       if (!fk) return;
@@ -7000,7 +6541,6 @@
       }
       if ((fk === "yes" || fk === "no" || fk === "ack") && focusFk(ui.from)) return;
       if (/^unpick-|^go$|^clr$/.test(fk) && focusFk("toggle")) return;
-      /* 📍 位置查核：改位置的框收起來（改好了、取消）→ 焦點回到那一列的「修改」；那一列沒有了 → 這一塊結果 */
       if (/^lc(ok|cx|sel|new)$/.test(fk)) {
         if (ui.edFor && focusFk("lced-" + ui.edFor)) return;
         try { lcRes.focus({ preventScroll: true }); } catch (e) {}
@@ -7042,7 +6582,6 @@
       lcDrawAll(v, P);
       if (v.ask || v.alert) { if (!hadAsk && !hadAlert) ui.from = fk || ui.from; }
       overlays(v);
-      /* 按了「修改」展開改位置的框：焦點進輸入框（真的網頁的 lcOpen 也是）；按了「📍 位置查核」分頁：焦點進查詢框（setTab） */
       if (ui.focusEd) {
         ui.focusEd = 0;
         ed = lcRes.querySelector(".dsw-lce .dsw-lcn");
@@ -7064,22 +6603,12 @@
     return { el: root, draw: draw, reset: reset, panel: win };
   }
 
-  /* ───────── 開發者網頁的練習（第 17 批；「開發者網頁」那一課）─────────
-     真的程式分三處：LINE 專案（09_網頁版.gs：連結、綁定碼、代號→驗證碼、重發、開關）、網頁專案（10_網頁專案.gs：appHome、appBind、appCodeStart、appCodeLogin、appLogout）、
-     GitHub 上的網頁（_app_page.html：開頁判斷、綁定框、代號登入畫面、登出）。這一頁把三處合在一起，分四段：
-       ① 後端：鑰匙（發、沿用、續期、換新、過期）、綁定碼、綁定的裝置（最多 3 台）、代號和驗證碼的紀錄（領、兌換、猜太多次）、各種次數上限（10 分鐘一輪）；
-       ② 瀏覽器那一頭：4 台裝置各有「這台記住的東西」（鑰匙、後端在哪、代號）和「現在開著的網頁」，網頁開頁怎麼判斷、怎麼出綁定框或代號畫面、倒數到 0 自動換新代號、登出；
-       ③ LINE 那一頭：打「開發者網頁」「…重發」「…綁定」、貼代號、「驗證碼登入 關／開」「開發者網頁 設定」，藥師那邊的幾句（練習專用的按鈕）；
-       ④ 畫面（dwbMake）：用真的按鈕和輸入格畫出「瀏覽器裡的網頁」。
-     純函式（SIMDEV 之間），Node 測試也直接跑它，和真的 LINE 專案、網頁專案逐步比對。
-     這裡的時鐘不會自己走（練習專用的按鈕才會讓時間過去），所以倒數是「按了按鈕才變」；鑰匙、裝置碼、暗鑰匙都用短短的編號（t1、d1、s1）代替，真的是 32 位的亂碼。 */
-  /*SIMDEV*/
   var DWB_ME = "me", DWB_PH = "ph";
-  var DWB_ID = "AKfycbxDEMODEMODEMODEMODEMODEMODEMODEMODEMOdemo01";   /* 練習用的假「網頁專案部署 ID」；後端代號＝最後 6 個字 */
+  var DWB_ID = "AKfycbxDEMODEMODEMODEMODEMODEMODEMODEMODEMOdemo01";
   var DWB_URL = "demo.github.io/buyao/";
-  var DWB_T0 = Date.UTC(2026, 8, 15, 2, 30, 0);   /* 練習的時鐘從 09/15 10:30（台灣時間）開始 */
+  var DWB_T0 = Date.UTC(2026, 8, 15, 2, 30, 0);
   var DWB_DAY = 864e5;
-  var DWB_TOKEN_DAYS = 30, DWB_RENEW_DAYS = 7;   /* 鑰匙 30 天；剩不到 20 天有在用就推回 30 天（_appSession_）；剩不到 7 天才換新（_appIssue_，其實永遠碰不到） */
+  var DWB_TOKEN_DAYS = 30, DWB_RENEW_DAYS = 7;
   var DWB_LC_SEC = 300, DWB_LC_GET_MAX = 10, DWB_LC_GET_SEC = 600, DWB_LC_MISS_MAX = 20, DWB_LC_TRY_MAX = 20;
   var DWB_BIND_SEC = 600, DWB_BIND_MAX = 3, DWB_BIND_FAIL = 5, DWB_BIND_LOCK = 3600;
   var DWB_START_DEV_MAX = 8, DWB_START_MAX = 30, DWB_CALL_MAX = 30, DWB_AUTO_MAX = 2;
@@ -7089,12 +6618,10 @@
     { id: "d3", name: "手機的瀏覽器", lab: "Safari / iOS" },
     { id: "d4", name: "另一台電腦", lab: "Edge / Windows" }
   ];
-  /* 練習用的「亂數」：照順序拿，不是真的亂（每次練習都一樣，教學才好對）。代號的樣子照真的：藥師 9 個英數字（沒有 I O l o 0 1，大寫、小寫、數字各至少 2 個）、開發者 6 個數字 */
   var DWB_AN = ["Kd7mPq4Xr", "Mx3Tb9Wnf", "Hp6Ra2Zcd", "Qw8Ys5Jke", "Bn4Gv7Uta", "Fz9Lc3Dhs", "Rj2Xe6Pmw", "Tc5Wa8Nqk"];
   var DWB_NUM = ["257391", "804516", "390274", "716082", "145937", "628450", "903165", "472809"];
   var DWB_VER = ["615273", "048217", "392846", "771405", "250689", "836194"];
   var DWB_BIND = ["304718", "582049", "719356", "260483", "941825", "137602"];
-  /* 後端回的錯誤字（10_網頁專案.gs、09_網頁版.gs 的常數，一個字都不改） */
   var DWB_E = {
     tok: "連結已失效（超過 30 天或換過新連結），回 LINE 打「網頁」再開一次",
     need: "🔒 這台還沒綁定開發者版。\n在 LINE 打「開發者網頁 綁定」，把拿到的 6 位數碼打在下面：",
@@ -7113,7 +6640,6 @@
     cfull: "🔒 開發者版最多只能登入 3 個地方，現在已經滿了（這組驗證碼已經用掉了）。\n要換地方：在不用的那台按首頁最下面的「登出這台」，或回 LINE 打「開發者網頁 重發」（所有已登入的地方全部清掉）；然後按「重新取得代號」再來一次。",
     off: "🔒 驗證碼登入目前暫停了（開發者關掉的）。請從 LINE 的「🌐 補藥神器網頁」按鈕開。"
   };
-  /* 網頁自己的字（_app_page.html） */
   var DWB_P = {
     hint0: ["點左上 logo 回首頁", "🎤 用講的", "📷 拍包裝"],
     bound: "✅ 這台綁好了，以後在這裡直接開就好（不用再輸入）。",
@@ -7130,13 +6656,12 @@
     outMore: "\n要再用：照下面的步驟拿代號、到 LINE 換驗證碼，或從 LINE 的「🌐 補藥神器網頁」按鈕開。"
   };
   function dwbP2(n) { return (n < 10 ? "0" : "") + n; }
-  function dwbTw(ms) { return new Date(ms + 8 * 36e5); }   /* 台灣時間（UTC+8）；用 getUTC* 讀 */
+  function dwbTw(ms) { return new Date(ms + 8 * 36e5); }
   function dwbMD(ms) { var d = dwbTw(ms); return dwbP2(d.getUTCMonth() + 1) + "/" + dwbP2(d.getUTCDate()); }
   function dwbHM(ms) { var d = dwbTw(ms); return dwbP2(d.getUTCHours()) + ":" + dwbP2(d.getUTCMinutes()); }
   function dwbClock(ms) { return dwbMD(ms) + " " + dwbHM(ms); }
   function dwbMS(s) { s = Math.max(0, s); return Math.floor(s / 60) + ":" + dwbP2(s % 60); }
   function dwbLabClean(s, n) { return String(s === null || s === undefined ? "" : s).replace(/[^A-Za-z0-9 \-\/\(\)・·一-鿿]/g, "").trim().substring(0, n); }
-  /* 驗證碼輸入格（_code_input.js 的 decode）：全形數字轉半形、看不見的字和空白、橫線當沒看到；夾著別的字（多半是把代號貼錯格）就不收 */
   var DWB_INV, DWB_GAP = /[\s​-‍⁠﻿­\-‐-―−﹣－]/g;
   try { DWB_INV = new RegExp("[\\p{Cf}\\u034f\\u115f\\u1160\\u3164\\uffa0\\ufe00-\\ufe0f\\u{e0100}-\\u{e01ef}]", "gu"); } catch (e) { DWB_INV = /[­؀-؅؜۝܏᠎​-‏‪-‮⁠-⁤⁦-⁯͏ᅟᅠㅤﾠ︀-️﻿￹-￻]/g; }
   function dwbDecode(raw) {
@@ -7155,10 +6680,6 @@
     return res;
   }
 
-  /* ───── ① 後端 ───── */
-  /* t＝現在的時間（毫秒；練習的時鐘）、off＝「驗證碼登入 關」、src＝你現在在哪裡打字（user＝一對一、group＝群組）、cfg＝GitHub 上有沒有放 cfg.js、sel＝現在用哪一台、
-     tok／cur／qc／links＝鑰匙（編號、每個人每個身分現在那一把、輸入框上面「🌐 網頁」按鈕記著的那一把（快取 6 小時）、LINE 給過你的連結的順序）、bc／bcu＝綁定碼、bound／bt＝每把鑰匙綁了哪幾台、猜綁定碼猜了幾次、
-     recs／pend／ul／rv＝代號紀錄、等人領的代號、每個人手上還沒用掉的驗證碼、每個人按「全部作廢」的時間、ctr／bk＝各種次數（每人 10 分鐘、每台／全院每 10 分鐘一格）、push＝LINE 要主動推播的通知（網頁登入會用到）、n＝各種編號 */
   function dwbNew() {
     var W = { t: DWB_T0, off: 0, src: "user", cfg: 0, sel: "d1", devs: {}, tok: {}, cur: {}, qc: {}, links: { dev: [], usr: [] }, bc: {}, bcu: {}, bound: {}, bt: {}, recs: {}, pend: {}, ul: {}, rv: {}, ctr: {}, bk: {}, push: [], n: { tok: 0, sec: 0, an: 0, num: 0, ver: 0, bind: 0 }, dev: {}, last: null };
     W.devs[DWB_ME] = 1;
@@ -7166,12 +6687,9 @@
     return W;
   }
   function dwbDevNew(d) { return { id: d.id, name: d.name, lab: d.lab, dh: "dh_" + d.id, ls: { bk: null, bx: "" }, ss: { pair: null }, vis: 1, tab: dwbTabNew() }; }
-  /* 一個「開了的網頁」：hash＝網址 # 後面帶的鑰匙（{ k: dev／app, t }；鑰匙存好之後網頁自己把它藏掉）、x／t／fs＝網頁用的後端、鑰匙、鑰匙是不是這台記著的、scr＝畫面（none／bind／code／home）、
-     後面幾個照 _app_page.html 的變數名：role＝ROLE、pair＝PAIR、pst／why／big／extra＝代號區塊（live／gone／err）、note＝PNOTE、auto＝AUTO、cmsg／cwait＝驗證碼框下面那行字、six＝SIXMSG、bound＝BOUND */
   function dwbTabNew() { return { open: 0, hash: null, x: "", t: "", fs: 0, scr: "", head: "", bmsg: "", bval: "", role: "", pair: null, pst: "", why: "", big: "", extra: "", note: "", auto: 0, cmsg: "", cval: "", cwait: 0, six: 0, dev: 0, bound: 0, hint: "", ask: 0, probe: "" }; }
   function dwbIsDev(W, uid) { return !!W.devs[uid]; }
   function dwbWho(uid) { return uid === DWB_ME ? "你（開發者）" : "藥師"; }
-  /* 鑰匙 → 還有效的那一筆（_appSession_）；過期的順手刪掉，有在用、剩不到 20 天就推回 30 天後 */
   function dwbSess(W, id) {
     var s = W.tok[id];
     if (!s) return null;
@@ -7179,7 +6697,6 @@
     if (s.exp - W.t < (DWB_TOKEN_DAYS - 10) * DWB_DAY) s.exp = W.t + DWB_TOKEN_DAYS * DWB_DAY;
     return s;
   }
-  /* 發鑰匙（_appIssue_）：每個人每個身分（開發者／藥師）一把；沒要求換新、現在這把還有效就沿用；否則發新的、舊的作廢（連同它底下綁的裝置名單，一起沒用）。新發的一把順手記進「輸入框上面那顆『🌐 網頁』按鈕」用的快取（6 小時） */
   var DWB_QUICK_SEC = 6 * 36e5;
   function dwbIssue(W, uid, force, dev) {
     var key = uid + "|" + (dev ? 1 : 0), cur = W.cur[key] || "", s, id, exp;
@@ -7196,17 +6713,12 @@
     if (cur && cur !== id) delete W.tok[cur];
     return { token: id, exp: exp, reused: false, old: cur && cur !== id ? cur : "" };
   }
-  /* LINE 卡片把這把鑰匙交到你手上（連結卡、綁定碼卡）：面板上「LINE 給你的連結」才列得出來（只記你自己的；舊的也留著，才看得到「換過新連結之後舊的失效」）。網頁登入拿到的、按鈕悄悄用掉的，不算 LINE 給你的連結 */
   function dwbGive(W, uid, dev, id) {
     var l;
     if (uid !== DWB_ME) return;
     l = W.links[dev ? "dev" : "usr"];
     if (l[l.length - 1] !== id) l.push(id);
   }
-  /* 機器人每回一則話，輸入框上面那排固定的按鈕有一顆「🌐 網頁」，網址裡要帶這個人的鑰匙（_quickBarItems_ → _appQuickTok_）：先看快取（6 小時）有沒有，有就直接用，不查鑰匙；
-     沒有就走 _appIssue_ 的老路——還有效就沿用（順手把剩不到 20 天的推回 30 天，所以「有在聊天」鑰匙就不會過期）、過期了或從來沒有就悄悄發一把新的。每一則回覆都會做，不分是什麼指令 */
-  /* 這一趟機器人有沒有回話：只有自己的話（我說的、「👆 點了…」「👥 假裝在群組」那種回聲）不算；真的 handleText 遇到空白訊息 `if (!keyword) return;` 什麼都不回，也就不會去算那顆按鈕。
-     「練習不示範」的說明（沒有機器人的訊息，但真的機器人會回一則）算有回話。練習聊天室裡每一句話都有回（空白會被「要查什麼？」接住，tools/learn_dev_sim_h.js 的 secStd 在檢查），所以這道門目前走不到「沒回話」 */
   function dwbReplied(X) {
     var i;
     if (X.keep) return false;
@@ -7220,14 +6732,12 @@
     if (!W.qc[key] || !(W.qc[key].exp > W.t)) { c = W.cur[key]; if (c) W.qc[key] = { t: c, exp: W.t + DWB_QUICK_SEC }; }
   }
   function dwbDays(W, r) { return Math.max(1, Math.round((r.exp - W.t) / DWB_DAY)); }
-  /* 每人 10 分鐘一輪的次數（_lcCounter_）：從第一次算起，滿 10 分鐘就重算；取出來是一份複本，要改了再 dwbCtrPut */
   function dwbCtr(W, key) {
     var g = W.ctr[key];
     if (!g || !(W.t - g.t < DWB_LC_GET_SEC * 1e3)) return { n: 0, t: W.t };
     return { n: g.n, t: g.t };
   }
   function dwbCtrPut(W, key, g) { W.ctr[key] = { n: g.n, t: g.t }; }
-  /* 這個人手上還沒用掉的驗證碼：按「全部作廢」（重發）時一起清；也記下作廢的時間，萬一名單漏列也擋得住（_lcDrop_） */
   function dwbDrop(W, uid) {
     var l = W.ul[uid] || [], i, n = 0;
     W.rv[uid] = W.t;
@@ -7245,14 +6755,12 @@
     if (p && !(p.exp > W.t)) { delete W.pend[k]; p = null; }
     return p ? p.sec : "";
   }
-  /* 一格一格的次數（10 分鐘一格：網頁專案的 _codeCallOk_／_codeDevOk_ 用 Math.floor(現在 / 6e5)） */
   function dwbBucketOk(W, name, max) {
     var k = name + "_" + Math.floor(W.t / 6e5), n = W.bk[k] || 0;
     if (n >= max) return false;
     W.bk[k] = n + 1;
     return true;
   }
-  /* 拿下一個練習用的「亂數」：照順序、跳過現在還在等人領的。清單用完了（同時等人領的代號比清單還多），照真的規則用一個固定的小亂數接著產生，練習才不會莫名其妙說「忙線」 */
   function dwbRnd(n) { var x = (n * 2654435761 + 12345) >>> 0; x ^= x << 13; x >>>= 0; x ^= x >>> 17; x >>>= 0; x ^= x << 5; x >>>= 0; return x; }
   function dwbGenAn(n) {
     var UP = "ABCDEFGHJKLMNPQRSTUVWXYZ", LO = "abcdefghijkmnpqrstuvwxyz", DG = "23456789", all = UP + LO + DG, a = [], i, j, t, k = n * 31 + 7;
@@ -7272,7 +6780,6 @@
     }
     return "";
   }
-  /* ── 綁定碼（LINE：_cmdWebBind_；兌換：11_專案連線.gs 的 bindcode）── */
   function dwbBcGet(W, code) {
     var o = W.bc[code];
     if (o && !(o.exp > W.t)) { delete W.bc[code]; o = null; }
@@ -7297,7 +6804,6 @@
     delete W.bcu[o.uid];
     return true;
   }
-  /* ── 這把開發者鑰匙綁了哪幾台（網頁專案的 _bindCheck_／_bindAdd_／_bindRemove_；存的是裝置碼的指紋）── */
   function dwbBoundList(W, tid) { return W.bound[tid] || []; }
   function dwbBindAdd(W, tid, dh) {
     var l = W.bound[tid] || [], fresh = false;
@@ -7317,7 +6823,6 @@
     W.bound[tid] = l;
     return true;
   }
-  /* 猜綁定碼猜了幾次（_bindTries_）：每把鑰匙一個，最後一次猜之後 1 小時內最多 5 次；d＝1 加一次、0 歸零 */
   function dwbTries(W, tid, d) {
     var o = W.bt[tid], n = o && W.t - (o.t || 0) < DWB_BIND_LOCK * 1e3 ? o.n : 0;
     if (d > 0) {
@@ -7328,7 +6833,6 @@
     if (o) delete W.bt[tid];
     return { took: false, n: 0 };
   }
-  /* ── 代號和驗證碼（LINE：_lcStart_、_lcClaim_、_lcRedeem_）── */
   function dwbLcStart(W, dh, lab, old, role) {
     var dev = role === "dev", oo, code, sec;
     if (W.off) return { ok: false, off: 1 };
@@ -7342,7 +6846,6 @@
     W.pend[code.toLowerCase()] = { sec: sec, exp: W.t + (DWB_LC_SEC + 30) * 1e3 };
     return { ok: true, code: code, sec: sec, ttl: DWB_LC_SEC, dv: dev ? 1 : 0 };
   }
-  /* 領：這組代號還在等人領 → 發 6 位數驗證碼。找不到、過期、已經領過、是開發者版但領的人不是開發者 → null */
   function dwbClaim(W, code, uid, isDev) {
     var ik = String(code).toLowerCase(), p = W.pend[ik], sec, o, v, l;
     if (p && !(p.exp > W.t)) { delete W.pend[ik]; p = null; }
@@ -7359,7 +6862,6 @@
     W.ul[uid] = l.slice(-DWB_LC_GET_MAX);
     return { v: v, rec: o, sec: sec };
   }
-  /* 兌換：網頁拿「暗鑰匙＋驗證碼＋這台的裝置碼」來換鑰匙。順序照 _lcRedeem_：開關 → 找不到／不是這一台 → 還沒領（等／過期）→ 領了之後超過 5 分 5 秒 → 按過全部作廢 → 驗證碼對不對 → 還是不是開發者 → 發鑰匙 */
   function dwbRedeem(W, sec, v, dh) {
     var o, age, rv, r;
     if (W.off) return { ok: false, off: 1 };
@@ -7383,7 +6885,6 @@
     dwbRecRemove(W, sec, o);
     return { ok: true, t: r.token, dev: !!o.dev, exp: r.exp, at: W.t, uid: o.who };
   }
-  /* ── 網頁專案的入口（_apiServe_ 和 appXxx）：回 { ok: 1, r } 或 { ok: 0, code, err, need }。D＝送出請求的那台裝置；t＝網頁帶的鑰匙；a＝參數 ── */
   function dwbCodeStart(W, D, lab, old, role) {
     var dev = role === "dev", r;
     if (W.off) return { err: DWB_E.off, off: 1 };
@@ -7436,7 +6937,7 @@
   function dwbApi(W, D, fn, tok, a) {
     var s, r;
     a = a || [];
-    if (!/^(appCodeStart|appCodeLogin|appBind|appLogout|appHome|appSearch)$/.test(String(fn))) return { ok: 0, code: "bad", err: "看不懂的請求" };   /* 不認得的函式名稱：不看鑰匙，先回這句（_apiServe_） */
+    if (!/^(appCodeStart|appCodeLogin|appBind|appLogout|appHome|appSearch)$/.test(String(fn))) return { ok: 0, code: "bad", err: "看不懂的請求" };
     if (fn === "appCodeStart") return { ok: 1, r: dwbCodeStart(W, D, a[0], a[1], a[2]) };
     if (fn === "appCodeLogin") return { ok: 1, r: dwbCodeLogin(W, D, a[0], a[1], a[2]) };
     if (!tok || !/^t\d+$/.test(tok)) return { ok: 0, code: "tok", err: DWB_E.tok };
@@ -7450,18 +6951,16 @@
       r = s.dev ? dwbBindRemove(W, tok, D.dh) : true;
       return { ok: 1, r: { ok: true, released: !!r } };
     }
-    if (fn === "appHome") return { ok: 1, r: { info: { dev: !!s.dev, days: Math.max(0, Math.round((s.exp - W.t) / DWB_DAY)) } } };   /* _appInfoOf_：剩幾天（連結卡上的「N 天沒開才會失效」另外算，最少 1 天） */
+    if (fn === "appHome") return { ok: 1, r: { info: { dev: !!s.dev, days: Math.max(0, Math.round((s.exp - W.t) / DWB_DAY)) } } };
     if (fn === "appSearch") return { ok: 1, r: { rows: [{ code: "90101" }] } };
     return { ok: 0, code: "bad", err: "看不懂的請求" };
   }
-  /* ───── ② 瀏覽器那一頭（_app_page.html）：每一台裝置各自記著東西（ls＝localStorage：bk＝記著的鑰匙 { x, t }、bx＝記著後端在哪；ss＝sessionStorage：bpair＝記著的代號，只在這個分頁，關掉就沒了），
-     和「現在開著的網頁」（tab）。動作都同步（沒有網路的等待）；「背後發生的事」一句一句記在 W.tr，事件那邊再拿去給深色框 ───── */
   function dwbSay(W, ok, t) { W.tr = W.tr || []; W.tr.push({ ok: ok ? 1 : 0, t: t }); }
   function dwbCodeOk(c, dev) { return (dev ? /^\d{6}$/ : /^[A-HJ-NP-Za-kmnp-z2-9]{9}$/).test(String(c || "")); }
   function dwbStrOf(a, b) { return typeof a === "string" && a ? a.slice(0, 300) : typeof b === "string" && b ? b.slice(0, 300) : ""; }
-  function dwbKeySave(D, tb) { if (tb.x && tb.t) { D.ls.bk = { x: tb.x, t: tb.t }; D.ls.bx = tb.x; } }   /* keySave：鑰匙和後端記在這台（之後直接打網址進得去） */
+  function dwbKeySave(D, tb) { if (tb.x && tb.t) { D.ls.bk = { x: tb.x, t: tb.t }; D.ls.bx = tb.x; } }
   function dwbKeyOk(D, tb) { var o = D.ls.bk; return !!(o && o.x === tb.x && o.t === tb.t); }
-  function dwbHideKey(D, tb) { if (tb.hash && dwbKeyOk(D, tb)) tb.hash = null; }   /* 鑰匙已經記在這台了，網址列上的就藏起來（沒記成功就不藏，不然重新整理就進不來） */
+  function dwbHideKey(D, tb) { if (tb.hash && dwbKeyOk(D, tb)) tb.hash = null; }
   function dwbResetSession(tb) { tb.t = ""; tb.fs = 0; tb.dev = 0; tb.bound = 0; }
   function dwbPairSave(D, tb) { D.ss.pair = tb.pair && !tb.pair.dead ? { x: tb.pair.x, code: tb.pair.code, sec: tb.pair.sec, ex: tb.pair.ex, dev: tb.pair.dev ? 1 : 0 } : null; }
   function dwbPairLoad(W, D) {
@@ -7475,7 +6974,6 @@
     }
     return null;
   }
-  /* 向後端要一組代號（打開代號畫面、按「重新取得代號」「再試一次」、倒數到 0 自動換、按「開發者登入」「回藥師登入」換身分）。舊的暗鑰匙一起帶去，LINE 會把舊的作廢 */
   function dwbPairStart(W, D, note, role) {
     var tb = D.tab, t0 = W.t, dev, old, j, r;
     if (role === "dev" || role === "") tb.role = role;
@@ -7485,7 +6983,7 @@
     tb.note = typeof note === "string" ? note : "";
     tb.pair = null;
     dwbPairSave(D, tb);
-    tb.cmsg = ""; tb.cwait = 0; tb.cval = "";   /* 畫「正在向後端要代號…」的時候，驗證碼那一塊收起來、清掉 */
+    tb.cmsg = ""; tb.cwait = 0; tb.cval = "";
     j = dwbApi(W, D, "appCodeStart", "", [D.lab, old, tb.role]);
     r = j && j.ok === 1 ? j.r : null;
     if (r && r.ok && dwbCodeOk(r.code, dev) && /^s\d+$/.test(String(r.sec || ""))) {
@@ -7500,7 +6998,6 @@
       dwbSay(W, 0, "網頁向後端要代號（appCodeStart）→ 沒拿到：" + tb.why + " → 畫面上寫「① 沒拿到代號」，下面一顆「再試一次」");
     }
   }
-  /* 這組代號沒有了（過期、作廢、被用掉、開發者名額滿）：PAIR 留著（標記 dead）讓「重新取得」帶舊暗鑰匙，不再記在 sessionStorage */
   function dwbPairGone(W, D, why, big, extra) {
     var tb = D.tab;
     if (tb.pair) tb.pair.dead = 1;
@@ -7509,7 +7006,6 @@
     tb.pst = "gone"; tb.why = why; tb.big = big; tb.extra = extra || "";
     tb.cmsg = ""; tb.cwait = 0; tb.cval = "";
   }
-  /* 倒數到 0：自動換一組新的。看不到的分頁不換（人回來才換）；連續換了 2 次、中間人都沒碰過，就停在「代號過期了」 */
   function dwbPairExpire(W, D) {
     var tb = D.tab;
     if (!D.vis) return false;
@@ -7523,7 +7019,6 @@
     dwbPairStart(W, D, DWB_P.auto);
     return true;
   }
-  /* 登入沒成功：依後端說的分類。字留著的（還沒收到代號、忙線、暫停）不是打錯；打錯的清掉重打（只說不對，不說剩幾次）；代號沒有了就換成「重新取得」 */
   function dwbPairFail(W, D, r, j) {
     var tb = D.tab, em = dwbStrOf(r && r.err, j && j.err);
     if (r && r.dead) {
@@ -7559,7 +7054,6 @@
     tb.cwait = 0;
     dwbSay(W, 0, "後端回：" + (em || "沒登入成功") + " → 這一次沒有登入，也沒有用掉驗證碼");
   }
-  /* 代號登入的畫面（codeForm）：先看這個分頁有沒有記著還沒到期的代號（重新整理、手機切去 LINE 再切回來），沒有才向後端要新的 */
   function dwbCodeForm(W, D, msg) {
     var tb = D.tab, p;
     tb.scr = "code"; tb.head = msg || DWB_P.head; tb.note = ""; tb.auto = 0; tb.six = 0; tb.cmsg = ""; tb.cwait = 0; tb.cval = ""; tb.bmsg = ""; tb.probe = "";
@@ -7578,7 +7072,6 @@
     var tb = D.tab;
     tb.scr = "bind"; tb.head = msg; tb.bmsg = ""; tb.bval = ""; tb.probe = "";
   }
-  /* 後端說「不行」：鑰匙壞了／過期了／換過了（tok）→ 這台記著的那把清掉，知道後端在哪就直接出代號畫面；這台還沒綁定（bind）→ 出輸入綁定碼的框 */
   function dwbStop(W, D, j) {
     var tb = D.tab, code = j && j.code, msg = (j && j.err) || "", sk;
     if (code === "bind" && j.need) {
@@ -7598,7 +7091,6 @@
     }
     tb.scr = "none"; tb.head = msg || "";
   }
-  /* 開頁後向後端要首頁（start → appHome）。成功＝進首頁（開發者版：標題下面有「開發者版」小標籤）；鑰匙記在這台、網址列上的藏起來 */
   function dwbStart(W, D) {
     var tb = D.tab, j = dwbApi(W, D, "appHome", tb.t, [1]), info;
     if (j.ok !== 1) { dwbStop(W, D, j); return; }
@@ -7611,11 +7103,10 @@
     tb.bound = 0;
     dwbSay(W, 1, "網頁向後端要首頁（appHome），帶著鑰匙和這台的裝置碼 → 後端認得鑰匙" + (tb.dev ? "、這一台也在綁定名單裡" : "") + " → 進首頁（" + (tb.dev ? "開發者版" : "藥師版") + "）；網頁把鑰匙記在這台瀏覽器裡（之後直接打網址進得去）");
   }
-  /* 打開網頁（boot）：網址帶鑰匙 → 用它；沒帶 → 用這台記著的那一條；都沒有 → 看知不知道後端在哪（記著的、或 GitHub 有 cfg.js）→ 出代號畫面；連後端都不知道 → 請你從 LINE 的按鈕開 */
   function dwbBoot(W, D, hash) {
     var tb = dwbTabNew(), sk = D.ls.bk;
     D.tab = tb;
-    D.vis = 1;   /* 新開的分頁、重新整理：人正看著它 */
+    D.vis = 1;
     tb.open = 1;
     tb.hash = hash ? { k: hash.k, t: hash.t } : null;
     tb.x = hash ? DWB_ID : "";
@@ -7638,7 +7129,6 @@
     if (tb.t) dwbStart(W, D);
     else dwbCodeForm(W, D, "");
   }
-  /* 輸入綁定碼（bindForm）：先在網頁上檢查是 6 位數字，再送給後端（appBind）；後端問 LINE 專案這組碼是不是發給這把鑰匙的 */
   function dwbBindGo(W, D, raw) {
     var tb = D.tab, c = String(raw === null || raw === undefined ? "" : raw).replace(/\D/g, ""), j, r;
     if (tb.scr !== "bind") return false;
@@ -7660,7 +7150,6 @@
     dwbSay(W, 0, "網頁把 6 位數碼送給後端（appBind）→ " + ((r && r.err) || (j && j.err) || "沒綁成功") + "；輸入框清掉，要重打");
     return true;
   }
-  /* 驗證碼對了：後端給了鑰匙 → 記在這台（之後直接打網址就進得去）、開始用 */
   function dwbLoginOk(W, D, r) {
     var tb = D.tab;
     tb.note = "";
@@ -7672,7 +7161,6 @@
     tb.cmsg = ""; tb.cval = "";
     dwbStart(W, D);
   }
-  /* 按「登入」（onGo）。raw＝輸入框裡的字；沒有剛好 6 位數字，登入鍵是灰的，不會送 */
   function dwbLoginGo(W, D, raw) {
     var tb = D.tab, d = dwbDecode(raw), code = d.code, P = tb.pair, j, r;
     if (tb.scr !== "code" || !code) return false;
@@ -7707,7 +7195,6 @@
     dwbPairFail(W, D, r, j);
     return true;
   }
-  /* 「登出這台」：開發者 → 先請後端把這台從綁定名單拿掉（名額還回去）；藥師 → 這台把鑰匙忘掉就好。之後這台直接打網址會出現代號登入的畫面 */
   function dwbLogoutDo(W, D) {
     var tb = D.tab, wasDev = !!tb.dev, j, r, sent = true, released;
     if (wasDev) {
@@ -7724,7 +7211,6 @@
     dwbCodeForm(W, D, "✅ 已登出這台。" + (wasDev && (!sent || released === false) ? "\n（開發者名額可能沒能還回去：" + (sent ? "後端正忙" : "連不上後端") + "。回 LINE 打「開發者網頁 重發」可以全部清掉重來）" : "") + DWB_P.outMore);
     tb.ask = 0;
   }
-  /* 在網頁上做一件事（練習用的「查一支藥」）：帶著鑰匙和裝置碼問後端。這是為了看「這一台現在還能不能用」——鑰匙被換掉、被移出綁定名單，網頁自己不知道，要等下一次問後端才發現 */
   function dwbProbe(W, D) {
     var tb = D.tab, j;
     if (tb.scr !== "home") return false;
@@ -7740,7 +7226,6 @@
     }
     return true;
   }
-  /* 輸入框裡打字（網頁的 input 事件）：只動網頁自己的記錄，不問後端。有人在動＝AUTO 歸零；把開發者代號打進驗證碼格要說一聲 */
   function dwbTouch(W, text) {
     var D = W.dev[W.sel], tb = D ? D.tab : null, d;
     if (!tb || !tb.open) return false;
@@ -7753,7 +7238,6 @@
     else if (tb.six) { tb.six = 0; tb.cmsg = ""; tb.cwait = 0; }
     return true;
   }
-  /* 看不到的分頁（切去 LINE、螢幕關了）：倒數到了也不換，人回來（看得到了）才換 */
   function dwbVis(W, D, on) {
     var tb = D.tab;
     D.vis = on ? 1 : 0;
@@ -7762,7 +7246,6 @@
       if (tb.pst === "live" && tb.pair && !tb.pair.dead && tb.pair.ex <= W.t) dwbPairExpire(W, D);
     }
   }
-  /* 時間往前走：網頁的倒數到 0 要照時間順序一個一個處理（自動換新的代號，換出來的新代號可能在這一段時間裡又到期） */
   function dwbAdvance(W, ms) {
     var target = W.t + ms, guard = 0, id, D, tb, best, bestD;
     while (guard++ < 40) {
@@ -7778,7 +7261,6 @@
     }
     W.t = target;
   }
-  /* ───── ③ LINE 那一頭（09_網頁版.gs）：打什麼字算什麼 ───── */
   var DWB_CMD_RE = /^(開發者\s*|藥師\s*)?(網頁|網頁版|網站|web)(?:\s*(開發者|藥師))?(?:\s*(重發|重新|新連結|new|綁定|綁裝置|bind))?$/i;
   var DWB_PAIR_RE = /^((?:代號|代碼)\s*[:：]?\s*)?([A-Za-z0-9]{9}|\d{3}[\s\-]?\d{3})$/;
   var DWB_CODE_RE = /^(開發者\s*|藥師\s*)?(?:(網頁|網頁版|網站|web)\s*)?(驗證碼登入|驗證碼|驗證)$/i;
@@ -7792,7 +7274,6 @@
     bind = /^(綁定|綁裝置|bind)$/i.test(m[4] || "");
     return { dev: w.indexOf("開發者") >= 0, user: w.indexOf("藥師") >= 0, force: !!m[4] && !bind, bind: bind };
   }
-  /* 單純打 9 個英數字／6 個數字：只有「現在真的有這組在等人領」、這個人 10 分鐘內也還沒猜錯太多次，才算代號；6 個數字只有開發者才算 */
   function dwbBareOk(W, uid, code) {
     var key = "b|" + uid, g;
     if (/^\d{6}$/.test(code) && !dwbIsDev(W, uid)) return false;
@@ -7822,7 +7303,6 @@
   }
   function dwbLooksWeb(t) { var s = String(t).trim(); return !!(dwbWebMatch(s) || s.match(DWB_CODE_RE) && !(/^(開發者\s*|藥師\s*)?驗證$/.test(s)) || s.match(DWB_CFG_RE) || s.match(DWB_SW_RE)); }
   function dwbRoleName(dev) { return dev ? "開發者" : "藥師"; }
-  /* 「開發者網頁」「網頁」「藥師網頁」＋「重發」：發連結（_cmdWeb_） */
   function dwbCmdWeb(S, X, W, m, uid) {
     var isDev = dwbIsDev(W, uid), wantDev = !!m.dev || (isDev && !m.user), force = !!m.force, r, old = "", nBound = 0, dropped = 0, who = dwbWho(uid), key;
     if (m.bind) return dwbCmdBind(S, X, W, uid);
@@ -7854,7 +7334,6 @@
     X.reply = "「" + (wantDev ? "🛠 補藥神器 開發者網頁" : "🌐 補藥神器 網頁版") + "」連結卡＋" + (wantDev ? "「打開網頁」「🔑 拿綁定碼」兩顆按鈕" : "「打開網頁」一顆按鈕") + (force ? "（多一句「已換新連結，舊的已失效」）" : "");
     return true;
   }
-  /* 「開發者網頁 綁定」：6 位數綁定碼（10 分鐘、只能用一次、只對現在這把開發者鑰匙有效；再拿一組，上一組作廢） */
   function dwbCmdBind(S, X, W, uid) {
     var isDev = dwbIsDev(W, uid), r, b;
     if (!isDev) {
@@ -7874,7 +7353,6 @@
     X.reply = "「🔑 開發者網頁綁定碼」卡片：6 位數的碼＋一顆「打開開發者網頁」";
     return true;
   }
-  /* 代號貼進 LINE（_cmdWebPair_）：換一組 6 位數驗證碼 */
   function dwbCmdPair(S, X, W, m, uid) {
     var isDev = dwbIsDev(W, uid), who = dwbWho(uid), gk = "g|" + uid, mk = "m|" + uid, g, ms, got, wantDev;
     if (m.dev && !isDev) {
@@ -7969,10 +7447,8 @@
     X.reply = m.off ? "「⏸ 『驗證碼登入』已關閉」＋三句說明" : "「▶️ 『驗證碼登入』已恢復」";
     return true;
   }
-  /* 「開發者」開頭的字，非開發者先被擋在 _impFlow_（08_匯入.gs）那道門外：整句拿掉空白，開頭是「開發者」→ 只回這一句，後面的網頁指令根本沒有跑（「網頁 開發者」這種寫法不是「開發者」開頭，過得了門，才會碰到 _cmdWeb_ 自己的那句） */
   var DWB_GATE = "這是開發者指令 🔒\n有資料要新增或修改，把 CODE 和內容傳給開發者就好。";
   function dwbGate(t) { return /^開發者/.test(String(t === null || t === undefined ? "" : t).trim().replace(/\s+/g, "")); }
-  /* 某一個人打的一句話（uid＝你或藥師）：回 true＝這句話處理掉了；回 false＝跟網頁無關，呼叫的人往下當一般訊息（例如藥品查詢） */
   function dwbLineAs(S, X, W, t, uid) {
     var m, pm;
     if (!dwbIsDev(W, uid) && dwbGate(t)) {
@@ -7990,7 +7466,6 @@
     if (pm.kind === "cfg") return dwbCmdCfg(S, X, W, uid);
     return dwbCmdSwitch(S, X, W, uid, pm);
   }
-  /* 練習聊天室的 LINE 那一頭：回 true＝這句話處理掉了。別課的練習聊天室沒做網頁，說一聲在哪一課 */
   function dwbLine(S, X, raw, t, flat) {
     var W = S.ops.web;
     if (!S.ops.webUi) {
@@ -8002,8 +7477,6 @@
     if (W.src !== "user") X.msgs.unshift(dsEcho("👥 （練習專用的假裝）你現在在群組聊天室裡打字，不是跟補藥神器的一對一聊天室"));
     return dwbLineAs(S, X, W, t, DWB_ME);
   }
-  /* ───── ④ 事件（網頁上做的事、練習專用的按鈕）、畫面資料 ───── */
-  /* 練習專用的「時間往後撥」：1 分鐘到 31 天（"low"＝撥到這一台的倒數剩 20 秒，另外算） */
   var DWB_TIMES = [
     { v: 60000, l: "1 分鐘" }, { v: 240000, l: "4 分鐘" }, { v: 300000, l: "5 分鐘" }, { v: 3600000, l: "1 小時" },
     { v: DWB_DAY, l: "1 天" }, { v: 25 * DWB_DAY, l: "25 天" }, { v: 31 * DWB_DAY, l: "31 天" }
@@ -8018,7 +7491,6 @@
     if (tb.scr === "bind") return "等你綁定";
     return "請從 LINE 開";
   }
-  /* 網頁現在的畫面，一句話（「背後發生的事」最下面「機器人回」那一格用，也給畫面的說明用） */
   function dwbScreenText(W, D) {
     var tb = D.tab;
     if (!tb.open) return "「" + D.name + "」沒有開著補藥神器的網頁";
@@ -8043,7 +7515,6 @@
     }
     return out;
   }
-  /* 畫面資料（純函式，不改任何東西）：面板整個照這份畫；內容一樣就不重畫 */
   function dwbView(S) {
     var W = S.ops.web, D = W.dev[W.sel], tb = D.tab, v, i, x, kinds, k, j, tid, st, left, d, own = DWB_ME;
     v = { clock: dwbClock(W.t), sel: W.sel, name: D.name, lab: D.lab, vis: D.vis ? 1 : 0, off: W.off ? 1 : 0, cfg: W.cfg ? 1 : 0, src: W.src, devs: [], links: [], times: [], facts: [], open: tb.open ? 1 : 0, scr: tb.open ? tb.scr : "" };
@@ -8060,7 +7531,7 @@
       }
     }
     for (i = 0; i < DWB_TIMES.length; i++) v.times.push({ v: DWB_TIMES[i].v, l: DWB_TIMES[i].l });
-    v.live = dwbLive(W, tb) ? 1 : 0;   /* 有倒數在走（「撥到剩 20 秒」那顆鍵要不要出現）；v.low 是倒數剩 20 秒以內（紅字），兩件事 */
+    v.live = dwbLive(W, tb) ? 1 : 0;
     v.low = 0;
     v.mem = D.ls.bk ? "鑰匙 " + D.ls.bk.t + "＋後端在哪" : D.ls.bx ? "只記得後端在哪（沒有鑰匙）" : "什麼都沒記";
     v.facts = [
@@ -8087,13 +7558,11 @@
         v.dev = tb.pair.dev ? 1 : 0;
         v.code = tb.pair.code;
         v.shown = v.dev ? v.code.slice(0, 3) + " " + v.code.slice(3) : v.code;
-        /* 看不到的分頁過了時間（真的 pairExpire 遇到 hidden 就什麼都不做）：畫面停在最後畫的那一秒「0:01」，不是 0:00 */
         v.cd = dwbMS(Math.max(1, left)); v.low = left <= 20 ? 1 : 0;
         v.auto = tb.auto >= DWB_AUTO_MAX ? DWB_P.last : DWB_P.more;
         d = dwbDecode(tb.cval);
         v.cval = tb.cval; v.can = d.code ? 1 : 0; v.chint = d.hint; v.cmsg = tb.cmsg; v.cwait = tb.cwait ? 1 : 0;
       } else {
-        /* 沒有代號可以用：沒拿到（err）→ 「① 沒拿到代號」＋原因＋「再試一次」；代號沒有了（gone）→ 「① 原因」＋大字＋「重新取得代號」（renderPair 的 pairHtml） */
         v.l1 = tb.pst === "err" ? "① 沒拿到代號" : "① " + (tb.why || "這組代號已經不能用了");
         v.l2 = tb.pst === "err" ? (tb.why || "沒拿到代號，再試一次") : (tb.big || "請重新取得代號");
         v.extra = tb.extra;
@@ -8102,7 +7571,6 @@
     }
     return v;
   }
-  /* 把這一步網頁做的事（W.tr）一句一句交給「背後發生的事」；LINE 主動傳來的通知（W.push）變成聊天室裡的訊息 */
   function dwbFlush(X, W) {
     var i, tr = W.tr || [];
     for (i = 0; i < tr.length; i++) dsT(X, tr[i].ok, tr[i].t);
@@ -8130,7 +7598,6 @@
     return X;
   }
   function dwbPhNote() { return act("📲 假裝是另一個人：下面是「藥師」在他自己跟補藥神器的聊天室裡看到的，不是你的聊天室。"); }
-  /* 練習專用的按鈕（聊天室那一排）：切換「我在哪裡打字」、假裝藥師做的事 */
   function dwbActEv(S, X, ev) {
     var W = S.ops.web, id = String(ev.v || ""), p = id.split(":"), keepSrc = W.src, m, code, D, tb;
     X.sheet = "沒動";
@@ -8161,13 +7628,11 @@
         if (!dwbLineAs(S, X, W, code, DWB_PH)) dsSearch(S, X, code);
       } else { W.src = keepSrc; X.msgs = []; X.keep = 1; X.qKeep = 0; return dwbBadEv(X, "這個動作現在做不到"); }
     } finally { W.src = keepSrc; }
-    dwbQuick(W, DWB_PH);   /* 藥師那邊也收到機器人的回覆，輸入框上面那顆「🌐 網頁」一樣要帶他的鑰匙 */
+    dwbQuick(W, DWB_PH);
     X.reply = "（回給藥師）" + X.reply;
     X.say = "";
     return X;
   }
-  /* 網頁上做的事（面板送來的）。w＝做什麼：sel 換一台、link 按 LINE 卡片上的「打開網頁」、url 直接打網址、reload 重新整理、close 關掉、bind 按「綁定」、login 按「登入」、
-     new 重新取得代號（再試一次）、role 換藥師／開發者登入、copy 複製代號、outAsk／outYes／outNo 登出這台、probe 查一支藥、vis 看得到／看不到、time 時間往後撥、cfg 有沒有 cfg.js、act 聊天室那一排練習專用的按鈕 */
   function dwbEvent(S, X, ev) {
     var W = S.ops.web, w = String(ev.w || ""), v = ev.v, D = W.dev[W.sel], tb = D.tab, m, ms, label, pushed, i, n, s;
     W.t += 1;
@@ -8254,7 +7719,6 @@
     X.reply = (pushed ? "（機器人沒有回話；但 LINE 主動傳來一張「🔔 開發者網頁有新裝置登入」的通知卡）" : "（不回話）這一步是在瀏覽器裡做的，沒有傳給機器人") + "　網頁現在：" + dwbScreenText(W, W.dev[W.sel]);
     return X;
   }
-  /* 輸入框上面「這一步可以這樣打」：現在有哪些代號在等人領，再加幾句常用的 */
   function dwbSug(S) {
     var W = S.ops.web, out = [], i, tb, c, seen = {};
     for (i = 0; i < DWB_DEVS.length; i++) {
@@ -8266,7 +7730,6 @@
     }
     return out.slice(0, 3).concat(["開發者網頁", "開發者網頁 綁定", "開發者網頁 重發", W.off ? "驗證碼登入 開" : "驗證碼登入 關", "開發者網頁 設定", "網頁"]);
   }
-  /* 聊天室下面「練習專用的按鈕」：換在哪裡打字、假裝藥師做的事（真的要請藥師用他的手機） */
   function dwbActs(S) {
     var W = S.ops.web, out = [], i, tb, id;
     if (!S.ops.webUi) return out;
@@ -8281,16 +7744,7 @@
     }
     return out;
   }
-  /*/SIMDEV*/
 
-  /* ───────── ⑤ 畫面（dwbMake）─────────
-     getS()＝現在的練習世界（重播會換一份）；send(ev)＝把網頁上做的事交給練習聊天室（ev＝{ t: "dwb", w: 動作, … }，a＝給「背後發生的事」看的名稱）。
-     回傳 { el, draw, reset }：draw() 照 dwbView(S) 把「四台裝置的瀏覽器」畫出來——
-       ・上面一排選裝置、一排「在這一台打開網頁」（直接打網址、LINE 給過的連結）；中間是瀏覽器的視窗（網址列＋網頁）；下面是練習專用的按鈕（時間、看不看得到、有沒有 cfg.js）和「平常看不到的東西」；
-       ・網頁的字、順序、按鈕照真的 _app_page.html：綁定框、代號登入（① 代號＋複製＋倒數 ② 驗證碼輸入＋登入）、首頁（開發者版小標籤、登出這台）；
-       ・輸入框是真的 <input>（綁定碼、驗證碼）：打字只動網頁自己的記錄（dwbTouch），不問後端；按「綁定」「登入」才送出。重畫的時候輸入框原樣留著（打到一半的字、游標都不動）；
-       ・按的那顆按鈕被換掉了（卡片收起來、畫面換了）：焦點接給下一個合理的地方。登出的確認框長在首頁裡，開出來焦點就在「登出」上，按 Esc 等於取消。
-     不存、不傳：打的字只用 value／textContent 放進畫面。 */
   var dwbSeq = 0;
   var DWB_FINE_BIND = "碼 10 分鐘內有效、只能用一次；錯 5 次鎖 1 小時；最多綁 3 處。\n這組碼只打在這裡，不要傳給任何人。";
   function dwbMake(getS, send) {
@@ -8333,7 +7787,6 @@
       try { t.focus({ preventScroll: true }); } catch (e) { return false; }
       return true;
     }
-    /* 按的那顆按鈕被換掉了：焦點接給下一個合理的地方（代號畫面 → 驗證碼框；進了首頁 → 「查一支藥」；確認框收起來 → 「登出這台」），最後才是整個面板 */
     function restoreFocus(fk) {
       var alt, l, i;
       if (!fk) return;
@@ -8344,7 +7797,6 @@
       for (i = 0; i < l.length; i++) if (focusFk(l[i])) return;
       try { root.focus({ preventScroll: true }); } catch (e) {}
     }
-    /* 複製代號：練習專用，只是假裝——鍵上寫「已複製 ✓」，不會真的動使用者電腦的剪貼簿（真的網頁 pairCopy 是先用瀏覽器的剪貼簿、不給用就換老方法、都不行就請人長按上面的代號） */
     function doCopy() {
       var c = dwbView(getS()).code;
       if (!c) return;
@@ -8354,7 +7806,6 @@
     }
     function typed(inp) { dwbTouch(getS().ops.web, inp.value); draw(); }
 
-    /* ── 上面兩排：選裝置、在這一台打開網頁 ── */
     function devsDraw(v) {
       devsEl.textContent = "";
       v.devs.forEach(function(d) {
@@ -8375,7 +7826,6 @@
       if (!v.links.length) opensEl.appendChild(el("span", { class: "dwb-onone", text: "（LINE 還沒給你連結：先在上面的聊天室打「開發者網頁」）" }));
     }
 
-    /* ── 網頁的幾種畫面 ── */
     function noneDraw(v) {
       enter("none");
       if (ui.psig.none === v.msg) return;
@@ -8487,7 +7937,6 @@
         if (!hadAsk) focusFk("out-yes");
       }
     }
-    /* ── 下面：練習專用的按鈕、平常看不到的東西 ── */
     function ctlDraw(v) {
       var sg = JSON.stringify([v.clock, v.live, v.vis, v.cfg, v.open, v.times]), row, row2;
       if (sg === ui.sig.ctl) return;
@@ -8540,17 +7989,14 @@
     return { el: root, draw: draw, reset: reset, panel: win };
   }
 
-  var TM = "上午 9:41";   /* 示範聊天室裡每一則的時間（編的） */
-  var WARN = "⚠️ AI 可能讀錯，請核對藥櫃標籤紙";   /* 照片、手寫查藥：真的 LINE 回覆最前面那一句（見 02 的 PHOTO_AI_WARN） */
-  /* CODE 打錯、系統帶出「CODE 相近」的藥時，卡片前面先傳的那一句（字照 01_程式碼.gs 的 replyResults；「品項,」是半形逗號，跟真的一樣） */
+  var TM = "上午 9:41";
+  var WARN = "⚠️ AI 可能讀錯，請核對藥櫃標籤紙";
   function codeWarn(kw) { return "⚠️ 找不到 CODE「" + kw + "」\n\n下面列出的是「CODE 相近」的品項,\n不是你輸入的那一個品項藥品。\n請務必核對藥櫃標籤紙再補藥 🙏"; }
   var N1 = "改包裝通知，示範：這品項藥品換包裝了，瓶身標籤顏色不一樣";
   var N2 = "停止供貨，示範：預計下個月恢復供貨，這段時間先找替代藥";
-  /* 藥品家族（紫色框）：cats＝每一類的標題和裡面的藥 */
   var FAM1 = { cats: [["💊 同成分不同劑量", ["90114"]], ["🏷 同成分同劑量", ["90115"]]] };
   var FAM2 = { cats: [["🔁 同成分不同劑型", ["90111", "90112"]]] };
   var SPOTS = ["K2", "B1", "棧一"];
-  /* 列表卡：t 標題、s 小標、g 分組（n 組名、ic 圖示 t／w、rows 這組的藥；一列可以是 CODE 或 { c, n: 通知的字 }）、hide＝不寫位置、cut＝中間省略幾列、ft 最下面的字 */
   var L_K2 = { t: "K2", s: "這一格有 4 個品項", hide: 1, ft: "按任何一列 → 出完整卡片", g: [{ n: "", rows: ["90101", "90111", "90107", "90108"] }] };
   var L_B1 = [
     { t: "B1", s: "這一格有 14 個品項　·　第 1/2 頁", hide: 1, ft: "還有下一頁，往左滑 →", g: [{ n: "", rows: ["90103", "90116", "90117"], cut: 9 }] },
@@ -8563,23 +8009,14 @@
     { t: "📢 藥品通知　改包裝通知", s: "1 個品項有通知", ft: "按任何一列 → 出完整卡片", g: [{ n: "", rows: [{ c: "90101", n: "示範：瓶身標籤顏色不一樣" }] }] }
   ];
   var C1 = dc("90101");
-  /* ───────── 開發者教學的課程內容（第 16 批）─────────
-     接在 DR（編的藥）和所有畫面零件的後面，換掉藥師版的 CH 和 LESSONS。
-     每一則「機器人回的字」都照 LINE 上真的那一句寫（出處：06_行動指令.gs 的新藥格子和 ✏️ 修改、08_匯入.gs 的匯入和維護指令、09_網頁版.gs 的開發者網頁），
-     只有「藥名、CODE、位置、批次號」這幾個會變的地方換成編的；tools/learn_dev_page_test.js 會把每一則字拿去對 .gs 原始檔，對不上就不過。
-     qr(…)＝這一則訊息下面，輸入框上面會出現的小按鈕（照真的有哪幾顆寫）。 */
   var CH = [{ n: "改資料" }, { n: "日常維護" }, { n: "進階與網頁" }];
   function qr(items, cap) { return { w: "qr", items: items, cap: cap || "" }; }
-  /* 釘住的那排按鈕：訊息自己沒有小按鈕時，接在最後一則下面（開發者多一顆「🔧 開發者」） */
   var BAR = ["🌐 網頁", "📖 教學", "📢 藥品通知", "🛠 BUG", "👥 加入補藥神器", "🔧 開發者"];
-  /* 改完一格／存檔之後，最後一則下面：「↩️ 復原 CODE」排在最前面，後面接釘住的那排（多行的欄位再多一顆「↵ 再加一句」排最前面） */
   function undoQ(code, multi) { return qr((multi ? ["↵ 再加一句"] : []).concat(["↩️ 復原 " + code], BAR), "輸入框上面會出現（第一顆可以復原）"); }
-  /* 新藥格子：小按鈕＝黃色那一格的常用選項（位置：常用位置；劑型：9 種），可以跳過的多一顆「跳過」，最後一定有「取消」 */
   var LOCQ = ["K2", "K3", "B1", "A3", "C3", "D1", "D4", "水棧一", "水棧二"];
   var FORMQ = ["錠劑", "膠囊", "口服液", "注射劑", "藥膏", "眼藥水", "栓劑", "貼片", "粉劑"];
   var WKEYS = ["code", "brand", "loc", "form", "zh", "gen", "note", "feat"];
   var WVALS = ["90120", "NEWTESTIN* 10MG TAB", "K2", "錠劑", "新測寧錠 10 毫克", "", "高血壓", ""];
-  /* wz(n)＝前 n 格已經答過的狀態（學名、特徵是「跳過」＝空字串） */
   function wz(n) { var o = {}, i; for (i = 0; i < n; i++) o[WKEYS[i]] = WVALS[i]; return o; }
   function wq(cur) {
     var q = [];
@@ -8588,27 +8025,20 @@
     else if (cur === "gen" || cur === "note" || cur === "feat") q = ["跳過"];
     return qr(q.concat(["取消"]));
   }
-  /* 一張新藥格子＋它下面的小按鈕：n＝已經答過幾格（黃色是下一格），或給 d＋cur */
   function wizMsgs(n) { var cur = WKEYS[n] || ""; return [wizCard(wz(n), cur), wq(cur)]; }
-  /* 「預覽」那一步機器人回的三樣：藥品卡片（還沒存，沒有「✏️ 修改」）、說明、輸入框上面的三顆。下一步按「✅ 存檔」之前，畫面上就是這三樣 */
   var PVTXT = "☝️ 存進去之後長這樣。\n\n沒問題的話按「✅ 存檔」（或打「存檔」）。\n要改哪一項：按「✏️ 回格子」（或打「回格子」）點那一格，或直接打「位置 K9」這樣。";
   function PVMSGS() { return [dc("90120"), bot(PVTXT), qr(["✅ 存檔", "✏️ 回格子", "取消"])]; }
-  /* 改完位置（打 k9）之後機器人回的三樣：改前改後、換好的新卡片、輸入框上面第一顆「↩️ 復原 90101」。下一步按「↩️ 復原 90101」之前，畫面上就是這三樣 */
   function LOCDONE() { return [bot("✅ 90101　小藥庫位置\n　改前：K2\n　改後：K9"), dc("90101", { edit: 1, over: { loc: "K9" } }), undoQ("90101")]; }
-  /* 點「公告類別」之後，輸入框上面的 5 種公告＋「🗑 移除公告」＋「取消」 */
   var NKQ = ["1 停止供貨", "2 改包裝通知", "3 製廠缺貨", "4 換廠", "5 給慢箋", "🗑 移除公告", "取消"];
-  /* 「📝 一次改多項」那張卡：MEF0＝剛打開（還沒改）、MEF2＝打了「B …／C …」兩項之後（改過的兩列變綠色） */
   var MEFV = { brand: "TESTOLOL* 25MG TAB", zh: "測試洛爾錠 25 毫克", loc: "K2", feat: "白色圓形錠，一面有刻痕", gen: "TESTOLOL HCL", pic: "已有照片", nk: "", nm: "", old: "", abbr: "" };
   function MEF0() { return mefCard("90101", MEFV, {}); }
   function MEF2() { return mefCard("90101", gmix(gmix({}, MEFV), { zh: "測試洛爾錠 50 毫克", loc: "K9" }), { zh: "測試洛爾錠 25 毫克", loc: "K2" }, "✅ 90101 寫好了（2 項）\n・中文：測試洛爾錠 25 毫克 → 測試洛爾錠 50 毫克\n・小藥庫位置：K2 → K9"); }
   function DEVTRY(text, hint) { return { kind: "text", text: text, p: "回 LINE，打「" + text + "」看看。", label: "在 LINE 試試看", hint: hint }; }
-  /* ───── 第 3 課（批次匯入）用的：同一批貼上去的 5 列，總覽卡和三張逐筆確認卡 ───── */
   var IMPADD = ["對", "改 商品名", "改 中文名", "改 位置", "改 劑型", "改 學名", "改 參考網站", "跳過", "先停"];
   function impQ(kind) { return qr(kind === "add" ? IMPADD : ["對", "改 位置", "跳過", "先停"]); }
   function IMPOV() {
     return impOverview({ b: "0915-2", total: 5, add: 2, upd: 1, nc: 1, pb: 1, map: "CODE ← A 欄　中文名 ← E 欄　商品名 ← B 欄　位置 ← C 欄　劑型 ← D 欄", warns: ["第 5 列　CODE「12A45」不是 4～6 位數字"], count: 3 });
   }
-  /* 第 1 筆＝新增 90130（loc 不給＝原本的樣子：位置 k2 被整理成 K2；給了＝用「改 位置」改過之後） */
   function IMPR1(loc) {
     return impRow({ i: 1, total: 3, add: 1, code: "90130", title: "NEWTESTIN* 20MG TAB", kv: [["商品名", "", "NEWTESTIN* 20MG TAB"], ["中文名", "", "新測寧錠 20 毫克"], loc ? ["位置", "", loc] : ["位置", "k2", "K2"], ["劑型", "F.C. TAB", "錠劑"]], warns: ["劑型「F.C. TAB」是自動對成「錠劑」的"] });
   }
@@ -8619,29 +8049,20 @@
     return impRow({ i: 3, total: 3, add: 0, code: "90101", title: "TESTOLOL* 25MG TAB", cur: "TESTOLOL* 25MG TAB　K2　錠劑", kv: [["位置", "K2", "K3"]], warns: [] });
   }
   var IMPTAIL = "　快取已更新，藥師現在查就是新資料。\n\n紀錄在「匯入紀錄」；7 天內打「復原」可以整批或單筆還原。";
-  /* 逐筆確認每一步機器人回的畫面（下一步要按卡片上的鍵，畫面上先有這一張，手指才有地方按）：
-     IMPOVM＝總覽卡；IMP1M＝第 1 筆；IMP2M＝第 1 筆寫入了、接著第 2 筆；IMP3M＝第 2 筆跳過了、接著第 3 筆；IMPDONE＝全部做完的完工報告 */
   function IMPOVM() { return [IMPOV(), qr(["開始逐筆確認", "取消"])]; }
   function IMP1M() { return [IMPR1(), impQ("add")]; }
   function IMP2M() { return [bot("✅ 第 1／3 筆 新增 90130　NEWTESTIN* 20MG TAB　已寫入"), IMPR2(), impQ("add")]; }
   function IMP3M() { return [bot("⏭ 第 2 筆 90131 跳過，留在待匯入。"), IMPR3(), impQ("upd")]; }
   function IMPDONE() { return [bot("🏁 批次 #0915-2 完成。\n　寫入 2 筆（新增 1、修改 1，共 7 格）\n　跳過 1 筆（留在待匯入）：90131\n　沒變 1 筆（已從待匯入清掉）\n　有問題 1 筆（待匯入裡紅底，CODE格的註解有原因）\n" + IMPTAIL), qr(["查一下 90101", "復原這一批", "健檢"])]; }
-  /* ───── 第 4 課（日常維護）用的 ───── */
   var VERV = "v11.23";
   var VERTXT = "LINE 四個檔：全部 " + VERV + " ✅\n　01_藥師端_查詢.gs　" + VERV + "\n　02_藥師端_照片語音.gs　" + VERV + "\n　03_開發端_資料與指令.gs　" + VERV + "\n　04_開發端_維護工具.gs　" + VERV + "\n網頁專案：全部 " + VERV + " ✅\n　01_網頁_資料與查詢.gs　" + VERV + "\n　02_網頁_照片語音與修改.gs　" + VERV + "\nGitHub 網頁：v6 ✅（網頁打得開、版本對）";
   var CHKQ = ["📦 版本更新＋清快取", "🩺 開始體檢", "🚪 退出"];
-  /* 按「🩺 體檢」之後機器人回的：說明＋輸入框上面三顆（下面三個示範要按其中一顆，畫面上先有這一則） */
   function CHKMENU() { return [bot("🩺 體檢　要做哪一個？\n・📦 版本更新＋清快取：先清快取（清掉馬上重建），再列 LINE 四個檔、網頁專案兩個檔的版本對不對，和 GitHub 網頁打不打得開（不測 AI，換完程式按一下就知道有沒有貼齊）；第一次會把程式自己寫的搬到使用者屬性\n・🩺 開始體檢：上面那些全部＋所有項目檢查一次（約 10～20 秒）"), qr(CHKQ)]; }
   var SPDQ = ["⌨️ 文字速度", "📷 照片速度", "🎤 語音速度", "🔬 速度 詳細", "🚪 退出"];
-  /* 開發者指令的回覆（程式裡的 _devReply_）最後多兩行：空一行，再一行「⏱ 這一句花了幾秒（＋程式外幾秒）」——
-     程式外＝LINE 送出到程式開始的空檔（Google 冷啟動、排隊）。a＝這一句花的秒數，b＝程式外 */
   function tl(a, b) { return "\n\n⏱ " + a + " 秒（＋程式外 " + b + " 秒）"; }
-  /* ───── 第 5 課（進階指令）用的 ───── */
-  /* 「👥 開發者」那一排的三顆；devgQ(skip)＝這一則是哪一個，那一顆就不放，最後固定是「🚪 退出」 */
   var DEVG3 = ["➕ 邀請開發者", "👥 開發者名單", "➖ 開發者移除"];
   function devgQ(skip) { return qr(DEVG3.filter(function(x) { return !skip || x.indexOf(skip) < 0; }).concat(["🚪 退出"])); }
   var DEVGMENU = "👥 開發者　要做哪一個？\n・➕ 邀請開發者：給一組 6 位數邀請碼（10 分鐘內有效、只能用一次）\n・👥 開發者名單：現在有誰、最近的異動\n・➖ 開發者移除：從名單挑一位移除（會先問一次）";
-  /* 按「👥 開發者」之後的那一則（說明＋三顆）、按「➕ 邀請開發者」之後的那一則（邀請碼＋剩下兩顆）：下面幾個示範要按其中一顆，畫面上先有這一則 */
   function GMENU() { return [bot(DEVGMENU), devgQ("")]; }
   function INVMSG() { return [bot("🔑 邀請碼 482913\n10 分鐘內有效，只能用一次。\n\n把下面這句傳給對方，請他在補藥神器裡打：\n　開發者 碼 482913\n\n（他打完就是開發者了，您可以按「👥 開發者名單」確認。）\n\n⚠️ 只傳給你認識、要當開發者的人。補藥神器（LINE 或網頁）永遠不會叫你產生邀請碼、或把邀請碼傳給誰；有人這樣要求就是詐騙。"), devgQ("邀請")]; }
   var DEVLIST_TAIL = "\n\n移除：按「➖ 開發者移除」（或打「開發者 移除 2」，用上面的編號）\n邀請：按「➕ 邀請開發者」";
@@ -8649,44 +8070,29 @@
   var DEVLIST1 = "👥 開發者名單（1 位）\n\n1. 示範甲（您）\n　　（在編輯器加的，沒有紀錄）\n\n最近的異動：\n　09/15 10:31　移除　示範乙\n　09/15 10:20　加入　示範乙" + DEVLIST_TAIL;
   var MAPASK = "🗺 90101 的平面圖\n\n現在：自動判斷（跟著小藥庫位置走）\n\n・「棧左」「棧中」「棧右」＝直接指定棧板哪一塊（按一下就好）\n・「平」＝其他櫃位，我再問您哪一櫃\n・「沒平」＝公藥那種，沒有平面圖\n・「自動」＝取消設定，跟著小藥庫位置自己判斷\n\n★ 設完**全院立刻生效**，藥師馬上看得到。";
   var MAPQ = ["棧左", "棧中", "棧右", "平", "沒平", "自動", "取消"];
-  /* 之前指定過的藥，再點一次「🗺 平面圖」：第二行換成「現在設成：棧中」 */
   function MAPASK2(cur) { return MAPASK.replace("現在：自動判斷（跟著小藥庫位置走）", "現在設成：" + cur); }
-  /* ───── 第 4 課（清單校對）用的 ───── */
-  /* 您傳的「印出來的清單」照片：一張紙，上面一行一個品項（跟手寫紙條同一種畫法，只是說明文字寫「印出來的清單」） */
   function prn(lines) { return { w: "me", note: lines, what: "印出來的清單" }; }
-  /* 清單校對的小按鈕（跟 08_匯入.gs 的 _lstQuick_ 同一排：前兩顆開網頁、中間「📍 位置查核」、後三顆打字）和「清單校對」那一則：
-     用練習聊天室的引擎現算（_learn_dev_sim_lst.js 的 DSL_QCHIPS、dslMenuText；跟 08_匯入.gs 打 清單校對 那一段同一句），這裡只接上最後的 ⏱；n＝目前待審幾筆 */
   var LSTQ = DSL_QCHIPS.map(function(c) { return c[0]; });
   function LSTMENU(n) { return dslMenuText(n, 0) + tl("0.8", "0.2"); }
   var LSTSAME_TAIL = "\n\n待審總共 3 筆（3 天後自動清掉）。可以再傳下一張累積，或按「📋 待審清單」一筆一筆審。\n★ 一次要傳好幾張的話，按「📤 多張上傳」在網頁上一起送比較快。";
   var LSTONE = "📋 清單校對　這一張\n讀到 12 筆　一樣 9　不一樣 2　表上沒有 1\n4.8 秒　照片 312 KB　AI 1 趟\n\n這一張的差異（前 3 筆）：\n🟡 90101　位置：K2 → K3　✍️\n🟡 90105　商品名：TESTONIN* 100MG CAP → TESTONIN-PLUS* 50MG CAP\n🔵 90131　表上沒有（EXAMPLEX* 10MG TAB／B1）" + LSTSAME_TAIL;
   var LSTSHIFT = "📋 清單校對　這一張\n讀到 12 筆　一樣 3　不一樣 0　表上沒有 0\n5.1 秒　照片 298 KB　AI 1 趟\n\n🚫 這張整批擋下來了，一筆都沒進待審。\n對到 12 列，其中 9 列位置不一樣（超過一半）——\n這通常不是資料真的變了，是**紙彎了或斜了，位置那一欄整批對錯行**。\n請把紙壓平、正面拍，或一次只拍一欄，再傳一次。\n\n待審總共 0 筆（3 天後自動清掉）。可以再傳下一張累積，或按「📋 待審清單」一筆一筆審。\n★ 一次要傳好幾張的話，按「📤 多張上傳」在網頁上一起送比較快。";
   var LSTPAPER = ["K3　90101", "C3　90105", "B1　90131", "⋮"];
-  /* 第 3 張：有幾行看不懂的紙（跟練習聊天室「清單 D」同一張，回的字也一模一樣） */
   var LSTPAPERD = ["水棧一　90109", "K2　9O104", "B7　90116", "⋮"];
   var LSTWARN = "📋 清單校對　這一張\n讀到 5 筆　一樣 3　不一樣 1　表上沒有 0\n4.6 秒　照片 305 KB　AI 1 趟\n⚠️ 有 1 行 code 讀不出來（沒拿去比對）：\n　9O104\tSAMPLESPOT* 20MG TAB\tK2\n\n⚠️ 有 1 列的位置在工作表1 從來沒出現過（沒拿去比對）：\n　90116 讀到位置「B7」（工作表1 沒有這個位置）\n\n🚫 有 1 列 code 可能讀錯（對到的是別支藥，沒進待審）：\n　90107 清單上是「TESTJELLY* 2% GEL」，但工作表1 的 90107 是「DEMOCARD* 10MG TAB」→ code 可能讀錯\n\n這一張的差異（前 1 筆）：\n🟡 90109　位置：水棧二 → 水棧一" + LSTSAME_TAIL.replace("3 筆", "1 筆");
-  /* 審核頁的三張卡（_lst_page.html）：位置改了（手寫）、商品名改了、表上沒有 */
   var LSTD1 = { code: "90101", nm: "TESTOLOL* 25MG TAB", hand: 1, chg: [["位置", "K2", "K3"]] };
   var LSTD2 = { code: "90105", nm: "TESTONIN* 100MG CAP", chg: [["商品名", "TESTONIN* 100MG CAP", "TESTONIN-PLUS* 50MG CAP"]] };
   var LSTD3 = { code: "90131", nm: "EXAMPLEX* 10MG TAB", isNew: 1, v: [["商品名", "EXAMPLEX* 10MG TAB"], ["位置", "B1"], ["劑型", ""], ["中文名", ""], ["學名", ""]] };
-  /* 三筆待審的審核頁：「📋 待審清單」那一段幾個示範共用的第一個畫面（要按第一筆的「✅ 寫進工作表1」、點「🔵 表上沒有」篩選，畫面上先要有這一頁，手指才有地方按） */
   function LSTPG3() {
     return lstPage({ nl: 3, ni: 0, f: 0, photo: "📷 第 1 張　09/15 10:12", items: [LSTD1, LSTD2, LSTD3], alt: "網頁畫面（清單校對的待審清單）：上面「待審 3 筆　待匯入分頁 0 筆」和四個篩選（全部、🟡 不一樣、🔵 表上沒有、✍️ 手寫改的），下面三張卡：90101 位置 K2 改成 K3（手寫改的）、90105 商品名改了、90131 工作表1 沒有這支藥；每張下面有「✅ 寫進工作表1」「❌ 不要」「⏭ 跳過」，最底下「✅ 全部寫進（3）」「🗑 全部刪除」" });
   }
-  /* 待審有 3 筆時，打「清單校對」機器人回的：說明＋輸入框上面 6 顆（後三顆管待審清單和校對模式）。第 6 段「校對完」的三個示範，要按其中一顆，畫面上先有這一則 */
   function LSTMENU3() { return [bot(LSTMENU(3)), qr(LSTQ)]; }
-  /* ───── 第 4 課後半（位置查核）用的 ─────
-     這幾段示範的卡片、字、小按鈕，是練習聊天室的引擎（_learn_dev_sim_lck.js）在一個全新的練習世界裡，照使用者的動作一步一步走出來的
-     （跟「換你打打看」是同一支程式；tools/learn_dev_sim_test.js 已經逐句對過真的 LINE），tools/learn_dev_line.js 再把同一串動作丟給真的 LINE 逐句比一次。
-     LCK(steps, from, cap)：steps 每一步是 打的字（字串，或 { t: "text", v, n: 旁白 }）、{ t: "pb", v: postback 的字, n: 旁白 }（按卡片上的按鈕）、{ t: "img", v: 貨架照片代號, n: 旁白 }（傳照片），可以加 q: 1（這一步下面也畫小按鈕）；
-     前 from 步只是先走過去（把世界帶到那個畫面），不收；後面每一步收它的聊天室節點（引擎的旁白「👆 點了…」換成 n；沒給 n 就拿掉）；
-     最後一步下面接一排輸入框上面的小按鈕（cap＝那排上面的說明；只有「標準那排」的就不畫）。 */
   function LCK(steps, from, cap) {
     var S = dsNew("empty", true), out = [], bar = DS_BAR.map(function(c) { return c.l; }).join("|"), X, i, j, st, m, labs;
     S.ops.lstUi = 1;
     for (i = 0; i < steps.length; i++) {
       st = typeof steps[i] === "string" ? { t: "text", v: steps[i] } : steps[i];
-      if (st.t === "code") {          /* 打 CODE 查藥：搜尋引擎要等課程資料載完才初始化，這裡不能直接跑；開發者查到的就是那支藥的卡片（dsCard＝練習室打 CODE 查到一支時回的那一張），標準那排小按鈕不畫 */
+      if (st.t === "code") {
         if (st.n) out.push(st.n);
         out.push(me(st.v), dsCard(S, st.v));
         continue;
@@ -8703,13 +8109,11 @@
     }
     return out;
   }
-  var LCKP = ["清單校對", "位置查核"];                       /* 先進清單校對、再進位置查核 */
-  var LCKB1 = LCKP.concat(["B1"]);                         /* 打 B1：工作表1 寫 B1 的五支藥，卡片上由上而下是這個順序（手指要按第幾個框，照這個數） */
+  var LCKP = ["清單校對", "位置查核"];
+  var LCKB1 = LCKP.concat(["B1"]);
   var B1C = ["90103", "90116", "90117", "90118", "90119"];
-  /* 按卡片上某一支藥的打勾框、「修改」：旁白照 tools/learn_dev_line.js 認得的寫法，tap＝手指要按的那一格（卡片上第幾個 .lkt、.lkm） */
   function lckTick(code, key) { return { t: "pb", v: "lck=t|" + (key || "B1") + "|" + code, n: act("👆 點「" + code + "」左邊的打勾框", [".lkt", (key === "A3" ? ["90115"] : B1C).indexOf(code)]) }; }
   function lckMod(code, noN) { var o = { t: "pb", v: "lck=m|B1|" + code }; if (!noN) o.n = act("👆 按「" + code + "」右邊的「修改」", [".lkm", B1C.indexOf(code)]); return o; }
-  /* 位置查核網頁分頁（lstLcPage）的 B1 那幾列：跟 B1 那一格的卡片同一批藥、同一個順序（從引擎查）；ov＝{ 代號: { tick, moved, ed } } 改其中幾列的樣子 */
   function LCW_ROWS(ov) {
     var S = dsNew("empty", true), cur = dskRowsAt(S, "B1"), out = [], i, e;
     ov = ov || {};
@@ -8719,9 +8123,8 @@
     }
     return out;
   }
-  function LCW_K3() { return "K3（" + dskRowsAt(dsNew("empty", true), "K3").length + " 支）"; }   /* 網頁下拉選單上，K3 旁邊寫有幾支藥 */
+  function LCW_K3() { return "K3（" + dskRowsAt(dsNew("empty", true), "K3").length + " 支）"; }
   function lckPick(loc) { return { t: "pb", v: "lck=s|B1|90116|" + loc, n: act("👆 點「" + loc + "」") }; }
-  /* ───── 第 7 課（開發者網頁）用的 ───── */
   var CFGTXT = "📄 只做一次：讓「直接打網址」也能用代號登入\n\n1. 開 GitHub 放網頁的那個專案 → Add file → Create new file\n2. 檔名打 cfg.js\n3. 內容貼下一則訊息那一行（整行複製）\n4. Commit changes\n5. 等 1～10 分鐘，回 LINE 打「健檢」（或「版本更新」）：「GitHub 網頁」那一行後面會多一句「cfg.js ✅（後端代號 demo01）」。沒出現的話，檢查檔名是不是剛好 cfg.js、有沒有跟 index.html 放在同一層（不能放進資料夾裡）\n\n這一行只寫「後端在哪」，不是鑰匙：沒有 LINE 給的驗證碼進不去。\n⚠️ 但 GitHub 上的檔案是公開的，等於把後端網址公開了：陌生人拿它看不到任何藥品資料，也拿不到驗證碼（沒有人在 LINE 打他的代號），只能不斷向後端「拿代號」，把額度（10 分鐘 30 次）用光，讓這條路暫時說「忙線」（LINE 的連結、已經登入的瀏覽器不受影響）。有人這樣做你會收到警示信；想先關掉就在 LINE 打「驗證碼登入 關」。\n不想公開就不要放：沒有 cfg.js 的話，每台瀏覽器第一次要先從 LINE 的「🌐 補藥神器網頁」按鈕開一次，之後這台直接打網址就會出現代號。\n（後端代號 demo01）";
   var CFGLINE = "window.BUYAO_X=\"AKfycbxDEMODEMODEMODEMODEMODEMODEMODEMODEMOdemo01\";";
   var CODEOFF = "⏸ 「驗證碼登入」已關閉（全院，立刻生效）：\n・網頁拿不到代號，LINE 打代號也不會發驗證碼（都會說「暫停了」）。\n・已經發出去、還沒用掉的驗證碼，網頁也兌換不了。\n・LINE 連結（🌐 補藥神器網頁）和已經登入的瀏覽器不受影響。\n\n打「驗證碼登入 開」恢復。";
@@ -8744,21 +8147,18 @@
     bar: { n: "灰色長條", t: "灰色長條是一整排的區域，上面寫 L 2、L 3 這種字，也是很好用的地標。**L 3** 是第三線（奇數線）、**L 2** 是第二線（偶數線）、**L 1** 是第一線（兒線）。" },
     door: { n: "大門", t: "圖上寫著「大門」和一個箭頭，指的就是**大門處或是出入口**在這張圖的哪一邊。下一段教你用它來對方向。" }
   };
-  /* 「大門處或是出入口在你哪一邊」：它在你的左手邊、前面、右手邊時，這張示範圖（圖上的「大門」在左邊）要怎麼轉、轉好後紅框在哪一側。（不示範「後面」：選項、地圖旁的字都拿掉了）
-     deg＝順時針轉幾度；tn＝怎麼講；d＝大門處或是出入口在藥局的哪一邊（f 前、r 右、l 左）；red＝轉好後紅框在圖的哪一邊（也是藥局的哪一側） */
   var TURNS = [
     { d: "l", l: "左手邊", deg: 0, tn: "不用轉", red: "f", say: "大門處或是出入口在你**左手邊** → 這張圖的「大門」本來就在左邊，**不用轉**。**紅框在圖的上面**，就是藥局**前面**那一側。" },
     { d: "f", l: "前面", deg: 90, tn: "往右轉一格（90 度）", red: "r", say: "大門處或是出入口在你**前面** → 把圖**往右轉一格**（90 度），讓圖上的「大門」跑到上面。轉好後，**紅框在圖的右邊**，就是藥局**右手邊**那一側。" },
     { d: "r", l: "右手邊", deg: 180, tn: "轉半圈（180 度）", red: "b", say: "大門處或是出入口在你**右手邊** → 把圖**轉半圈**（180 度），讓圖上的「大門」跑到右邊。轉好後，**紅框在圖的下面**，就是藥局**後面**那一側。" }
   ];
-  /* 怎麼操作這份教學（目錄頁最上面的「怎麼用這份教學」和「釘住的按鈕」那一課共用）。教學是 LINE 內建瀏覽器打開的網頁，不是聊天室 */
   var HOW = [
     { b: "點一課，進去學", s: "目錄一課一列，點哪一課都可以；學過的課前面會打 ✓。" },
     { b: "往下捲，看示範", s: "灰底的「示範區」捲到就會自己示範一遍；想自己玩，點裡面的選項就換你操作；按「重播 ↺」會從頭再自動示範一遍。" },
     { b: "學完按「下一課 ›」", s: "「‹ 上一課」「下一課 ›」固定在最下面；點最上面的課名，可以跳到任何一課。" },
     { b: "要回聊天室", s: "按左上角的「關閉」（叉叉）或「返回」；Android 也可以按手機的返回鍵。學到哪裡，這支手機都記得。" }
   ];
-  var HOW_SCENES = [{ pg: "toc", hot: "row" }, { pg: "lesson", hot: "stage" }, { pg: "lesson", hot: "next" }, { pg: "lesson", hot: "close" }];   /* 上面 4 個動作，各配一張 LINE 內建瀏覽器的畫面（圈起來的是要點的那一塊） */
+  var HOW_SCENES = [{ pg: "toc", hot: "row" }, { pg: "lesson", hot: "stage" }, { pg: "lesson", hot: "next" }, { pg: "lesson", hot: "close" }];
   var QCHIPS = [
     { k: "web", t: "🌐 網頁", n: "**🌐 網頁**：直接開補藥神器網頁版（不是幫你打字）。" },
     { k: "guide", t: "📖 教學", n: "**📖 教學**：幫你打「教學」，就是回到這一份教學。" },
@@ -9238,17 +8638,15 @@
   }
   function pctOf(done) { return Math.round(doneCount(done) * 100 / N); }
 
-  /* ───────── 藥品卡片示意（照真的卡片畫；一律用 el()／文字節點，不拼網頁碼）───────── */
-  /* 平面圖：座標是一張 674×521 的圖（照真的平面圖的比例），方塊的位置、大小都用百分比，字用 cqw（圖寬的 1%），所以圖放多大都一樣 */
   var PW = 674, PH = 521;
-  var PBLK = [   /* 棧：[左, 上, 右, 下, 字級（cqw）] */
+  var PBLK = [
     [82, 26, 156, 75, 3.9], [246, 26, 388, 75, 3.9], [489, 22, 632, 70, 3.9],
     [318, 195, 372, 255, 5.2], [262, 257, 372, 297, 3.3], [262, 310, 372, 350, 3.3], [318, 352, 372, 416, 5.2],
     [194, 278, 249, 342, 5.2], [389, 280, 444, 344, 5.2], [445, 262, 648, 308, 3.3], [445, 311, 648, 358, 3.3],
     [373, 465, 517, 512, 3.9]
   ];
-  var PBAR = [[76, 144, 674, 195, "L 3"], [76, 417, 674, 462, "L 2"]];   /* 灰色長條：[左, 上, 右, 下, 字] */
-  var PHIT = { "K2": [246, 90, 388, 142], "B1": [194, 278, 249, 342], "棧一": [373, 465, 517, 512] };   /* 紅框：哪一個位置亮在哪裡 */
+  var PBAR = [[76, 144, 674, 195, "L 3"], [76, 417, 674, 462, "L 2"]];
+  var PHIT = { "K2": [246, 90, 388, 142], "B1": [194, 278, 249, 342], "棧一": [373, 465, 517, 512] };
   function pbox(e, r, fs) {
     e.style.left = (r[0] * 100 / PW) + "%";
     e.style.top = (r[1] * 100 / PH) + "%";
@@ -9257,7 +8655,6 @@
     if (fs) e.style.fontSize = fs + "cqw";
     return e;
   }
-  /* em＝大門那一塊畫成黃色、放大（轉圖示範用，比較好認） */
   function planEl(hit, em) {
     var p = el("div", { class: "pl" + (em ? " em" : ""), "aria-hidden": "true" });
     p.appendChild(pbox(el("i", { class: "pl-w" }), [76, 0, 78.4, PH]));
@@ -9293,8 +8690,6 @@
     }
     return box;
   }
-  /* 一張藥品卡片。o.crop：top 只畫上半、low 只畫下半（灰底框以下）；o.noPan 不畫灰底框；o.note 黃框的字；o.fam 藥品家族（o.opened 打開）；
-     o.spots 多地點按鍵、o.on 亮哪一顆 */
   function lcCard(code, o) {
     o = o || {};
     var r = DR[code], liq = !!r.w, crop = o.crop || "", hasNote = !!o.note && !crop;
@@ -9336,7 +8731,6 @@
     if (o.fam) c.appendChild(famEl(o.fam, !!o.opened));
     return c;
   }
-  /* 列表卡的一列：小照片（沒照片寫「無照片」）、商品名、中文名、（通知）、劑型圖示＋劑型＋CODE、右邊位置 */
   function listRow(row, o) {
     var code = typeof row === "string" ? row : row.c, r = DR[code];
     var mid = [el("div", { class: "lb-b", text: r.b })];
@@ -9353,7 +8747,7 @@
     var b = el("div", { class: "lb", role: "img", "aria-label": "列表卡：" + s.t + "，" + s.s + "；有 " + names.join("、") + "；最下面寫「" + s.ft + "」" });
     b.appendChild(el("div", { class: "lb-t", text: s.t }));
     b.appendChild(el("div", { class: "lb-s", text: s.s }));
-    var n = 0;   /* 第幾列：除了第一列，每一列上面都有一條細線（跟真的列表卡一樣） */
+    var n = 0;
     s.g.forEach(function(g) {
       if (g.n) b.appendChild(el("div", { class: "lb-g" }, [g.ic ? el("i", { class: g.ic === "w" ? "w" : "" }) : null, el("span", { text: g.n })]));
       g.rows.forEach(function(row, i) {
@@ -9367,7 +8761,6 @@
     b.appendChild(el("div", { class: "lb-ft", text: s.ft }));
     return b;
   }
-  /* 照片認不準的時候：「是這個藥品？」卡（how＝這幾個是怎麼找到的，寫在標題下面的小字；沒有就不寫） */
   function askEl(codes, shown, how) {
     var b = el("div", { class: "lk", role: "img", "aria-label": "「是這個藥品？」卡：「" + shown + "」有 " + codes.length + " 個品項很像" + (how ? "（" + how + "）" : "") + "，每一個後面都有一顆「是這個藥品？」按鈕" });
     b.appendChild(el("div", { class: "lk-t", text: "❓ 「" + shown + "」有 " + codes.length + " 個品項很像，是哪一個？" }));
@@ -9382,7 +8775,6 @@
     b.appendChild(el("div", { class: "lk-ft", text: "都不是 → 直接打字查（CODE 最準）" }));
     return b;
   }
-  /* 超過 5 個品項的「總表」卡：一列一個品項藥品（小照片、商品名、中文名＋CODE、右邊位置），按一列出完整卡片；「⚠️ AI 可能讀錯」寫在標題底下 */
   function tbEl(m) {
     var names = m.cs.map(function(c) { return DR[c].b; });
     var b = el("div", { class: "lb tb", role: "img", "aria-label": "總表卡：讀到 " + m.cs.length + " 個品項，標題底下寫「" + WARN + "」；有 " + names.join("、") + "；每一列右邊是位置；最下面寫「點一列 → 完整卡片」" });
@@ -9399,9 +8791,7 @@
     b.appendChild(el("div", { class: "lb-ft", text: "點一列 → 完整卡片" }));
     return b;
   }
-  /* 「查無」卡：最上面黃色框（📋 請翻閱『藥品位置查詢表』），再來是「查無「…」相關藥品 😥」和幾個小技巧（字照 LINE 真的那張） */
   var NF_TIPS = ["・只打前面幾個字就好, 例「CURA」「諾快寧」", "・空格多關鍵字縮小範圍, 例「aspirin 100」", "・輸入位置名稱可查該位置藥品, 例「棧板」「A2」", "・打錯一兩個字也找得到, 認不出來時再換個關鍵字", "・打「公告」看所有藥品通知（停供、改包裝等）"];
-  /* 網頁驗證碼卡片（照 09 的 _lcCard_：標題、3xl 粗體的 6 位數、紅字「限時 5 分鐘・只能用一次」、四行小字）。6 位數是編的 */
   function cdEl() {
     return el("div", { class: "cdc", role: "img", "aria-label": "LINE 回的卡片「補藥神器 網頁驗證碼」：6 位數 4 8 2 9 1 5；限時 5 分鐘，只能用一次；只能打在剛剛出現代號的那個網頁上，不要告訴任何人" }, [
       el("div", { class: "cdc-t", "aria-hidden": "true", text: "🔐 補藥神器 網頁驗證碼" }),
@@ -9413,15 +8803,12 @@
       el("div", { class: "cdc-x w", "aria-hidden": "true", text: "⚠️ 請只打在剛剛那個網頁上，不要告訴任何人（包括自稱客服的人）。" })
     ]);
   }
-  /* 電腦瀏覽器裡的「代號登入」畫面（照真的網頁 _app_page.html 的 codeForm／renderPair 畫）：上面是瀏覽器的標題列＋網址列；網頁裡：標誌＋「補藥神器」→「🔐 登入補藥神器」→
-     ① 打開 LINE 補藥神器…把這組代號貼進去（大大的代號、「複製代號」鍵、倒數、這台）→ ② LINE 會回你 6 位數的驗證碼，打在這裡（輸入框、「登入」鍵）。
-     st：load（剛打開，向後端要代號中）／code（有代號）／copied（按了「複製代號」）／type（6 位數打好了，「登入」亮了）／ok（登入成功，進到首頁）；hot：圈起來的那一塊（code／copy／input／go）。代號、6 位數都是編的。 */
-  function brUrl() { return APP_URL ? APP_URL.replace(/^https?:\/\//, "") : "（你們的補藥神器網址）"; }   /* 網址列要寫的網址：這一頁自己的位置（打不出來就寫「（你們的補藥神器網址）」） */
+  function brUrl() { return APP_URL ? APP_URL.replace(/^https?:\/\//, "") : "（你們的補藥神器網址）"; }
   function brEl(o) {
     o = o || {};
     var st = o.st || "code", hot = o.hot || "", ld = st === "load", ok = st === "ok", ty = st === "type";
     var url = brUrl();
-    if (st === "enter") return enterEl(url);   /* 第 21 批：剛開新分頁、網址列空的，示範的時候網址自己打進去（見 enterEl） */
+    if (st === "enter") return enterEl(url);
     var say = {
       load: "電腦的瀏覽器剛打開補藥神器網頁版，網頁正在向後端要代號",
       code: "電腦的瀏覽器：網頁上有一組代號 " + DEMO_CODE.split("").join(" ") + "，下面有「複製代號」鍵和倒數，再下面是打 6 位數驗證碼的輸入框和「登入」鍵",
@@ -9446,7 +8833,7 @@
       pg = [head, el("div", { class: "bw-tt", text: "🔐 登入補藥神器" }), b1];
       if (!ld) pg.push(el("div", { class: "bw-b2" }, [
         el("div", { class: "bw-st" }, ["② LINE 會回你 6 位數的", el("b", { text: "驗證碼" }), "，打在這裡"]),
-        ty ? el("div", { class: "bw-in v" + (hot === "input" ? " hot" : "") }, DEMO_SIX.split("").map(function(d) { return el("i", { text: d }); }))   /* 6 位數一個字一個 <i>：示範（.pop）的時候一個一個打出來，靜態畫面全部都在 */
+        ty ? el("div", { class: "bw-in v" + (hot === "input" ? " hot" : "") }, DEMO_SIX.split("").map(function(d) { return el("i", { text: d }); }))
            : el("div", { class: "bw-in" + (hot === "input" ? " hot" : ""), text: "LINE 給你的 6 位數" }),
         el("div", { class: "bw-h", text: ty ? "確認跟 LINE 卡片上的一樣，再按「登入」" : "" }),
         el("div", { class: "bw-go" + (ty ? "" : " d") + (hot === "go" ? " hot" : ""), text: "登入" })
@@ -9458,7 +8845,6 @@
       el("div", { class: "bw-pg", "aria-hidden": "true" }, pg)
     ]);
   }
-  /* 第 21 批：同事手機的截圖（真的照片，放在教學網頁的資料夾，亂碼檔名；LINE 的「加入只要 3 步」卡片也用同一組圖）。hot＝掃描鈕那一點（手指要按的地方，.sc-hot 用百分比定位在搜尋列最右邊的紅圈上） */
   var SCS = {
     page: "同事的 LINE「聊天」頁：最上面是「聊天」「好友」和搜尋列，搜尋列最右邊的方框小圖示是掃描鈕（已經用紅圈圈起來），下面是聊天清單",
     scan: "按了掃描鈕之後的掃描畫面：鏡頭對著你手機上的 QR 卡片，把 QR 放進框裡，下面寫著「掃描行動條碼」"
@@ -9466,7 +8852,6 @@
   function scEl(m) {
     return el("div", { class: "scp " + m.k, role: "img", "aria-label": SCS[m.k] || "截圖" }, m.hot ? [el("i", { class: "sc-hot", "aria-hidden": "true" })] : []);
   }
-  /* 第 21 批：掃到 QR 之後，LINE 跳出來的小視窗（頭像、「補藥神器」、「官方帳號」、綠色的「加入」），照真的畫的 */
   function frEl(o) {
     o = o || {};
     return el("div", { class: "frs", role: "img", "aria-label": "LINE 跳出一個小視窗：補藥神器（官方帳號），下面有綠色的「加入」鍵" }, [
@@ -9476,9 +8861,6 @@
       el("div", { class: "fb" + (o.hot ? " hot" : ""), "aria-hidden": "true", text: "加入" })
     ]);
   }
-  /* 第 21 批：「輸入網址」（「用電腦開網頁版」第 1 步）。電腦的瀏覽器剛開了一個新分頁、網址列是空的；示範的時候，網址一個字一個字打進網址列、按 Enter，網頁開始向後端要代號。
-     全是 CSS 動畫（只有示範 .rw.pop 才動；每個字的延遲＝--d0 + --k × --per），不用計時器，也沒有要人點的東西（靜態畫面直接是最後的樣子，跟打 6 位數一樣）。
-     enterPlan：n 網址幾個字；per 每個字幾毫秒（網址越長打越快，打完大約 2 秒）；d0 空的新分頁先放多久；tl 打完、按完 Enter、換成網頁的那一刻；ms 整段演完要多久（示範區算「這一步要放多久」用）。 */
   function enterPlan(url) {
     var n = url.length, per = Math.max(24, Math.min(60, Math.round(2000 / n))), d0 = 700, tl = d0 + n * per + 700;
     return { n: n, per: per, d0: d0, tl: tl, ms: tl + 400 };
@@ -9507,7 +8889,6 @@
     root.setAttribute("data-ms", String(p.ms));
     return root;
   }
-  /* 「📖 補藥神器　教學」卡片（照 07 的 _guideWebCard_：標題、「9 課，一課一個重點。」、藍色的「開始學習」） */
   function gdEl(o) {
     o = o || {};
     return el("div", { class: "gcard", role: "img", "aria-label": "LINE 回的卡片「補藥神器　教學」：" + N + " 課，一課一個重點；最下面有藍色的「開始學習」鍵" }, [
@@ -9516,8 +8897,6 @@
       el("div", { class: "gc-f", "aria-hidden": "true" }, [el("div", { class: "gc-b" + (o.hot ? " hot" : ""), text: "開始學習" })])
     ]);
   }
-  /* 「👥 加入補藥神器」按下去，官方帳號回的兩則（字照 07_操作.gs 的 _joinQrCard_、_joinStepsCard_：標題＋說明＋QR＋官方帳號 ID／「加入只要 3 步」左右滑的 4 張圖卡，照 07 的 JOIN_SLIDES：標題、說明、長寬比、會不會動、fit／cover 都一樣）。
-     官方帳號 ID 是編的（@xxxxxxxx）；QR 是畫給你看的：三個角的定位方塊＋亂數排的小方塊，掃了沒有用（真的 QR 是你們官方帳號的加入好友連結）。 */
   var JN = { t: "👥 邀請同事一起用", p: "請同事用 LINE 掃下面的 QR，就能加入「補藥神器」。", id: "官方帳號 ID　@xxxxxxxx", h: "加入只要 3 步", sl: [{ k: "pt", r: "494/720", a: true, h: "① 點「聊天」，按搜尋列最右邊的掃描鈕", s: "紅圈那一顆（圖會動：手指去按的地方），然後掃上面的 QR", m: "fit" }, { k: "scan", r: "494/720", a: false, h: "① 把 QR 放進框裡", s: "對準你手機上的那張 QR，LINE 會跳出「補藥神器」", m: "cover" }, { k: "add", r: "484/392", a: true, h: "② 按「加入」", s: "按綠色的「加入」就加入了（圖會動）", m: "fit" }, { k: "welcome", r: "712/552", a: true, h: "③ 跟著歡迎訊息，先看一下教學", s: "一加入就會收到歡迎訊息和教學卡片，按「開始學習」（圖會動）", m: "fit" }] };
   function jnQrGrid() {
     var n = 29, seed = 20260929, r, c, dark, fin = [[0, 0], [0, n - 7], [n - 7, 0]], g = el("div", { class: "jc-g", "aria-hidden": "true" });
@@ -9525,24 +8904,24 @@
     for (r = 0; r < n; r++) {
       for (c = 0; c < n; c++) {
         dark = null;
-        fin.forEach(function(f) {   /* 三個角的定位方塊：7×7（外框黑、裡面一圈白、正中間 3×3 黑），外面再空一圈 */
+        fin.forEach(function(f) {
           var y = r - f[0], x = c - f[1];
           if (y >= -1 && y <= 7 && x >= -1 && x <= 7) dark = y >= 0 && y <= 6 && x >= 0 && x <= 6 && (y === 0 || y === 6 || x === 0 || x === 6 || (y >= 2 && y <= 4 && x >= 2 && x <= 4));
         });
-        if (dark === null && r === 6) dark = c % 2 === 0;   /* 橫的、直的虛線 */
+        if (dark === null && r === 6) dark = c % 2 === 0;
         if (dark === null && c === 6) dark = r % 2 === 0;
-        if (dark === null) {   /* 右下角的小定位方塊 */
+        if (dark === null) {
           var ay = r - (n - 9), ax = c - (n - 9);
           if (ay >= 0 && ay <= 4 && ax >= 0 && ax <= 4) dark = ay === 0 || ay === 4 || ax === 0 || ax === 4 || (ay === 2 && ax === 2);
         }
         if (dark === null) dark = rnd() < 0.5;
-        g.appendChild(el("i", { class: dark ? "k" : null }));   /* 整頁不放任何圖形或圖片（安全規則）：QR 用 29×29 個小方格排出來 */
+        g.appendChild(el("i", { class: dark ? "k" : null }));
       }
     }
     return g;
   }
   function jnEl(k) {
-    if (k === "steps") {   /* 第 21 批：左右滑的 4 張圖卡（手機上往左滑、電腦拉捲軸），一張＝小灰字（第幾張、往左滑）＋圖＋標題＋說明 */
+    if (k === "steps") {
       var n = JN.sl.length;
       return el("div", { class: "lcar", role: "group", tabindex: "0", "aria-label": "LINE 回的第二則「" + JN.h + "」：左右滑的 " + n + " 張圖卡（往左滑看下一張）" }, JN.sl.map(function(p, i) {
         return el("div", { class: "jcard js sl", role: "img", "aria-label": "第 " + (i + 1) + " 張：" + p.h + "。" + p.s }, [
@@ -9562,8 +8941,6 @@
       el("div", { class: "jc-id", "aria-hidden": "true", text: JN.id })
     ]);
   }
-  /* LINE 內建瀏覽器裡的這份教學：上面一條（✕ 關閉、頁面標題＋網址、⋯）；目錄頁（toc）＝標題、進度、「繼續學」、第一章的三課；一課的頁（lesson）＝課名 ▾／第 n 課、一塊白底區塊（裡面有灰底的示範區）、最下面的「‹ 上一課／下一課 ›」。
-     hot：圈起來的那一塊（close 關閉、row 一課、stage 示範區、next 下一課、title 課名） */
   function lpEl(o) {
     o = o || {};
     var pg = o.pg === "lesson" ? "lesson" : "toc", hot = o.hot || "";
@@ -9589,9 +8966,8 @@
         ])
       ]);
     } else {
-      /* 第 21 批：hot:stage（「往下捲，看示範」）不只是圈起來——示範區自己演：頁面往下捲、「自動示範中」亮起來、手指點兩個選項、平面圖上的藍框和下面那句說明跟著換（動畫在 CSS，見 .lp-dm） */
       var demo = hot === "stage";
-      function first(x) { return x.t.split("。")[0].replace(/\*\*/g, "") + "。"; }   /* 說明只放第一句 */
+      function first(x) { return x.t.split("。")[0].replace(/\*\*/g, "") + "。"; }
       var stKids = [
         el("div", { class: "lp-sth" }, [el("span", { text: "點一個，看它是什麼" }), el("em", { text: "自動示範中" }), el("span", { text: "↺ 重播" })]),
         el("div", { class: "lp-chips" }, [el("i", { class: demo ? "" : "on", text: PLANP.hit.n }), el("i", { text: PLANP.b.n }), el("i", { class: demo ? "on" : "", text: PLANP.bar.n }), el("i", { text: PLANP.door.n })])
@@ -9612,7 +8988,7 @@
       if (demo) say = "LINE 內建瀏覽器裡的「" + cur.name + "」這一課，往下捲到灰底的示範區：示範區自己示範——「自動示範中」亮起來，手指點「藍色方塊」，平面圖上的藍框跳到棧板、下面的說明跟著換；再點「灰色長條」，藍框跳到長條";
     }
     var root = el("div", { class: "lpf", role: "img", "aria-label": say }, [top, body]);
-    if (hot === "stage") root.setAttribute("data-ms", "5000");   /* 整段演完要 5 秒（示範區換下一步之前會等它） */
+    if (hot === "stage") root.setAttribute("data-ms", "5000");
     return root;
   }
   function nfEl(kw) {
@@ -9623,7 +8999,6 @@
     NF_TIPS.forEach(function(t) { b.appendChild(el("div", { class: "nf-x", text: t })); });
     return b;
   }
-  /* 看平面圖的三個步驟：一個圓圈數字＋一行粗體＋一行小字 */
   function stepsEl(items, cls) {
     return el("ol", { class: "steps" + (cls ? " " + cls : "") }, items.map(function(it, i) {
       return el("li", {}, [el("span", { class: "rn", "aria-hidden": "true", text: String(i + 1) }), el("div", { class: "st" }, [el("b", { text: it.b }), it.s ? el("span", { text: it.s }) : null, it.u ? el("span", { class: "urlt", text: it.u }) : null])]);
@@ -9639,13 +9014,10 @@
     return el("div", { class: "lcw" }, [el("div", { class: "lcar", role: "group", tabindex: "0", "aria-label": label }, items)]);
   }
 
-  /* ───────── 示範區的小零件 ───────── */
-  /* 聊天室的一列，照 LINE 排：您傳的靠右（左邊有「已讀＋時間」）；官方帳號回的靠左，一串回覆的第一則有官方帳號的頭像
-     （卡片比整個聊天室還寬，頭像放在卡片的上面一行）；第一則的泡泡有一個尖角。act（👆 按…）只是旁白，不算一則訊息。 */
   var WIDE = { dc: 1, car: 1, ll: 1, ask: 1, nf: 1, tb: 1, cd: 1, gc: 1, gcar: 1 };
-  WIDE.gd = 1;   /* 「📖 補藥神器　教學」卡片：官方帳號回的卡片，跟藥品卡片一樣在上面一行放頭像 */
-  WIDE.jn = 1;   /* 「加入補藥神器」的兩張卡片：官方帳號回的卡片，跟藥品卡片一樣在上面一行放頭像 */
-  var SCENE = { br: 1, lp: 1, qb: 1, sc: 1, fr: 1 };   /* 不是聊天的訊息：電腦的瀏覽器視窗、LINE 內建瀏覽器的畫面。一整列、置中、沒有頭像，跟 act 一樣不算「誰說的」 */
+  WIDE.gd = 1;
+  WIDE.jn = 1;
+  var SCENE = { br: 1, lp: 1, qb: 1, sc: 1, fr: 1 };
   function firstFlags(msgs) {
     var prev = "";
     return msgs.map(function(m) {
@@ -9666,12 +9038,10 @@
     if (animated) b.classList.add("pop");
     return b;
   }
-  /* 您傳的照片：就是一張圖（沒有泡泡）。k：t 藥盒、w 瓶身、three 好幾盒、blur 拍糊了 */
   function phEl(m) {
     var k = m.k || "t";
     return el("div", { class: "pho" + (k === "w" ? " w" : k === "three" ? " three" : k === "blur" ? " blur" : ""), role: "img", "aria-label": "傳了一張照片：" + m.pic }, [el("i", { "aria-hidden": "true" })]);
   }
-  /* 語音：綠色泡泡，左邊白色圓形播放鍵，中間聲波，右邊長度 */
   function voEl(m) {
     return el("div", { class: "vo", role: "img", "aria-label": "傳了一段語音，長度 " + m.voice }, [
       el("span", { class: "vp", "aria-hidden": "true" }),
@@ -9679,7 +9049,6 @@
       el("span", { "aria-hidden": "true", text: m.voice })
     ]);
   }
-  /* 手寫的紙條：一張拍起來的紙（小張的照片，上面一行一個品項） */
   function ppEl(m) {
     return el("div", { class: "pho pp", role: "img", "aria-label": "傳了一張" + (m.what || "手寫的") + "照片：" + m.note.join("、") }, [el("div", { class: "pa", "aria-hidden": "true" }, m.note.map(function(t) { return el("div", { text: t }); }))]);
   }
@@ -9718,19 +9087,13 @@
     n.set = set;
     return n;
   }
-  /* 示範區標題列右邊的「重播」鍵。按它：這個示範區自己先回到第一個狀態，同時（autoReg 在示範區上聽 click）從頭自動示範一遍——
-     不管現在是什麼情況（學員動過、已經示範完、按過「停止」、目錄頁把自動示範關了、裝置設定減少動態），按「重播」就是要看示範。 */
   function replayBtn(label, fn) {
     return on(el("button", { type: "button", class: "replay", "aria-label": label || "重播" }, [el("span", { "aria-hidden": "true", text: "↺" }), "重播"]), "click", fn);
   }
-  /* ───────── 手指（第 17 批）─────────
-     示範的時候，畫面上會有一隻手指（👆）從右下角滑到要按的那一顆，按一下（縮一下、圈圈擴開），再淡出——點選項、點卡片上的按鍵、按「登入」都一樣。
-     手指只是一個 position:absolute 的小零件，放在「示範區」或「聊天室」裡（兩個都是 position:relative），不佔位置、不擋人點（pointer-events:none）；動畫跑完（animationend）就自己拿掉，不用計時器。
-     動畫總共 1 秒，按下去的那一刻在 70%（＝AUTO_TAP_MS 的 700 毫秒）。裝置設定「減少動態」：不畫手指（動畫也被全域關掉）。 */
   function tapAt(host, t) {
     if (REDUCE || !host || !t || !t.getBoundingClientRect) return null;
     var row = t.parentNode, rr, tr;
-    if (row && row.classList && row.classList.contains("qrow") && row.scrollWidth > row.clientWidth) {   /* 輸入框上面那一排小按鈕，手機上放不下會左右滑：要按的那顆在看不見的地方，就先把那一排滑到它在正中間，手指才指得到（真的用手機也是先滑過去再按） */
+    if (row && row.classList && row.classList.contains("qrow") && row.scrollWidth > row.clientWidth) {
       rr = row.getBoundingClientRect(); tr = t.getBoundingClientRect();
       row.scrollLeft += (tr.left + tr.width / 2) - (rr.left + rr.width / 2);
     }
@@ -9742,17 +9105,10 @@
     return f;
   }
   function tapDrop(host) { var k = host.children, i; for (i = k.length - 1; i >= 0; i--) if (k[i].classList && k[i].classList.contains("fg")) host.removeChild(k[i]); }
-  /* 聊天示範裡「按」的動作怎麼演（照 act 那句旁白）：
-     ① act 那一句出現的時候，手指去按前面卡片（或畫面）裡的那一顆；② 內建瀏覽器那張畫面（lp）有圈起來的地方，畫面一出來就去按那裡；③ 打 6 位數的畫面（br 的 type），6 位數一個一個打進去。
-     兩則訊息之間隔多久：一般 MSG_GAP；有手指要按的（等手指按下去）TAP_GAP；打 6 位數的畫面（等 6 位數打完、「登入」亮起來）TYPE_GAP。
-     一個情況全部放完要是超過 CHAT_CAP（4 秒），就只把「一般」的間隔縮短（最短 240），讓十幾則訊息的情況也在 4 秒內放完。 */
   var MSG_GAP = 480, TAP_GAP = 820, TYPE_GAP = 1300, CHAT_CAP = 4000;
   function tapTxt(s) { return String(s).replace(/\s+/g, " ").replace(/^ | $/g, ""); }
   function isType(m) { return m.w === "br" && !!m.o && m.o.st === "type"; }
-  /* 第 21 批：會自己演一段的畫面（「輸入網址」的瀏覽器、「往下捲，看示範」的教學畫面）在最外層寫 data-ms＝整段演完要幾毫秒；這一列出來之後要等它演完，再換下一列 */
   function rowMs(row) { var e = row && row.querySelector ? row.querySelector("[data-ms]") : null; return e ? parseInt(e.getAttribute("data-ms"), 10) || 0 : 0; }
-  /* 這句 act 要按的是前面哪一塊：找到回那個元素，找不到回 null。rows＝這個情況所有的列（畫好了，還沒放進畫面也行）、j＝這句是第幾列。
-     act 的第二個參數 tap：不寫＝照句子裡第一個「」裡的字，找前面一樣寫著這幾個字的那一小塊；字串＝選擇器；[選擇器, 第幾個]；false＝這句不按。 */
   function tapFind(rows, j, m) {
     var spec = m.tap, label = "", q, k, i, all, found;
     if (m.w !== "act" || spec === false) return null;
@@ -9769,10 +9125,9 @@
     }
     return null;
   }
-  /* 內建瀏覽器那張畫面（lp）有圈起來的地方，就是要按的：示範區那一種，按裡面第二個名稱（往下捲看示範、點裡面的選項） */
   function sceneTap(m, row) {
     if (m.w !== "lp" || !m.o || !m.o.hot) return null;
-    if (m.o.hot === "stage") return null;   /* 第 21 批：「往下捲，看示範」那一張自己演（手指畫在畫面裡），不另外派手指 */
+    if (m.o.hot === "stage") return null;
     return row.querySelector(".lp-st.hot .lp-chips i:nth-child(2)") || row.querySelector(".hot");
   }
   function chatPlan(msgs, tg, rows) {
@@ -9785,7 +9140,6 @@
     for (i = 0; i < n - 1; i++) at.push(at[i] + (g[i] || base));
     return at;
   }
-  /* 聊天示範：ch＝幾種情況；一種以上就有可以點的選項，一種就只有「重播」。第一次畫出來是完整的；點選項或按重播才一則一則跳出來（減少動態＝一次全出） */
   function demoChat(d) {
     var ch = d.ch, timers = [], btns = [], lastMs = 0;
     var chat = el("div", { class: "chat", role: "group", "aria-label": "LINE 聊天室的示意畫面" });
@@ -9804,7 +9158,7 @@
       rows = msgs.map(function(m, i) { return bubble(m, true, fl[i]); });
       tg = msgs.map(function(m, i) { return m.w === "act" ? tapFind(rows, i, m) : sceneTap(m, rows[i]); });
       at = chatPlan(msgs, tg, rows);
-      lastMs = at[last] + (isType(msgs[last]) ? 900 : rowMs(rows[last]) || (tg[last] ? 1000 : 200));   /* 最後一則出來之後，還要等它自己的動畫：6 位數打完 0.9 秒、會自己演的畫面演完（data-ms：網址打進去換成網頁、往下捲看示範）、手指按完 1 秒、一般的跳出來 0.2 秒 */
+      lastMs = at[last] + (isType(msgs[last]) ? 900 : rowMs(rows[last]) || (tg[last] ? 1000 : 200));
       chat.style.minHeight = h + "px";
       rows.forEach(function(row, i) {
         timers.push(setTimeout(function() {
@@ -9823,7 +9177,7 @@
       el("span", { class: "stage-t", text: d.ttl || "看一次" }),
       replayBtn("重播（從第一個情況開始，自動示範一遍）", function() { pick(0, true); })
     ]);
-    var stage = el("div", { class: "stage" + (d.seq ? " seq" : "") }, [head]);   /* seq：一步一步的示範（上面是 1 2 3 的步驟，下面是那一步的畫面）；電腦寬的畫面，步驟在左、畫面在右 */
+    var stage = el("div", { class: "stage" + (d.seq ? " seq" : "") }, [head]);
     if (ch.length > 1) {
       var row = el("div", { class: "picks" + (d.list ? " list" : "") + (d.seq ? " seq" : ""), role: "group", "aria-label": d.ttl || "選一種" });
       ch.forEach(function(c, i) {
@@ -9836,9 +9190,8 @@
     stage.appendChild(chat);
     pick(0, false);
     stage.appendChild(el("p", { class: "capn", text: d.cap || "示意畫面：藥名、位置、代號、驗證碼都是編的。" }));
-    return [stage, note, { ms: function() { return lastMs; } }];   /* ms：現在這個情況的動畫（訊息一則一則跳出來、手指按、6 位數打進去）要放多久，自動示範靠它決定什麼時候換下一個選項 */
+    return [stage, note, { ms: function() { return lastMs; } }];
   }
-  /* 在真的卡片上點名稱：圈起來（藍框）並說明，其他的變淡。top＝卡片最上面那一段、low＝灰底框以下 */
   function demoAnat(d) {
     var top = d.w === "top", keys = top ? ["code", "brand", "zh", "icon", "gen"] : ["feat", "ind", "photo", "loc", "map", "fam"];
     var chips = {}, note = noteBox("");
@@ -9868,7 +9221,6 @@
     show(keys[0]);
     return [stage, note];
   }
-  /* 平面圖上點名稱：紅框、藍色方塊、灰色長條、大門 */
   function demoPlan() {
     var keys = ["hit", "b", "bar", "door"], chips = {}, note = noteBox("");
     var pl = planEl("K2", false);
@@ -9894,7 +9246,6 @@
     show(keys[0]);
     return [stage, note];
   }
-  /* 「大門處或是出入口在你哪一邊，圖要怎麼轉」：中間是平面圖，四周是藥局的前、後、左、右；選大門處或是出入口在你的哪一邊，圖就轉到「大門」也在那一邊 */
   function demoTurn() {
     var btns = [], note = noteBox("");
     var tp = el("div", { class: "tp" }, [planEl("K2", true)]);
@@ -9903,10 +9254,10 @@
       el("span", { class: "ax f", "aria-hidden": "true", text: "▲ 前面" }),
       el("span", { class: "ax l", "aria-hidden": "true", text: "左手邊" }), el("span", { class: "ax r", "aria-hidden": "true", text: "右手邊" }), gap, door, el("div", { class: "tpw" }, [tp])
     ]);
-    var SIDE = { f: "上面", r: "右邊", b: "下面", l: "左邊" };   /* 轉好後紅框在圖的哪一邊（右手邊那一格，紅框轉到下面：b 只用在這裡的句子，不是示範的選項） */
+    var SIDE = { f: "上面", r: "右邊", b: "下面", l: "左邊" };
     function pick(i) {
       var t = TURNS[i];
-      tp.style.transform = "rotate(" + t.deg + "deg)";   /* 三個方向最多轉半圈（0、90、180 度），直接轉到那個角度就好 */
+      tp.style.transform = "rotate(" + t.deg + "deg)";
       door.className = "dch " + t.d;
       gap.className = "dg " + t.d;
       arena.setAttribute("data-door", t.d);
@@ -9930,13 +9281,12 @@
     pick(0);
     return [stage, note];
   }
-  /* LINE 輸入列的畫面本身：上面那排按鈕（chips）＋下面的輸入框；hot＝圈起來的那一顆（mic 或按鈕）；pick＝按鈕可以點（chipEls 收按鈕、onPick 是點了之後做什麼）。示範區（demoQbar）和聊天示範裡的 qb 畫面共用 */
   function qbarEl(d, chipEls, onPick) {
     var bar = el("div", { class: "qbar", role: d.pick ? "group" : "img", "aria-label": d.chips ? "LINE 的輸入框，上面有一排按鈕：網頁、教學、藥品通知、BUG、加入補藥神器" : "LINE 的輸入框，最右邊是麥克風" });
     chipEls = chipEls || {};
     if (d.chips) {
       var row = el("div", { class: "qrow" });
-      if (d.pick) on(row, "focusin", function(e) {   /* 這一排放不下時（第 5 顆）：用 Tab 跳到哪一顆，就把那一排捲到看得到那一顆——這個框是「container-type」，瀏覽器不會自己幫忙捲 */
+      if (d.pick) on(row, "focusin", function(e) {
         var t = e.target, tr, rr, pad = 8;
         if (!t || !t.getBoundingClientRect) return;
         tr = t.getBoundingClientRect(); rr = row.getBoundingClientRect();
@@ -9977,24 +9327,16 @@
       return el("div", { class: "tile" }, [el("span", { class: "e", "aria-hidden": "true", text: it.e }), el("b", { text: it.b }), el("span", { class: "s", text: it.s })]);
     }));
   }
-  /* ───────── 互動練習：打字查藥（第 17 批）─────────
-     「打字查藥」那一課最後一段「換你打打看」：自己在輸入框打字（或點範例字），送出後先看到「機器人查詢中…」→ 聊天室裡出現官方帳號回的卡片 → 下面深色的框一步一步講機器人是怎麼找到的。
-     「找」照真的機器人（01_程式碼.gs 的 handleText → searchDrug → replyResults）的順序，在這一頁編的藥（DR）裡找：
-       是不是指令？→ 是不是一個品項藥品的 CODE？→ 是不是位置？→ 商品名／中文名／學名有這幾個字？→ 位置的字？→ 空格、符號拿掉再比 → 容許打錯一兩個字 → 都沒有就查無。
-     只做這一課教的查法：指令（教學、公告、bug…）、加符號的整批查詢（第 8 課）、一次打好幾個 CODE 只在聊天室旁白、深色框說明，不示範結果；縮寫、中文跳字、「有相符的藥品嗎？」的猜名字都沒做。
-     這一段（SIMSEARCH 標記之間）是純函式、沒有碰畫面，測試會單獨拿出來跑。打的字不存、不傳（頁面本來就不連網）。 */
-  /*SIMSEARCH*/
-  var SIM_MAX = 12, SIM_SQ_MIN = 3, SIM_LOC_RE = /^(水)?[A-Z]{1,2}[0-9]{1,3}$/;   /* 一次最多 12 張卡片（01 的 MAX_RESULTS）；打幾個字以上才「拿掉符號再比」（SQ_MIN）；長得像位置的字（LOC_CODE_RE） */
-  var SIM_O = { "90104": { spots: SPOTS, on: 0 } };   /* 這品項藥品放好幾個地方（看平面圖那一課），卡片上就有那幾顆位置按鍵 */
-  var SIM_LOCS = { "K2": { spec: L_K2, n: 4 }, "B1": { spec: L_B1, n: 14, pages: 2 } };   /* K2、B1 用前面「彙整卡片」那一課的列表（K2 有 4 個品項、B1 有 14 個品項分 2 頁），兩邊看到的才一樣 */
-  var SIM_SYM = "[^\\w\\s\\u4e00-\\u9fff\\u3040-\\u30ff\\uff10-\\uff19\\uff21-\\uff3a\\uff41-\\uff5a]|_";   /* 01 的 SYM_CLASS：不是字母、數字、空白、中日文的，就算「符號」 */
-  var SIM_RE_AGG = new RegExp("^(?:" + SIM_SYM + ")+\\s*([\\s\\S]*)$");   /* 01 的 RE_AGG_SYM：開頭是符號＝整批查詢 */
-  var SIM_RE_BUG = new RegExp("^(?:" + SIM_SYM + ")*\\s*(?:bug|回報|report|問題)\\s*([\\s\\S]*)$", "i");   /* 01 的 RE_BUG */
-  var SIM_RE_NOTICE = /^(?:公告|公佈|公布|藥品通知|通知)(?:\s+[\s\S]+)?$/;   /* 04 的 _noticeCmd_ */
-  var SIM_RE_WEB = /^(?:開發者\s*|藥師\s*)?(?:網頁|網頁版|網站|web)(?:\s*(?:開發者|藥師))?(?:\s*(?:重發|重新|新連結|new|綁定|綁裝置|bind))?$/i;   /* 09 的 APP_CMD_RE */
-  var SIM_RE_MULTI = /^\d{4,6}(?:[\s,，、;；\/／|｜.。]+\d{4,6})+$/;   /* 01 的 _multiParts_：用空格、逗號…隔開、每一段都是 4～6 位數字＝一次查好幾個 CODE */
+  var SIM_MAX = 12, SIM_SQ_MIN = 3, SIM_LOC_RE = /^(水)?[A-Z]{1,2}[0-9]{1,3}$/;
+  var SIM_O = { "90104": { spots: SPOTS, on: 0 } };
+  var SIM_LOCS = { "K2": { spec: L_K2, n: 4 }, "B1": { spec: L_B1, n: 14, pages: 2 } };
+  var SIM_SYM = "[^\\w\\s\\u4e00-\\u9fff\\u3040-\\u30ff\\uff10-\\uff19\\uff21-\\uff3a\\uff41-\\uff5a]|_";
+  var SIM_RE_AGG = new RegExp("^(?:" + SIM_SYM + ")+\\s*([\\s\\S]*)$");
+  var SIM_RE_BUG = new RegExp("^(?:" + SIM_SYM + ")*\\s*(?:bug|回報|report|問題)\\s*([\\s\\S]*)$", "i");
+  var SIM_RE_NOTICE = /^(?:公告|公佈|公布|藥品通知|通知)(?:\s+[\s\S]+)?$/;
+  var SIM_RE_WEB = /^(?:開發者\s*|藥師\s*)?(?:網頁|網頁版|網站|web)(?:\s*(?:開發者|藥師))?(?:\s*(?:重發|重新|新連結|new|綁定|綁裝置|bind))?$/i;
+  var SIM_RE_MULTI = /^\d{4,6}(?:[\s,，、;；\/／|｜.。]+\d{4,6})+$/;
   var SIM_ROWS = null;
-  /* 是不是指令（順序照真的：功能導覽 → /用量 → 回報 → /指令 → 網頁 → 公告）：是就回 [指令名, 機器人會做的事]，不是回 null */
   function simCmd(s) {
     var t = s.replace(/　/g, " ").replace(/^\s+|\s+$/g, ""), m, k = t.replace(/\s+/g, "").toLowerCase();
     if (/^(教學|功能|操作)$/.test(t)) return [t, "回「📖 補藥神器　教學」卡片"];
@@ -10006,9 +9348,8 @@
     if (SIM_RE_NOTICE.test(t)) return [t.split(/\s+/)[0], "回藥品通知"];
     return null;
   }
-  function simFull(s) { return s.replace(/[！-～]/g, function(c) { return String.fromCharCode(c.charCodeAt(0) - 65248); }); }   /* 全形英數、符號 → 半形 */
-  function simNorm(s) { return simFull(s).replace(/　/g, " ").replace(/[，、；;,\/／\-－+＋]/g, " ").replace(/\s+/g, " ").replace(/^ | $/g, ""); }   /* 01 的 normKeyword_：逗號、斜線、減號、加號都當空格 */
-  /* 01 的 splitAlnum_：英數字和中文黏在一起的，拆開再找（TESTOLOL25 → TESTOLOL 25） */
+  function simFull(s) { return s.replace(/[！-～]/g, function(c) { return String.fromCharCode(c.charCodeAt(0) - 65248); }); }
+  function simNorm(s) { return simFull(s).replace(/　/g, " ").replace(/[，、；;,\/／\-－+＋]/g, " ").replace(/\s+/g, " ").replace(/^ | $/g, ""); }
   function simSplit(s) {
     var out = s.replace(/([A-Za-z])(\d)/g, "$1 $2").replace(/(\d)([A-Za-z])/g, "$1 $2").replace(/([一-鿿])([A-Za-z0-9])/g, "$1 $2").replace(/([A-Za-z0-9])([一-鿿])/g, "$1 $2").replace(/\s+/g, " ").replace(/^ | $/g, ""), parts = out.split(" ").filter(String), longest = 0, i;
     if (parts.length < 2) return "";
@@ -10018,7 +9359,6 @@
     }
     return longest >= 3 ? out : "";
   }
-  /* 這一頁編的藥，排成真的那份索引的樣子：CODE、商品名、中文名、學名（找名字只看這四個）＋位置、劑型 */
   function simRows() {
     if (SIM_ROWS) return SIM_ROWS;
     SIM_ROWS = Object.keys(DR).sort().map(function(c) {
@@ -10027,18 +9367,17 @@
     });
     return SIM_ROWS;
   }
-  function simLocHit(r, kw) {   /* 01 的 locHit_：長得像位置的字要整個一樣（括號後面不算）；其他字有出現就算 */
+  function simLocHit(r, kw) {
     if (!r.loc) return false;
     if (SIM_LOC_RE.test(kw)) return r.loc === kw || r.loc.replace(/[（(].*$/, "").replace(/^\s+|\s+$/g, "") === kw;
     return r.loc.indexOf(kw) >= 0;
   }
-  function simRank(r, kw) {   /* 01 的 _rankScore_：名字一模一樣 0、商品名或中文名開頭一樣 1、學名開頭一樣 2、其他 3 */
+  function simRank(r, kw) {
     if (r.b === kw || r.z === kw) return 0;
     if (r.b.indexOf(kw) === 0 || r.z.indexOf(kw) === 0) return 1;
     if (r.g.indexOf(kw) === 0) return 2;
     return 3;
   }
-  /* 01 的 searchOnce_（exact）：一個 CODE 一模一樣 → 位置 → 每個字都在 CODE／商品名／中文名／學名裡 → 每個字都在位置裡 */
   function simOnce(text, mode) {
     var kws = text.toUpperCase().split(/\s+/).filter(String), rows = simRows(), i, hits;
     if (!kws.length) return null;
@@ -10061,7 +9400,6 @@
     return null;
   }
   function simSqz(s, keepTab) { return simFull(s).toUpperCase().replace(keepTab ? /[^A-Z0-9\t一-鿿]/g : /[^A-Z0-9一-鿿]/g, ""); }
-  /* 01 的 _sqScan_：空格、符號全部拿掉再比（打 sample xin、SAMPLE-XIN 都找得到）；從哪一欄的開頭對起來的排前面 */
   function simSq(raw) {
     var sq = simSqz(raw, false), cand = [];
     if (sq.length < SIM_SQ_MIN || /^\d+$/.test(sq)) return null;
@@ -10073,7 +9411,6 @@
     cand.sort(function(a, b) { return a.s - b.s || a.n - b.n; });
     return { how: "sq", all: cand.map(function(x) { return x.c; }), kws: [sq] };
   }
-  /* 容許打錯字（01 的 fuzzyMaxDist_／fuzzyPieces_／fuzzyDistEn／fuzzyDistZh／editDist／_fuzzyScan_，照搬）：英數字 3 個字以上容許錯 1 個（6 個字以上 2 個）；中文 2 個字以上容許錯 1 個（5 個字以上 2 個）；相鄰兩個字顛倒算錯 1 個 */
   function simFuzzyMax(kw) {
     if (/^[A-Z0-9]+$/.test(kw)) return kw.length < 3 ? 0 : (kw.length >= 6 ? 2 : 1);
     if (/[一-鿿]/.test(kw)) return kw.length < 2 ? 0 : (kw.length >= 5 ? 2 : 1);
@@ -10193,14 +9530,12 @@
     bestD = cand[0].d;
     tight = 0;
     while (tight < cand.length && cand[tight].d === bestD) tight++;
-    if (tight >= 3) use = cand.slice(0, tight);   /* 最接近的有 3 個品項藥品以上並列，只留並列第一的（01 的 FUZZY_MIX_MIN） */
+    if (tight >= 3) use = cand.slice(0, tight);
     return { how: "fuzzy", all: use.map(function(x) { return x.c; }), kws: kws, codeLike: /^\d{4,6}$/.test(kws[0]) };
   }
-  /* 一個位置的列表卡（K2、B1 用前面那一課編好的；其他位置照 DR 現場排） */
   function simLocSpec(key, codes) {
     return { t: key, s: "這一格有 " + codes.length + " 個品項", hide: 1, ft: "按任何一列 → 出完整卡片", g: [{ n: "", rows: codes }] };
   }
-  /* 送出一串字，回「機器人會怎麼找、找到什麼」：kind＝cmd 指令／agg 加符號的整批查詢／multi 一次查好幾個 CODE／code／loc／locText／name／sq／fuzzy／fuzzyCode／none；打的字是空的就回 null */
   function simQuery(raw) {
     var q = String(raw === null || raw === undefined ? "" : raw).replace(/[\u0000-\u001f\u007f]/g, " ").replace(/^\s+|\s+$/g, "").replace(/\s+/g, " ").substring(0, 40).replace(/\s+$/, ""), tried = {}, attempts = [], norm, cmd, am, rest, i, r, out;
     function plan(k) { var s = String(k || "").replace(/^\s+|\s+$/g, ""); if (!s || tried[s]) return; tried[s] = true; attempts.push(s); }
@@ -10243,7 +9578,6 @@
     else if ((out.kind === "loc" || out.kind === "locText") && out.key && out.all.length >= 2) { out.list = simLocSpec(out.key, out.all); out.pages = 1; }
     return out;
   }
-  /* 聊天室裡的這一串：我打的字，接著機器人回的（卡片、列表卡、查無卡，CODE 打錯的話前面多一句警告）；指令、整批查詢只放一行旁白 */
   function simMsgs(r) {
     var ms = [me(r.q)];
     if (r.kind === "cmd") ms.push(act("練習不示範指令「" + r.cmd[0] + "」：真的 LINE 會" + r.cmd[1]));
@@ -10258,7 +9592,7 @@
     return ms;
   }
   function simDesc(c, full) { var r = DR[c]; return r.z + "（" + (full ? "CODE " + c + "，位置 " + r.loc : c) + "）"; }
-  function simCols(codes, kw) {   /* 這幾個品項藥品是在哪一欄找到的，例：商品名 2 個品項藥品、學名 1 個品項藥品 */
+  function simCols(codes, kw) {
     var n = { "商品名": 0, "中文名": 0, "學名": 0, "CODE": 0 }, out = [];
     codes.forEach(function(c) {
       var r = DR[c];
@@ -10270,7 +9604,6 @@
     ["商品名", "中文名", "學名", "CODE"].forEach(function(k) { if (n[k]) out.push(k + " " + n[k] + " 個品項藥品"); });
     return out.join("、");
   }
-  /* 深色框「背後發生的事」的內容：trail＝機器人一步一步看了什麼（ok 1＝就是這個、0＝不是、2＝換個寫法或放寬才找到），found＝找到什麼，reply＝回了哪一種卡片，tip＝提醒（字太少、查無才有） */
   function simSteps(r) {
     var kind = r.kind, kws = r.kws || r.q.toUpperCase().split(/\s+/).filter(String), many = kws.length > 1, shown = r.attempt || r.q, qs = "「" + shown + "」", n = r.total || 0, list = r.list, tr = [], found = "", reply = "", tip = "", names, locLike;
     function t(ok, s) { tr.push({ ok: ok, t: s }); }
@@ -10358,12 +9691,7 @@
     tip = "練習用的藥都是編的，打真的藥名一定查無；想查真的藥，回 LINE 打。";
     return done();
   }
-  /*/SIMSEARCH*/
 
-  /* ───────── 互動練習的畫面（第 17 批）─────────
-     輸入框＋「送出」在最上面（結果往下長，手指不用跟著結果跑）；範例字點一下就「幫你打好、直接送出」；送出後依序：我打的字 → 機器人查詢中（三個點）→ 機器人回的卡片 → 最後一行旁白請你往下看深色的框。
-     深色框「背後發生的事」把 simSteps 算出來的每一步寫成白話；「重來」把聊天室、深色框、輸入框全部清空。
-     不用 <form>：Enter 自己接（輸入法選字中不算送出）；打的字只用 textContent 放進畫面，不存、不傳。裝置設定「減少動態」：不等、不跳動畫，一次全出。 */
   var simN = 0;
   function simTyping() {
     return el("div", { class: "rw bot first pop" }, [el("span", { class: "ava", "aria-hidden": "true" }), el("div", { class: "bub bot typing", role: "status", "aria-label": "機器人查詢中" }, [el("i", { "aria-hidden": "true" }), el("i", { "aria-hidden": "true" }), el("i", { "aria-hidden": "true" })])]);
@@ -10426,7 +9754,7 @@
       }
       say("");
       input.value = "";
-      try { if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches && document.activeElement === input) input.blur(); } catch (e) {}   /* 手機：收起鍵盤，結果才看得到 */
+      try { if (window.matchMedia && window.matchMedia("(pointer: coarse)").matches && document.activeElement === input) input.blur(); } catch (e) {}
       msgs = simMsgs(r);
       msgs.push(act("👇 往下捲，看深色的框：機器人是怎麼找到的"));
       fl = firstFlags(msgs);
@@ -10434,7 +9762,7 @@
       last = rows.length - 1;
       h = chat.offsetHeight;
       chat.textContent = "";
-      chat.style.minHeight = h + "px";   /* 換內容的時候先撐住原本的高度，下面的東西不會先縮上去再長下來 */
+      chat.style.minHeight = h + "px";
       chat.appendChild(rows[0]);
       net.setAttribute("aria-busy", "true");
       if (REDUCE) {
@@ -10463,7 +9791,7 @@
     function fill(w) {
       clearTimers();
       input.value = w;
-      if (REDUCE) run(w); else after(260, function() { run(w); });   /* 先讓你看到字被填進輸入框，再送出 */
+      if (REDUCE) run(w); else after(260, function() { run(w); });
     }
     function chips(list, label, cls) {
       var row = el("div", { class: "picks" + (cls ? " " + cls : ""), role: "group", "aria-label": label });
@@ -10471,7 +9799,7 @@
       return el("div", { class: "simg" }, [el("div", { class: "simgl", "aria-hidden": "true", text: label }), row]);
     }
     on(input, "keydown", function(ev) {
-      if ((ev.key === "Enter" || ev.keyCode === 13) && !ev.isComposing && ev.keyCode !== 229) { ev.preventDefault(); run(input.value); }   /* 輸入法選字中按 Enter 是「選好字」，不是「送出」 */
+      if ((ev.key === "Enter" || ev.keyCode === 13) && !ev.isComposing && ev.keyCode !== 229) { ev.preventDefault(); run(input.value); }
     });
     var go = on(el("button", { type: "button", class: "sim-go", text: "送出" }), "click", function() { run(input.value); });
     var head = el("div", { class: "stage-h" }, [
@@ -10489,46 +9817,33 @@
       el("p", { class: "capn", text: "練習用的假聊天室：藥名、位置都是編的；打的字不會存，也不會傳到任何地方。" })
     ]);
     reset();
-    return [stage, net, { max: 1, note: net, ms: function() { return 2600; } }];   /* ms：點範例字之後，字填進輸入框（0.26 秒）、機器人查詢中、卡片一張一張跳出來，大約這麼久；自動示範只點一個範例字，放完就結束 */
+    return [stage, net, { max: 1, note: net, ms: function() { return 2600; } }];
   }
 
-  /* ───────── 自動示範（第 17 批）─────────
-     捲到哪一塊示範區（灰底的 .stage），它就自己照順序把裡面的選項點一遍，一邊捲一邊看；點任何一個選項、按任何鍵、或按「停止」就換你操作。
-     每一個選項：先有一隻手指（👆）滑過去、按下去（AUTO_TAP_MS＝0.7 秒，按下去那一刻才真的點），內容才換；換了之後，動畫放完（或說明讀完）再停一下（最短 2.5 秒），就換下一個。
-     從這個選項點下去，到下一個選項點下去，最多 6 秒（AUTO_MAX_MS）：說明很長也不會等更久；訊息很多的聊天示範，把訊息跳出來的間隔縮短，4 秒內放完。
-     做法：不改每種示範自己的程式——直接對示範區裡的選項按鈕呼叫 click()（跟真的點一樣：一樣有動畫、一樣換下面的說明）。
-     真人點的 click 是 isTrusted、程式呼叫的不是，靠這個分辨「誰點的」（用 pointerdown 不行：手指在示範區上捲動也會算）。
-     不動的時候：裝置設定「減少動態」（REDUCE）、示範區沒有露出 60%、分頁在背景、已經被人動過（按「停止」也算）、這一次停留已經示範滿 3 遍。（目錄頁不再有「自動示範」的開關：一律是開的。）
-     ★ 第 21 批：學員停在哪一個示範區，它就在那裡一遍一遍自己示範（一遍放完停 AUTO_LOOP_MS，再從第一個選項重來），最多 AUTO_LOOPS＝3 遍才停；捲走再捲回來算新的一次停留，又可以放 3 遍。按「重播」也從 3 遍重新算。
-     捲走了（露出不到 25%）就暫停，捲回來接著做；換頁（render）一律全部停掉重來。
-     「露出多少」是跟「示範區自己的高度、畫面能看的高度」比較小的那個比：示範區比畫面還高（手機橫著拿、很長的聊天示範）的時候，只要畫面被它占滿六成就算，不然永遠到不了六成、就永遠不會動。
-     手指（或兩指／滑鼠橫向捲）正在示範區裡滑動：先不換示範的內容（輪播、輸入列正在手指底下，換掉會跳），手放開、或最後一次滑動過了 1.2 秒才接著示範；手指一直壓著超過 10 秒就當作卡住，照常往下做。 */
   var AUTO_ON_VIS = 0.6, AUTO_OFF_VIS = 0.25, AUTO_START_MS = 900, AUTO_TAP_MS = 700, AUTO_MIN_MS = 2500, AUTO_MAX_MS = 6000, AUTO_AFTER_MS = 1200, AUTO_LOOPS = 3, AUTO_LOOP_MS = 1200, AUTO_LIST = [], autoIO = null;
-  var AUTO_STEPS = (function() { var a = [], i; for (i = 0; i <= 100; i++) a.push(i / 100); return a; })();   /* IntersectionObserver 的門檻：0、0.01、0.02 … 1 */
+  var AUTO_STEPS = (function() { var a = [], i; for (i = 0; i <= 100; i++) a.push(i / 100); return a; })();
   function autoPref() { return !REDUCE; }
-  /* 點下去之後停多久（毫秒）：說明越長停越久（1.2 秒＋每個字 30 毫秒，讀得完），動畫（ms）放完還要再留 1.2 秒；最短 2.5 秒；最長 5.3 秒（加上手指的 0.7 秒＝6 秒）。最後一個選項後面沒有下一個了，不用等讀說明：動畫放完就結束 */
   function autoHold(len, ms, last) {
     var read = 1200 + 30 * len, play = ms + AUTO_AFTER_MS;
     return Math.max(AUTO_MIN_MS, Math.min(AUTO_MAX_MS - AUTO_TAP_MS, last ? play : Math.max(read, play)));
   }
   function autoOf(stage) { for (var i = 0; i < AUTO_LIST.length; i++) if (AUTO_LIST[i].stage === stage) return AUTO_LIST[i]; return null; }
   function autoReg(stage, opt) {
-    opt = opt || {};   /* opt.max：最多自己點幾個選項（練習聊天室只示範 1 個）；opt.note：「說明」放在別的地方的時候，指給它 */
+    opt = opt || {};
     var hd = stage.querySelector(".stage-h");
     function targets() {
       var ts = Array.prototype.slice.call(stage.querySelectorAll(".picks .pk, .qrow button.qchip"));
-      return ts.length ? ts : Array.prototype.slice.call(stage.querySelectorAll(".replay"));   /* 沒有選項、只有一種情況的聊天示範：自動按一次「重播」 */
+      return ts.length ? ts : Array.prototype.slice.call(stage.querySelectorAll(".replay"));
     }
     if (!hd || !targets().length) return;
-    function noteEl() { if (opt.note) return opt.note; var n = stage.nextElementSibling; while (n && !n.classList.contains("note")) n = n.nextElementSibling; return n; }   /* 示範區下面「點了哪個、說明就換哪個」的那一格 */
-    var c = { stage: stage, idx: 0, timer: 0, running: false, arm: false, done: false, took: false, forced: false, seen: 0, hold: 0, loops: 0 }, grp = null;   /* loops：這一次停留已經放完幾遍 */
-    /* 「自動示範中」的小標和「停止」只在示範的時候才放進示範區的標題列（不示範的時候整個不在畫面裡，焦點、讀屏都碰不到） */
+    function noteEl() { if (opt.note) return opt.note; var n = stage.nextElementSibling; while (n && !n.classList.contains("note")) n = n.nextElementSibling; return n; }
+    var c = { stage: stage, idx: 0, timer: 0, running: false, arm: false, done: false, took: false, forced: false, seen: 0, hold: 0, loops: 0 }, grp = null;
     function show(v) {
       if (v && !grp) {
         var stop = on(el("button", { type: "button", class: "astop", "aria-label": "停止這個示範，換我自己操作（按「重播」可以再看一遍）", text: "停止" }), "click", function() {
-          var f = stage.querySelector(".picks .pk, .qrow button.qchip") || stage.querySelector(".replay");   /* 先接到第一個選項（「重播」在標題列、排在選項前面，但鍵盤使用者剛按完「停止」，不該一不小心按到「重播」又重來）；沒有選項才接到「重播」 */
-          c.take();   /* 只停這一個示範區；捲到別的示範區，它還是會自己示範 */
-          if (f) { try { f.focus(); } catch (e) {} }   /* 按鍵盤的人按了「停止」，按鈕會消失：焦點接到示範區裡的第一個按鈕，不要掉回網頁最上面 */
+          var f = stage.querySelector(".picks .pk, .qrow button.qchip") || stage.querySelector(".replay");
+          c.take();
+          if (f) { try { f.focus(); } catch (e) {} }
         });
         grp = el("span", { class: "autog" }, [el("span", { class: "autob", "aria-hidden": "true", text: "自動示範中" }), stop]);
         hd.insertBefore(grp, hd.querySelector(".replay"));
@@ -10538,19 +9853,17 @@
       }
       stage.classList.toggle("auto", v);
       var n = noteEl();
-      if (n) n.setAttribute("aria-live", v ? "off" : "polite");   /* 自動換說明的時候，讀屏軟體不要一直念 */
+      if (n) n.setAttribute("aria-live", v ? "off" : "polite");
     }
     function later(ms) { c.timer = setTimeout(tick, ms); }
     function total() { var ts = targets(); return opt.max ? Math.min(opt.max, ts.length) : ts.length; }
-    /* 點下去（或「重播」那一下）之後停多久，再換下一個。聊天示範、練習聊天室：訊息一則一則跳出來、手指按按鍵、6 位數一位一位打，opt.ms() 是這些動畫要放多久；點名稱換圈圈的示範（卡片、平面圖、轉圖、輸入列）一點就換，是 0 */
     function rest() { var n = noteEl(); later(autoHold(n ? n.textContent.length : 0, opt.ms ? opt.ms() : 0, c.idx >= total())); }
-    /* 一個選項要分兩步：① 手指滑過去（tapAt）、等 AUTO_TAP_MS；② 手指按下去，這時候才真的 click()，再等「點下去之後停多久」。c.arm＝①做完了、正在等②。 */
     function tick() {
       c.timer = 0;
       if (!c.running) return;
-      if (Date.now() < c.hold) { c.arm = false; tapDrop(stage); later(Math.max(150, Math.min(1000, c.hold - Date.now()))); return; }   /* 學員的手指還在示範區裡滑：等一下再換（我們的手指先收起來，等一下重來） */
+      if (Date.now() < c.hold) { c.arm = false; tapDrop(stage); later(Math.max(150, Math.min(1000, c.hold - Date.now()))); return; }
       var ts = targets();
-      if (c.idx >= total()) {   /* 一遍放完：還沒滿 3 遍就停一下、從第一個選項重來；滿了才收起來 */
+      if (c.idx >= total()) {
         c.loops++;
         if (c.loops >= AUTO_LOOPS) { c.done = true; c.pause(); return; }
         c.idx = 0; c.arm = false; tapDrop(stage);
@@ -10559,14 +9872,14 @@
       }
       if (!c.arm) {
         c.arm = true;
-        if (tapAt(stage, ts[c.idx])) { later(AUTO_TAP_MS); return; }   /* 手指滑過去、按下去要 0.7 秒；沒有畫手指（減少動態）就不用等，直接點 */
+        if (tapAt(stage, ts[c.idx])) { later(AUTO_TAP_MS); return; }
       }
       c.arm = false;
       try { ts[c.idx++].click(); } catch (e) {}
       rest();
     }
     c.start = function() {
-      if (c.running || c.done || c.took || !(autoPref() || c.forced) || document.hidden) return;   /* forced：按過「重播」的示範區，裝置設定了「減少動態」也照做 */
+      if (c.running || c.done || c.took || !(autoPref() || c.forced) || document.hidden) return;
       c.running = true;
       show(true);
       later(AUTO_START_MS);
@@ -10575,25 +9888,22 @@
       if (c.timer) { clearTimeout(c.timer); c.timer = 0; }
       c.running = false;
       c.arm = false;
-      tapDrop(stage);   /* 手指還在半路上就被停掉：手指也拿掉 */
+      tapDrop(stage);
       show(false);
     };
     c.take = function() { c.took = true; c.pause(); };
-    /* 按「重播」＝從第一個選項重新自動示範（不管學員動過、示範完、按過「停止」都一樣）：狀態全部歸零，馬上開始，不用等 */
     c.restart = function() {
       var ts = targets();
       if (c.timer) { clearTimeout(c.timer); c.timer = 0; }
       c.idx = 0; c.done = false; c.took = false; c.forced = true; c.running = true; c.arm = false; c.hold = 0; c.loops = 0;
       tapDrop(stage);
       show(true);
-      /* 每一種示範的「重播」鍵，按下去它自己就回到第一個選項、放了一遍（單一情況的聊天示範：就是放那一遍）。學員按的那一下就是第一個動作：不用手指再按一次（再按一次，動畫會從頭再來，看起來像卡了一下），停一下就換第二個。練習聊天室的重播鍵只是清空，要手指去點第一顆範例字 */
       if (ts.length && (ts[0].classList.contains("replay") || ts[0].getAttribute("aria-pressed") === "true")) { c.idx = 1; rest(); }
       else tick();
     };
     function isReplay(t) { for (var n = t; n && n !== stage; n = n.parentNode) if (n.classList && n.classList.contains("replay")) return true; return false; }
-    on(stage, "click", function(ev) { if (ev.isTrusted) { if (isReplay(ev.target)) c.restart(); else c.take(); } });   /* 程式自己按的 click（自動示範）不算；人按的：「重播」＝重來，其他＝換你操作 */
-    on(stage, "keydown", function(ev) { if (!(ev.target && ev.target.className === "astop")) c.take(); });   /* 按「停止」的那一下鍵盤不算（不然按鈕在 click 之前就被拿掉了，「停止」自己的 click 收不到） */
-    /* 手指（或滑鼠橫向捲）在示範區裡滑動：先不換內容。touchstart 到 touchend 之間一直算（最多 10 秒），放開後再等 1.2 秒；手指在螢幕上滑的時候瀏覽器會送 pointercancel，所以不用 pointer 事件 */
+    on(stage, "click", function(ev) { if (ev.isTrusted) { if (isReplay(ev.target)) c.restart(); else c.take(); } });
+    on(stage, "keydown", function(ev) { if (!(ev.target && ev.target.className === "astop")) c.take(); });
     function holdTo(ms) { var t = Date.now() + ms; if (t > c.hold) c.hold = t; }
     on(stage, "touchstart", function() { c.hold = Date.now() + 10000; });
     on(stage, "touchend", function() { c.hold = Date.now() + 1200; });
@@ -10616,9 +9926,9 @@
           var vh = e.rootBounds ? e.rootBounds.height : (window.innerHeight || 0);
           c.seen = e.isIntersecting ? e.intersectionRect.height / Math.max(1, Math.min(e.boundingClientRect.height, vh)) : 0;
           if (c.seen >= AUTO_ON_VIS) c.start();
-          else if (c.seen < AUTO_OFF_VIS) { c.pause(); if (c.done) { c.done = false; c.loops = 0; c.idx = 0; } }   /* 捲走＝這一次停留結束：放滿 3 遍的，下次捲回來可以再放（沒放完的，捲回來接著做） */
+          else if (c.seen < AUTO_OFF_VIS) { c.pause(); if (c.done) { c.done = false; c.loops = 0; c.idx = 0; } }
         });
-      }, { rootMargin: "-56px 0px -72px 0px", threshold: AUTO_STEPS });   /* 上面那條、下面那排會蓋住一些：算進去。門檻切得很細（每 1%）：示範區比畫面高很多的時候，露出的比例最多只有一點點（例如 12%），門檻太稀就剛好跳過「六成畫面」那一刻 */
+      }, { rootMargin: "-56px 0px -72px 0px", threshold: AUTO_STEPS });
       AUTO_LIST.forEach(function(c) { autoIO.observe(c.stage); });
     } catch (e) { autoIO = null; }
   }
@@ -10631,26 +9941,25 @@
       el("p", { class: "lead" }, [rich(s.p)])
     ]);
     var k = s.d ? s.d.k : "";
-    var parts = !s.d ? [null, null] : k === "sh" || k === "cmds" || k === "dsim" ? devDemo(s.d) : k === "anat" ? demoAnat(s.d) : k === "plan" ? demoPlan() : k === "turn" ? demoTurn() : k === "qbar" ? demoQbar(s.d) : k === "sim" ? demoSim(s.d) : demoChat(s.d);   /* d 可以沒有：只有說明和步驟的小節 */
-    if (s.tips && s.tipsFirst) sec.appendChild(stepsEl(s.tips));   /* tipsFirst：放在示範區前面、編號 1 2 3 的「步驟」（看平面圖的三個步驟） */
+    var parts = !s.d ? [null, null] : k === "sh" || k === "cmds" || k === "dsim" ? devDemo(s.d) : k === "anat" ? demoAnat(s.d) : k === "plan" ? demoPlan() : k === "turn" ? demoTurn() : k === "qbar" ? demoQbar(s.d) : k === "sim" ? demoSim(s.d) : demoChat(s.d);
+    if (s.tips && s.tipsFirst) sec.appendChild(stepsEl(s.tips));
     if (parts[0]) { sec.appendChild(parts[0]); autoReg(parts[0], parts[2]); }
     if (s.tips && !s.tipsFirst) sec.appendChild(tipsEl(s.tips));
     if (parts[1]) sec.appendChild(parts[1]);
-    if (s.keys) sec.appendChild(keysEl(s.keys));   /* keys：示範區下面灰底的「記住 n 件事」 */
-    if (s.flow) {   /* flow：示範區下面再接一個「一步一個按鈕」的示範（h＝小標題；d＝跟上面的 d 一樣） */
+    if (s.keys) sec.appendChild(keysEl(s.keys));
+    if (s.flow) {
       var fp = demoChat(s.flow.d);
       if (s.flow.h) sec.appendChild(el("h3", { class: "sub-h", text: s.flow.h }));
       sec.appendChild(fp[0]); autoReg(fp[0], fp[2]);
       if (fp[1]) sec.appendChild(fp[1]);
     }
-    if (s.url) sec.appendChild(urlRow());   /* url：電腦要打開的網址（網址是這個網頁自己的位置推出來的，打不出來就請人問管理者） */
-    if (s.steps) { if (s.steps.h) sec.appendChild(el("h3", { class: "sub-h", text: s.steps.h })); sec.appendChild(stepsEl(s.steps.items, "long")); }   /* steps：示範下面編號 1 2 3 的步驟（h＝小標題，可以沒有；items＝[{b 粗體一行, s 小字一行, u 網址一行}]） */
+    if (s.url) sec.appendChild(urlRow());
+    if (s.steps) { if (s.steps.h) sec.appendChild(el("h3", { class: "sub-h", text: s.steps.h })); sec.appendChild(stepsEl(s.steps.items, "long")); }
     if (s.note) sec.appendChild(noteBox(s.note));
     if (s.warn) sec.appendChild(el("div", { class: "warnbox" }, [rich(s.warn)]));
     return sec;
   }
 
-  /* 「動手試試」：回 LINE 聊天室並先填好字（按送出才會送）。沒有從 LINE 帶來官方帳號 ID 就只留一句說明 */
   function trySec(t) {
     var sec = el("section", { class: "sec" }, [el("div", { class: "sec-h" }, [el("h2", { text: "動手試試" })]), el("p", { class: "lead" }, [rich(t.p)])]);
     var text = "", cap = "";
@@ -10675,7 +9984,6 @@
       el("ol", { class: "rc" }, items.map(function(t, i) { return el("li", {}, [el("span", { class: "rn", "aria-hidden": "true", text: String(i + 1) }), el("div", {}, [rich(t)])]); }))
     ]);
   }
-  /* ───────── 目錄（章節分組、一課一列）───────── */
   function lessonRow(l, done, curId, kind) {
     var st = done[l.id] ? "done" : "";
     if (curId === l.id) st = st ? st + " cur" : "cur";
@@ -10705,9 +10013,7 @@
     return wrap;
   }
 
-  /* ───────── 畫面 ───────── */
   function setTop(kids) { topEl.textContent = ""; topEl.appendChild(el("div", { class: "bar-in" }, kids)); }
-  /* 目錄頁最上面：怎麼用這份教學（第一次來＝展開；學過了＝收起來） */
   function howBox(open) {
     return el("details", { class: "how", open: open ? true : null }, [
       el("summary", { text: "怎麼用這份教學（4 個動作）" }),
@@ -10746,7 +10052,6 @@
   function lessonView(id) {
     var L = lessonById(id), li = lessonIdx(id), done = getDone();
     var ttl = on(el("button", { type: "button", class: "ttl", "aria-expanded": "false", "aria-controls": "toc", "aria-label": L.name + "，點一下看全部課程" }, [el("span", { class: "t", text: L.name }), el("span", { class: "ar", "aria-hidden": "true", text: "▾" })]), "click", function() { toggleToc(); });
-    /* 按「回課程目錄」＝學習進度清空（每一課變回「還沒學」，下次從頭開始）；目錄頁不再有開關，一律這樣 */
     var toc = el("div", { class: "toc", id: "toc", hidden: true }, [el("div", { class: "toc-in" }, [on(el("a", { class: "toc-back", href: "#/", text: "‹ 回課程目錄" }), "click", function() { store.del("done"); }), chapters(done, L.id, "toc")])]);
     on(toc, "click", function(ev) { var t = ev.target; while (t && t !== toc) { if (t.tagName === "A") { closeToc(); return; } t = t.parentNode; } });
     setTop([ttl, el("span", { class: "tag", text: "第 " + (li + 1) + " 課 / " + N })]);
@@ -10764,7 +10069,6 @@
     function ok() { if (markDone(L.id)) { var d2 = getDone(); pct.textContent = pctOf(d2) + "%"; pct.setAttribute("aria-label", "已學 " + pctOf(d2) + "%"); } }
     var end = el("div", { class: "end", "aria-hidden": "true" });
     kids.push(end);
-    /* 往下捲到最後（看完整課）也算學過 */
     if (typeof IntersectionObserver === "function") {
       try {
         var io = new IntersectionObserver(function(es) { es.forEach(function(e) { if (e.isIntersecting) { ok(); io.disconnect(); } }); });
@@ -10776,17 +10080,16 @@
       : el("a", { class: "nav", "aria-disabled": "true", tabindex: "-1" }, ["‹ 上一課"]);
     var next = li + 1 < N
       ? on(el("a", { class: "nav go", href: "#/l/" + LESSONS[li + 1].id }, ["下一課 ›"]), "click", ok)
-      : on(el("a", { class: "nav go", href: "#/" }, ["回目錄 ›"]), "click", function() { ok(); store.del("done"); });   /* 最後一課的「回目錄」也一樣：先記下這一課，再整個清空 */
+      : on(el("a", { class: "nav go", href: "#/" }, ["回目錄 ›"]), "click", function() { ok(); store.del("done"); });
     botEl.textContent = "";
     botEl.appendChild(el("div", { class: "bot-in" }, [prev, pct, next]));
     botEl.hidden = false;
     return { title: L.name + "・補藥神器 開發者教學", kids: kids };
   }
 
-  /* ───────── 換頁 ───────── */
   function render() {
     var h = location.hash || "", m, v;
-    autoClear();   /* 上一頁的自動示範全部停掉；新的一頁在建的時候（secView）重新登記 */
+    autoClear();
     if ((m = h.match(/^#\/l\/([a-z]+)(?:\/\d+)?$/)) && lessonById(m[1])) v = lessonView(m[1]);
     else v = outlineView();
     root.textContent = "";
@@ -10797,7 +10100,6 @@
     try { root.focus({ preventScroll: true }); } catch (e) {}
   }
 
-  /* 開頭：讀 LINE 帶進來的資訊（#b=…），存起來、從網址列拿掉；之後的換頁用 #/… */
   (function boot() {
     loadS();
     var h = location.hash, go = "";
