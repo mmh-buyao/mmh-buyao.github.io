@@ -3717,6 +3717,7 @@ function lockClean() {
   if (typeof RTE !== "undefined") RTE.clip = null;
   if (typeof ED_CLIP !== "undefined") ED_CLIP = null;
   if (typeof exClear === "function") { exClear(); EXP = null; }
+  if (typeof xeDrop === "function") xeDrop();
   HB = null;
 }
 var OUTED = false;
@@ -4142,6 +4143,7 @@ function webLinks(b, hl, ctx) {
   var its = _yzLinkItems_(b);
   if (!its.length) return null;
   return h("div", { class: "xlinks" }, its.map(function (x, i) {
+    if (x.k === "emb") return xeBox(x, i, ctx, hl);
     var u = _yzLinkFix_(x.u), lab = _yzLinkLabel_(x), n = String(x.n || "").trim(), host = _yzLinkHost_(u), fk = _yzLinkFileKind_(x);
     if (fk) {
       var go = function (e) { if (e) e.preventDefault(); var g = Date.now(), au = !x.k; if (ctx.pv) fvOpen({ try: u, label: lab, kind: fk, auto: au, gest: g }); else if (ctx.tid) fvOpen({ tid: ctx.tid, bi: ctx.bi, ii: i, tag: _yzLinkTag_(u), label: lab, kind: fk, u: u, auto: au, gest: g }); };
@@ -4195,7 +4197,7 @@ function webArticle(ch, t, o) {
     else if (b.t === "img" && b.url) el = webFig(b, o);
     else if (b.t === "anim") el = webAnim(b, o);
     else if (b.t === "drug") el = webDrugs(b, o);
-    else if (b.t === "link") el = webLinks(b, o.hl, { tid: t.id, bi: bIdx, pv: !!o.pv || !o.page });
+    else if (b.t === "link") el = webLinks(b, o.hl, { tid: t.id, bi: bIdx, pv: !!o.pv || !o.page, ph: o.emb === "ph" });
     if (!el) return;
     if (b.mgh) { if (!o.noid) el.id = "mg-" + b.mgh; el.classList.add("mghd"); }
     var bi = _yzBlockInd_(b);
@@ -4661,7 +4663,7 @@ function chSecs(col, c, tts, hb, o) {
   o = o || {};
   var lvs = _yzTLvs_(tts);
   tts.forEach(function (tt, k) {
-    var lv = lvs[k], art = webArticle(c, tt, { width: tt.ww || 760, onImg: o.onImg, hl: null, hb: hb, onTitle: o.onTitle, onChapter: o.onChapter, page: true, pv: o.pv, noid: o.noid, mark: o.mark });
+    var lv = lvs[k], art = webArticle(c, tt, { width: tt.ww || 760, onImg: o.onImg, hl: null, hb: hb, onTitle: o.onTitle, onChapter: o.onChapter, page: true, pv: o.pv, noid: o.noid, mark: o.mark, emb: o.emb });
     var hd = h("div", { class: "chsec-h" }, [h(lv === 1 ? "h2" : lv === 2 ? "h3" : "h4", { class: "chsec-t" }, [tt.name || "（還沒有標題）"]), h("button", { class: "pbtn chsec-o", type: "button", onclick: function () { if (o.onTitle) o.onTitle(tt.id); }, "aria-label": "單獨看「" + (tt.name || "") + "」" }, ["單獨看 ›"])]);
     art.insertBefore(hd, art.firstChild);
     if (o.markT) o.markT(hd, tt, k);
@@ -4938,7 +4940,7 @@ function fvOpen(o) {
   };
   var tick = setInterval(function () { if (my !== FV.seq) { clearInterval(tick); return; } say(); }, 1000);
   var prog = function (ph, g) { if (ph === "dl") { got = g || 0; say(); } };
-  var req = o.try ? call("hbFileTry", [o.try], { ms: 150000, prog: prog }) : call("hbFile", [o.tid, o.bi, o.ii, o.tag || ""], { ms: 150000, prog: prog });
+  var req = o.pre ? Promise.resolve({ ok: 1, kind: o.pre.kind, mime: o.pre.mime, bytes: o.pre.bytes, name: o.pre.name, label: label }) : o.try ? call("hbFileTry", [o.try], { ms: 150000, prog: prog }) : call("hbFile", [o.tid, o.bi, o.ii, o.tag || ""], { ms: 150000, prog: prog });
   req.then(function (r) {
     clearInterval(tick);
     if (my !== FV.seq) return;
@@ -4959,7 +4961,7 @@ function fvErr(t) {
 }
 function fvZoomOk(on) { (FV.zs || []).forEach(function (b) { b.disabled = !on; }); }
 function fvImg(r, my) {
-  var bytes = fvB64(r.b64); r.b64 = null;
+  var bytes = r.bytes ? r.bytes.slice() : fvB64(r.b64); r.b64 = null;
   FV.url = URL.createObjectURL(new Blob([bytes], { type: r.mime || "image/png" }));
   var im = h("img", { class: "fv-img", alt: "", draggable: "false" });
   im.onload = function () { if (my !== FV.seq) return; FV.img = im; FV.w1 = im.naturalWidth || 1; FV.h1 = im.naturalHeight || 1; FV.fit = true; fvFit(); fvZoomOk(true); FV.pg.textContent = "圖片"; };
@@ -4969,7 +4971,7 @@ function fvImg(r, my) {
   FV.body.appendChild(h("div", { class: "fv-ims" }, [im]));
 }
 function fvPdf(r, my) {
-  var bytes = fvB64(r.b64); r.b64 = null;
+  var bytes = r.bytes ? r.bytes.slice() : fvB64(r.b64); r.b64 = null;
   var m = $("#fvmsg", FV.el); if (m) m.textContent = "打開 PDF…";
   fvLib().then(function (lib) {
     if (my !== FV.seq) return null;
@@ -5202,6 +5204,400 @@ function wvForce(my) {
   wvFrame(my); wvShow(my);
 }
 
+var XE = { all: [], cache: {}, ck: [], fly: {}, err: {}, asweb: {}, io: null, ro: null, q: [], run: 0, gc: 0 };
+var XE_CACHE_MAX = 48 * 1048576, XE_CACHE_N = 10, XE_RUN = 2, XE_KEEP = 30000;
+function xeIco(fk) { return fk ? (YZ_FILE_ICO[fk] || "📄") : "🌐"; }
+function xeSub(E) { return (E.fk ? YZ_FILE_NAME[E.fk] + "｜只能看" : _yzLinkHost_(E.u)) + (E.n ? "｜" + E.n : ""); }
+function xeHead(E) {
+  E.tt.innerHTML = "";
+  E.tt.appendChild(h("b", {}, hlNodes(E.lab, E.hl)));
+  E.tt.appendChild(h("small", {}, hlNodes(xeSub(E), E.hl)));
+  E.ic.textContent = xeIco(E.fk);
+  E.el.setAttribute("data-k", E.fk || "web");
+  E.el.classList.toggle("xe-file", !!E.fk);
+  E.el.classList.toggle("xe-web", !E.fk);
+  E.ft.textContent = E.fk ? "🔒 內部資料：只能看，不能下載、不能列印" : "🌐 網頁的內容是那個網站的；空白、看不到：按上面「↗ 另外打開」";
+  E.ob.hidden = !!E.fk;
+  E.body.setAttribute("aria-label", (E.fk ? YZ_FILE_NAME[E.fk] : "網頁") + "：" + E.lab);
+}
+function xeClaim(E) { E.claimed = true; setTimeout(function () { E.claimed = false; }, 0); }
+function xeBox(x, i, ctx, hl) {
+  ctx = ctx || {};
+  var u = _yzLinkFix_(x && x.u), fk = _yzLinkFileKind_(x), lab = _yzLinkLabel_(x), n = String(x && x.n || "").replace(/\s+/g, " ").trim();
+  var mode = ctx.ph ? "ph" : ctx.pv ? "pv" : "rd", key = mode + "|" + u + "|" + (fk || "web"), aw = fk && u ? XE.asweb[u] : null;
+  if (fk && u && mode !== "ph" && !aw) {
+    var E0 = xeReuse(key);
+    if (E0) {
+      E0.lab = lab; E0.n = n; E0.hl = hl; E0.i = i; E0.ctx = ctx; E0.tag = _yzLinkTag_(u); xeHead(E0);
+      requestAnimationFrame(function () { if (E0.el.isConnected && E0.sy) E0.body.scrollTop = E0.sy; });
+      return E0.el;
+    }
+  }
+  var E = { u: u, fk: aw ? "" : fk, lab: lab, n: n, hl: hl, i: i, ctx: ctx, tag: _yzLinkTag_(u), key: key, mode: mode, st: "idle", seq: 0, pages: [], tm: [], off: 0, sy: 0 };
+  if (aw) E.pre = aw.i;
+  E.ic = h("span", { class: "xe-i", "aria-hidden": "true" }, [""]);
+  E.tt = h("span", { class: "xe-tt" });
+  E.pg = h("span", { class: "xe-pg", role: "status", "aria-live": "polite" }, [""]);
+  var big = h("button", { class: "xe-big", type: "button", title: "用大的小視窗看（檔案可以放大縮小）", "aria-label": "放大看：" + lab, onclick: function (e) { e.preventDefault(); e.stopPropagation(); xeBig(E); } }, ["⛶", h("span", {}, ["放大"])]);
+  E.ob = h("a", { class: "xe-o", href: u || "#", target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", title: "另外打開（離開手冊的畫面；看完關掉就回來）", onclick: function (e) { e.stopPropagation(); if (!u || xlOpen(u)) e.preventDefault(); } }, ["↗", h("span", {}, ["另外打開"])]);
+  E.idle = h("div", { class: "fv-idle xe-idle", role: "status", hidden: true }, [""]);
+  E.body = h("div", { class: "xe-b", tabindex: "0", role: "region" });
+  E.ft = h("div", { class: "xe-f" }, [""]);
+  E.el = h("div", { class: "xemb" }, [h("div", { class: "xe-h" }, [E.ic, E.tt, E.pg, big, E.ob]), E.idle, E.body, E.ft]);
+  E.el._xe = E;
+  E.el.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+  E.el.addEventListener("dragstart", function (e) { e.preventDefault(); });
+  E.body.addEventListener("scroll", function () { E.sy = E.body.scrollTop; if (E.pages.length) xeWhere(E); }, { passive: true });
+  xeHead(E);
+  if (!u) { E.st = "bad"; xeMsg(E, "網址不合格，打不開。"); return E.el; }
+  if (mode === "ph") {
+    E.st = "ph";
+    E.body.appendChild(h("div", { class: "xe-m xe-ph" }, [h("div", { class: "xe-phi", "aria-hidden": "true" }, [xeIco(fk)]), h("p", {}, ["嵌入：藥師看的時候，這一格就是" + (fk ? "這個 " + YZ_FILE_NAME[fk] + " 的內容" : "這個網頁") + "（翻頁預覽不拿）"])]));
+    return E.el;
+  }
+  if (mode === "pv" && !E.fk) xePvWeb(E); else xeMsg(E, E.fk ? "捲到這裡才拿檔案…" : "捲到這裡才打開網頁…");
+  xeClaim(E);
+  XE.all.push(E);
+  if (!XE.gc) XE.gc = setInterval(xeGc, 10000);
+  var io = xeIo();
+  if (io) io.observe(E.el); else setTimeout(function () { xeWant(E); }, 0);
+  return E.el;
+}
+function xePvWeb(E) {
+  E.st = "pvweb";
+  E.body.innerHTML = "";
+  E.body.appendChild(h("div", { class: "xe-m" }, [h("p", {}, ["🌐 讀的人看到的時候，這一格直接是「" + _yzLinkHost_(E.u) + "」的網頁。"]), h("button", { class: "btn sm xe-see", type: "button", onclick: function (e) { e.stopPropagation(); xeWeb(E); } }, ["👁 在這裡看看"])]));
+}
+function xeIo() {
+  if (XE.io || !("IntersectionObserver" in window)) return XE.io;
+  XE.io = new IntersectionObserver(function (ents) { ents.forEach(function (en) { var E = en.target._xe; if (E && en.isIntersecting) xeWant(E); }); }, { rootMargin: "400px 0px" });
+  return XE.io;
+}
+function xeRo() {
+  if (XE.ro || !window.ResizeObserver) return XE.ro;
+  XE.ro = new ResizeObserver(function (ents) { ents.forEach(function (en) { var el = en.target.parentNode, E = el && el._xe; if (E && E.pages.length) xeFit(E); }); });
+  return XE.ro;
+}
+window.addEventListener("resize", function () { if (!window.ResizeObserver) XE.all.forEach(function (E) { if (E.pages.length && E.el.isConnected) xeFit(E); }); });
+function xeWant(E) {
+  if (E.st !== "idle" || !E.u) return;
+  if (!E.fk) { xeWeb(E); return; }
+  E.st = "wait"; XE.q.push(E); xePump();
+}
+function xePump() {
+  var done = function () { XE.run = Math.max(0, XE.run - 1); xePump(); };
+  while (XE.run < XE_RUN && XE.q.length) {
+    var E = XE.q.shift();
+    if (E.st !== "wait") continue;
+    if (!E.el.isConnected) { E.st = "idle"; continue; }
+    XE.run++;
+    xeFile(E).then(done, done);
+  }
+}
+function xeGet(u) { var c = XE.cache[u]; if (c) { XE.ck = XE.ck.filter(function (k) { return k !== u; }); XE.ck.push(u); } return c || null; }
+function xePut(u, c) {
+  XE.cache[u] = c; XE.ck = XE.ck.filter(function (k) { return k !== u; }); XE.ck.push(u);
+  var tot = 0; XE.ck.forEach(function (k) { tot += XE.cache[k] ? XE.cache[k].bytes.length : 0; });
+  while (XE.ck.length > 1 && (XE.ck.length > XE_CACHE_N || tot > XE_CACHE_MAX)) { var k0 = XE.ck.shift(); tot -= XE.cache[k0] ? XE.cache[k0].bytes.length : 0; delete XE.cache[k0]; }
+}
+function xeMsg(E, t, spin) {
+  var m = $(".xe-wait", E.body);
+  if (!m) { m = h("div", { class: "xe-m xe-wait" }, [h("div", { class: "fv-sp", "aria-hidden": "true" }), h("p", {}, [""])]); E.body.appendChild(m); }
+  m.classList.toggle("spin", !!spin);
+  $("p", m).textContent = t;
+}
+function xeErr(E, t) {
+  E.seq++; E.st = "err";
+  (E.tm || []).forEach(function (x) { clearTimeout(x); }); E.tm = [];
+  if (E.fr) { try { E.fr.remove(); } catch (e) {  } E.fr = null; }
+  E.body.innerHTML = "";
+  E.body.appendChild(h("div", { class: "xe-m err" }, [h("p", { class: "fv-e" }, ["❌ " + String(t).slice(0, 300)]), h("button", { class: "btn sm xe-again", type: "button", onclick: function (e) { e.stopPropagation(); delete XE.err[E.u]; E.st = "idle"; E.body.innerHTML = ""; xeMsg(E, "拿檔案中…", true); xeWant(E); } }, ["↻ 再試一次"])]));
+}
+function xeFile(E) {
+  var my = ++E.seq, c = xeGet(E.u);
+  if (c) { xeGot(E, c, my); return Promise.resolve(); }
+  var er = XE.err[E.u];
+  if (er && Date.now() - er.t < 60000) { xeErr(E, er.m); return Promise.resolve(); }
+  E.st = "load";
+  var t0 = Date.now(), got = 0;
+  var say = function () {
+    if (my !== E.seq || E.st !== "load") return;
+    var s = Math.round((Date.now() - t0) / 1000);
+    xeMsg(E, got > 0 ? "下載中…" + (got > 1048576 ? (got / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(got / 1024)) + " KB") : "拿檔案中…" + (s >= 2 ? s + " 秒" : "") + (s >= 4 ? "（Word、Excel、PPT 第一次打開要轉成 PDF，大約 5～30 秒）" : ""), true);
+  };
+  say();
+  var tick = setInterval(function () { if (my !== E.seq || E.st !== "load") { clearInterval(tick); return; } say(); }, 1000);
+  var f = XE.fly[E.u];
+  if (!f) {
+    var prog = function (ph, g) { if (ph === "dl") { got = g || 0; say(); } };
+    var req = E.mode === "pv" || !E.ctx.tid ? call("hbFileTry", [E.u], { ms: 150000, prog: prog }) : call("hbFile", [E.ctx.tid, E.ctx.bi, E.i, E.tag], { ms: 150000, prog: prog });
+    f = XE.fly[E.u] = req.then(function (r) {
+      delete XE.fly[E.u];
+      if (r && r.ok && r.b64) { var c2 = { kind: r.kind === "img" ? "img" : "pdf", mime: String(r.mime || ""), bytes: fvB64(r.b64), name: String(r.name || "") }; r.b64 = null; xePut(E.u, c2); return { c: c2 }; }
+      return { r: r };
+    }, function (e) { delete XE.fly[E.u]; return { e: e }; });
+  }
+  return f.then(function (o) {
+    clearInterval(tick);
+    if (my !== E.seq) return;
+    if (o.c) { xeGot(E, o.c, my); return; }
+    if (o.e) { xeErr(E, o.e && o.e.code === "bad" ? "藥戰手冊的後端還不認得「在手冊裡看檔案」（Apps Script 要換新的，部署新版本）" : o.e && o.e.message || "連不上後端"); return; }
+    var r = o.r;
+    if (r && r.st && !r.err) { E.st = "idle"; xeMsg(E, "登入過期了：重新登入以後再看"); if (r.st === "lock") logout("expired"); return; }
+    if (r && /^(html|login|net|http)$/.test(String(r.code || ""))) {
+      var pre = r.code === "net" ? null : r.wv ? { xfo: String(r.wv.xfo || ""), fa: Array.isArray(r.wv.fa) ? r.wv.fa : [], login: r.wv.login ? 1 : 0 } : undefined;
+      XE.asweb[E.u] = { i: pre };
+      E.fk = ""; E.pre = pre; xeHead(E);
+      if (E.mode === "pv") xePvWeb(E); else xeWeb(E, pre);
+      return;
+    }
+    var msg = r && r.err || "沒拿到檔案";
+    if (!(r && r.code === "busy")) XE.err[E.u] = { t: Date.now(), m: msg };
+    xeErr(E, msg);
+  });
+}
+function xeGot(E, c, my) {
+  E.st = "file";
+  if (c.kind === "img") xeImg(E, c, my); else xePdf(E, c, my);
+}
+function xeImg(E, c, my) {
+  if (E.url) { try { URL.revokeObjectURL(E.url); } catch (e) {  } }
+  E.url = URL.createObjectURL(new Blob([c.bytes], { type: c.mime || "image/png" }));
+  var im = h("img", { class: "xe-img", alt: "", draggable: "false" });
+  im.onload = function () { if (my !== E.seq) return; E.img = im; E.el.classList.add("fit"); E.pg.textContent = "圖片"; };
+  im.onerror = function () { if (my === E.seq) xeErr(E, "這張圖打不開（格式不支援）"); };
+  im.src = E.url;
+  E.body.innerHTML = "";
+  E.body.appendChild(im);
+}
+function xePdf(E, c, my) {
+  xeMsg(E, "打開 PDF…", true);
+  fvLib().then(function (lib) {
+    if (my !== E.seq) return null;
+    E.task = lib.getDocument({ data: c.bytes.slice(), isEvalSupported: false, CMapReaderFactory: FvCMap, cMapPacked: true, useSystemFonts: true, enableXfa: false, disableAutoFetch: true, disableStream: true, disableRange: true, verbosity: 0 });
+    return E.task.promise;
+  }).then(function (doc) {
+    if (!doc) return null;
+    if (my !== E.seq) { try { doc.destroy(); } catch (e) {  } return null; }
+    E.doc = doc; E.n = doc.numPages;
+    return doc.getPage(1).then(function (p1) { if (my !== E.seq) return; var vp = p1.getViewport({ scale: 1 }); E.w1 = vp.width; E.h1 = vp.height; xePages(E, my); });
+  }).then(null, function (e) { if (my === E.seq) xeErr(E, /password/i.test(String(e && e.message)) ? "這個 PDF 有密碼，打不開" : "PDF 打不開：" + (e && e.message || e)); });
+}
+function xePages(E, my) {
+  var b = E.body;
+  b.innerHTML = ""; E.pages = []; E.sc = 0; E.cur = 0;
+  for (var k = 1; k <= E.n; k++) {
+    var cv = h("canvas", { class: "fv-cv", "aria-hidden": "true" });
+    var d = h("div", { class: "fv-p xe-p", "data-n": String(k), role: "img", "aria-label": "第 " + k + "／" + E.n + " 頁" }, [cv]);
+    b.appendChild(d);
+    E.pages.push({ n: k, el: d, cv: cv, at: 0, busy: false, w: E.w1, h: E.h1, vis: false, task: null });
+  }
+  E.el.classList.add("fit");
+  xeFit(E);
+  if ("IntersectionObserver" in window) {
+    E.pio = new IntersectionObserver(function (ents) {
+      ents.forEach(function (en) { var p = E.pages[+en.target.getAttribute("data-n") - 1]; if (!p) return; p.vis = en.isIntersecting; if (p.vis) xeDraw(E, p, my); });
+      xeTrim(E);
+    }, { root: b, rootMargin: "500px 0px" });
+    E.pages.forEach(function (p) { E.pio.observe(p.el); });
+  } else E.pages.forEach(function (p) { xeDraw(E, p, my); });
+  var ro = xeRo(); if (ro) ro.observe(b);
+  xeWhere(E);
+}
+function xeFit(E) {
+  if (!E.w1 || !E.pages.length) return;
+  var cw = E.body.clientWidth; if (cw < 40) return;
+  var sc = Math.max(0.1, Math.min(2.5, (cw - 16) / E.w1));
+  if (E.sc && Math.abs(sc - E.sc) < 0.003) return;
+  E.sc = sc;
+  E.pages.forEach(function (p) {
+    p.el.style.width = Math.round(p.w * sc) + "px"; p.el.style.height = Math.round(p.h * sc) + "px";
+    if (p.at && Math.abs(p.at - sc) > 0.001) { p.at = 0; p.el.classList.remove("on"); if (p.vis) xeDraw(E, p, E.seq); }
+  });
+}
+function xeDraw(E, p, my) {
+  if (!E.doc || p.busy || my !== E.seq || !E.sc || (p.at && Math.abs(p.at - E.sc) < 0.001)) return;
+  p.busy = true;
+  var sc = E.sc;
+  E.doc.getPage(p.n).then(function (pg) {
+    if (my !== E.seq) return null;
+    var vp1 = pg.getViewport({ scale: 1 });
+    if (Math.abs(vp1.width - p.w) > 0.5 || Math.abs(vp1.height - p.h) > 0.5) { p.w = vp1.width; p.h = vp1.height; p.el.style.width = Math.round(p.w * E.sc) + "px"; p.el.style.height = Math.round(p.h * E.sc) + "px"; }
+    var vp = pg.getViewport({ scale: sc }), dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    while (dpr > 1 && vp.width * vp.height * dpr * dpr > 8e6) dpr -= 0.25;
+    var cv = p.cv;
+    cv.width = Math.floor(vp.width * dpr); cv.height = Math.floor(vp.height * dpr);
+    cv.style.width = Math.round(vp.width) + "px"; cv.style.height = Math.round(vp.height) + "px";
+    var g = cv.getContext("2d", { alpha: false });
+    g.fillStyle = "#fff"; g.fillRect(0, 0, cv.width, cv.height);
+    p.task = pg.render({ canvasContext: g, viewport: vp, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null, annotationMode: window.pdfjsLib && window.pdfjsLib.AnnotationMode ? window.pdfjsLib.AnnotationMode.DISABLE : 0 });
+    return p.task.promise.then(function () { p.at = sc; p.el.classList.add("on"); });
+  }).then(function () {
+    p.busy = false; p.task = null;
+    if (my === E.seq && E.sc && Math.abs(p.at - E.sc) > 0.001 && p.vis) xeDraw(E, p, my);
+  }, function () { p.busy = false; p.task = null; });
+}
+function xeTrim(E) {
+  var cur = E.cur || 1;
+  E.pages.forEach(function (p) {
+    if (p.vis || p.busy || !p.at || Math.abs(p.n - cur) <= 3) return;
+    p.cv.width = 0; p.cv.height = 0; p.at = 0; p.el.classList.remove("on");
+  });
+}
+function xeWhere(E) {
+  if (!E.pages.length) return;
+  var b = E.body, mid = b.scrollTop + b.clientHeight * 0.35, cur = 1;
+  E.pages.forEach(function (p) { if (p.el.offsetTop <= mid) cur = p.n; });
+  if (cur !== E.cur) { E.cur = cur; xeTrim(E); }
+  E.pg.textContent = E.n > 1 ? cur + "／" + E.n + " 頁" : "";
+}
+function xeWeb(E, pre) {
+  var my = ++E.seq, u = E.u;
+  E.st = "web"; E.no = ""; E.shown = false; E.loaded = 0; E.force = false; E.t0 = Date.now(); E.info = undefined;
+  (E.tm || []).forEach(function (x) { clearTimeout(x); }); E.tm = [];
+  if (E.fr) { try { E.fr.remove(); } catch (e) {  } E.fr = null; }
+  E.body.innerHTML = "";
+  if (!/^https:\/\//i.test(u)) { xeNo(E, "http"); return; }
+  E.embed = xvEmbed(u);
+  xeMsg(E, "打開網頁中…", true);
+  xeFrame(E, my);
+  E.tm.push(setTimeout(function () { xeMaybe(E, my); }, 8000));
+  if (pre === undefined && E.pre !== undefined) pre = E.pre;
+  var c = XV.cache[u], bk = typeof backAtLeast !== "function" || backAtLeast(12, 13);
+  var ask = pre !== undefined ? Promise.resolve({ ok: 1, pre: pre }) : c ? Promise.resolve({ ok: 1, pre: c }) : !bk ? Promise.resolve(null) :
+    E.mode === "pv" || !E.ctx.tid ? call("hbWebTry", [u], { ms: 20000 }) : call("hbWeb", [E.ctx.tid, E.ctx.bi, E.i, E.tag], { ms: 20000 });
+  ask.then(function (r) {
+    if (my !== E.seq) return;
+    if (r && r.st && !r.err) { xeErr(E, "登入過期了：重新登入以後再看"); if (r.st === "lock") logout("expired"); return; }
+    var info = r && r.ok ? (r.pre !== undefined ? r.pre : r) : null;
+    if (info && r.pre === undefined && !info.busy && !info.net) XV.cache[u] = { xfo: String(info.xfo || ""), fa: Array.isArray(info.fa) ? info.fa : [], insecure: info.insecure ? 1 : 0, login: info.login ? 1 : 0 };
+    E.info = info; xeMaybe(E, my);
+  }, function () { if (my === E.seq) { E.info = null; xeMaybe(E, my); } });
+}
+function xeFrame(E, my) {
+  var src0 = E.embed || E.u, fr = document.createElement("iframe");
+  fr.className = "xe-fr";
+  fr.setAttribute("title", E.lab);
+  fr.setAttribute("referrerpolicy", "no-referrer");
+  fr.setAttribute("allow", "fullscreen; encrypted-media; picture-in-picture");
+  fr.setAttribute("sandbox", XV_SB + (xvSame(src0) ? "" : " allow-same-origin") + (E.embed ? " allow-presentation" : ""));
+  fr.setAttribute("src", src0);
+  fr.addEventListener("load", function () {
+    if (my !== E.seq || E.fr !== fr) return;
+    if (!E.loaded) { E.loaded = Date.now(); E.tm.push(setTimeout(function () { xeMaybe(E, my); }, 2500)); xeMaybe(E, my); }
+  });
+  E.fr = fr;
+  E.body.appendChild(fr);
+}
+function xeMaybe(E, my) {
+  if (my !== E.seq || E.st !== "web" || E.no) return;
+  if (E.info !== undefined) {
+    var why = E.embed || E.force ? "" : xvBlocked(E.info, false);
+    if (why) { xeNo(E, why); return; }
+    xeShow(E, my); return;
+  }
+  var now = Date.now();
+  if ((E.loaded && now - E.loaded >= 2400) || now - E.t0 >= 7900) xeShow(E, my);
+}
+function xeShow(E, my) {
+  if (my !== E.seq || E.shown || !E.fr) return;
+  E.shown = true;
+  $$(".xe-wait", E.body).forEach(function (m) { m.remove(); });
+  E.fr.classList.add("on");
+}
+function xeNo(E, why) {
+  E.no = why; E.shown = false;
+  if (E.fr) { try { E.fr.remove(); } catch (e) {  } E.fr = null; }
+  E.body.innerHTML = "";
+  var u = E.u, kids = [h("p", { class: "fv-e" }, ["🚫 " + (XV_WHY[why] || XV_WHY.xfo)])];
+  kids.push(h("p", { class: "muted" }, ["按下面的按鍵另外打開：會離開手冊的畫面，看完關掉就回到手冊。"]));
+  kids.push(h("a", { class: "btn pri wv-go", href: u, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", onclick: function (e) { e.stopPropagation(); if (xlOpen(u)) e.preventDefault(); } }, ["↗ 另外打開這個網頁"]));
+  if (why !== "http") kids.push(h("button", { class: "wv-try", type: "button", onclick: function (e) { e.stopPropagation(); xeForce(E); } }, ["還是在這裡試試"]));
+  if (IS_DEV) kids.push(h("p", { class: "xe-dev" }, ["ℹ️（開發者才看得到）這個網站放不進手冊：開法改成「網頁：另外打開（新視窗）」，藥師點了就直接開。"]));
+  E.body.appendChild(h("div", { class: "fv-m wv-no xe-no" }, kids));
+}
+function xeForce(E) {
+  var my = E.seq;
+  E.no = ""; E.force = true; E.loaded = 0; E.shown = false;
+  E.body.innerHTML = "";
+  xeFrame(E, my); xeShow(E, my);
+}
+function xeBig(E) {
+  if (!E.u) return;
+  if (E.fk) {
+    var c = xeGet(E.u);
+    if (c) { fvOpen({ pre: c, label: E.lab, kind: E.fk }); return; }
+    if (E.mode === "pv" || !E.ctx.tid) fvOpen({ try: E.u, label: E.lab, kind: E.fk });
+    else fvOpen({ tid: E.ctx.tid, bi: E.ctx.bi, ii: E.i, tag: E.tag, label: E.lab, kind: E.fk, u: E.u });
+    return;
+  }
+  var o = { label: E.lab };
+  if (E.force) o.info = null; else if (E.info !== undefined) o.info = E.info;
+  if (E.mode === "pv" || !E.ctx.tid) o.try = E.u; else { o.u = E.u; o.tid = E.ctx.tid; o.bi = E.ctx.bi; o.ii = E.i; o.tag = E.tag; }
+  wvOpen(o);
+}
+function xeReuse(key) {
+  var hit = null;
+  XE.all.some(function (E) {
+    if (E.key !== key || E.claimed || E.el.isConnected || !/^(idle|wait|load|file)$/.test(E.st)) return false;
+    hit = E; return true;
+  });
+  if (hit) { xeClaim(hit); hit.off = 0; }
+  return hit;
+}
+function xeGc() {
+  var now = Date.now();
+  XE.all = XE.all.filter(function (E) {
+    if (E.el.isConnected) { E.off = 0; return true; }
+    if (E.claimed) return true;
+    if (!E.off) { E.off = now; return true; }
+    if (now - E.off < XE_KEEP) return true;
+    xeKill(E); return false;
+  });
+  if (!XE.all.length && XE.gc) { clearInterval(XE.gc); XE.gc = 0; }
+}
+function xeKill(E) {
+  E.seq++; E.st = "dead";
+  if (E.pio) { try { E.pio.disconnect(); } catch (e) {  } E.pio = null; }
+  E.pages.forEach(function (p) { if (p.task) { try { p.task.cancel(); } catch (e) {  } } p.cv.width = 0; p.cv.height = 0; });
+  E.pages = [];
+  if (E.task) { try { E.task.destroy(); } catch (e) {  } E.task = null; }
+  if (E.doc) { try { E.doc.destroy(); } catch (e) {  } E.doc = null; }
+  if (E.url) { try { URL.revokeObjectURL(E.url); } catch (e) {  } E.url = ""; }
+  (E.tm || []).forEach(function (x) { clearTimeout(x); }); E.tm = [];
+  if (E.fr) { try { E.fr.remove(); } catch (e) {  } E.fr = null; }
+  if (XE.io) { try { XE.io.unobserve(E.el); } catch (e) {  } }
+  if (XE.ro) { try { XE.ro.unobserve(E.body); } catch (e) {  } }
+  E.body.innerHTML = "";
+}
+function xeDrop() {
+  XE.all.forEach(xeKill);
+  XE.all = []; XE.cache = {}; XE.ck = []; XE.fly = {}; XE.err = {}; XE.asweb = {}; XE.q = []; XE.run = 0;
+  if (XE.gc) { clearInterval(XE.gc); XE.gc = 0; }
+}
+function xeEager(lo, hi) {
+  if (!BK.flow) return;
+  XE.all.forEach(function (E) {
+    if (E.st !== "idle" || !E.el.isConnected || !BK.flow.contains(E.el)) return;
+    var c = bkColOf(E.el);
+    if (c >= lo && c <= hi) xeWant(E);
+  });
+}
+function xeClone(src, f, col) {
+  var b = $$(".xemb", f);
+  if (!b.length) return;
+  var a = $$(".xemb", src);
+  b.forEach(function (el, k) {
+    $$("iframe", el).forEach(function (fr) { fr.replaceWith(h("div", { class: "xe-fr xe-frph on", "aria-hidden": "true" }, ["🌐"])); });
+    var o = a[k]; if (!o) return;
+    if (col >= 0 && bkColOf(o) !== col) return;
+    var c1 = $$("canvas", o), c2 = $$("canvas", el);
+    c2.forEach(function (cv, j) { var s = c1[j]; if (!s || !s.width || !s.height) return; try { cv.width = s.width; cv.height = s.height; cv.getContext("2d").drawImage(s, 0, 0); } catch (e) {  } });
+    var ob = $(".xe-b", o); if (ob && ob.scrollTop) el.setAttribute("data-xst", String(ob.scrollTop));
+  });
+}
+function xeAfterClone(root) { $$(".xemb[data-xst]", root).forEach(function (el) { var b = $(".xe-b", el); if (b) b.scrollTop = +el.getAttribute("data-xst") || 0; }); }
+
 var BK = { on: false, k: 0, n: 1, two: false, P: 0, PH: 0, X: 0, Y: 0, G: 0, pitch: 0, busy: false, wLock: false, wAcc: 0, wLast: 0, tabAt: 0, drag: null, keep: null, mt: 0, mo: null };
 
 var BK_PC_MQ = "(hover: hover) and (pointer: fine) and (min-width: 761px)";
@@ -5393,6 +5789,7 @@ function bkPaint() {
 function bkEager() {
   var lo = BK.k - (BK.two ? 2 : 1), hi = BK.k + (BK.two ? 5 : 2);
   $$("img[loading=lazy]", BK.flow).forEach(function (im) { var c = bkColOf(im); if (c >= lo && c <= hi) im.loading = "eager"; });
+  if (typeof xeEager === "function") xeEager(lo, hi);
 }
 function bkGoTid(tid) { bkShowEl(document.getElementById("cht-" + tid)); }
 function bkShowEl(el) { var c = bkColOf(el); if (c >= 0) bkGo(c, { el: el, d: 0 }); }
@@ -5416,6 +5813,7 @@ function bkView(col, cls) {
   if (col >= 0 && col < BK.n) {
     var f = BK.flow.cloneNode(true);
     $$("[id]", f).forEach(function (x) { x.removeAttribute("id"); });
+    if (typeof xeClone === "function") xeClone(BK.flow, f, col);
     if (typeof chaSyncClone === "function") chaSyncClone(BK.flow, f);
     f.classList.remove("rbk-anim");
     f.style.transform = "translateX(" + (-col * BK.pitch) + "px)";
@@ -5430,6 +5828,7 @@ function bkFlip(dir) {
   var stay = dir > 0 ? bkView(k0, "l") : bkView(k0 + 1, "r");
   var leaf = dir > 0 ? h("div", { class: "rbk-leaf r" }, [bkView(k0 + 1, "f"), bkView(k0 + 2, "b")]) : h("div", { class: "rbk-leaf l" }, [bkView(k0, "f"), bkView(k0 - 1, "b")]);
   fx.appendChild(stay); fx.appendChild(leaf);
+  if (typeof xeAfterClone === "function") xeAfterClone(fx);
   bkGo(k1);
   void leaf.offsetWidth;
   var end = function () { if (!BK.busy || leaf.dataset.end) return; leaf.dataset.end = "1"; BK.busy = false; fx.innerHTML = ""; };
@@ -5444,6 +5843,7 @@ function bkSlide(dir, dx) {
   var v = bkView(dir > 0 ? k0 : k0 - 1, "s");
   v.style.transform = "translateX(" + (dir > 0 ? Math.min(0, dx) : -P + Math.max(0, dx)) + "px)";
   fx.appendChild(v);
+  if (typeof xeAfterClone === "function") xeAfterClone(fx);
   if (dir > 0) bkGo(k0 + 1);
   void v.offsetWidth;
   v.classList.add("mv");
@@ -5457,7 +5857,7 @@ function bkClick(e) {
   if (!BK.on || BK.busy || BK.dragged) { BK.dragged = false; return; }
   if (BK.two) return;
   var t = e.target;
-  if (t.closest && t.closest("a,button,input,select,textarea,label,summary,video,audio,img,canvas,[role=button],[tabindex]:not(.rbk),[contenteditable],.xlink,.ycp")) return;
+  if (t.closest && t.closest("a,button,input,select,textarea,label,summary,video,audio,img,canvas,[role=button],[tabindex]:not(.rbk),[contenteditable],.xlink,.ycp,.xemb")) return;
   if (window.getSelection && String(window.getSelection() || "").length) return;
   var r = BK.stage.getBoundingClientRect(), x = e.clientX - r.left, edge = 0.22;
   if (x < r.width * edge) bkTurn(-1);
@@ -5467,6 +5867,7 @@ function bkWheel(e) {
   if (!BK.on || e.ctrlKey || e.metaKey) return;
   var hz = Math.abs(e.deltaX) > Math.abs(e.deltaY), d = hz ? e.deltaX : e.deltaY;
   if (hz && bkHScroll(e.target, d > 0 ? 1 : -1)) return;
+  if (!hz && bkVScroll(e.target, d > 0 ? 1 : -1)) { BK.wLast = Date.now(); BK.wLock = true; BK.wAcc = 0; return; }
   e.preventDefault();
   var now = Date.now(), quiet = now - BK.wLast > 350;
   BK.wLast = now;
@@ -5491,6 +5892,15 @@ function bkHScroll(t, dir) {
   }
   return false;
 }
+function bkVScroll(t, dir) {
+  for (var el = t; el && el !== BK.flow && el.nodeType === 1; el = el.parentNode) {
+    if (el.scrollHeight > el.clientHeight + 1) {
+      var oy = getComputedStyle(el).overflowY;
+      if (oy === "auto" || oy === "scroll") { var mx = el.scrollHeight - el.clientHeight; if (dir > 0 ? el.scrollTop < mx - 1 : el.scrollTop > 1) return true; }
+    }
+  }
+  return false;
+}
 function bkTouchMove(e) {
   var d = BK.drag; if (!d || e.touches.length !== 1) return;
   var p = e.touches[0], dx = p.clientX - d.x0, dy = p.clientY - d.y0;
@@ -5503,6 +5913,7 @@ function bkTouchMove(e) {
       BK.busy = true; BK.fx.innerHTML = "";
       d.v = bkView(d.dir > 0 ? BK.k : BK.k - 1, "s");
       BK.fx.appendChild(d.v);
+      if (typeof xeAfterClone === "function") xeAfterClone(BK.fx);
       if (d.dir > 0) bkGo(BK.k + 1);
     }
     d.ok = ok;
@@ -5542,6 +5953,7 @@ document.addEventListener("keydown", function (e) {
   if (document.querySelector(".lightbox, .fv, .modal, .hdrawer, .hsearch, .guardcv.on")) return;
   var tg = e.target, typing = tg && (tg.isContentEditable || /^(input|textarea|select)$/i.test(tg.tagName || ""));
   if (typing) return;
+  if (tg && tg.closest && tg.closest(".xe-b")) return;
   var onBtn = tg && tg.closest && tg.closest("button,a,[role=button]");
   var k = e.key;
   if (k === "ArrowRight" || k === "PageDown" || (k === " " && !e.shiftKey && !onBtn)) { e.preventDefault(); bkTurn(1); }
@@ -9537,18 +9949,20 @@ function linkEditor(b) {
       var nIn = h("input", { class: "in lk-n", value: x.n || "", maxlength: "120", placeholder: "說明（可以不填）", "aria-label": "說明 " + (k + 1) });
       var msg = h("div", { class: "lk-m", role: "status" });
       var extOk = typeof backAtLeast !== "function" || backAtLeast(12, 16);
-      var kSel = h("select", { class: "in lk-k", "aria-label": "開法 " + (k + 1), title: "讀的人點了怎麼開" }, [["", "開法：自動（不讓放的網站另外打開）"], ["file", "檔案：在手冊裡看（只能看）"], ["web", "網頁：一定在手冊裡看"], ["ext", "網頁：另外打開（新視窗）" + (extOk ? "" : "（後端還是舊的，不能選）")]].map(function (o) { var op = h("option", { value: o[0] }, [o[1]]); if (o[0] === "ext" && !extOk && x.k !== "ext") op.disabled = true; return op; }));
-      kSel.value = x.k === "file" || x.k === "web" || x.k === "ext" ? x.k : "";
+      var embOk = typeof backAtLeast !== "function" || backAtLeast(12, 17);
+      var kSel = h("select", { class: "in lk-k", "aria-label": "開法 " + (k + 1), title: "讀的人點了怎麼開" }, [["", "開法：自動（不讓放的網站另外打開）"], ["file", "檔案：在手冊裡看（只能看）"], ["web", "網頁：一定在手冊裡看"], ["ext", "網頁：另外打開（新視窗）" + (extOk ? "" : "（後端還是舊的，不能選）")], ["emb", "嵌入：直接放在文章裡（Word、PPT、PDF、網頁）" + (embOk ? "" : "（後端還是舊的，不能選）")]].map(function (o) { var op = h("option", { value: o[0] }, [o[1]]); if ((o[0] === "ext" && !extOk && x.k !== "ext") || (o[0] === "emb" && !embOk && x.k !== "emb")) op.disabled = true; return op; }));
+      kSel.value = x.k === "file" || x.k === "web" || x.k === "ext" || x.k === "emb" ? x.k : "";
       var ico = h("span", { class: "lk-no", "aria-hidden": "true" }, ["🌐"]);
       var chk = function () {
-        var raw = String(uIn.value || "").trim(), ok = _yzLinkFix_(raw), fk = ok ? _yzLinkFileKind_({ u: ok, k: x.k }) : "", ext = ok && !fk && xvExt({ u: ok, k: x.k });
-        var web = !ok || fk ? "" : x.k === "ext" ? "讀的人點了直接另外打開（新視窗；你選的）" : x.k === "web" ? "讀的人一定在手冊裡的小視窗看（網站不讓放：小視窗裡寫清楚＋「↗ 另外打開」）" : ext ? (/^http:/i.test(ok) ? "沒有加密（http）" : "這個網站不讓手冊放（或要先登入）") + " → 讀的人點了直接另外打開（新視窗）" : "讀的人在手冊裡的小視窗看；網站不讓放、要先登入的，會自動另外打開（在手冊裡打不開的：開法選「網頁：另外打開」）";
-        msg.textContent = !raw ? "還沒填網址（沒填的不會出現在 LINE、網頁）" : !ok ? "⚠ 網址要 https:// 或 http:// 開頭，中間不能有空白" : fk ? "✓ " + YZ_FILE_ICO[fk] + " " + YZ_FILE_NAME[fk] + "：讀的人在手冊裡的小視窗看（只能看，不能下載、列印）" + (x.t ? "" : "（沒填顯示的字：用網站名稱）") : "✓ 網頁 " + _yzLinkHost_(ok) + "：" + web + (x.t ? "" : "（沒填顯示的字：用網站名稱）");
-        msg.className = "lk-m" + (raw && !ok ? " bad" : ok ? " ok" : "") + (ext ? " ext" : "");
+        var raw = String(uIn.value || "").trim(), ok = _yzLinkFix_(raw), fk = ok ? _yzLinkFileKind_({ u: ok, k: x.k }) : "", ext = ok && !fk && xvExt({ u: ok, k: x.k }), emb = x.k === "emb";
+        var eb = emb && ok && !fk ? (/^http:/i.test(ok) ? "http" : XV.cache[ok] ? xvBlocked(XV.cache[ok], false) : "") : "";
+        var web = !ok || fk ? "" : emb ? "直接放在文章裡（嵌入）" + (eb === "http" ? "：⚠ 沒有加密（http），放不進去：讀的人看到那一格寫清楚＋「↗ 另外打開」" : eb ? "：⚠ 這個網站不讓別的網頁放，放不進去：讀的人看到那一格寫清楚＋「↗ 另外打開」（開法改成「網頁：另外打開」比較好）" : "（網站不讓放的：那一格寫清楚＋「↗ 另外打開」）") : x.k === "ext" ? "讀的人點了直接另外打開（新視窗；你選的）" : x.k === "web" ? "讀的人一定在手冊裡的小視窗看（網站不讓放：小視窗裡寫清楚＋「↗ 另外打開」）" : ext ? (/^http:/i.test(ok) ? "沒有加密（http）" : "這個網站不讓手冊放（或要先登入）") + " → 讀的人點了直接另外打開（新視窗）" : "讀的人在手冊裡的小視窗看；網站不讓放、要先登入的，會自動另外打開（在手冊裡打不開的：開法選「網頁：另外打開」）";
+        msg.textContent = !raw ? "還沒填網址（沒填的不會出現在 LINE、網頁）" : !ok ? "⚠ 網址要 https:// 或 http:// 開頭，中間不能有空白" : fk ? "✓ " + YZ_FILE_ICO[fk] + " " + YZ_FILE_NAME[fk] + "：" + (emb ? "直接放在文章裡（嵌入；只能看，不能下載、列印）" : "讀的人在手冊裡的小視窗看（只能看，不能下載、列印）") + (x.t ? "" : "（沒填顯示的字：用網站名稱）") : "✓ 網頁 " + _yzLinkHost_(ok) + "：" + web + (x.t ? "" : "（沒填顯示的字：用網站名稱）");
+        msg.className = "lk-m" + (raw && !ok ? " bad" : ok ? " ok" : "") + (ext || eb ? " ext" : "");
         ico.textContent = fk ? YZ_FILE_ICO[fk] : "🌐";
         tryB.disabled = !ok;
         tryB.textContent = fk ? "👁 試開" : "↗ 試開";
-        tryB.title = fk ? "在手冊裡的小視窗先看看（後端拿得到嗎、轉得成 PDF 嗎）" : ext ? "跟讀的人一樣：直接另外打開" : "在手冊裡的小視窗先看看（網站不讓放：自動的連結會另外打開）";
+        tryB.title = fk ? "在手冊裡的小視窗先看看（後端拿得到嗎、轉得成 PDF 嗎）" : ext ? "跟讀的人一樣：直接另外打開" : emb ? "在手冊裡的小視窗先看看（網站讓不讓放）" : "在手冊裡的小視窗先看看（網站不讓放：自動的連結會另外打開）";
       };
       chk.el = msg; LKE.chk.push(chk);
       var tryB = btn("↗ 試開", function () {
@@ -9559,9 +9973,9 @@ function linkEditor(b) {
         else wvOpen({ try: u, label: lb, auto: !x.k, gest: g });
       }, "sm lk-try");
       var tmU = null;
-      kSel.onchange = function () { if (kSel.value) x.k = kSel.value; else delete x.k; chk(); changed(); if (!x.k) lkeCheck(_yzLinkFix_(uIn.value)); };
+      kSel.onchange = function () { if (kSel.value) x.k = kSel.value; else delete x.k; chk(); changed(); if (!x.k || x.k === "emb") lkeCheck(_yzLinkFix_(uIn.value)); };
       tIn.oninput = function () { x.t = tIn.value; chk(); changed(); };
-      uIn.oninput = function () { x.u = uIn.value.trim(); chk(); changed(); clearTimeout(tmU); tmU = setTimeout(function () { if (!x.k) lkeCheck(_yzLinkFix_(uIn.value)); }, 1200); };
+      uIn.oninput = function () { x.u = uIn.value.trim(); chk(); changed(); clearTimeout(tmU); tmU = setTimeout(function () { if (!x.k || x.k === "emb") lkeCheck(_yzLinkFix_(uIn.value)); }, 1200); };
       uIn.onblur = function () { var raw = String(uIn.value || "").trim(); if (/^www\./i.test(raw)) { uIn.value = x.u = "https://" + raw; chk(); changed(); } };
       nIn.oninput = function () { x.n = nIn.value; changed(); };
       var del = btn("✕", function () { b.items.splice(k, 1); if (!b.items.length) b.items.push({ u: "", t: "", n: "" }); paint(); changed(); }, "sm bad");
@@ -9570,13 +9984,14 @@ function linkEditor(b) {
       if (up) up.title = "往上移";
       list.appendChild(h("div", { class: "lkrw" }, [ico, h("div", { class: "lk-f" }, [h("div", { class: "lk-r1" }, [tIn, uIn]), h("div", { class: "lk-r2" }, [nIn, kSel, tryB, up, del]), msg])]));
       chk();
+      if (x.k === "emb") lkeCheck(_yzLinkFix_(x.u));
     });
   }
   var add = btn("＋ 再加一個連結", function () { if (b.items.length >= YZ_LINK_MAX) { toast("一塊最多 " + YZ_LINK_MAX + " 個連結：請再加一塊「＋網址連結」"); return; } b.items.push({ u: "", t: "", n: "" }); paint(); changed(); var ins = list.querySelectorAll(".lk-u"); if (ins.length) ins[ins.length - 1].focus(); }, "sm");
   paint();
   wrap.appendChild(list);
   wrap.appendChild(h("div", { class: "lk-add" }, [add]));
-  wrap.appendChild(hint("開法「自動」（第 48 批）：網頁在手冊裡的小視窗看；網站自己規定不讓別的網頁放、要先登入的（付費的資料庫常這樣）、沒有加密（http）的 → 讀的人點了直接另外打開（電腦：右邊的小視窗；手機：新分頁；LINE：直接開那個網址），不用再多按一次。網站讓不讓放是後端去看的（打好網址、按「↗ 試開」、每次打開編輯器都會看）。後端看不出來的（例如院內網路才打得開的網站）：開法選「網頁：另外打開（新視窗）」（第 49 批），一律另外打開。「網頁：一定在手冊裡看」＝不管網站讓不讓都先放進小視窗（不讓的：寫清楚＋「↗ 另外打開」）。網址是檔案（Word、PDF、Excel、PPT、圖片；Google 文件、試算表、簡報、雲端硬碟的檔）→ 只能看，不能下載、列印，有浮水印。院內網路、SharePoint 這種要登入的檔案後端拿不到：請放雲端硬碟（分享給藥戰手冊的 Google 帳號就好，不用公開）。YouTube、Vimeo 的影片可以直接在小視窗播。顯示的字、說明搜尋找得到；Word 匯出寫「名稱：網址」。"));
+  wrap.appendChild(hint("開法「自動」（第 48 批）：網頁在手冊裡的小視窗看；網站自己規定不讓別的網頁放、要先登入的（付費的資料庫常這樣）、沒有加密（http）的 → 讀的人點了直接另外打開（電腦：右邊的小視窗；手機：新分頁；LINE：直接開那個網址），不用再多按一次。網站讓不讓放是後端去看的（打好網址、按「↗ 試開」、每次打開編輯器都會看）。後端看不出來的（例如院內網路才打得開的網站）：開法選「網頁：另外打開（新視窗）」（第 49 批），一律另外打開。「網頁：一定在手冊裡看」＝不管網站讓不讓都先放進小視窗（不讓的：寫清楚＋「↗ 另外打開」）。網址是檔案（Word、PDF、Excel、PPT、圖片；Google 文件、試算表、簡報、雲端硬碟的檔）→ 只能看，不能下載、列印，有浮水印。院內網路、SharePoint 這種要登入的檔案後端拿不到：請放雲端硬碟（分享給藥戰手冊的 Google 帳號就好，不用公開）。YouTube、Vimeo 的影片可以直接在小視窗播。開法「嵌入」（第 50 批）：Word、PPT、PDF、Excel、圖片、網頁直接放在文章裡（一格，裡面可以上下捲；捲到才拿；「⛶ 放大」用小視窗看）；檔案一樣只能看；網站不讓別的網頁放的，那一格寫清楚＋「↗ 另外打開」；LINE 不能嵌入，照「在手冊裡看」。顯示的字、說明搜尋找得到；Word 匯出寫「名稱：網址」。"));
   return wrap;
 }
 
@@ -11281,7 +11696,7 @@ function pbFill(d, my) {
   var flow = h("div", { class: "rbk-flow" });
   flow.appendChild(pgHead(chIco(c, hb) + " " + nm, c.intro || (ts.length ? ts.length + " 個標題" : "")));
   var nop = function () {  };
-  chSecs(flow, c, ts, _yzMergeHb_(hb), { pv: true, noid: true, onImg: nop, onTitle: nop, onChapter: nop, mark: pbMarkB, markT: pbMarkT });
+  chSecs(flow, c, ts, _yzMergeHb_(hb), { pv: true, noid: true, emb: "ph", onImg: nop, onTitle: nop, onChapter: nop, mark: pbMarkB, markT: pbMarkT });
   if (YZ_CFG.footer) flow.appendChild(h("div", { class: "pgfoot" }, [YZ_NOTICE]));
   $$("img[loading=lazy]", flow).forEach(function (im) { im.loading = "eager"; });
   var mk = h("div", { class: "pbmk", "aria-hidden": "true" });
