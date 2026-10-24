@@ -1569,6 +1569,10 @@ body:has(.pg>.mq.mqb) .toast{bottom:calc(var(--mqh, 34px) + 14px + env(safe-area
 .wv-note{flex:none;padding:6px 12px;background:#FFF8E8;color:#7A4B00;font-size:12.5px;line-height:1.5;border-bottom:1px solid #E3C27A;overflow-wrap:anywhere}
 .fv-idle{flex:none;padding:6px 10px;background:#FDECEC;color:#7F1D1D;font-weight:700;font-size:13px;text-align:center;cursor:pointer;border-bottom:1px solid #F5C2C2}
 .xlink.xweb .xl-o{font-weight:800}
+.xlink.xext{border-style:dashed}
+.lk-m.ok.ext{color:#8A5300}
+.wv-no .wv-next{font-size:13px;color:#475569}
+.wv-no.wv-opened .fv-e{color:#8A5300}
 @media (max-width:520px){.fv-ot{display:none}.fvw .btn.fv-o{padding:5px 12px;font-size:16px}}
 
 .pg.book{display:flex;flex-direction:column;height:100vh;height:100dvh;min-height:0;overflow:hidden;padding-bottom:0}

@@ -1889,6 +1889,45 @@ function _yzLinkFileKind_(x) {
   var e = (/\.([A-Za-z0-9]{2,5})$/.exec(u.split(/[?#]/)[0]) || [])[1], t = e ? YZ_FILE_EXT[e.toLowerCase()] : "";
   return t || (k === "file" ? "file" : "");
 }
+function _yzWvFaOk_(list, origin) {
+  var o = /^(https?):\/\/([^\/:]+)(?::(\d+))?$/i.exec(String(origin || ""));
+  if (!o) return String(list || "").trim().split(/\s+/).some(function (t) { return t === "*"; });
+  var sch = o[1].toLowerCase(), host = o[2].toLowerCase(), port = o[3] || (sch === "https" ? "443" : "80");
+  return String(list || "").trim().split(/\s+/).some(function (t) {
+    t = t.toLowerCase();
+    if (!t || t === "'none'" || t === "'self'") return false;
+    if (t === "*") return true;
+    if (/^[a-z][a-z0-9+.-]*:$/.test(t)) return t === sch + ":" || (t === "http:" && sch === "https");
+    var m = /^(?:([a-z][a-z0-9+.-]*):\/\/)?(\*|\*\.[a-z0-9.-]+|[a-z0-9.-]+)(?::(\d+|\*))?(\/.*)?$/.exec(t);
+    if (!m) return false;
+    if (m[1] ? m[1] !== sch && !(m[1] === "http" && sch === "https") : sch !== "https" && sch !== "http") return false;
+    var hok = m[2] === "*" || (m[2].charAt(0) === "*" ? host.length > m[2].length - 1 && host.slice(-(m[2].length - 1)) === m[2].slice(1) : host === m[2]);
+    if (!hok) return false;
+    if (m[3] ? m[3] !== "*" && m[3] !== port : port !== (sch === "https" ? "443" : "80")) return false;
+    return !m[4] || m[4] === "/";
+  });
+}
+function _yzWvWhy_(info, origin, auto) {
+  if (!info || info.busy || info.net) return "";
+  if (info.insecure) return "http";
+  var why = "", fa = Array.isArray(info.fa) ? info.fa : [];
+  if (fa.length) why = fa.every(function (l) { return _yzWvFaOk_(l, origin); }) ? "" : "xfo";
+  else {
+    var xs = {};
+    String(info.xfo || "").split(",").forEach(function (v) { v = v.trim().toLowerCase(); if (v) xs[v] = 1; });
+    var ks = Object.keys(xs);
+    if (ks.length > 1) why = xs.deny || xs.allowall || xs.sameorigin ? "xfo" : "";
+    else why = ks[0] === "deny" || ks[0] === "sameorigin" ? "xfo" : "";
+  }
+  return why || (auto && info.login ? "login" : "");
+}
+function _yzWvEmbed_(u) {
+  var m = /^https:\/\/(?:www\.|m\.)?youtube\.com\/watch\?(?:[^#]*&)?v=([A-Za-z0-9_-]{6,20})/i.exec(u) || /^https:\/\/youtu\.be\/([A-Za-z0-9_-]{6,20})/i.exec(u) || /^https:\/\/(?:www\.|m\.)?youtube\.com\/(?:shorts|live|embed)\/([A-Za-z0-9_-]{6,20})/i.exec(u);
+  if (m) return "https://www.youtube-nocookie.com/embed/" + m[1];
+  m = /^https:\/\/(?:www\.)?vimeo\.com\/(\d{4,12})(?:[\/?#]|$)/i.exec(u);
+  return m ? "https://player.vimeo.com/video/" + m[1] : "";
+}
+function _yzLinkAuto_(x) { return !!x && !x.k && !!_yzLinkFix_(x.u) && !_yzLinkFileKind_(x); }
 function _yzLinkTag_(u) {
   var h = 0x811c9dc5, s = String(u || "");
   for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
@@ -1898,8 +1937,9 @@ function _yzLinkNodes_(b, ctx) {
   ctx = ctx || {};
   return _yzLinkItems_(b).map(function (x, i) {
     var u = _yzLinkFix_(x.u), lab = _yzLinkLabel_(x), n = String(x.n || "").replace(/\s+/g, " ").trim(), fk = _yzLinkFileKind_(x);
-    var fu = ctx.furl ? ctx.furl(b, i, _yzLinkTag_(u), fk ? "f" : "w") : "";
-    var sub = fk ? YZ_FILE_NAME[fk] + "｜在手冊網頁看（只能看）" + (n ? "｜" + n : "") : _yzLinkHost_(u) + (fu ? "｜在手冊網頁看" : "") + (n ? "｜" + n : "");
+    var ext = _yzLinkAuto_(x) && /^https:\/\//i.test(u) && !_yzWvEmbed_(u) && !!(ctx.wno && ctx.wno(_yzLinkTag_(u)));
+    var fu = ctx.furl && !ext ? ctx.furl(b, i, _yzLinkTag_(u), fk ? "f" : "w") : "";
+    var sub = fk ? YZ_FILE_NAME[fk] + "｜在手冊網頁看（只能看）" + (n ? "｜" + n : "") : _yzLinkHost_(u) + (ext ? "｜另外打開" : fu ? "｜在手冊網頁看" : "") + (n ? "｜" + n : "");
     var box = { type: "box", layout: "horizontal", spacing: "md", margin: i ? "sm" : "md", paddingAll: "11px", cornerRadius: "10px", borderWidth: "1px", borderColor: fk ? "#E3C27A" : "#A9C7E8", backgroundColor: fk ? "#FFF8E8" : "#F2F7FD",
       contents: [
         { type: "text", text: fk ? YZ_FILE_ICO[fk] : "🌐", flex: 0, size: "lg", gravity: "center" },
@@ -1990,7 +2030,7 @@ function _yzContentBubbles_(ch, ti, blocks, note, o) {
       segs.push({ steps: sb }); segs.push({ nodes: [] });
       return;
     }
-    var nodes = _yzIndentNodes_(_yzBlockNodes_(b, act, bs, { used: used, tid: ti.id, go: goFn, pact: pact, furl: o.furl }), _yzBlockInd_(b) * YZ_IND_PX);
+    var nodes = _yzIndentNodes_(_yzBlockNodes_(b, act, bs, { used: used, tid: ti.id, go: goFn, pact: pact, furl: o.furl, wno: o.wno }), _yzBlockInd_(b) * YZ_IND_PX);
     var units = [nodes];
     if (nodes.length > 1 && (b.t === "ladder" || (b.t === "text" && probe(nodes, false) > YZ_BUBBLE_SAFE))) units = nodes.map(function (n) { return [n]; });
     var gap = "xl";
@@ -3438,8 +3478,8 @@ function fvFromHash() {
   if (!m || !HP.t) return;
   var t = titleOf(HP.t), b = t && (t.blocks || [])[+m[1]], it = b && b.t === "link" ? _yzLinkItems_(b)[+m[2]] : null;
   if (!it || _yzLinkTag_(it.u) !== m[3]) (t && t.blocks || []).forEach(function (bb) { if (bb && bb.t === "link") _yzLinkItems_(bb).forEach(function (x) { if (_yzLinkTag_(x.u) === m[3]) it = x; }); });
-  if (it && !_yzLinkFileKind_(it)) { wvOpen({ u: it.u, label: _yzLinkLabel_(it), tid: HP.t, bi: +m[1], ii: +m[2], tag: m[3] }); return; }
-  fvOpen({ tid: HP.t, bi: +m[1], ii: +m[2], tag: m[3], label: it ? _yzLinkLabel_(it) : "檔案", kind: it ? _yzLinkFileKind_(it) : "", u: it ? it.u : "" });
+  if (it && !_yzLinkFileKind_(it)) { wvOpen({ u: it.u, label: _yzLinkLabel_(it), tid: HP.t, bi: +m[1], ii: +m[2], tag: m[3], auto: !it.k }); return; }
+  fvOpen({ tid: HP.t, bi: +m[1], ii: +m[2], tag: m[3], label: it ? _yzLinkLabel_(it) : "檔案", kind: it ? _yzLinkFileKind_(it) : "", u: it ? it.u : "", auto: !!it && !it.k });
 }
 var IDLE_MS = 30 * 6e4, LAST_ACT = Date.now(), LAST_PING = 0, TAB = "view";
 function refreshData() {
@@ -3448,6 +3488,7 @@ function refreshData() {
     if (x.st === "lock") { logout("expired"); return; }
     if (!x.data) return;
     HB = x.data; if (x.cfg) { CFG = x.cfg; applyCfg(); }
+    if (typeof xvNoLoad === "function") xvNoLoad(x.wno);
     if (typeof edBaseChanged === "function") edBaseChanged();
     if (TAB === "view") { if (typeof bkSave === "function") bkSave(); drawWeb(); }
     toast("手冊有更新，已經換成新的內容");
@@ -3457,6 +3498,7 @@ function enterMain(r) {
   stopPolls();
   OUTED = false;
   HB = r.data; CFG = r.cfg || CFG || {}; ME = r.me || {}; IS_DEV = r.st === "dev"; if (r.v) BACKV = String(r.v);
+  if (typeof xvNoLoad === "function") xvNoLoad(r.wno);
   ABN = IS_DEV && !!r.abn;
   applyCfg();
   MAIN = true; LAST_ACT = Date.now(); LAST_PING = Date.now();
@@ -4102,18 +4144,24 @@ function webLinks(b, hl, ctx) {
   return h("div", { class: "xlinks" }, its.map(function (x, i) {
     var u = _yzLinkFix_(x.u), lab = _yzLinkLabel_(x), n = String(x.n || "").trim(), host = _yzLinkHost_(u), fk = _yzLinkFileKind_(x);
     if (fk) {
-      var go = function (e) { if (e) e.preventDefault(); if (ctx.pv) fvOpen({ try: u, label: lab, kind: fk }); else if (ctx.tid) fvOpen({ tid: ctx.tid, bi: ctx.bi, ii: i, tag: _yzLinkTag_(u), label: lab, kind: fk, u: u }); };
+      var go = function (e) { if (e) e.preventDefault(); var g = Date.now(), au = !x.k; if (ctx.pv) fvOpen({ try: u, label: lab, kind: fk, auto: au, gest: g }); else if (ctx.tid) fvOpen({ tid: ctx.tid, bi: ctx.bi, ii: i, tag: _yzLinkTag_(u), label: lab, kind: fk, u: u, auto: au, gest: g }); };
       return h("a", { class: "xlink xfile", href: "#", role: "button", "data-k": fk, title: "在手冊裡看（只能看）：" + lab, onclick: go, onkeydown: function (e) { if (e.key === " ") go(e); } }, [
         h("span", { class: "xl-i", "aria-hidden": "true" }, [YZ_FILE_ICO[fk] || "📄"]),
         h("span", { class: "xl-t" }, [h("b", {}, hlNodes(lab, hl)), h("small", {}, hlNodes(YZ_FILE_NAME[fk] + "｜在手冊裡看（只能看）" + (n ? "｜" + n : ""), hl))]),
         h("span", { class: "xl-o", "aria-hidden": "true" }, ["›"])
       ]);
     }
-    var gw = function (e) { if (e) e.preventDefault(); if (ctx.pv) wvOpen({ try: u, label: lab }); else wvOpen({ u: u, label: lab, tid: ctx.tid, bi: ctx.bi, ii: i, tag: _yzLinkTag_(u) }); };
-    return h("a", { class: "xlink xweb", href: u, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", title: "在手冊裡看：" + lab + "（" + host + "）", onclick: gw }, [
+    var au = !x.k, ext = xvExt(x);
+    var gw = function (e) {
+      if (xvExt(x)) { xvGo(e, u, ctx.pv ? {} : { tid: ctx.tid, bi: ctx.bi, ii: i, tag: _yzLinkTag_(u) }); return; }
+      if (e) e.preventDefault();
+      var g = Date.now();
+      if (ctx.pv) wvOpen({ try: u, label: lab, auto: au, gest: g }); else wvOpen({ u: u, label: lab, tid: ctx.tid, bi: ctx.bi, ii: i, tag: _yzLinkTag_(u), auto: au, gest: g });
+    };
+    return h("a", { class: "xlink xweb" + (ext ? " xext" : ""), href: u, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", title: (ext ? "另外打開（這個網站不讓手冊放）：" : "在手冊裡看：") + lab + "（" + host + "）", onclick: gw }, [
       h("span", { class: "xl-i", "aria-hidden": "true" }, ["🌐"]),
-      h("span", { class: "xl-t" }, [h("b", {}, hlNodes(lab, hl)), h("small", {}, hlNodes(host + (n ? "｜" + n : ""), hl))]),
-      h("span", { class: "xl-o", "aria-hidden": "true" }, ["›"])
+      h("span", { class: "xl-t" }, [h("b", {}, hlNodes(lab, hl)), h("small", {}, hlNodes(host + (ext ? "｜另外打開" : "") + (n ? "｜" + n : ""), hl))]),
+      h("span", { class: "xl-o", "aria-hidden": "true" }, [ext ? "↗" : "›"])
     ]);
   }));
 }
@@ -4897,7 +4945,7 @@ function fvOpen(o) {
     if (r && r.st && !r.err) { fvClose(); if (r.st === "lock") logout("expired"); return; }
     if (!r || !r.ok) {
       var fb = r && /^(html|login|net|http)$/.test(String(r.code || "")) ? _yzLinkFix_(o.try || o.u) : "";
-      if (fb) { wvOpen({ u: fb, try: o.try ? fb : "", label: label, tid: o.tid, bi: o.bi, ii: o.ii, tag: o.tag, info: r.code === "net" ? null : r.wv ? { xfo: String(r.wv.xfo || ""), fa: Array.isArray(r.wv.fa) ? r.wv.fa : [] } : undefined, keep: true, note: IS_DEV && r.err ? "ℹ️（開發者才看得到）當成檔案拿不到，改用網頁的方式打開。後端說：" + String(r.err).slice(0, 200) : "" }); return; }
+      if (fb) { wvOpen({ u: fb, try: o.try ? fb : "", label: label, tid: o.tid, bi: o.bi, ii: o.ii, tag: o.tag, info: r.code === "net" ? null : r.wv ? { xfo: String(r.wv.xfo || ""), fa: Array.isArray(r.wv.fa) ? r.wv.fa : [], login: r.wv.login ? 1 : 0 } : undefined, keep: true, auto: !!o.auto, gest: o.gest, note: IS_DEV && r.err ? "ℹ️（開發者才看得到）當成檔案拿不到，改用網頁的方式打開。後端說：" + String(r.err).slice(0, 200) : "" }); return; }
       fvErr(r && r.err || "沒拿到檔案"); return;
     }
     if (r.label || r.name) { title.textContent = r.label || r.name; box.setAttribute("aria-label", "看檔案：" + title.textContent); }
@@ -5029,44 +5077,25 @@ var XV = { cache: {} };
 var XV_SB = "allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-storage-access-by-user-activation";
 var XV_WHY = {
   xfo: "這個網站不讓別的網頁把它放在裡面（是那個網站自己的規定，瀏覽器一定會擋），所以沒辦法在手冊裡看。",
+  login: "這個網站要先登入；在手冊的小視窗裡登入常常不成功，所以要另外打開。",
+  known: "這個網站不讓手冊放（或要先登入），所以要另外打開。",
   http: "這個網址沒有加密（http），瀏覽器不讓它放在手冊裡。",
   bad: "網址不合格，打不開。"
 };
-function xvEmbed(u) {
-  var m = /^https:\/\/(?:www\.|m\.)?youtube\.com\/watch\?(?:[^#]*&)?v=([A-Za-z0-9_-]{6,20})/i.exec(u) || /^https:\/\/youtu\.be\/([A-Za-z0-9_-]{6,20})/i.exec(u) || /^https:\/\/(?:www\.|m\.)?youtube\.com\/(?:shorts|live|embed)\/([A-Za-z0-9_-]{6,20})/i.exec(u);
-  if (m) return "https://www.youtube-nocookie.com/embed/" + m[1];
-  m = /^https:\/\/(?:www\.)?vimeo\.com\/(\d{4,12})(?:[\/?#]|$)/i.exec(u);
-  return m ? "https://player.vimeo.com/video/" + m[1] : "";
-}
+function xvEmbed(u) { return _yzWvEmbed_(u); }
 function xvSame(u) { try { return new URL(u).origin === location.origin; } catch (e) { return true; } }
-function xvFaOk(list, origin) {
-  var o = /^(https?):\/\/([^\/:]+)(?::(\d+))?$/i.exec(String(origin || ""));
-  if (!o) return false;
-  var sch = o[1].toLowerCase(), host = o[2].toLowerCase(), port = o[3] || (sch === "https" ? "443" : "80");
-  return String(list || "").trim().split(/\s+/).some(function (t) {
-    t = t.toLowerCase();
-    if (!t || t === "'none'" || t === "'self'") return false;
-    if (t === "*") return true;
-    if (/^[a-z][a-z0-9+.-]*:$/.test(t)) return t === sch + ":" || (t === "http:" && sch === "https");
-    var m = /^(?:([a-z][a-z0-9+.-]*):\/\/)?(\*|\*\.[a-z0-9.-]+|[a-z0-9.-]+)(?::(\d+|\*))?(\/.*)?$/.exec(t);
-    if (!m) return false;
-    if (m[1] ? m[1] !== sch && !(m[1] === "http" && sch === "https") : sch !== "https" && sch !== "http") return false;
-    var hok = m[2] === "*" || (m[2].charAt(0) === "*" ? host.length > m[2].length - 1 && host.slice(-(m[2].length - 1)) === m[2].slice(1) : host === m[2]);
-    if (!hok) return false;
-    if (m[3] ? m[3] !== "*" && m[3] !== port : port !== (sch === "https" ? "443" : "80")) return false;
-    return !m[4] || m[4] === "/";
-  });
-}
-function xvBlocked(info) {
-  if (!info || info.busy || info.net) return "";
-  if (info.insecure) return "http";
-  var fa = Array.isArray(info.fa) ? info.fa : [];
-  if (fa.length) return fa.every(function (l) { return xvFaOk(l, location.origin); }) ? "" : "xfo";
-  var xs = {};
-  String(info.xfo || "").split(",").forEach(function (v) { v = v.trim().toLowerCase(); if (v) xs[v] = 1; });
-  var ks = Object.keys(xs);
-  if (ks.length > 1) return xs.deny || xs.allowall || xs.sameorigin ? "xfo" : "";
-  return ks[0] === "deny" || ks[0] === "sameorigin" ? "xfo" : "";
+function xvBlocked(info, auto) { return _yzWvWhy_(info, location.origin, auto); }
+XV.no = {};
+function xvNoLoad(list) { if (!Array.isArray(list)) return; XV.no = {}; list.forEach(function (t) { if (/^[a-z0-9]{1,8}$/.test(String(t))) XV.no[t] = 1; }); }
+function xvNoSet(u, on) { var t = _yzLinkTag_(_yzLinkFix_(u)); if (on) XV.no[t] = 1; else delete XV.no[t]; if (typeof lkeRecheck === "function") lkeRecheck(); }
+function xvExt(x) { var u = _yzLinkFix_(x && x.u); return !!u && _yzLinkAuto_(x) && !_yzWvEmbed_(u) && (/^http:/i.test(u) || !!XV.no[_yzLinkTag_(u)]); }
+function xvOpenNow(u) { if (!xlOpen(u)) { try { window.open(u, "_blank", "noopener,noreferrer"); } catch (e) {  } } }
+function xvGo(e, u, o) {
+  if (xlOpen(u) && e) e.preventDefault();
+  o = o || {};
+  if (o.tid && typeof backAtLeast === "function" && backAtLeast(12, 13)) call("hbWeb", [o.tid, o.bi, o.ii, o.tag || ""], { ms: 20000 }).then(function (r) {
+    if (r && r.ok && !r.busy && !r.net && !xvBlocked(r, true)) xvNoSet(u, false);
+  }, function () {  });
 }
 function wvOpen(o) {
   o = o || {};
@@ -5090,7 +5119,7 @@ function wvOpen(o) {
   xb.onclick = function () { fvClose(); };
   document.body.appendChild(box);
   FV.el = box; FV.zs = []; FV.pg = sub; FV.body = body;
-  var W = FV.web = { u: u, fr: null, loaded: 0, info: undefined, shown: false, no: "", force: false, t0: Date.now(), tm: [], embed: "", label: label };
+  var W = FV.web = { u: u, fr: null, loaded: 0, info: undefined, shown: false, no: "", force: false, t0: Date.now(), tm: [], embed: "", label: label, auto: !!o.auto, gest: +o.gest || 0 };
   document.addEventListener("keydown", fvKey, true);
   if (keep) FV.hist = true;
   else fvHistIn();
@@ -5098,6 +5127,7 @@ function wvOpen(o) {
   if (!u) { wvNo(my, "bad"); return; }
   if (!/^https:\/\//i.test(u)) { wvNo(my, "http"); return; }
   W.embed = xvEmbed(u);
+  if (W.auto && !W.embed && XV.no[_yzLinkTag_(u)]) { wvNo(my, "known"); return; }
   wvFrame(my);
   W.tm.push(setTimeout(function () { wvMaybe(my); }, 8000));
   var c = XV.cache[u], bk = typeof backAtLeast !== "function" || backAtLeast(12, 13);
@@ -5131,7 +5161,7 @@ function wvFrame(my) {
 function wvMaybe(my) {
   var W = FV.web; if (!W || my !== FV.seq || W.no) return;
   if (W.info !== undefined) {
-    var why = W.embed || W.force ? "" : xvBlocked(W.info);
+    var why = W.embed || W.force ? "" : xvBlocked(W.info, W.auto);
     if (why) { wvNo(my, why); return; }
     wvShow(my); return;
   }
@@ -5149,13 +5179,19 @@ function wvNo(my, why) {
   W.no = why; W.shown = false;
   if (W.fr) { try { W.fr.remove(); } catch (e) {  } W.fr = null; }
   FV.body.innerHTML = "";
+  var opened = false;
+  if (W.auto && why !== "bad") {
+    if (why !== "known") xvNoSet(W.u, true);
+    if (W.gest && why !== "known" && Date.now() - W.gest < 4000 && xlSmall()) opened = xlOpen(W.u);
+  }
   var kids = [h("p", { class: "fv-e" }, ["🚫 " + (XV_WHY[why] || XV_WHY.xfo)])];
   if (why !== "bad") {
-    kids.push(h("p", { class: "muted" }, [(why === "http" ? "" : "要登入的網站、付費的資料庫常常這樣。") + "按下面的按鍵另外打開：會離開手冊的畫面，看完關掉就回到手冊。"]));
+    kids.push(h("p", { class: "muted" }, [opened ? "已經幫你另外打開了（右邊的小視窗）；沒有出來：按下面的按鍵。" : (why === "http" || why === "login" || why === "known" ? "" : "要登入的網站、付費的資料庫常常這樣。") + "按下面的按鍵另外打開：會離開手冊的畫面，看完關掉就回到手冊。"]));
+    if (W.auto && why !== "known") kids.push(h("p", { class: "muted wv-next" }, ["下次點這個連結，會直接另外打開。"]));
     kids.push(h("a", { class: "btn pri wv-go", href: W.u, target: "_blank", rel: "noopener noreferrer", referrerpolicy: "no-referrer", onclick: function (e) { if (xlOpen(W.u)) e.preventDefault(); } }, ["↗ 另外打開這個網頁"]));
     if (why !== "http") kids.push(h("button", { class: "wv-try", type: "button", onclick: function () { wvForce(my); } }, ["還是在這裡試試"]));
   }
-  FV.body.appendChild(h("div", { class: "fv-m wv-no" }, kids));
+  FV.body.appendChild(h("div", { class: "fv-m wv-no" + (opened ? " wv-opened" : "") }, kids));
 }
 function wvForce(my) {
   var W = FV.web; if (!W || my !== FV.seq) return;
@@ -9462,6 +9498,32 @@ function addBlock(kind) {
   }
 }
 
+var LKE = { chk: [], q: [], busy: false, seen: {} };
+function lkeRecheck() { LKE.chk = LKE.chk.filter(function (f) { return f.el && f.el.isConnected; }); LKE.chk.forEach(function (f) { try { f(); } catch (e) {  } }); }
+function lkeCheck(u) {
+  if (!u || !/^https:\/\//i.test(u) || LKE.seen[u] || _yzLinkFileKind_({ u: u }) || (typeof backAtLeast === "function" && !backAtLeast(12, 13))) return;
+  LKE.seen[u] = 1; LKE.q.push(u); lkePump();
+}
+function lkePump() {
+  if (LKE.busy || !LKE.q.length) return;
+  var u = LKE.q.shift(); LKE.busy = true;
+  call("hbWebTry", [u], { ms: 25000 }).then(function (r) {
+    LKE.busy = false;
+    if (r && r.ok && !r.busy && !r.net) { XV.cache[u] = { xfo: String(r.xfo || ""), fa: Array.isArray(r.fa) ? r.fa : [], insecure: r.insecure ? 1 : 0, login: r.login ? 1 : 0 }; xvNoSet(u, !!xvBlocked(r, true)); }
+    else if (r && r.busy) LKE.seen[u] = 0;
+    lkePump();
+  }, function () { LKE.busy = false; lkePump(); });
+}
+var LKS = { n: 0, on: false };
+function edWvScan() {
+  if (LKS.on || (typeof backAtLeast === "function" && !backAtLeast(12, 15))) return;
+  LKS.on = true;
+  call("hbWvScan", [], { ms: 60000 }).then(function (r) {
+    LKS.on = false;
+    if (r && r.ok && Array.isArray(r.wno)) { xvNoLoad(r.wno); lkeRecheck(); }
+    if (r && r.ok && r.more && ++LKS.n < 8) setTimeout(edWvScan, 1500);
+  }, function () { LKS.on = false; });
+}
 function linkEditor(b) {
   if (!Array.isArray(b.items) || !b.items.length) b.items = [{ u: "", t: "", n: "" }];
   var wrap = h("div", { class: "lke" }), list = h("div", { class: "lkl" });
@@ -9472,22 +9534,31 @@ function linkEditor(b) {
       var uIn = h("input", { class: "in lk-u", value: x.u || "", maxlength: "1000", inputmode: "url", autocomplete: "off", spellcheck: "false", placeholder: "網址（https:// 開頭）", "aria-label": "網址 " + (k + 1) });
       var nIn = h("input", { class: "in lk-n", value: x.n || "", maxlength: "120", placeholder: "說明（可以不填）", "aria-label": "說明 " + (k + 1) });
       var msg = h("div", { class: "lk-m", role: "status" });
-      var kSel = h("select", { class: "in lk-k", "aria-label": "開法 " + (k + 1), title: "讀的人點了怎麼開（都在手冊裡的小視窗看）" }, [["", "開法：自動（看網址是檔案還是網頁）"], ["file", "檔案：在手冊裡看（只能看）"], ["web", "網頁：在手冊裡看"]].map(function (o) { return h("option", { value: o[0] }, [o[1]]); }));
+      var kSel = h("select", { class: "in lk-k", "aria-label": "開法 " + (k + 1), title: "讀的人點了怎麼開" }, [["", "開法：自動（不讓放的網站另外打開）"], ["file", "檔案：在手冊裡看（只能看）"], ["web", "網頁：一定在手冊裡看"]].map(function (o) { return h("option", { value: o[0] }, [o[1]]); }));
       kSel.value = x.k === "file" || x.k === "web" ? x.k : "";
       var ico = h("span", { class: "lk-no", "aria-hidden": "true" }, ["🌐"]);
       var chk = function () {
-        var raw = String(uIn.value || "").trim(), ok = _yzLinkFix_(raw), fk = ok ? _yzLinkFileKind_({ u: ok, k: x.k }) : "";
-        msg.textContent = !raw ? "還沒填網址（沒填的不會出現在 LINE、網頁）" : !ok ? "⚠ 網址要 https:// 或 http:// 開頭，中間不能有空白" : fk ? "✓ " + YZ_FILE_ICO[fk] + " " + YZ_FILE_NAME[fk] + "：讀的人在手冊裡的小視窗看（只能看，不能下載、列印）" + (x.t ? "" : "（沒填顯示的字：用網站名稱）") : "✓ 網頁 " + _yzLinkHost_(ok) + "：讀的人開新視窗" + (x.t ? "" : "（沒填顯示的字：用網站名稱）");
-        msg.className = "lk-m" + (raw && !ok ? " bad" : ok ? " ok" : "");
+        var raw = String(uIn.value || "").trim(), ok = _yzLinkFix_(raw), fk = ok ? _yzLinkFileKind_({ u: ok, k: x.k }) : "", ext = ok && !fk && xvExt({ u: ok, k: x.k });
+        var web = !ok || fk ? "" : x.k === "web" ? "讀的人一定在手冊裡的小視窗看（網站不讓放：小視窗裡寫清楚＋「↗ 另外打開」）" : ext ? (/^http:/i.test(ok) ? "沒有加密（http）" : "這個網站不讓手冊放（或要先登入）") + " → 讀的人點了直接另外打開（新視窗）" : "讀的人在手冊裡的小視窗看；網站不讓放、要先登入的，會自動另外打開";
+        msg.textContent = !raw ? "還沒填網址（沒填的不會出現在 LINE、網頁）" : !ok ? "⚠ 網址要 https:// 或 http:// 開頭，中間不能有空白" : fk ? "✓ " + YZ_FILE_ICO[fk] + " " + YZ_FILE_NAME[fk] + "：讀的人在手冊裡的小視窗看（只能看，不能下載、列印）" + (x.t ? "" : "（沒填顯示的字：用網站名稱）") : "✓ 網頁 " + _yzLinkHost_(ok) + "：" + web + (x.t ? "" : "（沒填顯示的字：用網站名稱）");
+        msg.className = "lk-m" + (raw && !ok ? " bad" : ok ? " ok" : "") + (ext ? " ext" : "");
         ico.textContent = fk ? YZ_FILE_ICO[fk] : "🌐";
         tryB.disabled = !ok;
         tryB.textContent = fk ? "👁 試開" : "↗ 試開";
-        tryB.title = fk ? "在手冊裡的小視窗先看看（後端拿得到嗎、轉得成 PDF 嗎）" : "自己先點點看（電腦開小視窗）";
+        tryB.title = fk ? "在手冊裡的小視窗先看看（後端拿得到嗎、轉得成 PDF 嗎）" : ext ? "跟讀的人一樣：直接另外打開" : "在手冊裡的小視窗先看看（網站不讓放：自動的連結會另外打開）";
       };
-      var tryB = btn("↗ 試開", function () { var u = _yzLinkFix_(uIn.value); if (!u) return; var fk = _yzLinkFileKind_({ u: u, k: x.k }), lb = _yzLinkLabel_({ u: u, t: x.t }); if (fk) fvOpen({ try: u, label: lb, kind: fk }); else wvOpen({ try: u, label: lb }); }, "sm lk-try");
-      kSel.onchange = function () { if (kSel.value) x.k = kSel.value; else delete x.k; chk(); changed(); };
+      chk.el = msg; LKE.chk.push(chk);
+      var tryB = btn("↗ 試開", function () {
+        var u = _yzLinkFix_(uIn.value); if (!u) return;
+        var fk = _yzLinkFileKind_({ u: u, k: x.k }), lb = _yzLinkLabel_({ u: u, t: x.t }), g = Date.now();
+        if (fk) fvOpen({ try: u, label: lb, kind: fk, auto: !x.k, gest: g });
+        else if (xvExt({ u: u, k: x.k })) xvOpenNow(u);
+        else wvOpen({ try: u, label: lb, auto: !x.k, gest: g });
+      }, "sm lk-try");
+      var tmU = null;
+      kSel.onchange = function () { if (kSel.value) x.k = kSel.value; else delete x.k; chk(); changed(); if (!x.k) lkeCheck(_yzLinkFix_(uIn.value)); };
       tIn.oninput = function () { x.t = tIn.value; chk(); changed(); };
-      uIn.oninput = function () { x.u = uIn.value.trim(); chk(); changed(); };
+      uIn.oninput = function () { x.u = uIn.value.trim(); chk(); changed(); clearTimeout(tmU); tmU = setTimeout(function () { if (!x.k) lkeCheck(_yzLinkFix_(uIn.value)); }, 1200); };
       uIn.onblur = function () { var raw = String(uIn.value || "").trim(); if (/^www\./i.test(raw)) { uIn.value = x.u = "https://" + raw; chk(); changed(); } };
       nIn.oninput = function () { x.n = nIn.value; changed(); };
       var del = btn("✕", function () { b.items.splice(k, 1); if (!b.items.length) b.items.push({ u: "", t: "", n: "" }); paint(); changed(); }, "sm bad");
@@ -9502,7 +9573,7 @@ function linkEditor(b) {
   paint();
   wrap.appendChild(list);
   wrap.appendChild(h("div", { class: "lk-add" }, [add]));
-  wrap.appendChild(hint("第 46 批：每一個連結都在手冊裡的小視窗看（網頁、LINE 都一樣；LINE 點了先打開手冊網頁）。網頁：那個網頁放在小視窗裡；有的網站自己規定不讓別的網頁放（要登入的、付費的資料庫常這樣），小視窗裡會寫清楚、給「↗ 另外打開」。網址是檔案（Word、PDF、Excel、PPT、圖片；Google 文件、試算表、簡報、雲端硬碟的檔）→ 只能看，不能下載、列印，有浮水印。院內網路、SharePoint 這種要登入的檔案後端拿不到：請放雲端硬碟（分享給藥戰手冊的 Google 帳號就好，不用公開）。YouTube、Vimeo 的影片可以直接在小視窗播。按「↗ 試開」先看看。顯示的字、說明搜尋找得到；Word 匯出寫「名稱：網址」。"));
+  wrap.appendChild(hint("開法「自動」（第 48 批）：網頁在手冊裡的小視窗看；網站自己規定不讓別的網頁放、要先登入的（付費的資料庫常這樣）、沒有加密（http）的 → 讀的人點了直接另外打開（電腦：右邊的小視窗；手機：新分頁；LINE：直接開那個網址），不用再多按一次。網站讓不讓放是後端去看的（打好網址、按「↗ 試開」、每次打開編輯器都會看）。「網頁：一定在手冊裡看」＝不管網站讓不讓都先放進小視窗（不讓的：寫清楚＋「↗ 另外打開」）。網址是檔案（Word、PDF、Excel、PPT、圖片；Google 文件、試算表、簡報、雲端硬碟的檔）→ 只能看，不能下載、列印，有浮水印。院內網路、SharePoint 這種要登入的檔案後端拿不到：請放雲端硬碟（分享給藥戰手冊的 Google 帳號就好，不用公開）。YouTube、Vimeo 的影片可以直接在小視窗播。顯示的字、說明搜尋找得到；Word 匯出寫「名稱：網址」。"));
   return wrap;
 }
 
@@ -10592,6 +10663,7 @@ function edOnShow() {
   edOcrPump();
   setTimeout(function () { if (ED && TAB === "edit" && AS.on && !AS.pause && !ED.dirty && !ED.saving && !UPL && (edShapeNeed() || edBgTodo().length || _yzMapNeedCut_(ED.cat))) saveEd(false, true); }, 1500);
   setTimeout(edClean, 6000);
+  setTimeout(edWvScan, 9000);
 }
 function edClean() {
   call("hbClean", []).then(function (r) {
