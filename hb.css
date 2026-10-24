@@ -1829,6 +1829,18 @@ body:has(.pg>.mq.mqb) .lgnote{bottom:calc(var(--mqh, 34px) + 58px + env(safe-are
 .pbfw.ph{border-radius:22px;box-shadow:0 0 0 6px #0B1514,0 12px 36px rgba(0,0,0,.55)}
 .pbfr{display:block;border:0;transform-origin:0 0;background:#fff}
 .pbwait{position:absolute;left:50%;top:40%;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:8px 16px;border-radius:999px;font-size:14px}
+.pbmode{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:6px 14px;background:#FEF3C7;color:#5B3A00;font-size:13px;line-height:1.5}
+.pbmode[hidden]{display:none}
+.pbmode .btn{background:#fff;color:#5B3A00;border-color:#E3C27A}
+.modal .dlg.bkmdlg{max-width:500px}
+.bkm{display:flex;flex-direction:column;gap:12px;min-width:0}
+.bkm-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px}
+.bkm-l{display:flex;flex-direction:column;min-width:0}
+.bkm-l small{font-size:12px}
+.bkm-seg{display:inline-flex}
+.bkm-seg button{min-height:40px;padding:6px 14px}
+.bkm-seg button:disabled{opacity:.45;cursor:not-allowed}
+.bkm-warn{margin:0;color:#7F1D1D;background:#FDECEC;border-radius:8px;padding:8px 10px;font-size:13px}
 .pbhint{flex:none;padding:6px 14px 8px;background:#13312F;color:#DDE7E4;font-size:13px;line-height:1.55}
 .pbmenu{position:fixed;z-index:160;display:flex;flex-direction:column;gap:6px;min-width:250px;max-width:min(340px,calc(100vw - 16px));padding:8px;background:#fff;color:var(--ink);border-radius:12px;box-shadow:0 10px 32px rgba(0,0,0,.4)}
 .pbmenu .pbm-h{font-size:12.5px;font-weight:700;color:#5F6B7A;padding:2px 4px 6px;border-bottom:1px solid #E5E7EB;overflow-wrap:anywhere}

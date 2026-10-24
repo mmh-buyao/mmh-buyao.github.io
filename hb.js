@@ -5166,8 +5166,12 @@ function wvForce(my) {
 
 var BK = { on: false, k: 0, n: 1, two: false, P: 0, PH: 0, X: 0, Y: 0, G: 0, pitch: 0, busy: false, wLock: false, wAcc: 0, wLast: 0, tabAt: 0, drag: null, keep: null, mt: 0, mo: null };
 
+var BK_PC_MQ = "(hover: hover) and (pointer: fine) and (min-width: 761px)";
+function bkMobile() { try { return !window.matchMedia(BK_PC_MQ).matches; } catch (e) { return false; } }
 function bkPref() {
-  return typeof CFG !== "undefined" && CFG && CFG.webBook === false ? "scroll" : "book";
+  if (typeof CFG === "undefined" || !CFG) return "book";
+  if (bkMobile() && typeof CFG.webBookM === "boolean") return CFG.webBookM ? "book" : "scroll";
+  return CFG.webBook === false ? "scroll" : "book";
 }
 function bkFits() { return window.innerHeight >= 430 && document.documentElement.clientWidth >= 300; }
 function bkWant(c) { return !!c && bkPref() === "book" && bkFits(); }
@@ -5517,6 +5521,9 @@ window.addEventListener("resize", function () {
       else if (!bkFits()) return;
       if (!WV.tid && PW.tid) BK.keep = { key: bkKey(), k: 0, tid: PW.tid };
       drawWeb(); return;
+    }
+    if (BK.on && bkPref() === "scroll") {
+      var st = bkSpot(); bkStop(); drawWeb(); if (st) bkScrollTo(st); return;
     }
     if (BK.on && !window.ResizeObserver) bkReflow();
   }, 160);
@@ -8852,6 +8859,7 @@ function renderToolbar() {
   var bkb = h("button", { class: "btn sm pbopen", id: "pbOpen", type: "button", title: "藥師用網頁翻頁看的樣子（電腦兩頁、手機一頁）：點一塊內容，設定「從這裡換到新的一頁」「這一塊不要切開」", onclick: function () { pbOpen(); } }, ["📖 翻頁預覽", h("span", { class: "newb" }, ["新"])]);
   if (!pbChapter()) bkb.disabled = true;
   tb.appendChild(bkb);
+  tb.appendChild(h("button", { class: "btn sm", id: "bkModeBtn", type: "button", title: "藥師看手冊：翻頁還是捲動（電腦、手機各一個；按了馬上存）", onclick: function () { bkModeDlg(); } }, ["📜 翻頁／捲動", h("span", { class: "newb" }, ["新"])]));
   var pb = h("button", { class: "btn sm" + (PV.open ? " on" : ""), id: "pvToggle", type: "button", title: "預覽會浮在畫面上，可以拖來拖去、拉大拉小、放到最大" }, [PV.open ? "👁 預覽視窗：開" : "👁 打開預覽視窗"]);
   pb.onclick = function () { PV.open = !PV.open; pvSync(); renderToolbar(); if (PV.open) refreshPreview(); };
   tb.appendChild(pb);
@@ -11034,6 +11042,50 @@ function catPartsUp(src, info) {
   });
 }
 
+function bkModeDlg() {
+  var bx = h("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-label": "藥師看手冊：翻頁還是捲動" });
+  var back = document.activeElement;
+  var esc = function (e) { if (e.key === "Escape" && bx.isConnected) { e.preventDefault(); e.stopPropagation(); close(); } };
+  var close = function () { document.removeEventListener("keydown", esc, true); bx.remove(); if (back && back.isConnected) try { back.focus(); } catch (e) {  } };
+  var body = h("div", { class: "dlg-p bkm" });
+  var draw = function (fk) {
+    body.innerHTML = "";
+    var old = typeof CFG.webBookM !== "boolean";
+    [["webBook", "💻 電腦", "有滑鼠、畫面夠寬的", CFG.webBook !== false], ["webBookM", "📱 手機、平板", "電腦的視窗拉得很窄也算", old ? CFG.webBook !== false : CFG.webBookM === true]].forEach(function (r) {
+      var seg = h("div", { class: "seg bkm-seg", role: "radiogroup", "aria-label": r[1] + "：翻頁還是捲動" }, [["book", "📖 翻頁"], ["scroll", "📜 捲動"]].map(function (o) {
+        var on = (o[0] === "book") === r[3];
+        var b = h("button", { type: "button", class: on ? "on" : "", role: "radio", "aria-checked": on ? "true" : "false", "data-k": r[0], "data-v": o[0] }, [o[1]]);
+        b.onclick = function () { if (on) return; var p = {}; p[r[0]] = o[0] === "book"; bkModeSave(p, b, function () { draw(r[0]); }); };
+        if (r[0] === "webBookM" && old) b.disabled = true;
+        return b;
+      }));
+      body.appendChild(h("div", { class: "bkm-row" }, [h("div", { class: "bkm-l" }, [h("b", {}, [r[1]]), h("small", { class: "muted" }, [r[2]])]), seg]));
+    });
+    if (old) body.appendChild(h("p", { class: "bkm-warn" }, ["⚠ 後端還是舊的（Apps Script 要換第 47 批的 02、03）：手機、平板現在跟電腦一樣。"]));
+    body.appendChild(h("p", { class: "hint" }, ["全部的人一樣（藥師不能自己換）。按了馬上存（不用按「儲存」）；藥師重新打開手冊才換。管理頁「② 保密設定」也改得到。"]));
+    if (fk) { var f = $(".bkm-seg button.on[data-k='" + fk + "']", body); if (f) try { f.focus(); } catch (e) {  } }
+  };
+  draw();
+  var dlg = h("div", { class: "dlg bkmdlg" }, [h("h3", {}, ["📜 藥師看手冊：翻頁還是捲動"]), body, h("div", { class: "dlg-b" }, [btn("關閉", close, "sm")])]);
+  bx.appendChild(dlg); document.body.appendChild(bx);
+  document.addEventListener("keydown", esc, true);
+  bx.addEventListener("click", function (e) { if (e.target === bx) close(); });
+  try { $(".bkm-seg button.on", body).focus(); } catch (e) {  }
+}
+function bkModeSave(p, el, done) {
+  if (el) el.disabled = true;
+  call("hbCfg", [JSON.stringify(p)]).then(function (r) {
+    if (!adOk(r) || !r.ok) { if (el) el.disabled = false; return; }
+    var k = Object.keys(p)[0], v = p[k];
+    if (!r.cfg || r.cfg[k] !== v) { if (el) el.disabled = false; toast("❌ 存不進去：Apps Script 的 02 還是舊的（第 47 批的 02、03 都要換，再部署新版本）"); return; }
+    CFG = Object.assign({}, CFG, r.cfg); applyCfg();
+    toast("✅ " + (k === "webBookM" ? "手機、平板" : "電腦") + "：改成「" + (v ? "翻頁" : "捲動") + "」了（藥師重新打開手冊才換）");
+    if (done) done();
+    if ($("#cfgBox") && typeof drawSettings === "function") drawSettings();
+    if ($("#pbov") && typeof pbModeNote === "function") { pbModeNote(); pbBuild(); }
+  }, function (e) { if (el) el.disabled = false; toast("❌ " + e.message); });
+}
+
 var PBV = { ov: null, cid: "", dev: "pc", k: 0, n: 1, g: null, fr: null, sc: 1, doc: null, flow: null, mk: null, rbk: null, stage: null, menu: null, sel: null, mo: null, ro: null, seq: 0, focus: null, dirty: false, rz: 0, soon: 0, wh: 0, back: null };
 var PB_PHONE = { w: 390, h: 720 };
 function bk46Ok() { return backAtLeast(12, 13); }
@@ -11066,7 +11118,7 @@ function pbOpen(focus) {
   var seg = h("div", { class: "seg pbseg", role: "group", "aria-label": "用哪一種畫面看" });
   [["pc", "💻 電腦"], ["ph", "📱 手機"]].forEach(function (x) {
     var b = h("button", { type: "button", "data-d": x[0], class: PBV.dev === x[0] ? "on" : "", "aria-pressed": PBV.dev === x[0] ? "true" : "false", title: x[0] === "pc" ? "電腦（這一台的視窗大小）：兩頁一起看" : "手機（大約 LINE 裡打開的大小）：一頁一頁" }, [x[1]]);
-    b.onclick = function () { if (PBV.dev === x[0]) return; PBV.dev = x[0]; $$("button", seg).forEach(function (y) { var on = y === b; y.classList.toggle("on", on); y.setAttribute("aria-pressed", on ? "true" : "false"); }); PBV.focus = pbAnchor(); pbBuild(); };
+    b.onclick = function () { if (PBV.dev === x[0]) return; PBV.dev = x[0]; $$("button", seg).forEach(function (y) { var on = y === b; y.classList.toggle("on", on); y.setAttribute("aria-pressed", on ? "true" : "false"); }); PBV.focus = pbAnchor(); pbModeNote(); pbBuild(); };
     seg.appendChild(b);
   });
   var prev = h("button", { class: "btn sm pbnv", type: "button", id: "pbPrev", "aria-label": "上一頁", title: "上一頁（←）", onclick: function () { pbTurn(-1); } }, ["‹"]);
@@ -11076,12 +11128,13 @@ function pbOpen(focus) {
   var done = h("button", { class: "btn sm pri", type: "button", id: "pbDone", onclick: function () { pbClose(); } }, ["✓ 好了"]);
   var bar = h("div", { class: "pbbar" }, [h("b", { class: "pbt" }, ["📖 翻頁預覽"]), h("span", { class: "pbch" }, [chIco(c, edHb()) + " " + (c.name || "")]), seg, h("span", { class: "pbnav" }, [prev, h("span", { class: "pbwhere", id: "pbWhere", "aria-live": "polite" }, [""]), next]), h("span", { class: "sp" }), clr, done]);
   var ov = h("div", { class: "pbov", id: "pbov", role: "dialog", "aria-modal": "true", "aria-label": "翻頁預覽（設定換頁）" }, [
-    bar, h("div", { class: "pbbody", id: "pbBody" }),
+    bar, h("div", { class: "pbmode", id: "pbMode", role: "status", hidden: true }), h("div", { class: "pbbody", id: "pbBody" }),
     h("div", { class: "pbhint" }, ["點一塊內容（或標題）：選「✂ 從這裡換到新的一頁」或「🔗 這一塊不要切開」。藥品卡片本來就不會切開。改了跟其他修改一樣，要「儲存」（或等自動存檔）藥師才看得到；LINE 不受影響。每個人的螢幕大小不一樣，自然換頁的地方會差一點；你設的換頁每個人都一樣。"])
   ]);
   document.body.appendChild(ov);
   document.addEventListener("keydown", pbKeyDoc);
   PBV.ov = ov;
+  pbModeNote();
   try { done.focus({ preventScroll: true }); } catch (e) {  }
   window.addEventListener("resize", pbResize);
   pbBuild();
@@ -11396,6 +11449,15 @@ function pbGotoBlock(tid, bi) {
   ED.cur = { kind: "title", id: tid }; ED.mode = "ch"; ED.ab = bi;
   renderEdit();
   setTimeout(function () { var el = $("#blklist .blk[data-i='" + bi + "']"); if (el) { try { el.scrollIntoView({ block: "center" }); } catch (e) { el.scrollIntoView(); } } }, 30);
+}
+
+function pbModeNote() {
+  var el = $("#pbMode"); if (!el) return;
+  var ph = PBV.dev === "ph", scroll = ph ? (typeof CFG.webBookM === "boolean" ? CFG.webBookM !== true : CFG.webBook === false) : CFG.webBook === false;
+  el.innerHTML = ""; el.hidden = !scroll;
+  if (!scroll) return;
+  el.appendChild(h("span", {}, [(ph ? "📱 手機、平板" : "💻 電腦") + "現在設成「📜 捲動」：藥師在" + (ph ? "手機、平板" : "電腦") + "上整篇往下捲、不翻頁（這裡設的換頁，改回「翻頁」才用得到）。"]));
+  el.appendChild(btn("📜 改翻頁／捲動", function () { bkModeDlg(); }, "sm"));
 }
 
 var DR_FONT = "'Noto Sans TC','Noto Sans CJK TC','PingFang TC','Microsoft JhengHei','Heiti TC',system-ui,sans-serif";
@@ -13181,6 +13243,7 @@ function drawSettings() {
     call("hbCfg", [JSON.stringify(patch)]).then(function (r) {
       if (el) el.disabled = false;
       if (!adOk(r) || !r.ok) { drawSettings(); return; }
+      if (Object.keys(patch).some(function (k) { return !r.cfg || !(k in r.cfg); })) { toast("❌ 存不進去：Apps Script 的程式還是舊的（換新的 02、03，再部署新版本）"); drawSettings(); return; }
       CFG = Object.assign({}, CFG, r.cfg); applyCfg(); drawSettings(); paintWm();
       if (!$("#wm") && CFG.watermark !== false) { $("#app").appendChild(h("div", { class: "wm", id: "wm", "aria-hidden": "true" })); paintWm(); }
       if ($("#wm") && CFG.watermark === false) $("#wm").remove();
@@ -13212,7 +13275,8 @@ function drawSettings() {
   var vcm = h("input", { class: "in", type: "number", min: "4", max: "30", value: String(c.webVidCm || 12), style: "width:80px", "aria-label": "網頁的影片最寬幾公分" });
   vcm.onchange = function () { var v = Math.max(4, Math.min(30, parseInt(vcm.value, 10) || 12)); vcm.value = String(v); save({ webVidCm: v }, vcm); };
   box.appendChild(settingRow("網頁的影片最寬（公分）", "影片最寬＝深色那一條的寬，而且不超過這裡的公分數（4～30，預設 12）。手機比較窄：照手機的寬。螢幕不一樣，實際量起來會差一點", h("div", { class: "sw2" }, [vcm, h("span", { class: "muted" }, ["公分"])])));
-  row("webBook", "網頁看手冊：翻頁", "開著＝像一本書，一頁一頁翻（電腦兩頁、手機一頁）。關掉＝整篇往下捲。全部的人一樣（藥師不能自己換）");
+  row("webBook", "網頁看手冊：翻頁（💻 電腦）", "開著＝像一本書，一頁一頁翻（兩頁）。關掉＝整篇往下捲。全部的人一樣（藥師不能自己換）。編輯器的「📜 翻頁／捲動」也改得到");
+  box.appendChild(settingRow("網頁看手冊：翻頁（📱 手機、平板）", "開著＝一頁一頁翻。關掉（第 47 批先關）＝整篇往下捲。全部的人一樣；電腦的視窗拉得很窄，也照這一個", typeof c.webBookM === "boolean" ? tog(c.webBookM === true, function (v, el) { save({ webBookM: v }, el); }, "網頁看手冊：翻頁（手機、平板）") : h("span", { class: "muted" }, ["（後端還沒換成第 47 批：手機、平板跟電腦一樣）"])));
   row("lineSwipe", "LINE：好幾張卡片預設「左右滑」", "一個標題有 2 張以上卡片時，預設合成一則左右滑（關掉＝一頁一頁往下排）。每個標題可以在編輯器「📱 LINE：好幾張卡片怎麼排」自己選，自己選的優先");
   var rmBox = h("span", { class: "muted", id: "rmTog", style: "font-size:12.5px" }, ["讀取中…"]);
   box.appendChild(settingRow("LINE 圖文選單（輸入框下面那條）", "關著＝沒有那條選單（下面那排按鍵照舊）。打開＝看得到手冊的人都有：🏠 首頁、⌨️ 打字搜尋、📋 問卷、🌐 網頁。在 LINE 打「圖文選單 開」「圖文選單 關」也一樣", rmBox));
