@@ -894,6 +894,19 @@ var YZ_DRAW_LW = { thin: { label: "細", w: 1.4 }, "": { label: "一般", w: 2 }
 var YZ_DRAW_LC_ORDER = ["", "black", "gray", "red", "orange", "green", "purple"];
 var YZ_DRAW_LC = { "": { label: "藍", c: "#2F6FD6" }, black: { label: "黑", c: "#1F2328" }, gray: { label: "灰", c: "#7D8894" }, red: { label: "紅", c: "#D23F3F" }, orange: { label: "橘", c: "#D9822B" }, green: { label: "綠", c: "#2E8B57" }, purple: { label: "紫", c: "#7B5BC4" } };
 function _yzDrawOpt_(map, v) { return v && Object.prototype.hasOwnProperty.call(map, v) ? v : ""; }
+var YZ_DRAW_PK = ["pen", "hl", "ln", "rect", "ell", "tag"];
+var YZ_DRAW_PK_NAME = { pen: "畫筆", hl: "螢光筆", ln: "箭頭、直線", rect: "框起來", ell: "圈起來", tag: "加底色的字" };
+var YZ_DRAW_PC_ORDER = ["", "orange", "yellow", "green", "blue", "purple", "black", "white"];
+var YZ_DRAW_PC = { "": { label: "紅", c: "#E03131", ink: "#FFFFFF" }, orange: { label: "橘", c: "#F76707", ink: "#212529" }, yellow: { label: "黃", c: "#FCC419", ink: "#212529" }, green: { label: "綠", c: "#2F9E44", ink: "#FFFFFF" },
+  blue: { label: "藍", c: "#1971C2", ink: "#FFFFFF" }, purple: { label: "紫", c: "#7048E8", ink: "#FFFFFF" }, black: { label: "黑", c: "#212529", ink: "#FFFFFF" }, white: { label: "白", c: "#FFFFFF", ink: "#212529" } };
+var YZ_DRAW_PW_ORDER = ["thin", "", "thick", "xthick", "max"];
+var YZ_DRAW_PW = { thin: { label: "細", w: 2 }, "": { label: "一般", w: 4 }, thick: { label: "粗", w: 7 }, xthick: { label: "很粗", w: 11 }, max: { label: "最粗", w: 16 } };
+var YZ_DRAW_FS_ORDER = ["s", "", "l", "xl"];
+var YZ_DRAW_FS = { s: { label: "小", px: 14 }, "": { label: "中", px: 18 }, l: { label: "大", px: 24 }, xl: { label: "特大", px: 32 } };
+var YZ_DRAW_P_MAX = 300, YZ_DRAW_PT_MAX = 2000, YZ_DRAW_PT_ALL = 16000, YZ_DRAW_TAG_MAX = 200;
+function _yzDrawTags_(d) {
+  return ((d && d.p) || []).filter(function (x) { return x && x.k === "tag" && String(x.v || "").trim(); }).sort(function (a, b) { return a.y - b.y || a.x - b.x; });
+}
 function _yzDrawHasText_(s) { return !!(s && _yzRtPlainLines_(s.v).length); }
 function _yzDrawNotes_(d) {
   return ((d && d.s) || []).filter(function (s) { return s && s.k === "note" && _yzDrawHasText_(s); }).sort(function (a, b) { return a.y - b.y || a.x - b.x; });
@@ -927,16 +940,17 @@ function _yzDrawLines_(d) {
       out.push("　→ " + go.map(function (l) { return num[l.b] + "." + (lab(l) ? "（" + lab(l) + "）" : ""); }).join("、"));
   });
   _yzDrawNotes_(d).forEach(function (s) { _yzRtPlainLines_(s.v).forEach(function (ln, j) { out.push((j ? "　" : "【說明】") + ln); }); });
+  _yzDrawTags_(d).forEach(function (x) { out.push("【圖上的字】" + String(x.v).replace(/\s+/g, " ").trim()); });
   return out;
 }
 function _yzDrawImage_(b, act) {
   var L = b && b.draw && b.draw.line && b.draw.line.url ? b.draw.line : null;
-  return _yzImage_({ url: L ? L.url : b.url, ar: (L && L.ar) || b.ar, cap: b.cap }, act, "🔀 這裡有一張流程圖（為了保密，不直接顯示）");
+  return _yzImage_({ url: L ? L.url : b.url, ar: (L && L.ar) || b.ar, cap: b.cap }, act, "✏️ 這裡有一張繪圖（為了保密，不直接顯示）");
 }
 function _yzDrawNoteNodes_(d, bs) {
   var ns = _yzDrawNotes_(d);
   if (!ns.length) return [];
-  var out = [{ type: "text", text: "📝 說明（流程圖在前一張）", size: "xs", weight: "bold", color: "#5F6B7A", wrap: true }];
+  var out = [{ type: "text", text: "📝 說明（繪圖在前一張）", size: "xs", weight: "bold", color: "#5F6B7A", wrap: true }];
   ns.forEach(function (s) {
     var T = _yzDrawTone_(s.c), kids = _yzTextLines_(s.v, { bs: bs, color: T.ink });
     if (kids.length) out.push({ type: "box", layout: "vertical", spacing: "sm", backgroundColor: T.bg, borderColor: T.bd, borderWidth: "1px", cornerRadius: "6px", paddingAll: "10px", contents: kids });
@@ -2079,7 +2093,7 @@ function _yzContentBubbles_(ch, ti, blocks, note, o) {
   return { bubbles: out, bytes: bytes, parts: parts, cards: flat.length, kinds: kinds, anim: used.n, lay: page ? "page" : "swipe", packed: packed };
 }
 
-var YZ_WHERE = { name: "標題", text: "內文", ladder: "條文", table: "表格", img: "圖說", ocr: "圖片裡的字", note: "備註", page: "頁數", drug: "藥品", draw: "流程圖", link: "網址連結" };
+var YZ_WHERE = { name: "標題", text: "內文", ladder: "條文", table: "表格", img: "圖說", ocr: "圖片裡的字", note: "備註", page: "頁數", drug: "藥品", draw: "繪圖", link: "網址連結" };
 var YZ_WEIGHT = { name: 50, text: 10, ladder: 10, table: 8, img: 5, ocr: 4, note: 6, drug: 8, draw: 9, link: 7 };
 
 function _yzTokens_(q) { return _yzNorm_(q).replace(/\s+/g, " ").trim().split(" ").filter(function (x) { return x; }); }
@@ -2160,7 +2174,7 @@ function _yzTitlePics_(t) {
   var out = [];
   (t && t.blocks || []).forEach(function (b) {
     if (!b) return;
-    if (b.t === "img") { if (b.url) out.push(b); }
+    if (b.t === "img") { if (b.url) out.push(b); if (b.draw && b.draw.bg && b.draw.bg.url) out.push(b.draw.bg); }
     else if (b.t === "ladder") (b.items || []).forEach(function (it) { if (it && it.img && it.img.url) out.push(it.img); });
     else if (b.t === "anim" && b.kind === "steps") (b.steps || []).forEach(function (st) { if (st && st.url) out.push(st); });
     else if (b.t === "text") out = out.concat(_yzTextPics_(b));
@@ -2204,7 +2218,11 @@ function _yzUnits_(t, ch) {
     else if (b.t === "table") _yzTableUnits_(u, b, i);
     else if (b.t === "img") {
       if (b.cap) u.push({ k: "img", v: String(b.cap), b: i });
-      if (b.draw) (b.draw.s || []).forEach(function (sh) { if (sh) _yzRtPlainLines_(sh.v).forEach(function (ln) { u.push({ k: "draw", v: ln, b: i }); }); });
+      if (b.draw) {
+        (b.draw.s || []).forEach(function (sh) { if (sh) _yzRtPlainLines_(sh.v).forEach(function (ln) { u.push({ k: "draw", v: ln, b: i }); }); });
+        _yzDrawTags_(b.draw).forEach(function (x) { u.push({ k: "draw", v: String(x.v).replace(/\s+/g, " ").trim(), b: i }); });
+        if (b.draw.bg) _yzOcrUnits_(u, b.draw.bg, i);
+      }
       else _yzOcrUnits_(u, b, i);
     }
     else if (b.t === "drug") (b.items || []).forEach(function (d) { var s = [d && d.code, d && d.brand, d && d.chName].filter(Boolean).join(" "); if (s) u.push({ k: "drug", v: s, b: i }); });
@@ -2744,7 +2762,8 @@ function toast(msg, ms) {
   var t = $("#toast"); if (!t) { t = h("div", { id: "toast", class: "toast", role: "status" }); document.body.appendChild(t); }
   t.textContent = msg; t.classList.add("on"); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove("on"); }, ms || 3200);
 }
-function lightbox(url) {
+function lightbox(url, label) {
+  if (typeof fvOpen === "function" && url) { fvOpen({ src: url, label: label || "圖片", kind: "img" }); return; }
   var lb = h("div", { class: "lightbox", role: "dialog", "aria-label": "放大的圖（點一下關掉）", tabindex: "-1", onclick: function () { lb.remove(); } }, [h("img", { src: url, alt: "" })]);
   lb.onkeydown = function (e) { if (e.key === "Escape") lb.remove(); };
   document.body.appendChild(lb); try { lb.focus(); } catch (x) {  }
@@ -2759,6 +2778,10 @@ function backAtLeast(maj, min) { var m = /v(\d+)\.(\d+)/.exec(BACKV || ""); retu
 function bk41Ok() { return backAtLeast(12, 8); }
 function bk41Warn(what) {
   modal({ title: "⚠ 還不能用「" + what + "」", lines: ["藥戰手冊專案（Apps Script）的「02_藥戰手冊」還是舊的（第 41 批以前）：存了會不見，LINE 也顯示不出來。", "請先把第 41 批的 02 貼上，「部署 → 管理部署作業 → ✏️ → 版本選新版本 → 部署」，再重新整理這一頁。"], buttons: [{ label: "知道了", cls: "sm pri" }] });
+}
+function bk51Ok() { return backAtLeast(12, 18); }
+function bk51Warn(what) {
+  modal({ title: "⚠ 還不能用「" + what + "」", lines: ["藥戰手冊專案（Apps Script）的「02_藥戰手冊」還是舊的（第 51 批以前）：照片、畫上去的東西（畫筆、箭頭、圈圈、加底色的字）存了會不見。", "請先把第 51 批的 02 貼上，「部署 → 管理部署作業 → ✏️ → 版本選新版本 → 部署」，再重新整理這一頁。"], buttons: [{ label: "知道了", cls: "sm pri" }] });
 }
 function chapterOf(id) { return (HB.chapters || []).filter(function (c) { return c.id === id; })[0] || null; }
 function vhb() { return _yzMergeHb_(HB); }
@@ -3718,6 +3741,8 @@ function lockClean() {
   if (typeof ED_CLIP !== "undefined") ED_CLIP = null;
   if (typeof exClear === "function") { exClear(); EXP = null; }
   if (typeof xeDrop === "function") xeDrop();
+  try { if (typeof fvClose === "function" && FV.el) fvClose(true); } catch (e) {  }
+  if (typeof drDrop === "function") drDrop();
   HB = null;
 }
 var OUTED = false;
@@ -3916,7 +3941,7 @@ function webText(v, hl, o) {
     }
     if (L.k === "img") {
       var P = o.pics && o.pics[L.img];
-      if (P && P.url) box.appendChild(webFig(P, { hl: hl, onImg: o.onImg, cls: "rt-img", style: indM(L) }));
+      if (P && P.url) box.appendChild(webFig(P, { hl: hl, onImg: o.onImg, cls: "rt-img", style: indM(L), still: o.still }));
       i++; continue;
     }
     if (L.k === "box") {
@@ -3973,9 +3998,13 @@ function webLadder(b, hl, o) {
   r.items.forEach(function (it, i) {
     if (_yzLadderIsImg_(it)) {
       var im = picSize(h("img", { src: it.img.url, alt: it.img.cap || "", loading: "lazy", draggable: "false" }), it.img);
+      var oh = ocrHit(it.img, hl), ml = "margin-left:" + ((it.lv - 1) * 1.7 + (mw[it.lv] ? mw[it.lv] / 14 + 0.45 : 0)).toFixed(2) + "em;";
+      if (picZoomOk(it.img)) {
+        box.appendChild(zoomFig({ media: im, img: im, cap: it.img.cap, hl: hl, cls: "lim lv" + it.lv + (oh ? " ocrhit" : ""), style: ml + picVars(it.img), label: "照片", after: oh ? [ocrTag()] : [], still: !!(o && o.still), big: function () { return it.img.url; } }));
+        return;
+      }
       im.onclick = function () { if (o && o.onImg) o.onImg(it.img.url); };
-      var oh = ocrHit(it.img, hl);
-      box.appendChild(h("figure", { class: "lim lv" + it.lv + (oh ? " ocrhit" : ""), style: "margin-left:" + ((it.lv - 1) * 1.7 + (mw[it.lv] ? mw[it.lv] / 14 + 0.45 : 0)).toFixed(2) + "em" }, [im, it.img.cap ? h("figcaption", {}, hlNodes(it.img.cap, hl)) : null, oh ? ocrTag() : null]));
+      box.appendChild(h("figure", { class: "lim lv" + it.lv + (oh ? " ocrhit" : ""), style: ml }, [im, it.img.cap ? h("figcaption", {}, hlNodes(it.img.cap, hl)) : null, oh ? ocrTag() : null]));
       return;
     }
     var strong = st === "law" && it.lv === 1, mk = r.marks[i];
@@ -4050,11 +4079,20 @@ function picSize(im, p) {
   if (ar) im.style.aspectRatio = "auto " + ar;
   return im;
 }
+function picZoomOk(p) { var w = +(p && p.info && p.info.w) || 0; return !(w > 0 && w < 160); }
+function picVars(p, ow) {
+  var inf = (p && p.info) || {}, w = +inf.w || 0, hh = +inf.h || 0, m = /^(\d+):(\d+)$/.exec((p && p.ar) || ""), s = "";
+  var r = w > 0 && hh > 0 ? w / hh : m && +m[2] ? +m[1] / +m[2] : 0;
+  if (ow || w > 0) s += "--iw:" + Math.round(ow || w) + "px;";
+  if (r > 0) s += "--arn:" + r.toFixed(4) + ";";
+  return s;
+}
 function webFig(b, o) {
   o = o || {};
   var im = picSize(h("img", { src: b.url, alt: b.cap || "", loading: "lazy", draggable: "false" }), b);
-  im.onclick = function () { if (o.onImg) o.onImg(b.url); };
   var oh = ocrHit(b, o.hl);
+  if (picZoomOk(b)) return zoomFig({ media: im, img: im, cap: b.cap, hl: o.hl, cls: [o.cls || "", oh ? "ocrhit" : ""].join(" ").trim(), style: (o.style || "") + picVars(b), label: "照片", after: oh ? [ocrTag()] : [], still: !!o.still, big: function () { return b.url; } });
+  im.onclick = function () { if (o.onImg) o.onImg(b.url); };
   return h("figure", { class: [o.cls || "", oh ? "ocrhit" : ""].join(" ").trim() || null, style: o.style || null }, [im, b.cap ? h("figcaption", {}, hlNodes(b.cap, o.hl)) : null, oh ? ocrTag() : null]);
 }
 function webDraw(b, o) {
@@ -4062,19 +4100,23 @@ function webDraw(b, o) {
   var pv = o.pv && typeof drPv === "function" ? drPv(b) : null, full = pv ? pv.full : b.url, far = pv ? pv.ar : b.ar;
   var L = pv ? (pv.line ? { url: pv.line, ar: pv.lar } : null) : (b.draw && b.draw.line && b.draw.line.url ? b.draw.line : null);
   var notes = _yzDrawNotes_(b.draw), two = !!(L && notes.length);
-  if (!full) return h("div", { class: "muted drwait" }, ["（流程圖還沒畫成圖片：存檔以後就會出現）"]);
+  if (!full) return h("div", { class: "muted drwait" }, ["（繪圖還沒畫成圖片：存檔以後就會出現）"]);
   var rat = function (a) { return /^\d+:\d+$/.test(a || "") ? a.replace(":", " / ") : "auto"; };
-  var lw = pv ? pv.lw : b.info && b.info.ow, im = h("img", { src: full, alt: b.cap || "流程圖", loading: "lazy", style: lw ? "max-width:" + Math.round(lw) + "px" : null });
-  im.onclick = function () { if (o.onImg) o.onImg(im.currentSrc || full); };
+  var arn = function (a) { var m = /^(\d+):(\d+)$/.exec(a || ""); return m && +m[2] ? (+m[1] / +m[2]).toFixed(4) : ""; };
+  var lw = pv ? pv.lw : b.info && b.info.ow, im = h("img", { src: full, alt: b.cap || "繪圖", loading: "lazy", draggable: "false" });
   var pic = h("picture", {}, [two ? h("source", { media: "(max-width: 640px)", srcset: L.url }) : null, im]);
   var hit = false;
-  if (o.hl && o.hl.length) { var all = _yzNorm_(_yzDrawLines_(b.draw).join(" ")).replace(/\s+/g, ""); hit = o.hl.some(function (tk) { return tk && all.indexOf(tk) >= 0; }); }
-  var fig = h("figure", { class: "drawfig" + (two ? " two" : "") + (hit ? " ocrhit" : ""), style: "--ar1:" + rat(far) + ";--ar2:" + rat(L && L.ar) }, [pic, b.cap ? h("figcaption", {}, hlNodes(b.cap, o.hl)) : null, hit ? h("div", { class: "ocrtag" }, ["🔍 這張流程圖裡有你要找的字"]) : null]);
-  if (two) fig.appendChild(h("div", { class: "drnotes" }, [h("div", { class: "drnh" }, ["📝 說明"])].concat(notes.map(function (s) {
+  if (o.hl && o.hl.length) { var all = _yzNorm_(_yzDrawLines_(b.draw).join(" ") + " " + (b.draw.bg && b.draw.bg.ocr || "")).replace(/\s+/g, ""); hit = o.hl.some(function (tk) { return tk && all.indexOf(tk) >= 0; }); }
+  var tag = hit ? h("div", { class: "ocrtag" }, ["🔍 這張繪圖裡有你要找的字"]) : null;
+  var nt = two ? h("div", { class: "drnotes" }, [h("div", { class: "drnh" }, ["📝 說明"])].concat(notes.map(function (s) {
     var T = _yzDrawTone_(s.c);
     return h("div", { class: "drnote", style: "background:" + T.bg + ";border-color:" + T.bd + ";color:" + T.ink }, [webText(s.v, o.hl)]);
-  }))));
-  return fig;
+  }))) : null;
+  var cls = "drawfig" + (two ? " two" : "") + (hit ? " ocrhit" : ""), vars = "--ar1:" + rat(far) + ";--ar2:" + rat(L && L.ar) + ";";
+  if (!(lw && lw < 160)) return zoomFig({ media: pic, img: im, cap: b.cap, hl: o.hl, cls: cls, style: vars + (lw ? "--iw:" + Math.round(lw) + "px;" : "") + (arn(far) ? "--arn:" + arn(far) + ";" : "") + (L && arn(L.ar) ? "--arn2:" + arn(L.ar) + ";" : ""), label: "繪圖", ico: "✏️", after: [tag, nt], still: !!o.still, big: function () { return im.currentSrc || full; } });
+  if (lw) im.style.maxWidth = Math.round(lw) + "px";
+  im.onclick = function () { if (o.onImg) o.onImg(im.currentSrc || full); };
+  return h("figure", { class: cls, style: vars }, [pic, b.cap ? h("figcaption", {}, hlNodes(b.cap, o.hl)) : null, tag, nt]);
 }
 var DRUG_ICON = {"錠":"data:image/png;base64,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","水":"data:image/png;base64,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"};
 var DRUG = {}, DRUG_WAIT = {}, DRUG_Q = [], DRUG_T = null;
@@ -4190,7 +4232,7 @@ function webArticle(ch, t, o) {
   (t.blocks || []).forEach(function (b, bIdx) {
     if (_yzOnlyHide_(b, "web")) { hidN++; return; }
     var el = null;
-    if (b.t === "text") el = webText(b.v, o.hl, { go: goFn, onTitle: o.onTitle, onChapter: o.onChapter, pics: b.pics, tbls: b.tbls, onImg: o.onImg });
+    if (b.t === "text") el = webText(b.v, o.hl, { go: goFn, onTitle: o.onTitle, onChapter: o.onChapter, pics: b.pics, tbls: b.tbls, onImg: o.onImg, still: o.still });
     else if (b.t === "ladder") el = webLadder(b, o.hl, o);
     else if (b.t === "table") el = webTable(b, o.hl);
     else if (b.t === "img" && b.draw) el = webDraw(b, o);
@@ -4663,7 +4705,7 @@ function chSecs(col, c, tts, hb, o) {
   o = o || {};
   var lvs = _yzTLvs_(tts);
   tts.forEach(function (tt, k) {
-    var lv = lvs[k], art = webArticle(c, tt, { width: tt.ww || 760, onImg: o.onImg, hl: null, hb: hb, onTitle: o.onTitle, onChapter: o.onChapter, page: true, pv: o.pv, noid: o.noid, mark: o.mark, emb: o.emb });
+    var lv = lvs[k], art = webArticle(c, tt, { width: tt.ww || 760, onImg: o.onImg, hl: null, hb: hb, onTitle: o.onTitle, onChapter: o.onChapter, page: true, pv: o.pv, noid: o.noid, mark: o.mark, emb: o.emb, still: o.still });
     var hd = h("div", { class: "chsec-h" }, [h(lv === 1 ? "h2" : lv === 2 ? "h3" : "h4", { class: "chsec-t" }, [tt.name || "（還沒有標題）"]), h("button", { class: "pbtn chsec-o", type: "button", onclick: function () { if (o.onTitle) o.onTitle(tt.id); }, "aria-label": "單獨看「" + (tt.name || "") + "」" }, ["單獨看 ›"])]);
     art.insertBefore(hd, art.firstChild);
     if (o.markT) o.markT(hd, tt, k);
@@ -4857,7 +4899,7 @@ function fvClose(fromPop) {
   if (FV.task) { try { FV.task.destroy(); } catch (e) {  } FV.task = null; }
   if (FV.doc) { try { FV.doc.destroy(); } catch (e) {  } FV.doc = null; }
   if (FV.url) { try { URL.revokeObjectURL(FV.url); } catch (e) {  } FV.url = ""; }
-  FV.pages = []; FV.img = null; FV.w1 = 0; FV.h1 = 0;
+  FV.pages = []; FV.img = null; FV.w1 = 0; FV.h1 = 0; FV.all = false; FV.s0 = 0;
   if (FV.web) { (FV.web.tm || []).forEach(function (t) { clearTimeout(t); }); if (FV.web.fr) { try { FV.web.fr.remove(); } catch (e) {  } } FV.web = null; }
   var had = !!FV.el;
   if (FV.el) { FV.el.remove(); FV.el = null; }
@@ -4904,19 +4946,24 @@ function fvKey(e) {
   if (FV.web) return;
   if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) { e.preventDefault(); fvZoom(1.25); }
   else if ((e.ctrlKey || e.metaKey) && e.key === "-") { e.preventDefault(); fvZoom(0.8); }
+  else if (FV.img && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (e.key === "+" || e.key === "=") { e.preventDefault(); fvZoom(1.25); }
+    else if (e.key === "-" || e.key === "_") { e.preventDefault(); fvZoom(0.8); }
+    else if (e.key === "0") { e.preventDefault(); FV.fit = true; fvFit(); }
+  }
 }
 function fvOpen(o) {
   o = o || {};
   fvClose();
-  var my = FV.seq, label = String(o.label || "檔案");
+  var my = FV.seq, label = String(o.label || (o.src ? "照片" : "檔案"));
   FV.back = document.activeElement;
   var title = h("b", { class: "fv-t" }, [label]);
   var pg = h("span", { class: "fv-pg", role: "status", "aria-live": "polite" }, [""]);
   var zo = h("button", { class: "btn sm fv-z", type: "button", "aria-label": "縮小", title: "縮小", disabled: true }, ["－"]);
-  var zf = h("button", { class: "btn sm fv-z fv-zf", type: "button", title: "照視窗的寬度", disabled: true }, ["適合寬度"]);
+  var zf = h("button", { class: "btn sm fv-z fv-zf", type: "button", title: o.src ? "整張放進視窗" : "照視窗的寬度", disabled: true }, [o.src ? "整張" : "適合寬度"]);
   var zi = h("button", { class: "btn sm fv-z", type: "button", "aria-label": "放大", title: "放大", disabled: true }, ["＋"]);
   var xb = h("button", { class: "btn sm fv-x", type: "button", "aria-label": "關掉", title: "關掉（Esc）" }, ["✕"]);
-  var msg = h("div", { class: "fv-m" }, [h("div", { class: "fv-sp", "aria-hidden": "true" }), h("p", { id: "fvmsg" }, ["拿檔案中…"])]);
+  var msg = h("div", { class: "fv-m" }, [h("div", { class: "fv-sp", "aria-hidden": "true" }), h("p", { id: "fvmsg" }, [o.src ? "載入中…" : "拿檔案中…"])]);
   var body = h("div", { class: "fv-b", tabindex: "0", "aria-label": "檔案內容" }, [msg]);
   var inner = h("div", { class: "fv-in" }, [h("div", { class: "fv-h" }, [h("span", { class: "fv-ic", "aria-hidden": "true" }, [fvIco(o.kind)]), h("div", { class: "fv-tt" }, [title, pg]), h("div", { class: "fv-zs" }, [zo, zf, zi]), xb]), body,
     h("div", { class: "fv-f" }, ["🔒 內部資料：只能看，不能下載、不能列印"])]);
@@ -4924,7 +4971,7 @@ function fvOpen(o) {
   box.addEventListener("click", function (e) { if (e.target === box) fvClose(); });
   box.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   box.addEventListener("dragstart", function (e) { e.preventDefault(); });
-  body.addEventListener("wheel", function (e) { if (e.ctrlKey || e.metaKey) { e.preventDefault(); fvZoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); } }, { passive: false });
+  body.addEventListener("wheel", function (e) { if (e.ctrlKey || e.metaKey) { e.preventDefault(); var f = Math.exp(-Math.max(-120, Math.min(120, e.deltaY)) * 0.0024); if (FV.img && FV.all) fvScaleAt(FV.scale * f, e.clientX, e.clientY); else fvZoom(e.deltaY < 0 ? 1.15 : 1 / 1.15); } }, { passive: false });
   xb.onclick = function () { fvClose(); };
   zo.onclick = function () { fvZoom(0.8); }; zi.onclick = function () { fvZoom(1.25); }; zf.onclick = function () { FV.fit = true; fvFit(); };
   document.body.appendChild(box);
@@ -4932,6 +4979,7 @@ function fvOpen(o) {
   document.addEventListener("keydown", fvKey, true);
   fvHistIn();
   try { xb.focus({ preventScroll: true }); } catch (e) {  }
+  if (o.src) { fvSrc(String(o.src), my); return; }
   var t0 = Date.now(), got = 0;
   var say = function () {
     var m = $("#fvmsg", box); if (!m || my !== FV.seq) return;
@@ -4969,6 +5017,76 @@ function fvImg(r, my) {
   im.src = FV.url;
   FV.body.innerHTML = "";
   FV.body.appendChild(h("div", { class: "fv-ims" }, [im]));
+}
+function fvSrc(u, my) {
+  var im = h("img", { class: "fv-img", alt: "", draggable: "false" });
+  im.onload = function () {
+    if (my !== FV.seq) return;
+    FV.img = im; FV.all = true; FV.w1 = im.naturalWidth || 1; FV.h1 = im.naturalHeight || 1; FV.fit = true; fvFit(); fvZoomOk(true);
+  };
+  FV.pg.textContent = "可以放大縮小、拖著看";
+  im.onerror = function () { if (my === FV.seq) fvErr("這張圖打不開"); };
+  FV.body.classList.add("fv-pic");
+  im.src = u;
+  FV.body.innerHTML = "";
+  FV.body.appendChild(h("div", { class: "fv-ims" }, [im]));
+  fvPicUi(FV.body, my);
+}
+function fvScaleAt(s, px, py) {
+  var b = FV.body, im = FV.img; if (!b || !im || !FV.w1) return;
+  var r = im.getBoundingClientRect(), fx = (px - r.left) / Math.max(1, r.width), fy = (py - r.top) / Math.max(1, r.height);
+  FV.fit = false;
+  FV.scale = Math.max(Math.min(0.2, FV.s0 || 0.2), Math.min(5, s));
+  im.style.width = Math.round(FV.w1 * FV.scale) + "px"; im.style.height = Math.round(FV.h1 * FV.scale) + "px";
+  var r2 = im.getBoundingClientRect();
+  b.scrollLeft += r2.left + fx * r2.width - px; b.scrollTop += r2.top + fy * r2.height - py;
+}
+function fvPicUi(b, my) {
+  var D = null, P = null, T = null, last = null;
+  var dist = function (t) { var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.sqrt(dx * dx + dy * dy) || 1; };
+  var tap = function (x, y) {
+    var now = Date.now();
+    if (last && now - last.t < 330 && Math.abs(x - last.x) < 30 && Math.abs(y - last.y) < 30) { last = null; if (FV.fit) fvScaleAt(FV.scale * 2.5, x, y); else { FV.fit = true; fvFit(); } return; }
+    last = { t: now, x: x, y: y };
+  };
+  b.addEventListener("pointerdown", function (e) {
+    if (my !== FV.seq || !FV.img || e.pointerType === "touch" || e.button !== 0) return;
+    D = { id: e.pointerId, x: e.clientX, y: e.clientY, sl: b.scrollLeft, st: b.scrollTop, moved: false };
+    try { b.setPointerCapture(e.pointerId); } catch (x) {  }
+    b.classList.add("drag"); e.preventDefault();
+  });
+  b.addEventListener("pointermove", function (e) {
+    if (!D || D.id !== e.pointerId) return;
+    var dx = e.clientX - D.x, dy = e.clientY - D.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) D.moved = true;
+    b.scrollLeft = D.sl - dx; b.scrollTop = D.st - dy;
+  });
+  var up = function (e) {
+    if (!D || D.id !== e.pointerId) return;
+    var d = D; D = null; b.classList.remove("drag");
+    try { b.releasePointerCapture(e.pointerId); } catch (x) {  }
+    if (!d.moved && e.type === "pointerup") tap(e.clientX, e.clientY);
+  };
+  b.addEventListener("pointerup", up); b.addEventListener("pointercancel", up);
+  b.addEventListener("touchstart", function (e) {
+    if (my !== FV.seq || !FV.img) return;
+    var t = e.touches;
+    if (t.length >= 2) { P = { d0: dist(t), s0: FV.scale }; T = null; if (e.cancelable) e.preventDefault(); return; }
+    T = { x: t[0].clientX, y: t[0].clientY, t: Date.now(), moved: false };
+  }, { passive: false });
+  b.addEventListener("touchmove", function (e) {
+    var t = e.touches;
+    if (P && t.length >= 2) { if (e.cancelable) e.preventDefault(); fvScaleAt(P.s0 * dist(t) / P.d0, (t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2); return; }
+    if (T && t.length === 1 && Math.abs(t[0].clientX - T.x) + Math.abs(t[0].clientY - T.y) > 8) T.moved = true;
+  }, { passive: false });
+  b.addEventListener("touchend", function (e) {
+    if (P) { if (e.touches.length < 2) P = null; return; }
+    var p = T; T = null;
+    if (!p || p.moved || Date.now() - p.t > 450 || e.touches.length) return;
+    if (e.cancelable) e.preventDefault();
+    tap(p.x, p.y);
+  }, { passive: false });
+  b.addEventListener("gesturestart", function (e) { e.preventDefault(); });
 }
 function fvPdf(r, my) {
   var bytes = r.bytes ? r.bytes.slice() : fvB64(r.b64); r.b64 = null;
@@ -5012,16 +5130,18 @@ function fvPages(my) {
   body.addEventListener("scroll", fvWhere, { passive: true });
   fvWhere();
 }
-function fvAvail() { return Math.max(160, (FV.body ? FV.body.clientWidth : 600) - 28); }
+function fvAvail() { return Math.max(160, (FV.body ? (FV.all ? FV.body.offsetWidth : FV.body.clientWidth) : 600) - 28); }
+function fvAvailH() { return Math.max(120, (FV.body ? FV.body.offsetHeight : 500) - 28); }
 function fvFit() {
   if (!FV.w1) return;
-  FV.scale = Math.max(0.2, Math.min(2.5, fvAvail() / FV.w1));
+  FV.scale = FV.all ? Math.max(0.02, Math.min(2, fvAvail() / FV.w1, fvAvailH() / FV.h1)) : Math.max(0.2, Math.min(2.5, fvAvail() / FV.w1));
+  FV.s0 = FV.scale;
   fvApply();
 }
 function fvZoom(f) {
   if (!FV.w1) return;
   FV.fit = false;
-  FV.scale = Math.max(0.2, Math.min(5, FV.scale * f));
+  FV.scale = Math.max(Math.min(0.2, FV.s0 || 0.2), Math.min(5, FV.scale * f));
   fvApply();
 }
 function fvApply() {
@@ -5598,6 +5718,185 @@ function xeClone(src, f, col) {
 }
 function xeAfterClone(root) { $$(".xemb[data-xst]", root).forEach(function (el) { var b = $(".xe-b", el); if (b) b.scrollTop = +el.getAttribute("data-xst") || 0; }); }
 
+var XZ = { ro: null, max: 6 };
+function xzRo() {
+  if (XZ.ro || !window.ResizeObserver) return XZ.ro;
+  XZ.ro = new ResizeObserver(function (ents) {
+    ents.forEach(function (en) {
+      var Z = en.target._xz; if (!Z) return;
+      var w = Math.round(en.contentRect.width);
+      if (Z.rw && Math.abs(w - Z.rw) > 1 && Z.z > 1) xzReset(Z);
+      Z.rw = w;
+    });
+  });
+  return XZ.ro;
+}
+function zoomFig(o) {
+  var cap = String(o.cap || "").trim();
+  var Z = { z: 1, im: o.img, fw: 0, fh: 0, big: o.big, lab: cap || o.label || "照片" };
+  var ti = o.still ? { tabindex: "-1" } : {};
+  var B = function (cls, txt, tip, aria) { return h("button", Object.assign({ class: "xp-b " + cls, type: "button", title: tip, "aria-label": aria || null }, ti), [txt]); };
+  var pct = h("span", { class: "xp-pct", "aria-live": "polite" }, ["100%"]);
+  var bOut = B("xp-out", "－", "縮小（電腦：Ctrl＋滾輪；手機：兩指）", "縮小");
+  var bIn = B("xp-in", "＋", "放大（電腦：Ctrl＋滾輪；手機：兩指）", "放大");
+  var bFit = B("xp-fit", "適合", "回到原本的大小");
+  var bBig = B("xp-big", "⛶", "用大的小視窗看（也可以放大縮小）", "用大的小視窗看");
+  var title = h("span", { class: "xp-t" }, [h("span", { class: "xp-i", "aria-hidden": "true" }, [o.ico || "🖼"]), h("span", { class: "xp-c" }, cap ? hlNodes(cap, o.hl) : [o.label || "照片"])]);
+  var bar = h("div", { class: "xp-bar" }, [title, h("span", { class: "xp-zs" }, [bOut, pct, bIn, bFit, bBig])]);
+  var v = h("div", { class: "xp-v", tabindex: o.still ? "-1" : "0", role: "img", "aria-label": Z.lab + (o.still ? "" : "（＋／－ 放大縮小，Enter 用大的小視窗看）") }, [o.media]);
+  var fig = h("figure", { class: ("xpic " + (o.cls || "")).trim(), style: o.style || null }, [bar, v].concat(o.after || []));
+  fig._xz = Z; Z.fig = fig; Z.v = v; Z.pct = pct; Z.bOut = bOut; Z.bFit = bFit;
+  xzPaint(Z);
+  if (o.still) return fig;
+  bIn.onclick = function (e) { e.stopPropagation(); xzSet(Z, Z.z * 1.5); };
+  bOut.onclick = function (e) { e.stopPropagation(); xzSet(Z, Z.z / 1.5); };
+  bFit.onclick = function (e) { e.stopPropagation(); xzSet(Z, 1); };
+  bBig.onclick = function (e) { e.stopPropagation(); xzBig(Z); };
+  v.addEventListener("wheel", function (e) {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    var r = v.getBoundingClientRect();
+    xzSet(Z, Z.z * Math.exp(-Math.max(-120, Math.min(120, e.deltaY)) * 0.0028), e.clientX - r.left - v.clientLeft, e.clientY - r.top - v.clientTop);
+  }, { passive: false });
+  v.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "touch" || e.button !== 0) return;
+    Z.down = { id: e.pointerId, x: e.clientX, y: e.clientY, sl: v.scrollLeft, st: v.scrollTop, moved: false };
+    if (Z.z > 1) { try { v.setPointerCapture(e.pointerId); } catch (x) {  } v.classList.add("drag"); e.preventDefault(); }
+  });
+  v.addEventListener("pointermove", function (e) {
+    var d = Z.down; if (!d || d.id !== e.pointerId) return;
+    var dx = e.clientX - d.x, dy = e.clientY - d.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) d.moved = true;
+    if (Z.z > 1) { v.scrollLeft = d.sl - dx; v.scrollTop = d.st - dy; }
+  });
+  var up = function (e) {
+    var d = Z.down; if (!d || d.id !== e.pointerId) return;
+    Z.down = null; v.classList.remove("drag");
+    try { v.releasePointerCapture(e.pointerId); } catch (x) {  }
+    if (!d.moved && e.type === "pointerup") xzTap(Z, e.clientX, e.clientY);
+  };
+  v.addEventListener("pointerup", up);
+  v.addEventListener("pointercancel", up);
+  v.addEventListener("dragstart", function (e) { e.preventDefault(); });
+  v.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+  var dist = function (t) { var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.sqrt(dx * dx + dy * dy) || 1; };
+  var mid = function (t) { return { x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 }; };
+  var one = function (t, tap) { Z.tp = { x: t.clientX, y: t.clientY, sl: v.scrollLeft, st: v.scrollTop, t: tap ? Date.now() : 0, moved: !tap, wy: window.pageYOffset }; };
+  v.addEventListener("touchstart", function (e) {
+    var t = e.touches;
+    if (t.length >= 2) { Z.pinch = { d0: dist(t), z0: Z.z }; Z.tp = null; Z.lastTap = null; clearTimeout(Z.tapT); if (e.cancelable) e.preventDefault(); return; }
+    one(t[0], true);
+  }, { passive: false });
+  v.addEventListener("touchmove", function (e) {
+    var t = e.touches, r;
+    if (Z.pinch && t.length >= 2) {
+      if (e.cancelable) e.preventDefault();
+      r = v.getBoundingClientRect(); var m = mid(t);
+      xzSet(Z, Z.pinch.z0 * dist(t) / Z.pinch.d0, m.x - r.left - v.clientLeft, m.y - r.top - v.clientTop);
+      return;
+    }
+    var p = Z.tp; if (!p || t.length !== 1) return;
+    var dx = t[0].clientX - p.x, dy = t[0].clientY - p.y;
+    if (Math.abs(dx) + Math.abs(dy) > 8) p.moved = true;
+    if (Z.z > 1) {
+      if (e.cancelable) e.preventDefault();
+      var nt = p.st - dy, my = v.scrollHeight - v.clientHeight;
+      v.scrollLeft = p.sl - dx; v.scrollTop = nt;
+      var over = nt < 0 ? nt : nt > my ? nt - my : 0;
+      if (over && !(typeof BK !== "undefined" && BK.on)) window.scrollTo(window.pageXOffset, Math.max(0, p.wy + over));
+    }
+  }, { passive: false });
+  v.addEventListener("touchend", function (e) {
+    if (Z.pinch) { if (e.touches.length < 2) { Z.pinch = null; if (e.touches.length === 1) one(e.touches[0], false); else Z.tp = null; } return; }
+    var p = Z.tp; Z.tp = null;
+    if (!p || p.moved || !p.t || Date.now() - p.t > 450 || e.touches.length) return;
+    if (e.cancelable) e.preventDefault();
+    xzTap(Z, p.x, p.y);
+  }, { passive: false });
+  v.addEventListener("touchcancel", function () { Z.pinch = null; Z.tp = null; });
+  v.addEventListener("gesturestart", function (e) { e.preventDefault(); Z.gz = Z.pinch ? 0 : Z.z; });
+  v.addEventListener("gesturechange", function (e) { e.preventDefault(); if (Z.pinch || !Z.gz) return; var r = v.getBoundingClientRect(); xzSet(Z, Z.gz * e.scale, e.clientX - r.left, e.clientY - r.top); });
+  v.addEventListener("gestureend", function (e) { e.preventDefault(); Z.gz = 0; });
+  v.addEventListener("keydown", function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key;
+    if (k === "+" || k === "=") { e.preventDefault(); xzSet(Z, Z.z * 1.5); }
+    else if (k === "-" || k === "_") { e.preventDefault(); xzSet(Z, Z.z / 1.5); }
+    else if (k === "0") { e.preventDefault(); xzSet(Z, 1); }
+    else if (k === "Enter") { e.preventDefault(); xzBig(Z); }
+  });
+  var ro = xzRo(); if (ro) ro.observe(fig);
+  return fig;
+}
+function xzTap(Z, cx, cy) {
+  var now = Date.now(), L = Z.lastTap;
+  if (L && now - L.t < 330 && Math.abs(cx - L.x) < 30 && Math.abs(cy - L.y) < 30) {
+    clearTimeout(Z.tapT); Z.lastTap = null;
+    var r = Z.v.getBoundingClientRect();
+    if (Z.z > 1) xzSet(Z, 1); else xzSet(Z, 2.5, cx - r.left - Z.v.clientLeft, cy - r.top - Z.v.clientTop);
+    return;
+  }
+  Z.lastTap = { t: now, x: cx, y: cy };
+  clearTimeout(Z.tapT);
+  Z.tapT = setTimeout(function () { Z.lastTap = null; if (Z.z === 1 && Z.fig.isConnected) xzBig(Z); }, 340);
+}
+function xzSet(Z, z, px, py) {
+  z = Math.max(1, Math.min(XZ.max, z || 1));
+  if (z < 1.02) z = 1;
+  var v = Z.v;
+  if (Z.z === 1 && z === 1) return;
+  if (Z.z === 1) {
+    var r = Z.im.getBoundingClientRect();
+    if (r.width < 8 || r.height < 8) return;
+    Z.fw = r.width; Z.fh = r.height;
+    v.style.width = r.width.toFixed(2) + "px"; v.style.height = r.height.toFixed(2) + "px";
+    Z.fig.classList.add("zoomed");
+  }
+  var cw = v.clientWidth, ch = v.clientHeight;
+  if (px === undefined || py === undefined) { px = cw / 2; py = ch / 2; }
+  var ox = (v.scrollLeft + px) / (Z.fw * Z.z), oy = (v.scrollTop + py) / (Z.fh * Z.z);
+  if (z === 1) { xzReset(Z); return; }
+  Z.z = z;
+  var W = Z.fw * z, H = Z.fh * z, s = Z.im.style;
+  s.setProperty("width", W.toFixed(1) + "px", "important");
+  s.setProperty("height", H.toFixed(1) + "px", "important");
+  s.setProperty("max-width", "none", "important");
+  s.setProperty("max-height", "none", "important");
+  s.setProperty("aspect-ratio", "auto", "important");
+  v.scrollLeft = ox * W - px; v.scrollTop = oy * H - py;
+  xzPaint(Z);
+}
+function xzReset(Z) {
+  Z.z = 1;
+  Z.fig.classList.remove("zoomed");
+  ["width", "height", "max-width", "max-height", "aspect-ratio"].forEach(function (k) { Z.im.style.removeProperty(k); });
+  Z.v.style.width = ""; Z.v.style.height = "";
+  Z.v.scrollLeft = 0; Z.v.scrollTop = 0;
+  xzPaint(Z);
+}
+function xzPaint(Z) {
+  Z.pct.textContent = Math.round(Z.z * 100) + "%";
+  Z.bOut.disabled = Z.z <= 1; Z.bFit.disabled = Z.z <= 1;
+}
+function xzBig(Z) {
+  var u = Z.big ? Z.big() : Z.im.currentSrc || Z.im.src;
+  if (!u) return;
+  fvOpen({ src: u, label: Z.lab, kind: "img" });
+}
+function xzClone(src, f) {
+  var a = $$(".xpic", src), b = $$(".xpic", f);
+  b.forEach(function (el, k) {
+    var o = a[k]; if (!o || !o.classList.contains("zoomed")) return;
+    var ov = $(".xp-v", o); if (ov) el.setAttribute("data-xzs", Math.round(ov.scrollLeft) + "," + Math.round(ov.scrollTop));
+  });
+}
+function xzAfterClone(root) {
+  $$(".xpic[data-xzs]", root).forEach(function (el) {
+    var v = $(".xp-v", el), p = String(el.getAttribute("data-xzs")).split(","); if (!v) return;
+    v.scrollLeft = +p[0] || 0; v.scrollTop = +p[1] || 0;
+  });
+}
+
 var BK = { on: false, k: 0, n: 1, two: false, P: 0, PH: 0, X: 0, Y: 0, G: 0, pitch: 0, busy: false, wLock: false, wAcc: 0, wLast: 0, tabAt: 0, drag: null, keep: null, mt: 0, mo: null };
 
 var BK_PC_MQ = "(hover: hover) and (pointer: fine) and (min-width: 761px)";
@@ -5807,6 +6106,7 @@ function bkBump(dir) {
   setTimeout(function () { s.classList.remove("bump-l", "bump-r"); }, 360);
   if (dir > 0) toast("已經是最後一頁了");
 }
+function bkAfterClone(r) { if (typeof xeAfterClone === "function") xeAfterClone(r); if (typeof xzAfterClone === "function") xzAfterClone(r); }
 function bkView(col, cls) {
   var paper = h("div", { class: "rbk-paper" });
   var clip = h("div", { class: "rbk-vclip" });
@@ -5814,6 +6114,7 @@ function bkView(col, cls) {
     var f = BK.flow.cloneNode(true);
     $$("[id]", f).forEach(function (x) { x.removeAttribute("id"); });
     if (typeof xeClone === "function") xeClone(BK.flow, f, col);
+    if (typeof xzClone === "function") xzClone(BK.flow, f);
     if (typeof chaSyncClone === "function") chaSyncClone(BK.flow, f);
     f.classList.remove("rbk-anim");
     f.style.transform = "translateX(" + (-col * BK.pitch) + "px)";
@@ -5828,7 +6129,7 @@ function bkFlip(dir) {
   var stay = dir > 0 ? bkView(k0, "l") : bkView(k0 + 1, "r");
   var leaf = dir > 0 ? h("div", { class: "rbk-leaf r" }, [bkView(k0 + 1, "f"), bkView(k0 + 2, "b")]) : h("div", { class: "rbk-leaf l" }, [bkView(k0, "f"), bkView(k0 - 1, "b")]);
   fx.appendChild(stay); fx.appendChild(leaf);
-  if (typeof xeAfterClone === "function") xeAfterClone(fx);
+  bkAfterClone(fx);
   bkGo(k1);
   void leaf.offsetWidth;
   var end = function () { if (!BK.busy || leaf.dataset.end) return; leaf.dataset.end = "1"; BK.busy = false; fx.innerHTML = ""; };
@@ -5843,7 +6144,7 @@ function bkSlide(dir, dx) {
   var v = bkView(dir > 0 ? k0 : k0 - 1, "s");
   v.style.transform = "translateX(" + (dir > 0 ? Math.min(0, dx) : -P + Math.max(0, dx)) + "px)";
   fx.appendChild(v);
-  if (typeof xeAfterClone === "function") xeAfterClone(fx);
+  bkAfterClone(fx);
   if (dir > 0) bkGo(k0 + 1);
   void v.offsetWidth;
   v.classList.add("mv");
@@ -5857,7 +6158,7 @@ function bkClick(e) {
   if (!BK.on || BK.busy || BK.dragged) { BK.dragged = false; return; }
   if (BK.two) return;
   var t = e.target;
-  if (t.closest && t.closest("a,button,input,select,textarea,label,summary,video,audio,img,canvas,[role=button],[tabindex]:not(.rbk),[contenteditable],.xlink,.ycp,.xemb")) return;
+  if (t.closest && t.closest("a,button,input,select,textarea,label,summary,video,audio,img,canvas,[role=button],[tabindex]:not(.rbk),[contenteditable],.xlink,.ycp,.xemb,.xpic")) return;
   if (window.getSelection && String(window.getSelection() || "").length) return;
   var r = BK.stage.getBoundingClientRect(), x = e.clientX - r.left, edge = 0.22;
   if (x < r.width * edge) bkTurn(-1);
@@ -5880,6 +6181,7 @@ function bkWheel(e) {
 }
 function bkTouchStart(e) {
   if (!BK.on || BK.busy || e.touches.length !== 1) { BK.drag = null; return; }
+  if (e.target && e.target.closest && e.target.closest(".xpic.zoomed .xp-v")) { BK.drag = null; return; }
   var p = e.touches[0];
   BK.drag = { x0: p.clientX, y0: p.clientY, t0: Date.now(), dx: 0, dir: 0, v: null, k0: BK.k, tg: e.target };
 }
@@ -5913,7 +6215,7 @@ function bkTouchMove(e) {
       BK.busy = true; BK.fx.innerHTML = "";
       d.v = bkView(d.dir > 0 ? BK.k : BK.k - 1, "s");
       BK.fx.appendChild(d.v);
-      if (typeof xeAfterClone === "function") xeAfterClone(BK.fx);
+      bkAfterClone(BK.fx);
       if (d.dir > 0) bkGo(BK.k + 1);
     }
     d.ok = ok;
@@ -5953,7 +6255,7 @@ document.addEventListener("keydown", function (e) {
   if (document.querySelector(".lightbox, .fv, .modal, .hdrawer, .hsearch, .guardcv.on")) return;
   var tg = e.target, typing = tg && (tg.isContentEditable || /^(input|textarea|select)$/i.test(tg.tagName || ""));
   if (typing) return;
-  if (tg && tg.closest && tg.closest(".xe-b")) return;
+  if (tg && tg.closest && tg.closest(".xe-b, .xpic.zoomed .xp-v")) return;
   var onBtn = tg && tg.closest && tg.closest("button,a,[role=button]");
   var k = e.key;
   if (k === "ArrowRight" || k === "PageDown" || (k === " " && !e.shiftKey && !onBtn)) { e.preventDefault(); bkTurn(1); }
@@ -8608,7 +8910,7 @@ function dirtyPaint() {
   var idle = !ED.dirty && !ED.saving && !UPL && !ED.bgMsg, nb = idle ? edBgNeed() : 0, ns = idle ? edShapeNeed() : 0, no = idle ? edOcrTodo().length : 0;
   var nc = idle && ED.cat && _yzMapNeedCut_(ED.cat) ? _yzMapCutsFor_(_yzMapRatio_(ED.cat)).length : 0;
   var nd = idle ? edDrawNeed() : 0;
-  var todo = [nb ? nb + " 章的背景" : "", ns ? ns + " 個物品的形狀" : "", nc ? "LINE 用的目錄圖（切成 " + nc + " 張）" : "", nd ? nd + " 張流程圖（畫成圖片）" : ""].filter(Boolean).join("、"), txt = "", cls = "";
+  var todo = [nb ? nb + " 章的背景" : "", ns ? ns + " 個物品的形狀" : "", nc ? "LINE 用的目錄圖（切成 " + nc + " 張）" : "", nd ? nd + " 張繪圖（畫成圖片）" : ""].filter(Boolean).join("、"), txt = "", cls = "";
   if (ED.bgMsg) txt = ED.bgMsg;
   else if (ED.saving) txt = ED.auto ? "自動儲存中…" : "儲存中…";
   else if (UPL) txt = "⏳ 圖片上傳中（" + UPL + "）…";
@@ -9200,9 +9502,9 @@ function saveEd(force, auto) {
   var drawStep = function () {
     var dl = edDrawTodo(auto);
     if (!dl.length) { saveSend(force, auto, t0); return; }
-    ED.bgMsg = "流程圖畫成圖片中（0／" + dl.length + "）…"; dirtyPaint();
-    edDrawMake(dl, function (i, n) { ED.bgMsg = "流程圖畫成圖片中（" + i + "／" + n + "）…"; dirtyPaint(); }).then(function () { ED.bgMsg = ""; saveSend(force, auto, t0); }, function (e) {
-      ED.bgMsg = ""; toast("⚠ 流程圖沒有畫成圖片（" + ((e && e.message) || "畫不出來") + "）：其他的照樣儲存，下次儲存會再試一次"); saveSend(force, auto, t0);
+    ED.bgMsg = "繪圖畫成圖片中（0／" + dl.length + "）…"; dirtyPaint();
+    edDrawMake(dl, function (i, n) { ED.bgMsg = "繪圖畫成圖片中（" + i + "／" + n + "）…"; dirtyPaint(); }).then(function () { ED.bgMsg = ""; saveSend(force, auto, t0); }, function (e) {
+      ED.bgMsg = ""; toast("⚠ 繪圖沒有畫成圖片（" + ((e && e.message) || "畫不出來") + "）：其他的照樣儲存，下次儲存會再試一次"); saveSend(force, auto, t0);
     });
   };
   var bgStep = function () {
@@ -9290,8 +9592,8 @@ function renderToolbar() {
   tb.appendChild(h("span", { class: "vsep" }));
   if (ED.mode === "qz") tb.appendChild(h("span", { class: "tblabel qetb" }, ["📋 問卷：用中間的「💾 儲存」（存進問卷試算表；左邊的「儲存」是手冊的）"]));
   else tb.appendChild(h("span", { class: "tblabel" }, ["新增內容"]));
-  if (ED.mode !== "qz") [["text", "＋文字"], ["ladder", "＋階梯式內容"], ["table", "＋表格"], ["img", "＋圖片"], ["draw", "＋流程圖"], ["link", "＋網址連結"], ["anim", "＋動畫"], ["drug", "＋藥品"]].forEach(function (x) {
-    var b = h("button", { class: "btn sm addb", "data-k": x[0], title: isT ? x[0] === "drug" ? "從補藥神器的藥品資料庫找藥放進來（LINE 收起來、網頁直接打開；不顯示位置）" : x[0] === "draw" ? "流程圖（第 40 批）：自己畫框、箭頭、說明框；存檔時自動畫成圖片（LINE、網頁、Word 都看得到）" : x[0] === "link" ? "網址連結（第 40 批）：放外部網站的連結（顯示的字＋網址）。讀的人點了：電腦開小視窗、手機開新分頁、LINE 用 LINE 的瀏覽器開" : (x[0] === "text" ? "新的文字塊會接在你點選的那一塊後面（沒點選就放最後面）" : "游標在文字裡的話，文字會從游標那一行切開，新的放在中間；不然接在你點選的那一塊後面") : "先在左邊選一個標題" }, [x[1], x[0] === "draw" || x[0] === "link" ? h("span", { class: "newb" }, ["新"]) : null]);
+  if (ED.mode !== "qz") [["text", "＋文字"], ["ladder", "＋階梯式內容"], ["table", "＋表格"], ["img", "＋圖片"], ["draw", "＋繪圖"], ["link", "＋網址連結"], ["anim", "＋動畫"], ["drug", "＋藥品"]].forEach(function (x) {
+    var b = h("button", { class: "btn sm addb", "data-k": x[0], title: isT ? x[0] === "drug" ? "從補藥神器的藥品資料庫找藥放進來（LINE 收起來、網頁直接打開；不顯示位置）" : x[0] === "draw" ? "繪圖（第 51 批：流程圖改名）：在照片上畫備註（畫筆、螢光筆、箭頭、框起來、圈起來、字加底色），也可以畫流程圖（框、箭頭、說明框）；存檔時自動畫成圖片（LINE、網頁、Word 都看得到）" : x[0] === "link" ? "網址連結（第 40 批）：放外部網站的連結（顯示的字＋網址）。讀的人點了：電腦開小視窗、手機開新分頁、LINE 用 LINE 的瀏覽器開" : (x[0] === "text" ? "新的文字塊會接在你點選的那一塊後面（沒點選就放最後面）" : "游標在文字裡的話，文字會從游標那一行切開，新的放在中間；不然接在你點選的那一塊後面") : "先在左邊選一個標題" }, [x[1], x[0] === "draw" || x[0] === "link" ? h("span", { class: "newb" }, ["新"]) : null]);
     if (!isT) b.disabled = true;
     b.addEventListener("mousedown", function (e) { e.preventDefault(); });
     b.onclick = function () { addBlock(x[0]); };
@@ -9656,7 +9958,7 @@ function blockEditor(t, b, i) {
   decB.disabled = !_yzBlockInd_(b); incB.disabled = _yzBlockInd_(b) >= YZ_IND_MAX;
   var mrg = mergeOk(t, i) ? btn("⤴ 併到上一塊", function () { mergeUp(t, i); }, "sm mrgb") : null;
   if (mrg) mrg.title = mergeTip(t, i);
-  var visSel = h("select", { class: "in sm visb", title: "這一塊顯示在哪裡：LINE、網頁都顯示／只在 LINE／只在網頁（例如照片只給 LINE 看、流程圖只給網頁看）。搜尋也一樣：LINE 搜不到只在網頁的字，反過來也是", "aria-label": "這一塊顯示在哪裡" },
+  var visSel = h("select", { class: "in sm visb", title: "這一塊顯示在哪裡：LINE、網頁都顯示／只在 LINE／只在網頁（例如照片只給 LINE 看、繪圖只給網頁看）。搜尋也一樣：LINE 搜不到只在網頁的字，反過來也是", "aria-label": "這一塊顯示在哪裡" },
     [["", "💬🌐 LINE、網頁都顯示"], ["line", "💬 只在 LINE"], ["web", "🌐 只在網頁"]].map(function (x) { return h("option", { value: x[0] }, [x[1]]); }));
   visSel.value = b.only === "line" || b.only === "web" ? b.only : "";
   visSel.onchange = function () {
@@ -9671,7 +9973,7 @@ function blockEditor(t, b, i) {
   cpB.title = "複製這一塊（文字、圖片、表格…格式都帶著）：到要放的標題，點一下某一塊，按最上面的「📌 貼上整塊」（會放在那一塊後面）";
   var lead1 = (t.blocks || []).filter(function (x) { return !_yzOnlyHide_(x, "web"); })[0] === b;
   var pbTag = b.pb === true || b.kp === true ? h("button", { class: "btn sm pbtag", type: "button", title: "網頁翻頁的設定：按了打開「📖 翻頁預覽」（在那裡改）", onclick: function () { pbOpen({ tid: t.id, b: b }); } }, [[b.pb === true ? (lead1 ? "✂ 換頁（第一塊不用）" : "✂ 網頁從這裡換頁") : "", b.kp === true ? "🔗 不切開" : ""].filter(Boolean).join("・")]) : null;
-  var head = h("div", { class: "bh" }, [(b.t === "img" && b.draw ? "流程圖" : KIND_NAME[b.t]) + "　#" + (i + 1), visSel, pbTag, h("span", { class: "sp" }),
+  var head = h("div", { class: "bh" }, [(b.t === "img" && b.draw ? "繪圖" : KIND_NAME[b.t]) + "　#" + (i + 1), visSel, pbTag, h("span", { class: "sp" }),
     mrg, indLbl, decB, incB, brkBtn, cpB, btn("▲", function () { moveBlock(t, i, -1); }), btn("▼", function () { moveBlock(t, i, 1); }), delBtn]);
   var body = h("div", { class: "bb2" });
   var rte = null;
@@ -9691,7 +9993,7 @@ function blockEditor(t, b, i) {
   else if (b.t === "link") body.appendChild(linkEditor(b));
   else if (b.t === "img" && b.draw) {
     body.appendChild(drawEditor(t, b));
-    var dcap = h("input", { class: "in", value: b.cap || "", placeholder: "圖說（可以不填；寫在流程圖下面）", style: "margin-top:6px" });
+    var dcap = h("input", { class: "in", value: b.cap || "", placeholder: "圖說（可以不填；網頁寫在繪圖上面那一排）", style: "margin-top:6px" });
     dcap.oninput = function () { b.cap = dcap.value; changed(); };
     body.appendChild(dcap);
   } else {
@@ -9706,8 +10008,9 @@ function blockEditor(t, b, i) {
     cap.oninput = function () { b.cap = cap.value; changed(); };
     body.appendChild(cap);
     body.appendChild(ocrLine(b));
+    if (b.url && b.fid) body.appendChild(h("div", { class: "drw-conv" }, [btn("✏️ 在照片上畫備註", function () { edToDraw(b, function () { renderForm(); changed(); }); }, "sm"), h("span", { class: "muted" }, ["變成「繪圖」：在這張照片上畫圈、箭頭、寫字（照片本身不會被改；存檔時另外存一張畫好的）"])]));
     if (/\.png$/i.test(b.fname || "") && /^1\. /.test(String(b.ocr || ""))) {
-      body.appendChild(h("div", { class: "drw-rec" }, [btn("🔀 還原成流程圖", function () { drRecover(b, function () { renderForm(); changed(); }); }, "sm"), h("span", { class: "muted" }, ["這張圖是流程圖畫的（退回舊版本時變成一般的圖）：按這裡就能再用流程圖改"])]));
+      body.appendChild(h("div", { class: "drw-rec" }, [btn("🔀 還原成繪圖", function () { drRecover(b, function () { renderForm(); changed(); }); }, "sm"), h("span", { class: "muted" }, ["這張圖是繪圖（流程圖）畫的（退回舊版本時變成一般的圖）：按這裡就能再用繪圖改"])]));
     }
   }
   var blk = h("div", { class: "blk" + (ED.ab === i ? " act" : "") + (b.brk && i > 0 ? " brk" : "") + (b.only === "line" ? " only-line" : b.only === "web" ? " only-web" : ""), "data-i": String(i), "data-ind": _yzBlockInd_(b) ? String(_yzBlockInd_(b)) : null }, [head, body]);
@@ -9856,7 +10159,7 @@ var ED_CLIP = null;
 function edClipBlocks(t, idx) {
   var bs = idx.map(function (i) { return t.blocks[i]; }).filter(Boolean);
   if (!bs.length) return;
-  ED_CLIP = { blocks: JSON.parse(JSON.stringify(bs)), what: bs.length === 1 ? (bs[0].draw ? "流程圖" : KIND_NAME[bs[0].t] || "內容") : bs.length + " 塊", from: t.name || "" };
+  ED_CLIP = { blocks: JSON.parse(JSON.stringify(bs)), what: bs.length === 1 ? (bs[0].draw ? "繪圖" : KIND_NAME[bs[0].t] || "內容") : bs.length + " 塊", from: t.name || "" };
   renderToolbar();
   toast("📋 複製好了（" + ED_CLIP.what + "）：到要放的標題，點一下某一塊，按最上面的「📌 貼上整塊」");
 }
@@ -9891,7 +10194,7 @@ function moveBlock(t, i, d) { var j = i + d; if (j < 0 || j >= t.blocks.length) 
 function addBlock(kind) {
   if (ED.cur.kind !== "title") return;
   if (kind === "link" && !drBackOk()) { modal({ title: "⚠ 還不能放網址連結", lines: ["藥戰手冊專案（Apps Script）的「01、02」還是舊的（第 40 批以前）：網址連結存了會不見。", "請先把第 40 批的 01、02 貼上，「部署 → 管理部署作業 → ✏️ → 新版本 → 部署」，再重新整理這一頁。"], buttons: [{ label: "知道了", cls: "sm pri" }] }); return; }
-  if (kind === "draw" && !drBackOk()) { modal({ title: "⚠ 還不能畫流程圖", lines: ["藥戰手冊專案（Apps Script）的「02_藥戰手冊」還是舊的（第 40 批以前）：流程圖存了會變成一般的圖。", "請先把第 40 批的 02 貼上，「部署 → 管理部署作業 → ✏️ → 新版本 → 部署」，再重新整理這一頁。"], buttons: [{ label: "知道了", cls: "sm pri" }] }); return; }
+  if (kind === "draw" && !drBackOk()) { modal({ title: "⚠ 還不能用繪圖", lines: ["藥戰手冊專案（Apps Script）的「02_藥戰手冊」還是舊的（第 40 批以前）：繪圖存了會變成一般的圖。", "請先把第 40 批的 02 貼上，「部署 → 管理部署作業 → ✏️ → 新版本 → 部署」，再重新整理這一頁。"], buttons: [{ label: "知道了", cls: "sm pri" }] }); return; }
   var t = edTitle(ED.cur.id); if (!t) return;
   var nb = kind === "text" ? { t: "text", v: "" } : kind === "ladder" ? { t: "ladder", style: "law", items: [{ lv: 1, v: "" }] } : kind === "table" ? { t: "table", head: true, rows: [["", ""], ["", ""]] } : kind === "drug" ? { t: "drug", items: [] } : kind === "anim" ? { t: "anim", kind: "file", url: "", poster: "", fmt: "", bytes: 0, w: 0, h: 0, frames: 0, dur: 0, ar: "4:3", cap: "", steps: [], sec: 2, loop: true } : kind === "draw" ? { t: "img", url: "", fid: "", cap: "", ar: "4:3", draw: drNew() } : kind === "link" ? { t: "link", items: [{ u: "", t: "", n: "" }] } : { t: "img", url: "", cap: "", ar: "4:3" };
   var at = (ED.ab === null || ED.ab === undefined) ? t.blocks.length : Math.min(t.blocks.length, ED.ab + 1);
@@ -11696,7 +11999,7 @@ function pbFill(d, my) {
   var flow = h("div", { class: "rbk-flow" });
   flow.appendChild(pgHead(chIco(c, hb) + " " + nm, c.intro || (ts.length ? ts.length + " 個標題" : "")));
   var nop = function () {  };
-  chSecs(flow, c, ts, _yzMergeHb_(hb), { pv: true, noid: true, emb: "ph", onImg: nop, onTitle: nop, onChapter: nop, mark: pbMarkB, markT: pbMarkT });
+  chSecs(flow, c, ts, _yzMergeHb_(hb), { pv: true, noid: true, emb: "ph", still: true, onImg: nop, onTitle: nop, onChapter: nop, mark: pbMarkB, markT: pbMarkT });
   if (YZ_CFG.footer) flow.appendChild(h("div", { class: "pgfoot" }, [YZ_NOTICE]));
   $$("img[loading=lazy]", flow).forEach(function (im) { im.loading = "eager"; });
   var mk = h("div", { class: "pbmk", "aria-hidden": "true" });
@@ -11875,7 +12178,7 @@ function pbPick(el, cx, cy) {
       var ow = b ? pbOwner(b) : null;
       if (!ow) stale = true;
       else {
-        head = "「" + (ow.t.name || "（還沒有標題）") + "」第 " + (ow.i + 1) + " 塊（" + (b.t === "img" && b.draw ? "流程圖" : KIND_NAME[b.t] || "內容") + "）";
+        head = "「" + (ow.t.name || "（還沒有標題）") + "」第 " + (ow.i + 1) + " 塊（" + (b.t === "img" && b.draw ? "繪圖" : KIND_NAME[b.t] || "內容") + "）";
         if (info.lead) items.push(note("這一篇的第一塊：要換頁，點上面的標題（整篇從新的一頁開始）"));
         else items.push(tog("✂ 從這裡換到新的一頁", b.pb === true, function (on) { pbSetB(el, b, "pb", on); }, "pbm-pb"));
         items.push(tog("🔗 這一塊不要切開（放不下就整塊換到下一頁）", b.kp === true, function (on) { pbSetB(el, b, "kp", on); }, "pbm-kp"));
@@ -11954,29 +12257,60 @@ var DR_FONT = "'Noto Sans TC','Noto Sans CJK TC','PingFang TC','Microsoft JhengH
 var DR_FS = 15, DR_LH = 1.45, DR_GRID = 10, DR_ARROW = "#2F6FD6", DR_PAD = 16, DR_HIST = 80;
 var DR_DEF = { box: [200, 64], round: [200, 64], dia: [180, 100], pill: [180, 56], oval: [180, 76], note: [260, 160], txt: [180, 40] };
 var DR_ADD = [["box", "▭ 方框"], ["round", "▢ 圓角框"], ["dia", "◇ 判斷"], ["pill", "⬭ 開始／結束"], ["oval", "◯ 橢圓"], ["note", "📝 說明框"], ["txt", "T 只有字"]];
+var DR_TOOLS = [
+  ["sel", "↖ 選取", "V", "選取、移動、改大小（點一下選起來；拖曳移動；拉白點改大小）"],
+  ["pen", "✏️ 畫筆", "P", "自由畫線：按住拖曳"],
+  ["hl", "🖍 螢光筆", "H", "半透明的粗線（像螢光筆畫重點）：按住拖曳"],
+  ["arrow", "↗ 箭頭", "A", "從起點按住拖到要指的地方（按住 Shift：直的、橫的、斜 45 度）"],
+  ["line", "╱ 直線", "L", "從起點按住拖到終點（按住 Shift：直的、橫的、斜 45 度）"],
+  ["rect", "⬚ 框起來", "R", "按住拖一個方框，把東西框起來（按住 Shift：正方形）"],
+  ["ell", "⭕ 圈起來", "O", "按住拖一個圓圈，把東西圈起來（按住 Shift：正圓）"],
+  ["tag", "🏷 字加底色", "T", "點一下要放的地方，直接打字（字有底色，在照片上也看得清楚）"],
+  ["erase", "🧽 橡皮擦", "E", "按住拖過去：擦掉畫上去的東西（流程圖的框用「🗑 刪除」）"]
+];
+var DR_TKIND = { pen: "pen", hl: "hl", arrow: "ln", line: "ln", rect: "rect", ell: "ell", tag: "tag" };
+var DR_PF = { pen: ["c", "lw"], hl: ["c", "lw"], ln: ["c", "lw", "ds", "ah"], rect: ["c", "lw", "ds", "f"], ell: ["c", "lw", "ds", "f"], tag: ["c", "fs"] };
+var DR_BGW = 960, DR_JPG_MAX = 950000;
 var DRW_Z = new WeakMap(), DRW_AT = new WeakMap();
 var DRW = { act: null };
+var DRW_BGD = {}, DRW_BGP = {}, DRW_TS = null, DR_MC = null;
+function drDrop() { DRW_BGD = {}; DRW_BGP = {}; }
 
 function drEsc(s) { return String(s === null || s === undefined ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 function drSnap(v) { return Math.round(v / DR_GRID) * DR_GRID; }
 function drShape(d, id) { var a = (d && d.s) || []; for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
 function drLink(d, id) { var a = (d && d.l) || []; for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
-function drNewId(d, p) { var ids = {}, n = 1; ((d.s || []).concat(d.l || [])).forEach(function (x) { ids[x.id] = 1; }); while (ids[p + n]) n++; return p + n; }
-function drNew() {
-  return { v: 1, W: 640, H: 300, s: [{ id: "s1", k: "pill", x: 220, y: 30, w: 200, h: 56, v: "開始" }, { id: "s2", k: "box", x: 200, y: 140, w: 240, h: 64, v: "第一步（連點兩下改字）" }], l: [{ id: "l1", a: "s1", b: "s2" }] };
+function drPEl(d, id) { var a = (d && d.p) || []; for (var i = 0; i < a.length; i++) if (a[i].id === id) return a[i]; return null; }
+function drNewId(d, p) { var ids = {}, n = 1; ((d.s || []).concat(d.l || [], d.p || [])).forEach(function (x) { ids[x.id] = 1; }); while (ids[p + n]) n++; return p + n; }
+function drNew() { return { v: 1, W: 640, H: 300, s: [], l: [], p: [] }; }
+function drTpl() {
+  return { s: [{ id: "s1", k: "pill", x: 220, y: 30, w: 200, h: 56, v: "開始" }, { id: "s2", k: "box", x: 200, y: 140, w: 240, h: 64, v: "第一步（連點兩下改字）" }], l: [{ id: "l1", a: "s1", b: "s2" }] };
 }
-function drState(d) { return JSON.stringify({ W: d.W, H: d.H, s: d.s, l: d.l }); }
+function drBgCore(g) { return g ? { url: g.url, fid: g.fid, fname: g.fname || "", w: g.w, h: g.h, dw: g.dw, dh: g.dh } : null; }
+function drState(d) { return JSON.stringify({ W: d.W, H: d.H, s: d.s, l: d.l, p: d.p || [], bg: drBgCore(d.bg) }); }
+function drTx(v, n) { return String(v === null || v === undefined ? "" : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").slice(0, n); }
 function drSig(d) {
-  var tx = function (v, n) { return String(v === null || v === undefined ? "" : v).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").slice(0, n); };
-  return JSON.stringify([(d.s || []).map(function (s) { var a = [s.id, s.k, Math.round(s.x), Math.round(s.y), Math.round(s.w), Math.round(s.h), s.c || "", s.al || "", tx(s.v, 2000)]; if (s.ds) a.push(s.ds); return a; }),
-    (d.l || []).map(function (l) { var a = [l.id, l.a, l.b, tx(l.t, 30).replace(/[\r\n]+/g, " ").trim(), l.st || "", l.ah || ""]; if (l.ds || l.lw || l.lc) a.push(l.ds || "", l.lw || "", l.lc || ""); return a; })]);
+  return JSON.stringify([(d.s || []).map(function (s) { var a = [s.id, s.k, Math.round(s.x), Math.round(s.y), Math.round(s.w), Math.round(s.h), s.c || "", s.al || "", drTx(s.v, 2000)]; if (s.ds) a.push(s.ds); return a; }),
+    (d.l || []).map(function (l) { var a = [l.id, l.a, l.b, drTx(l.t, 30).replace(/[\r\n]+/g, " ").trim(), l.st || "", l.ah || ""]; if (l.ds || l.lw || l.lc) a.push(l.ds || "", l.lw || "", l.lc || ""); return a; })]);
 }
-function drHash(d) { var s = drSig(d), x = 0x811c9dc5; for (var i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619) >>> 0; } return ("0000000" + x.toString(16)).slice(-8); }
+function drSig2(d) {
+  var g = d.bg, ps = d.p || [], r = function (v) { return v === undefined || v === null ? "" : Math.round(v); };
+  if (!g && !ps.length) return "";
+  return JSON.stringify([g ? [g.fid || g.url, r(g.dw), r(g.dh)] : null, ps.map(function (x) {
+    return [x.id, x.k, x.pts ? x.pts.map(r).join(",") : "", r(x.x1), r(x.y1), r(x.x2), r(x.y2), r(x.x), r(x.y), r(x.w), r(x.h), x.k === "tag" ? drTx(String(x.v === null || x.v === undefined ? "" : x.v).replace(/\r\n?/g, "\n"), YZ_DRAW_TAG_MAX) : "", x.c || "", x.lw || "", x.ds || "", x.ah || "", x.f || "", x.fs || ""].join("|");
+  })]);
+}
+function drFnv(s) { var x = 0x811c9dc5; for (var i = 0; i < s.length; i++) { x ^= s.charCodeAt(i); x = Math.imul(x, 16777619) >>> 0; } return ("0000000" + x.toString(16)).slice(-8); }
+function drHash(d) { return drFnv(drSig(d)); }
+function drHash2(d) { var s = drSig2(d); return s ? drFnv(s) : ""; }
 function drBackOk() { var m = /v(\d+)\.(\d+)/.exec(BACKV || ""); return !m || +m[1] > 12 || (+m[1] === 12 && +m[2] >= 7); }
-function drDirty(b) { return !!(b && b.draw) && (!b.url || b.draw.h !== drHash(b.draw)); }
+function drBack51() { return typeof bk51Ok !== "function" || bk51Ok(); }
+function drDirty(b) { return !!(b && b.draw) && (!b.url || b.draw.h !== drHash(b.draw) || (b.draw.h2 || "") !== drHash2(b.draw)); }
 function drFit(d) {
   var W = 0, H = 0;
   (d.s || []).forEach(function (s) { W = Math.max(W, s.x + s.w); H = Math.max(H, s.y + s.h); });
+  (d.p || []).forEach(function (x) { var B = drPBox(x); W = Math.max(W, B.x + B.w); H = Math.max(H, B.y + B.h); });
+  if (d.bg) { W = Math.max(W, d.bg.dw); H = Math.max(H, d.bg.dh); }
   d.W = Math.max(600, Math.ceil((W + 40) / 10) * 10); d.H = Math.max(300, Math.ceil((H + 40) / 10) * 10);
 }
 
@@ -12067,6 +12401,7 @@ function drHead(p, q, sz) {
   return [p.x, p.y, bx - uy * w, by + ux * w, bx + uy * w, by - ux * w].map(function (v) { return Math.round(v * 10) / 10; }).join(" ");
 }
 function drPull(p, q, n) { var dx = p.x - q.x, dy = p.y - q.y, L = Math.sqrt(dx * dx + dy * dy) || 1; return { x: p.x - dx / L * n, y: p.y - dy / L * n }; }
+function drSegDist(p, a, c) { var dx = c.x - a.x, dy = c.y - a.y, L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L)) : 0, x = a.x + t * dx - p.x, y = a.y + t * dy - p.y; return Math.sqrt(x * x + y * y); }
 function drTextArea(s) {
   var p = s.k === "txt" ? 4 : 10, x = s.x + p, y = s.y + p, w = s.w - 2 * p, hh = s.h - 2 * p;
   if (s.k === "dia") { x = s.x + s.w * 0.2; y = s.y + s.h * 0.2; w = s.w * 0.6; hh = s.h * 0.6; }
@@ -12097,9 +12432,77 @@ function drTextFo(s, edit) {
     "px;display:flex;flex-direction:column;justify-content:" + (s.k === "note" ? "flex-start" : "center") + ";overflow:hidden;font-family:" + DR_FONT + ";font-size:" + DR_FS + "px;line-height:" + DR_LH + ";color:" + T.ink +
     ";text-align:" + (al === "l" ? "left" : al === "r" ? "right" : "center") + ';word-break:break-word;overflow-wrap:anywhere"><div>' + html + "</div></div></foreignObject>";
 }
+
+function drPLw(x) { return YZ_DRAW_PW[_yzDrawOpt_(YZ_DRAW_PW, x.lw)].w * (x.k === "hl" ? 3 : 1); }
+function drPCol(x) { return YZ_DRAW_PC[_yzDrawOpt_(YZ_DRAW_PC, x.c)]; }
+function drPPath(a) {
+  var n = Math.floor(a.length / 2);
+  if (!n) return "";
+  var s = "M" + a[0] + " " + a[1];
+  if (n === 1) return s + "l0.01 0";
+  if (n === 2) return s + "L" + a[2] + " " + a[3];
+  for (var i = 1; i < n - 1; i++) { var mx = Math.round((a[2 * i] + a[2 * i + 2]) * 5) / 10, my = Math.round((a[2 * i + 1] + a[2 * i + 3]) * 5) / 10; s += "Q" + a[2 * i] + " " + a[2 * i + 1] + " " + mx + " " + my; }
+  return s + "L" + a[2 * n - 2] + " " + a[2 * n - 1];
+}
+function drRdp(a, eps) {
+  var n = Math.floor(a.length / 2);
+  if (n <= 2) return a.map(Math.round);
+  var keep = new Uint8Array(n), st = [[0, n - 1]];
+  keep[0] = keep[n - 1] = 1;
+  while (st.length) {
+    var r = st.pop(), i0 = r[0], i1 = r[1], A = { x: a[2 * i0], y: a[2 * i0 + 1] }, B = { x: a[2 * i1], y: a[2 * i1 + 1] }, md = -1, mi = -1;
+    for (var i = i0 + 1; i < i1; i++) { var dd = drSegDist({ x: a[2 * i], y: a[2 * i + 1] }, A, B); if (dd > md) { md = dd; mi = i; } }
+    if (md > eps) { keep[mi] = 1; st.push([i0, mi], [mi, i1]); }
+  }
+  var out = [];
+  for (var k = 0; k < n; k++) if (keep[k]) { var x = Math.round(a[2 * k]), y = Math.round(a[2 * k + 1]); if (!out.length || x !== out[out.length - 2] || y !== out[out.length - 1]) out.push(x, y); }
+  return out;
+}
+function drTagFont(x) { var px = YZ_DRAW_FS[_yzDrawOpt_(YZ_DRAW_FS, x.fs)].px; return { px: px, lh: Math.round(px * 1.3), py: Math.round(px * 0.3), px2: Math.round(px * 0.5) }; }
+function drTagSize(x) {
+  var F = drTagFont(x), ls = String(x.v || "").split("\n"), w = 0;
+  try { if (!DR_MC) DR_MC = document.createElement("canvas").getContext("2d"); DR_MC.font = "700 " + F.px + "px " + DR_FONT; ls.forEach(function (l) { w = Math.max(w, DR_MC.measureText(l).width); }); }
+  catch (e) { ls.forEach(function (l) { w = Math.max(w, l.length * F.px); }); }
+  return { w: Math.max(Math.round(F.px * 1.4), Math.ceil(w + 2 * F.px2 + 4)), h: ls.length * F.lh + 2 * F.py };
+}
+function drPBox(x) {
+  var w = x.k === "tag" ? 0 : drPLw(x) / 2, x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, i;
+  if (x.k === "pen" || x.k === "hl") { var a = x.pts || []; for (i = 0; i + 1 < a.length; i += 2) { x0 = Math.min(x0, a[i]); y0 = Math.min(y0, a[i + 1]); x1 = Math.max(x1, a[i]); y1 = Math.max(y1, a[i + 1]); } }
+  else if (x.k === "ln") { w = Math.max(w, (9 + 3 * drPLw(x)) / 2); x0 = Math.min(x.x1, x.x2); y0 = Math.min(x.y1, x.y2); x1 = Math.max(x.x1, x.x2); y1 = Math.max(x.y1, x.y2); }
+  else { x0 = x.x; y0 = x.y; x1 = x.x + x.w; y1 = x.y + x.h; }
+  if (x0 === Infinity) { x0 = 0; y0 = 0; x1 = 0; y1 = 0; }
+  return { x: x0 - w, y: y0 - w, w: x1 - x0 + 2 * w, h: y1 - y0 + 2 * w };
+}
+function drPSvg(x) {
+  var C = drPCol(x), w = drPLw(x), r1 = function (v) { return Math.round(v * 10) / 10; };
+  if (x.k === "pen" || x.k === "hl") return '<path d="' + drPPath(x.pts || []) + '" fill="none" stroke="' + C.c + '" stroke-width="' + w + '" stroke-linecap="round" stroke-linejoin="round"' + (x.k === "hl" ? ' stroke-opacity="0.4"' : "") + "/>";
+  if (x.k === "ln") {
+    var p1 = { x: x.x1, y: x.y1 }, p2 = { x: x.x2, y: x.y2 }, L = Math.sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y));
+    if (L < 0.5) return "";
+    var ah = x.ah || "end", sz = Math.round(9 + 3 * w), tip = ah === "end" || ah === "both", tail = ah === "start" || ah === "both", a = p1, c = p2, out;
+    if (tip) c = drPull(p2, p1, Math.min(sz * 0.8, L * 0.45));
+    if (tail) a = drPull(p1, p2, Math.min(sz * 0.8, L * 0.45));
+    out = '<line x1="' + r1(a.x) + '" y1="' + r1(a.y) + '" x2="' + r1(c.x) + '" y2="' + r1(c.y) + '" stroke="' + C.c + '" stroke-width="' + w + '" stroke-linecap="round"' + drDash(x.ds, w) + "/>";
+    if (tip) out += '<polygon points="' + drHead(p2, p1, Math.min(sz, L)) + '" fill="' + C.c + '" stroke="' + C.c + '" stroke-width="1" stroke-linejoin="round"/>';
+    if (tail) out += '<polygon points="' + drHead(p1, p2, Math.min(sz, L)) + '" fill="' + C.c + '" stroke="' + C.c + '" stroke-width="1" stroke-linejoin="round"/>';
+    return out;
+  }
+  var fill = x.f === "solid" || x.f === "half" ? C.c : "none", fo = x.f === "half" ? ' fill-opacity="0.25"' : "";
+  if (x.k === "rect") return '<rect x="' + x.x + '" y="' + x.y + '" width="' + x.w + '" height="' + x.h + '" rx="3" fill="' + fill + '"' + fo + ' stroke="' + C.c + '" stroke-width="' + w + '"' + drDash(x.ds, w) + ' stroke-linejoin="round"/>';
+  if (x.k === "ell") return '<ellipse cx="' + r1(x.x + x.w / 2) + '" cy="' + r1(x.y + x.h / 2) + '" rx="' + r1(x.w / 2) + '" ry="' + r1(x.h / 2) + '" fill="' + fill + '"' + fo + ' stroke="' + C.c + '" stroke-width="' + w + '"' + drDash(x.ds, w) + "/>";
+  if (x.k === "tag") {
+    var F = drTagFont(x), ls = String(x.v || "").split("\n"), bd = (x.c || "") === "white" ? ' stroke="#ADB5BD" stroke-width="1"' : "";
+    var o2 = '<rect x="' + x.x + '" y="' + x.y + '" width="' + x.w + '" height="' + x.h + '" rx="' + Math.round(F.px * 0.3) + '" fill="' + C.c + '"' + bd + "/>";
+    o2 += '<text font-family="' + drEsc(DR_FONT) + '" font-size="' + F.px + '" font-weight="700" fill="' + C.ink + '" xml:space="preserve" style="white-space:pre">';
+    ls.forEach(function (l, i) { o2 += '<tspan x="' + (x.x + F.px2) + '" y="' + r1(x.y + F.py + F.lh * i + (F.lh - F.px) / 2 + F.px * 0.86) + '">' + drEsc(l) + "</tspan>"; });
+    return o2 + "</text>";
+  }
+  return "";
+}
+
 function drSvg(d, o) {
   o = o || {};
-  var ss = (d.s || []).filter(function (s) { return o.notes !== false || s.k !== "note"; }), has = {}, out = [], labs = [], x0 = 0, y0 = 0, x1 = d.W, y1 = d.H;
+  var ss = (d.s || []).filter(function (s) { return o.notes !== false || s.k !== "note"; }), ps = d.p || [], bg = d.bg, has = {}, out = [], labs = [], x0 = 0, y0 = 0, x1 = d.W, y1 = d.H;
   ss.forEach(function (s) { has[s.id] = 1; });
   var ls = (d.l || []).filter(function (l) { return has[l.a] && has[l.b] && l.a !== l.b; });
   var routes = ls.map(function (l) { return drRoute(d, l); });
@@ -12108,10 +12511,17 @@ function drSvg(d, o) {
     var grow = function (x, y, w, hh) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x + w); y1 = Math.max(y1, y + hh); };
     ss.forEach(function (s) { grow(s.x, s.y, s.w, s.h); });
     routes.forEach(function (p, i) { if (!p) return; p.forEach(function (q) { grow(q.x, q.y, 0, 0); }); var lb = drLabelBox(ls[i], p); if (lb) grow(lb.x, lb.y, lb.w, lb.h); });
-    if (x0 === Infinity) { x0 = 0; y0 = 0; x1 = 200; y1 = 120; }
-    x0 = Math.floor(x0 - DR_PAD); y0 = Math.floor(y0 - DR_PAD); x1 = Math.ceil(x1 + DR_PAD); y1 = Math.ceil(y1 + DR_PAD);
+    ps.forEach(function (x) { var B = drPBox(x); grow(B.x, B.y, B.w, B.h); });
+    if (bg) {
+      if (x0 === Infinity) { x0 = 0; y0 = 0; x1 = bg.dw; y1 = bg.dh; }
+      else { x0 = 0; y0 = 0; x1 = x1 > bg.dw ? Math.ceil(x1 + DR_PAD) : bg.dw; y1 = y1 > bg.dh ? Math.ceil(y1 + DR_PAD) : bg.dh; }
+    } else {
+      if (x0 === Infinity) { x0 = 0; y0 = 0; x1 = 200; y1 = 120; }
+      x0 = Math.floor(x0 - DR_PAD); y0 = Math.floor(y0 - DR_PAD); x1 = Math.ceil(x1 + DR_PAD); y1 = Math.ceil(y1 + DR_PAD);
+    }
   }
-  if (!o.edit) out.push('<rect x="' + x0 + '" y="' + y0 + '" width="' + (x1 - x0) + '" height="' + (y1 - y0) + '" fill="#FFFFFF"/>');
+  if (!o.edit && !o.clear) out.push('<rect x="' + x0 + '" y="' + y0 + '" width="' + (x1 - x0) + '" height="' + (y1 - y0) + '" fill="#FFFFFF"/>');
+  if (bg && !o.noBg && (o.bgHref || bg.url)) out.push('<image href="' + drEsc(o.bgHref || bg.url) + '" x="0" y="0" width="' + bg.dw + '" height="' + bg.dh + '" preserveAspectRatio="none"/>');
   ls.forEach(function (l, i) {
     var p = routes[i]; if (!p) return;
     var ah = l.ah || "end", L = drLineSt(l), sz = L.head, pts = p.map(function (q) { return { x: q.x, y: q.y }; });
@@ -12127,6 +12537,7 @@ function drSvg(d, o) {
   labs.forEach(function (lb) {
     out.push('<foreignObject x="' + Math.round(lb.x) + '" y="' + Math.round(lb.y) + '" width="' + Math.round(lb.w) + '" height="' + lb.h + '"><div xmlns="http://www.w3.org/1999/xhtml" style="text-align:' + lb.al + ";font-family:" + DR_FONT + ";font-size:14px;line-height:" + lb.h + 'px;white-space:nowrap"><span style="background:#FFFFFF;color:#1F2328;font-weight:700;padding:0 3px">' + drEsc(lb.t) + "</span></div></foreignObject>");
   });
+  ps.forEach(function (x) { out.push('<g data-p="' + drEsc(x.id) + '">' + drPSvg(x) + "</g>"); });
   return { body: out.join(""), x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 function drSvgDoc(r, sc) { return '<svg xmlns="http://www.w3.org/2000/svg" width="' + Math.round(r.w * sc) + '" height="' + Math.round(r.h * sc) + '" viewBox="' + r.x + " " + r.y + " " + r.w + " " + r.h + '">' + r.body + "</svg>"; }
@@ -12152,29 +12563,90 @@ function drPngGet(u8, key) {
   }
   return "";
 }
+function drJpgPut(u8, key, text) {
+  var enc = new TextEncoder(), parts = [], n = Math.max(1, Math.ceil(text.length / 60000)), at = 2, add = 0, i;
+  for (i = 0; i < n; i++) parts.push(enc.encode(key + " " + (i + 1) + "/" + n + " " + text.slice(i * 60000, (i + 1) * 60000)));
+  while (at + 4 <= u8.length && u8[at] === 0xFF && u8[at + 1] >= 0xE0 && u8[at + 1] <= 0xEF) at += 2 + ((u8[at + 2] << 8) | u8[at + 3]);
+  parts.forEach(function (p) { add += 4 + p.length; });
+  var out = new Uint8Array(u8.length + add), o = at;
+  out.set(u8.subarray(0, at), 0);
+  parts.forEach(function (p) { var L = p.length + 2; out[o] = 0xFF; out[o + 1] = 0xFE; out[o + 2] = L >> 8; out[o + 3] = L & 255; out.set(p, o + 4); o += 4 + p.length; });
+  out.set(u8.subarray(at), o);
+  return out;
+}
+function drJpgGet(u8, key) {
+  if (!u8 || u8.length < 4 || u8[0] !== 0xFF || u8[1] !== 0xD8) return "";
+  var i = 2, got = [], n = 0, dec = new TextDecoder("latin1");
+  while (i + 4 <= u8.length && u8[i] === 0xFF) {
+    var m = u8[i + 1];
+    if (m === 0xD9 || m === 0xDA) break;
+    if (m === 0xFF || m === 0x01 || (m >= 0xD0 && m <= 0xD8)) { i += m === 0xFF ? 1 : 2; continue; }
+    var L = (u8[i + 2] << 8) | u8[i + 3];
+    if (m === 0xFE) {
+      var s = dec.decode(u8.subarray(i + 4, i + 2 + L)), mm = /^(\S+) (\d+)\/(\d+) /.exec(s);
+      if (mm && mm[1] === key) { got[+mm[2] - 1] = s.slice(mm[0].length); n = +mm[3]; }
+    }
+    i += 2 + L;
+  }
+  if (!n) return "";
+  for (var k = 0; k < n; k++) if (typeof got[k] !== "string") return "";
+  return got.join("");
+}
 function drB64(s) { return btoa(unescape(encodeURIComponent(s))); }
 function drUnB64(s) { return decodeURIComponent(escape(atob(s))); }
+function drData(d) { var o = { v: 1, W: d.W, H: d.H, s: d.s, l: d.l }; if (d.p && d.p.length) o.p = d.p; if (d.bg) o.bg = drBgCore(d.bg); return o; }
+function drLoadImg(src) { return new Promise(function (ok, no) { var im = new Image(); im.onload = function () { ok(im); }; im.onerror = function () { no(new Error("繪圖畫不出來")); }; im.src = src; }); }
+function drBlob(cv, type, q) { return new Promise(function (ok, no) { try { cv.toBlob(function (bl) { if (bl) ok(bl); else no(new Error("繪圖畫不成圖片")); }, type, q); } catch (e) { no(new Error("這個瀏覽器不能把繪圖存成圖片（請用 Chrome 或 Edge）")); } }); }
+function drU8Uri(u8, type) { return new Promise(function (ok, no) { var fr = new FileReader(); fr.onload = function () { ok(String(fr.result)); }; fr.onerror = function () { no(new Error("繪圖畫不成圖片")); }; fr.readAsDataURL(new Blob([u8], { type: type })); }); }
+function drBgData(g) {
+  if (!g) return Promise.resolve(null);
+  var u = String(g.url || "");
+  if (u.indexOf("data:") === 0) return Promise.resolve(u.replace(/#.*$/, ""));
+  if (g.fid && DRW_BGD[g.fid]) return Promise.resolve(DRW_BGD[g.fid]);
+  if (!g.fid) return Promise.reject(new Error("照片還沒放好"));
+  if (DRW_BGP[g.fid]) return DRW_BGP[g.fid];
+  var pr = call("hbPicData", [g.fid], { ms: 60000 }).then(function (r) {
+    delete DRW_BGP[g.fid];
+    if (r && r.st === "lock") { logout("expired"); throw new Error("驗證過期了"); }
+    if (!r || !r.ok || !r.b64) throw new Error("拿不到照片：" + ((r && r.err) || "後端沒有回答"));
+    return (DRW_BGD[g.fid] = "data:" + (r.mime || "image/jpeg") + ";base64," + r.b64);
+  }, function (e) { delete DRW_BGP[g.fid]; throw e; });
+  DRW_BGP[g.fid] = pr;
+  return pr;
+}
 function drPng(d, notes) {
-  var r = drSvg(d, { notes: notes, crop: true }), sc = Math.min(2, 4000 / Math.max(r.w, r.h));
-  var svg = drSvgDoc(r, sc), W = Math.round(r.w * sc), H = Math.round(r.h * sc);
-  return new Promise(function (ok, no) {
-    var im = new Image();
-    im.onload = function () {
+  var bg = d.bg && (d.bg.url || d.bg.fid) ? d.bg : null;
+  return (bg ? drBgData(bg) : Promise.resolve(null)).then(function (bu) {
+    var r = drSvg(d, { notes: notes, crop: true, noBg: true, clear: !!bg }), sc = Math.min(2, (bg ? 2400 : 4000) / Math.max(r.w, r.h));
+    var W = Math.round(r.w * sc), H = Math.round(r.h * sc);
+    return Promise.all([drLoadImg("data:image/svg+xml;charset=utf-8," + encodeURIComponent(drSvgDoc(r, sc))), bu ? drLoadImg(bu) : null]).then(function (ims) {
       var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
       var cx = cv.getContext("2d"); cx.fillStyle = "#FFFFFF"; cx.fillRect(0, 0, W, H);
-      try { cx.drawImage(im, 0, 0, W, H); cv.toBlob(function (bl) {
-        if (!bl) { no(new Error("流程圖畫不成圖片")); return; }
-        bl.arrayBuffer().then(function (ab) {
-          var u8 = drPngPut(new Uint8Array(ab), "yzdraw", drB64(JSON.stringify({ v: 1, W: d.W, H: d.H, s: d.s, l: d.l })));
-          var fr = new FileReader();
-          fr.onload = function () { ok({ uri: String(fr.result), w: W, h: H, lw: Math.round(r.w), lh: Math.round(r.h), bytes: u8.length }); };
-          fr.onerror = function () { no(new Error("流程圖畫不成圖片")); };
-          fr.readAsDataURL(new Blob([u8], { type: "image/png" }));
-        }, no);
-      }, "image/png"); } catch (e) { no(new Error("這個瀏覽器不能把流程圖存成圖片（請用 Chrome 或 Edge）")); }
-    };
-    im.onerror = function () { no(new Error("流程圖畫不出來")); };
-    im.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+      try {
+        if (ims[1]) cx.drawImage(ims[1], (0 - r.x) * sc, (0 - r.y) * sc, bg.dw * sc, bg.dh * sc);
+        cx.drawImage(ims[0], 0, 0, W, H);
+      } catch (e) { throw new Error("這個瀏覽器不能把繪圖存成圖片（請用 Chrome 或 Edge）"); }
+      var meta = drB64(JSON.stringify(drData(d)));
+      if (!bg) return drBlob(cv, "image/png").then(function (bl) { return bl.arrayBuffer(); }).then(function (ab) {
+        var u8 = drPngPut(new Uint8Array(ab), "yzdraw", meta);
+        return drU8Uri(u8, "image/png").then(function (uri) { return { uri: uri, w: W, h: H, bytes: u8.length }; });
+      });
+      var q = 0.88, k = 0;
+      var go = function (c2) {
+        return drBlob(c2, "image/jpeg", q).then(function (bl) {
+          if (bl.size > DR_JPG_MAX && k++ < 6) {
+            if (q > 0.74) q -= 0.07;
+            else { var c3 = document.createElement("canvas"); c3.width = Math.round(c2.width * 0.82); c3.height = Math.round(c2.height * 0.82); c3.getContext("2d").drawImage(c2, 0, 0, c3.width, c3.height); c2 = c3; }
+            return go(c2);
+          }
+          return bl.arrayBuffer().then(function (ab) {
+            var u8 = drJpgPut(new Uint8Array(ab), "yzdraw", meta);
+            return drU8Uri(u8, "image/jpeg").then(function (uri) { return { uri: uri, w: c2.width, h: c2.height, bytes: u8.length }; });
+          });
+        });
+      };
+      return go(cv);
+    }).then(function (o) { o.lw = Math.round(r.w); o.lh = Math.round(r.h); return o; });
   });
 }
 function edDrawTodo(auto) {
@@ -12196,17 +12668,18 @@ function edDrawNeed() { return ED ? edDrawTodo(false).length : 0; }
 function edDrawMake(list, onStep) {
   var i = 0;
   var one = function (b) {
-    var d = b.draw, key = drHash(d), notes = _yzDrawNotes_(d).length > 0;
+    var d = b.draw, key = drHash(d), key2 = drHash2(d), notes = _yzDrawNotes_(d).length > 0;
     DRW_AT.set(d, Date.now());
     return drPng(d, true).then(function (p) { return uploadUri(p.uri, "圖片").then(function (r) { return { p: p, r: r }; }); }).then(function (A) {
       if (!notes) return { A: A, L: null };
       return drPng(d, false).then(function (p) { return uploadUri(p.uri, "圖片").then(function (r) { return { A: A, L: { p: p, r: r } }; }); });
     }).then(function (x) {
-      if (drHash(d) !== key) return;
+      if (drHash(d) !== key || drHash2(d) !== key2) return;
       b.url = x.A.r.url; b.fid = x.A.r.fid; b.fname = x.A.r.fname; b.ar = _yzAR_(x.A.p.w, x.A.p.h); b.info = { w: x.A.p.w, h: x.A.p.h, bytes: x.A.p.bytes, ow: x.A.p.lw, oh: x.A.p.lh };
-      b.ocr = _yzDrawLines_(d).join("\n").slice(0, 2000);
+      b.ocr = _yzDrawLines_(d).concat(d.bg && d.bg.ocr ? [d.bg.ocr] : []).join("\n").slice(0, 2000);
       if (x.L) d.line = { url: x.L.r.url, fid: x.L.r.fid, ar: _yzAR_(x.L.p.w, x.L.p.h) }; else delete d.line;
       d.h = key;
+      if (key2) d.h2 = key2; else delete d.h2;
     });
   };
   var next = function () {
@@ -12220,14 +12693,14 @@ var DRW_PV = new WeakMap();
 function drPvOf(b) { var c = b && b.draw && drDirty(b) ? DRW_PV.get(b.draw) : null; return c && c.full ? c : null; }
 function drPv(b) {
   if (!b || !b.draw || !drDirty(b)) return null;
-  var d = b.draw, k = drHash(d), c = DRW_PV.get(d);
+  var d = b.draw, k = drHash(d) + drHash2(d), c = DRW_PV.get(d);
   if (c && (c.k === k || c.busy)) return c.full ? c : null;
-  var job = { k: k, busy: true, full: c && c.full, line: c && c.line, ar: c && c.ar, lar: c && c.lar };
+  var job = { k: k, busy: true, full: c && c.full, line: c && c.line, ar: c && c.ar, lar: c && c.lar, lw: c && c.lw };
   DRW_PV.set(d, job);
   var notes = _yzDrawNotes_(d).length > 0;
   Promise.all([drPng(d, true), notes ? drPng(d, false) : Promise.resolve(null)]).then(function (r) {
     job.full = r[0].uri; job.ar = _yzAR_(r[0].w, r[0].h); job.lw = r[0].lw; job.line = r[1] ? r[1].uri : null; job.lar = r[1] ? _yzAR_(r[1].w, r[1].h) : null; job.busy = false;
-    if (drHash(d) !== k) job.k = "";
+    if (drHash(d) + drHash2(d) !== k) job.k = "";
     if (ED && typeof refreshPreview === "function") refreshPreview();
   }, function () { job.busy = false; job.k = ""; });
   return job.full ? job : null;
@@ -12239,32 +12712,68 @@ function drRecover(b, done) {
     if (!r || !r.ok) { toast("拿不到這張圖：" + ((r && r.err) || "後端沒有回答")); return; }
     var b64 = String(r.b64 || ""), u8 = null;
     try { var bin = atob(b64); u8 = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); } catch (e) { u8 = null; }
-    var tx = u8 ? drPngGet(u8, "yzdraw") : "", d = null;
+    var tx = u8 ? (drPngGet(u8, "yzdraw") || drJpgGet(u8, "yzdraw")) : "", d = null;
     try { d = tx ? JSON.parse(drUnB64(tx)) : null; } catch (e) { d = null; }
-    if (!d || !Array.isArray(d.s)) { toast("這張圖不是用流程圖畫的（找不到畫的資料）"); return; }
-    b.draw = { v: 1, W: d.W, H: d.H, s: d.s, l: Array.isArray(d.l) ? d.l : [] };
+    if (!d || !Array.isArray(d.s)) { toast("這張圖不是用繪圖畫的（找不到畫的資料）"); return; }
+    var keep = b.draw && b.draw.bg && b.draw.bg.ocr;
+    b.draw = { v: 1, W: d.W, H: d.H, s: d.s, l: Array.isArray(d.l) ? d.l : [], p: Array.isArray(d.p) ? d.p : [] };
+    if (d.bg && d.bg.url) { b.draw.bg = d.bg; if (typeof keep === "string") b.draw.bg.ocr = keep; }
     drFit(b.draw);
-    toast("🔀 還原好了：可以用流程圖編輯器改了（存檔時會重新畫成圖）");
+    toast("🔀 還原好了：可以用繪圖編輯器改了（存檔時會重新畫成圖）");
     if (done) done();
   }, function (e) { toast("拿不到這張圖：" + ((e && e.message) || "")); });
 }
+function edToDraw(b, done) {
+  if (!drBack51()) { bk51Warn("在照片上畫備註"); return; }
+  if (!b || !b.url || !b.fid) { toast("照片還沒放好（上傳好了才能畫）"); return; }
+  var go = function (w, hh) {
+    var dw = Math.min(w, DR_BGW), dh = Math.max(20, Math.round(hh * dw / w));
+    b.draw = { v: 1, W: 600, H: 300, s: [], l: [], p: [], bg: { url: b.url, fid: b.fid, fname: b.fname || "", w: w, h: hh, dw: dw, dh: dh } };
+    if (typeof b.ocr === "string") b.draw.bg.ocr = b.ocr;
+    drFit(b.draw);
+    if (done) done();
+    toast("✏️ 變成繪圖了：用上面的工具在照片上畫圈、箭頭、寫字（照片本身不會被改；存檔時另外存一張畫好的）");
+  };
+  var inf = b.info || {};
+  if (+inf.w > 0 && +inf.h > 0) { go(Math.round(+inf.w), Math.round(+inf.h)); return; }
+  drLoadImg(b.url).then(function (im) { go(im.naturalWidth || 800, im.naturalHeight || 600); }, function () { toast("這張照片打不開"); });
+}
+function edFromDraw(b, done) {
+  var g = b && b.draw && b.draw.bg;
+  if (!g) return;
+  b.url = g.url; b.fid = g.fid; b.fname = g.fname || ""; b.ar = _yzAR_(g.w, g.h); b.info = { w: g.w, h: g.h };
+  if (typeof g.ocr === "string") b.ocr = g.ocr; else delete b.ocr;
+  if (DRW.act === b.draw) DRW.act = null;
+  delete b.draw;
+  if (done) done();
+  toast("↩ 變回照片了（畫的東西拿掉了）");
+}
 
+function drToolDefaults() {
+  if (!DRW_TS) DRW_TS = { pen: {}, hl: { c: "yellow" }, arrow: {}, line: { ah: "none" }, rect: {}, ell: {}, tag: { c: "yellow" } };
+  return DRW_TS;
+}
 function drawEditor(t, b) {
   var d = b.draw;
   if (!Array.isArray(d.s)) d.s = [];
   if (!Array.isArray(d.l)) d.l = [];
+  if (!Array.isArray(d.p)) d.p = [];
   drFit(d);
-  var S = { sel: [], ls: null, hov: null, mode: null, drag: null, guides: [], linkMode: false, linkFrom: null, txt: null, hist: [drState(d)], hi: 0, z: DRW_Z.get(d) || 1, over: {} }, hadZ = !!DRW_Z.get(d);
+  var S = { sel: [], psel: [], ls: null, hov: null, mode: null, drag: null, guides: [], linkMode: false, linkFrom: null, txt: null, tag: null, tool: "sel", ts: drToolDefaults(), bgOn: false, bgUp: null, qsOff: false, cur: null,
+    hist: [drState(d)], hi: 0, z: DRW_Z.get(d) || 1, over: {} }, hadZ = !!DRW_Z.get(d);
   var uid = "drw" + Math.random().toString(36).slice(2, 8);
-  var root = h("div", { class: "drw" }), bar1 = h("div", { class: "drw-bar" }), bar2 = h("div", { class: "drw-bar drw-ctx" });
-  var view = h("div", { class: "drw-view" }), stage = h("div", { class: "drw-stage", tabindex: "0", role: "application", "aria-label": "流程圖畫布：拖曳框移動、拉框旁邊的藍點連箭頭、連點兩下改字、Delete 刪除" });
-  var txt = h("div", { class: "drw-txt" }), foot = h("div", { class: "drw-foot" }), svg = null, gDia = null, gOv = null, gBg = null;
+  var root = h("div", { class: "drw" }), tools = h("div", { class: "drw-bar drw-tools" }), fcb = h("div", { class: "drw-bar drw-fc" }), bar2 = h("div", { class: "drw-bar drw-ctx" });
+  var qs = h("div", { class: "drw-qs" });
+  var view = h("div", { class: "drw-view" }), stage = h("div", { class: "drw-stage", tabindex: "0", role: "application", "data-tool": "sel", "aria-label": "繪圖畫布：拖曳移動、拉白點改大小、拉框旁邊的藍點連箭頭、連點兩下改字、Delete 刪除；上面的工具可以畫畫筆、箭頭、框、圈、字；Ctrl+V 貼上照片" });
+  var txt = h("div", { class: "drw-txt" }), foot = h("div", { class: "drw-foot" }), svg = null, gDia = null, gOv = null, gBg = null, gBgp = null, gLive = null;
+  var bgFile = h("input", { type: "file", accept: "image/*", style: "display:none", "aria-hidden": "true", tabindex: "-1" });
   txt.hidden = true;
   view.appendChild(stage);
-  [bar1, view, bar2, txt, foot].forEach(function (x) { root.appendChild(x); });
+  [tools, fcb, qs, view, bar2, txt, foot, bgFile].forEach(function (x) { root.appendChild(x); });
 
   var shape = function (id) { return drShape(d, id); };
   var link = function (id) { return drLink(d, id); };
+  var pEl = function (id) { return drPEl(d, id); };
   var act = function () { DRW.act = d; };
   function sw() { return d.W + 240; }
   function sh() { return d.H + 200; }
@@ -12272,9 +12781,10 @@ function drawEditor(t, b) {
     var W = sw(), H = sh();
     stage.innerHTML = '<svg class="drw-svg" xmlns="http://www.w3.org/2000/svg" width="' + Math.round(W * S.z) + '" height="' + Math.round(H * S.z) + '" viewBox="0 0 ' + W + " " + H + '">' +
       '<defs><pattern id="' + uid + '" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#C9D3DD"/></pattern></defs>' +
-      '<rect class="bg" width="' + W + '" height="' + H + '" fill="url(#' + uid + ')"/><g class="dia"></g><g class="ov"></g></svg>';
-    svg = stage.firstChild; gBg = svg.querySelector(".bg"); gDia = svg.querySelector(".dia"); gOv = svg.querySelector(".ov");
-    paintDia(); paintOv();
+      '<rect class="bg" width="' + W + '" height="' + H + '" fill="url(#' + uid + ')"/><g class="bgp" pointer-events="none"></g><g class="dia"></g><g class="live" pointer-events="none"></g><g class="ov" pointer-events="none"></g></svg>';
+    svg = stage.firstChild; gBg = svg.querySelector(".bg"); gBgp = svg.querySelector(".bgp"); gDia = svg.querySelector(".dia"); gLive = svg.querySelector(".live"); gOv = svg.querySelector(".ov");
+    if (S.tag) { stage.appendChild(S.tag.ta); placeTag(); }
+    paintBg(); paintDia(); paintOv();
   }
   function resizeSvg() {
     if (!svg) return;
@@ -12282,18 +12792,26 @@ function drawEditor(t, b) {
     svg.setAttribute("width", Math.round(W * S.z)); svg.setAttribute("height", Math.round(H * S.z)); svg.setAttribute("viewBox", "0 0 " + W + " " + H);
     gBg.setAttribute("width", W); gBg.setAttribute("height", H);
   }
+  function paintBg() {
+    if (!gBgp) return;
+    var g = d.bg, u = S.bgUp, o = "";
+    if (g) o += '<image href="' + drEsc((g.fid && DRW_BGD[g.fid]) || g.url) + '" x="0" y="0" width="' + g.dw + '" height="' + g.dh + '" preserveAspectRatio="none"/><rect x="0" y="0" width="' + g.dw + '" height="' + g.dh + '" fill="none" stroke="#9AA5B1" stroke-width="' + 1 / S.z + '" stroke-dasharray="' + 4 / S.z + " " + 3 / S.z + '"/>';
+    if (u) o += '<image href="' + drEsc(u.uri) + '" x="0" y="0" width="' + u.dw + '" height="' + u.dh + '" opacity=".5" preserveAspectRatio="none"/>';
+    gBgp.innerHTML = o;
+  }
   function paintDia() {
     if (!gDia) return;
-    gDia.innerHTML = drSvg(d, { edit: true }).body;
+    gDia.innerHTML = drSvg(d, { edit: true, noBg: true }).body;
     S.over = {};
     Array.prototype.forEach.call(gDia.querySelectorAll("[data-t]"), function (el) { var c = el.firstChild; if (c && c.offsetHeight > el.clientHeight + 2) S.over[el.getAttribute("data-t")] = c.offsetHeight; });
-    paintFoot();
+    paintFoot(); paintQs();
   }
   function hs() { return 8 / S.z; }
   function handles(s) {
     var x = s.x, y = s.y, w = s.w, hh = s.h;
     return { nw: [x, y], n: [x + w / 2, y], ne: [x + w, y], e: [x + w, y + hh / 2], se: [x + w, y + hh], s: [x + w / 2, y + hh], sw: [x, y + hh], w: [x, y + hh / 2] };
   }
+  function pHandles(x) { return x.k === "rect" || x.k === "ell" ? handles(x) : x.k === "ln" ? { a: [x.x1, x.y1], b: [x.x2, x.y2] } : null; }
   function dots(s) { return { t: [s.x + s.w / 2, s.y], r: [s.x + s.w, s.y + s.h / 2], b: [s.x + s.w / 2, s.y + s.h], l: [s.x, s.y + s.h / 2] }; }
   function paintOv() {
     if (!gOv) return;
@@ -12302,26 +12820,37 @@ function drawEditor(t, b) {
     S.guides.forEach(function (g) { o += '<line x1="' + g[0] + '" y1="' + g[1] + '" x2="' + g[2] + '" y2="' + g[3] + '" stroke="#E8590C" stroke-width="' + 1.2 / S.z + '" stroke-dasharray="' + 5 / S.z + " " + 3 / S.z + '"/>'; });
     if (S.ls) { var l = link(S.ls), p = l && drRoute(d, l); if (p) o += '<polyline points="' + p.map(function (q) { return q.x + "," + q.y; }).join(" ") + '" fill="none" stroke="#0B7A75" stroke-width="' + 7 / S.z + '" stroke-opacity=".35" stroke-linejoin="round"/>'; }
     S.sel.forEach(function (id) { var s = shape(id); if (s) o += '<rect x="' + (s.x - 4 / S.z) + '" y="' + (s.y - 4 / S.z) + '" width="' + (s.w + 8 / S.z) + '" height="' + (s.h + 8 / S.z) + '" fill="none" stroke="#0B7A75" stroke-width="' + 1.6 / S.z + '" stroke-dasharray="' + 5 / S.z + " " + 3 / S.z + '"/>'; });
+    S.psel.forEach(function (id) { var x = pEl(id); if (!x) return; var B = drPBox(x), m = 4 / S.z; o += '<rect class="psel" x="' + (B.x - m) + '" y="' + (B.y - m) + '" width="' + (B.w + 2 * m) + '" height="' + (B.h + 2 * m) + '" fill="none" stroke="#0B7A75" stroke-width="' + 1.6 / S.z + '" stroke-dasharray="' + 5 / S.z + " " + 3 / S.z + '"/>'; });
     if (S.linkFrom) { var lf = shape(S.linkFrom); if (lf) o += '<rect x="' + (lf.x - 5) + '" y="' + (lf.y - 5) + '" width="' + (lf.w + 10) + '" height="' + (lf.h + 10) + '" fill="none" stroke="' + DR_ARROW + '" stroke-width="' + 3 / S.z + '"/>'; }
-    if (S.sel.length === 1 && S.mode !== "link") { var s1 = shape(S.sel[0]); if (s1) { var H = handles(s1); Object.keys(H).forEach(function (n) { o += '<rect class="hd" data-h="' + n + '" x="' + (H[n][0] - k / 2) + '" y="' + (H[n][1] - k / 2) + '" width="' + k + '" height="' + k + '" fill="#FFFFFF" stroke="#0B7A75" stroke-width="' + 1.5 / S.z + '"/>'; }); } }
-    var cs = S.hov && S.mode !== "move" && S.mode !== "resize" ? shape(S.hov) : null;
+    if (S.sel.length === 1 && !S.psel.length && S.mode !== "link") { var s1 = shape(S.sel[0]); if (s1) { var H = handles(s1); Object.keys(H).forEach(function (n) { o += '<rect class="hd" data-h="' + n + '" x="' + (H[n][0] - k / 2) + '" y="' + (H[n][1] - k / 2) + '" width="' + k + '" height="' + k + '" fill="#FFFFFF" stroke="#0B7A75" stroke-width="' + 1.5 / S.z + '"/>'; }); } }
+    if (S.psel.length === 1 && !S.sel.length && S.tool === "sel") {
+      var x1 = pEl(S.psel[0]), PH = x1 && pHandles(x1);
+      if (PH) Object.keys(PH).forEach(function (n) { o += x1.k === "ln" ? '<circle class="pe" data-h="' + n + '" cx="' + PH[n][0] + '" cy="' + PH[n][1] + '" r="' + k * 0.65 + '" fill="#FFFFFF" stroke="#0B7A75" stroke-width="' + 1.5 / S.z + '"/>' : '<rect class="hd" data-h="' + n + '" x="' + (PH[n][0] - k / 2) + '" y="' + (PH[n][1] - k / 2) + '" width="' + k + '" height="' + k + '" fill="#FFFFFF" stroke="#0B7A75" stroke-width="' + 1.5 / S.z + '"/>'; });
+    }
+    var cs = S.tool === "sel" && S.hov && S.mode !== "move" && S.mode !== "resize" ? shape(S.hov) : null;
     if (cs) { var D = dots(cs); Object.keys(D).forEach(function (n) { o += '<circle class="dt" cx="' + D[n][0] + '" cy="' + D[n][1] + '" r="' + 6 / S.z + '" fill="' + DR_ARROW + '" stroke="#FFFFFF" stroke-width="' + 2 / S.z + '"/>'; }); }
-    if (S.mode === "band" && S.drag) { var B = band(); o += '<rect x="' + B.x + '" y="' + B.y + '" width="' + B.w + '" height="' + B.h + '" fill="rgba(11,122,117,.08)" stroke="#0B7A75" stroke-width="' + 1 / S.z + '" stroke-dasharray="' + 4 / S.z + '"/>'; }
+    if (S.mode === "band" && S.drag) { var B2 = band(); o += '<rect x="' + B2.x + '" y="' + B2.y + '" width="' + B2.w + '" height="' + B2.h + '" fill="rgba(11,122,117,.08)" stroke="#0B7A75" stroke-width="' + 1 / S.z + '" stroke-dasharray="' + 4 / S.z + '"/>'; }
     if (S.mode === "link" && S.drag) {
       var tg = S.drag.to ? shape(S.drag.to) : null, p0 = S.drag.p0, p1 = S.drag.p;
       if (tg) o += '<rect x="' + (tg.x - 5) + '" y="' + (tg.y - 5) + '" width="' + (tg.w + 10) + '" height="' + (tg.h + 10) + '" fill="none" stroke="' + DR_ARROW + '" stroke-width="' + 3 / S.z + '"/>';
       o += '<line x1="' + p0.x + '" y1="' + p0.y + '" x2="' + p1.x + '" y2="' + p1.y + '" stroke="' + DR_ARROW + '" stroke-width="' + 2 / S.z + '" stroke-dasharray="' + 6 / S.z + " " + 4 / S.z + '"/>';
     }
+    if (S.tool === "erase" && S.cur) o += '<circle cx="' + S.cur.x + '" cy="' + S.cur.y + '" r="' + 8 / S.z + '" fill="rgba(255,255,255,.4)" stroke="#495057" stroke-width="' + 1.2 / S.z + '"/>';
     gOv.innerHTML = o;
   }
   function paintFoot() {
-    var n = Object.keys(S.over).length, dirty = drDirty(b);
+    var n = Object.keys(S.over).length, dirty = drDirty(b), np = d.p.length;
     foot.innerHTML = "";
-    foot.appendChild(h("span", { class: "muted" }, ["框 " + d.s.length + " 個、箭頭 " + d.l.length + " 條"]));
+    foot.appendChild(h("span", { class: "muted" }, ["框 " + d.s.length + " 個、箭頭 " + d.l.length + " 條" + (np ? "、畫上去的 " + np + " 個" : "") + (d.bg ? "、照片 1 張" : "")]));
+    if (S.bgUp) foot.appendChild(h("span", { class: "drw-st warn" }, ["⏳ 照片上傳中…（檔名會換成亂碼）"]));
     foot.appendChild(h("span", { class: dirty ? "drw-st warn" : "drw-st ok" }, [dirty ? "🖼 改過了：存檔時會重新畫成圖（LINE、網頁、Word 用）" : "🖼 LINE、網頁、Word 用的圖：已經是最新的"]));
     if (n) foot.appendChild(h("span", { class: "drw-st bad" }, ["⚠ 有 " + n + " 個框的字放不下（紅色虛線）：把框拉大一點，或少一點字"]));
-    if (!drBackOk()) foot.appendChild(h("span", { class: "drw-st bad" }, ["⚠ 藥戰手冊專案的 02 還是舊的（第 40 批以前）：流程圖存了會變成一般的圖。請先換 02、部署新版本"]));
+    if (!drBackOk()) foot.appendChild(h("span", { class: "drw-st bad" }, ["⚠ 藥戰手冊專案的 02 還是舊的（第 40 批以前）：繪圖存了會變成一般的圖。請先換 02、部署新版本"]));
+    else if ((np || d.bg) && !drBack51()) foot.appendChild(h("span", { class: "drw-st bad" }, ["⚠ 藥戰手冊專案的 02 還是舊的（第 51 批以前）：照片、畫上去的東西存了會不見。請先換 02、部署新版本"]));
+    if (b.fid && /\.jpe?g$/i.test(b.fname || "") && !d.bg && !S.bgUp) foot.appendChild(h("span", { class: "drw-rec" }, [btn("🔀 還原成繪圖", function () { drRecover(b, function () { renderForm(); changed(); }); }, "sm"), h("span", { class: "muted" }, ["這張繪圖原本有照片、畫上去的東西（退回舊版本時拿掉了）：按這裡從圖裡拿回來"])]));
   }
+  function isEmpty() { return !d.s.length && !d.p.length && !d.bg && !S.bgUp; }
+  function paintQs() { qs.hidden = !(isEmpty() && !S.qsOff); }
   function pt(e) { var r = svg.getBoundingClientRect(); return { x: (e.clientX - r.left) / S.z, y: (e.clientY - r.top) / S.z }; }
   function inShape(s, p, pad) {
     pad = pad || 0;
@@ -12332,16 +12861,41 @@ function drawEditor(t, b) {
     return true;
   }
   function hitShape(p, pad) { for (var i = d.s.length - 1; i >= 0; i--) if (inShape(d.s[i], p, pad)) return d.s[i].id; return null; }
-  function segDist(p, a, c) { var dx = c.x - a.x, dy = c.y - a.y, L = dx * dx + dy * dy, t = L ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L)) : 0, x = a.x + t * dx - p.x, y = a.y + t * dy - p.y; return Math.sqrt(x * x + y * y); }
   function hitLink(p) {
     var best = null, bd = 7 / S.z;
-    d.l.forEach(function (l) { var r = drRoute(d, l); if (!r) return; for (var i = 1; i < r.length; i++) { var x = segDist(p, r[i - 1], r[i]); if (x < bd) { bd = x; best = l.id; } } });
+    d.l.forEach(function (l) { var r = drRoute(d, l); if (!r) return; for (var i = 1; i < r.length; i++) { var x = drSegDist(p, r[i - 1], r[i]); if (x < bd) { bd = x; best = l.id; } } });
     return best;
   }
+  function pHit(x, p, tol) {
+    var w = drPLw(x) / 2, i;
+    if (x.k === "pen" || x.k === "hl") {
+      var a = x.pts || [];
+      if (a.length === 2) return Math.sqrt((p.x - a[0]) * (p.x - a[0]) + (p.y - a[1]) * (p.y - a[1])) <= tol + w;
+      for (i = 2; i + 1 < a.length; i += 2) if (drSegDist(p, { x: a[i - 2], y: a[i - 1] }, { x: a[i], y: a[i + 1] }) <= tol + w) return true;
+      return false;
+    }
+    if (x.k === "ln") return drSegDist(p, { x: x.x1, y: x.y1 }, { x: x.x2, y: x.y2 }) <= tol + w + 2;
+    var inR = function (m) { return p.x >= x.x - m && p.x <= x.x + x.w + m && p.y >= x.y - m && p.y <= x.y + x.h + m; };
+    if (x.k === "tag") return inR(tol / 2);
+    if (x.k === "rect") return x.f ? inR(tol) : inR(tol + w) && !(p.x > x.x + tol + w && p.x < x.x + x.w - tol - w && p.y > x.y + tol + w && p.y < x.y + x.h - tol - w);
+    if (x.k === "ell") {
+      var rx = Math.max(1, x.w / 2), ry = Math.max(1, x.h / 2), dx = p.x - (x.x + rx), dy = p.y - (x.y + ry), r = Math.sqrt(dx * dx / (rx * rx) + dy * dy / (ry * ry));
+      return x.f ? r <= 1 + tol / Math.min(rx, ry) : Math.abs(r - 1) * Math.min(rx, ry) <= tol + w;
+    }
+    return false;
+  }
+  function hitP(p, tol) { tol = tol === undefined ? 6 / S.z : tol; for (var i = d.p.length - 1; i >= 0; i--) if (pHit(d.p[i], p, tol)) return d.p[i].id; return null; }
   function hitHandle(p) {
-    if (S.sel.length !== 1) return null;
+    if (S.sel.length !== 1 || S.psel.length) return null;
     var s = shape(S.sel[0]); if (!s) return null;
     var H = handles(s), k = hs() * 0.9, hit = null;
+    Object.keys(H).forEach(function (n) { if (Math.abs(p.x - H[n][0]) <= k && Math.abs(p.y - H[n][1]) <= k) hit = n; });
+    return hit;
+  }
+  function hitPHandle(p) {
+    if (S.psel.length !== 1 || S.sel.length || S.tool !== "sel") return null;
+    var x = pEl(S.psel[0]), H = x && pHandles(x); if (!H) return null;
+    var k = hs() * 0.9, hit = null;
     Object.keys(H).forEach(function (n) { if (Math.abs(p.x - H[n][0]) <= k && Math.abs(p.y - H[n][1]) <= k) hit = n; });
     return hit;
   }
@@ -12355,18 +12909,21 @@ function drawEditor(t, b) {
   function push() {
     drFit(d);
     var k = drState(d);
-    if (k === S.hist[S.hi]) { paintFoot(); return; }
+    if (k === S.hist[S.hi]) { paintFoot(); paintQs(); return; }
     S.hist = S.hist.slice(0, S.hi + 1); S.hist.push(k);
     if (S.hist.length > DR_HIST) S.hist.shift();
     S.hi = S.hist.length - 1;
-    resizeSvg(); paintFoot(); syncCtx();
+    resizeSvg(); paintFoot(); paintQs(); syncCtx();
     changed();
   }
   function load(k) {
-    var o = JSON.parse(k); d.W = o.W; d.H = o.H; d.s = o.s; d.l = o.l;
-    S.sel = S.sel.filter(function (id) { return shape(id); }); if (S.ls && !link(S.ls)) S.ls = null;
+    var o = JSON.parse(k), ocr = d.bg && d.bg.ocr, fid = d.bg && d.bg.fid, bk = JSON.stringify(drBgCore(d.bg));
+    d.W = o.W; d.H = o.H; d.s = o.s; d.l = o.l; d.p = o.p || [];
+    if (o.bg) { d.bg = o.bg; if (typeof ocr === "string" && o.bg.fid === fid) d.bg.ocr = ocr; } else delete d.bg;
+    S.sel = S.sel.filter(function (id) { return shape(id); }); S.psel = S.psel.filter(function (id) { return pEl(id); }); if (S.ls && !link(S.ls)) S.ls = null;
     if (S.txt) closeText("nopush");
-    resizeSvg(); paintDia(); paintOv(); syncCtx(); changed();
+    if (S.tag) closeTag("nopush");
+    resizeSvg(); if (JSON.stringify(drBgCore(d.bg)) !== bk) paintBg(); paintDia(); paintOv(); syncCtx(); changed();
   }
   function undo() { if (S.hi > 0) { S.hi--; load(S.hist[S.hi]); } }
   function redo() { if (S.hi < S.hist.length - 1) { S.hi++; load(S.hist[S.hi]); } }
@@ -12374,6 +12931,7 @@ function drawEditor(t, b) {
   function addShape(k, at) {
     var z = DR_DEF[k] || DR_DEF.box, s = { id: drNewId(d, "s"), k: k, x: 0, y: 0, w: z[0], h: z[1], v: "" }, from = null;
     if (k === "note") s.al = "l";
+    if (S.tool !== "sel") setTool("sel");
     var one = S.sel.length === 1 ? shape(S.sel[0]) : null, maxR = 0, maxB = 0, minT = Infinity;
     d.s.forEach(function (o) { if (o.k !== "note") { maxR = Math.max(maxR, o.x + o.w); minT = Math.min(minT, o.y); } maxB = Math.max(maxB, o.y + o.h); });
     if (at) { s.x = drSnap(at.x - s.w / 2); s.y = drSnap(at.y - s.h / 2); }
@@ -12384,27 +12942,32 @@ function drawEditor(t, b) {
     for (var n = 0; n < 40 && overlaps(s); n++) s.y += k === "note" ? s.h + 20 : 30;
     d.s.push(s);
     if (from) d.l.push({ id: drNewId(d, "l"), a: from.id, b: s.id });
-    S.sel = [s.id]; S.ls = null;
+    S.sel = [s.id]; S.psel = []; S.ls = null;
     drFit(d); resizeSvg(); paintDia(); paintOv(); push();
     openText(s.id);
   }
   function delSel() {
     if (S.ls) { d.l = d.l.filter(function (l) { return l.id !== S.ls; }); S.ls = null; }
-    else if (S.sel.length) {
+    else if (S.sel.length || S.psel.length) {
       var del = {}; S.sel.forEach(function (id) { del[id] = 1; });
       d.s = d.s.filter(function (s) { return !del[s.id]; }); d.l = d.l.filter(function (l) { return !del[l.a] && !del[l.b]; });
+      var pd = {}; S.psel.forEach(function (id) { pd[id] = 1; });
+      d.p = d.p.filter(function (x) { return !pd[x.id]; });
       if (S.txt && del[S.txt.id]) closeText(true);
-      S.sel = []; S.hov = null;
+      if (S.tag && pd[S.tag.id]) closeTag("nopush");
+      S.sel = []; S.psel = []; S.hov = null;
     } else return;
     paintDia(); paintOv(); push();
   }
   function dupSel() {
-    if (!S.sel.length) return;
-    var map = {}, add = [];
-    S.sel.forEach(function (id) { var s = shape(id); if (!s) return; var c = JSON.parse(JSON.stringify(s)); c.id = drNewId({ s: d.s.concat(add), l: d.l }, "s"); c.x += 30; c.y += 30; map[id] = c.id; add.push(c); });
+    if (!S.sel.length && !S.psel.length) return;
+    var map = {}, add = [], padd = [];
+    S.sel.forEach(function (id) { var s = shape(id); if (!s) return; var c = JSON.parse(JSON.stringify(s)); c.id = drNewId({ s: d.s.concat(add), l: d.l, p: d.p }, "s"); c.x += 30; c.y += 30; map[id] = c.id; add.push(c); });
     d.s = d.s.concat(add);
     d.l.filter(function (l) { return map[l.a] && map[l.b]; }).forEach(function (l) { var c = JSON.parse(JSON.stringify(l)); c.id = drNewId(d, "l"); c.a = map[l.a]; c.b = map[l.b]; d.l.push(c); });
-    S.sel = add.map(function (s) { return s.id; }); S.ls = null;
+    S.psel.forEach(function (id) { var x = pEl(id); if (!x) return; var c = JSON.parse(JSON.stringify(x)); c.id = drNewId({ s: d.s, l: d.l, p: d.p.concat(padd) }, "p"); pMoveFrom(c, x, 20, 20); padd.push(c); });
+    d.p = d.p.concat(padd);
+    S.sel = add.map(function (s) { return s.id; }); S.psel = padd.map(function (x) { return x.id; }); S.ls = null;
     paintDia(); paintOv(); push();
   }
   function setOn(f) { S.sel.forEach(function (id) { var s = shape(id); if (s) f(s); }); paintDia(); paintOv(); push(); }
@@ -12427,16 +12990,39 @@ function drawEditor(t, b) {
     ss.forEach(function (s) { s.x = Math.max(0, s.x); s.y = Math.max(0, s.y); });
     paintDia(); paintOv(); push();
   }
+  function pMoveFrom(x, o, dx, dy) {
+    dx = Math.round(dx); dy = Math.round(dy);
+    if (x.k === "pen" || x.k === "hl") x.pts = (o.pts || []).map(function (v, i) { return Math.max(0, v + (i % 2 ? dy : dx)); });
+    else if (x.k === "ln") { x.x1 = Math.max(0, o.x1 + dx); x.y1 = Math.max(0, o.y1 + dy); x.x2 = Math.max(0, o.x2 + dx); x.y2 = Math.max(0, o.y2 + dy); }
+    else { x.x = Math.max(0, o.x + dx); x.y = Math.max(0, o.y + dy); }
+  }
+  function pMin(x) { if (x.k === "pen" || x.k === "hl") { var a = x.pts || [], mx = Infinity, my = Infinity; for (var i = 0; i + 1 < a.length; i += 2) { mx = Math.min(mx, a[i]); my = Math.min(my, a[i + 1]); } return { x: mx === Infinity ? 0 : mx, y: my === Infinity ? 0 : my }; } if (x.k === "ln") return { x: Math.min(x.x1, x.x2), y: Math.min(x.y1, x.y2) }; return { x: x.x, y: x.y }; }
+  function setP(f, v) {
+    if (S.tool !== "sel" && DR_TKIND[S.tool] && DR_PF[DR_TKIND[S.tool]].indexOf(f) >= 0) { if (v) S.ts[S.tool][f] = v; else delete S.ts[S.tool][f]; }
+    S.psel.forEach(function (id) {
+      var x = pEl(id); if (!x || DR_PF[x.k].indexOf(f) < 0) return;
+      if (v) x[f] = v; else delete x[f];
+      if (x.k === "tag" && f === "fs") { var z = drTagSize(x); x.w = z.w; x.h = z.h; }
+    });
+    if (S.tag) placeTag();
+    paintDia(); paintOv(); push(); syncCtx();
+  }
+  function zorder(top) {
+    var on = {}; S.psel.forEach(function (id) { on[id] = 1; });
+    var a = d.p.filter(function (x) { return on[x.id]; }), r = d.p.filter(function (x) { return !on[x.id]; });
+    d.p = top ? r.concat(a) : a.concat(r);
+    paintDia(); paintOv(); push();
+  }
   function openText(id) {
     var s = shape(id); if (!s) return;
-    closeText();
+    closeText(); closeTag();
     var r = rteCreate({ value: s.v || "", lite: true, onChange: function (v) { s.v = v; paintDia(); if (grow(s)) paintDia(); paintOv(); clearTimeout(S.txt && S.txt.tm); if (S.txt) S.txt.tm = setTimeout(function () { changed(); }, 600); } });
     S.txt = { id: id, rte: r, v0: s.v || "" };
     txt.innerHTML = "";
     txt.appendChild(h("div", { class: "drw-txth" }, [h("b", {}, ["✏️ " + (YZ_DRAW_KIND_NAME[s.k] || "框") + "裡的字"]), h("span", { class: "muted" }, ["　上面「字」「整行」兩排的按鍵都可以用（粗體、紅字、螢光筆、編號、標題…）；框會自己長高"]), h("span", { class: "sp" }), btn("完成", function () { closeText(); stage.focus({ preventScroll: true }); }, "sm pri")]));
     txt.appendChild(r.el);
     txt.hidden = false;
-    S.sel = [id]; S.ls = null; paintOv(); syncCtx();
+    S.sel = [id]; S.psel = []; S.ls = null; paintOv(); syncCtx();
     setTimeout(function () { r.focus(); }, 0);
   }
   function closeText(how) {
@@ -12457,23 +13043,181 @@ function drawEditor(t, b) {
     drFit(d); resizeSvg();
     return true;
   }
+  function addTag(p) {
+    if (d.p.length >= YZ_DRAW_P_MAX) { toast("畫上去的東西最多 " + YZ_DRAW_P_MAX + " 個"); return; }
+    var st = S.ts.tag || {}, x = { id: drNewId(d, "p"), k: "tag", x: Math.max(0, Math.round(p.x)), y: Math.max(0, Math.round(p.y)), w: 40, h: 30, v: "", c: st.c || "yellow" };
+    if (st.fs) x.fs = st.fs;
+    var z = drTagSize(x); x.w = z.w; x.h = z.h;
+    d.p.push(x); S.psel = [x.id]; S.sel = []; S.ls = null;
+    paintDia(); paintOv(); syncCtx();
+    openTag(x.id);
+  }
+  function placeTag() {
+    var T = S.tag; if (!T) return;
+    var x = pEl(T.id); if (!x) return;
+    var F = drTagFont(x), C = drPCol(x), z = S.z, s = T.ta.style;
+    s.left = Math.round(x.x * z) + "px"; s.top = Math.round(x.y * z) + "px"; s.width = Math.ceil(x.w * z + 2) + "px"; s.height = Math.ceil(x.h * z + 2) + "px";
+    s.fontSize = (F.px * z) + "px"; s.lineHeight = (F.lh * z) + "px"; s.padding = (F.py * z) + "px " + (F.px2 * z) + "px"; s.background = C.c; s.color = C.ink; s.fontFamily = DR_FONT;
+  }
+  function openTag(id) {
+    closeText(); closeTag();
+    var x = pEl(id); if (!x) return;
+    var ta = h("textarea", { class: "drw-tag", maxlength: String(YZ_DRAW_TAG_MAX), spellcheck: "false", "aria-label": "加底色的字（Enter 換行；Esc 或點旁邊＝完成）" });
+    ta.value = x.v || "";
+    S.tag = { id: id, ta: ta, v0: x.v || "" };
+    stage.appendChild(ta); placeTag();
+    ta.addEventListener("input", function () {
+      var y = pEl(id); if (!y) return;
+      y.v = ta.value.slice(0, YZ_DRAW_TAG_MAX);
+      var z = drTagSize(y); y.w = z.w; y.h = z.h;
+      if (y.x + y.w > d.W || y.y + y.h > d.H) { drFit(d); resizeSvg(); }
+      paintDia(); paintOv(); placeTag();
+    });
+    ta.addEventListener("keydown", function (e) {
+      e.stopPropagation();
+      if (e.key === "Escape" || (e.key === "Enter" && (e.ctrlKey || e.metaKey))) { e.preventDefault(); closeTag(); stage.focus({ preventScroll: true }); }
+    });
+    ta.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+    ta.addEventListener("blur", function () { setTimeout(function () { if (S.tag && S.tag.ta === ta && document.activeElement !== ta) closeTag(); }, 150); });
+    paintOv(); syncCtx();
+    setTimeout(function () { try { ta.focus({ preventScroll: true }); ta.setSelectionRange(ta.value.length, ta.value.length); } catch (e) {  } }, 0);
+  }
+  function closeTag(how) {
+    var T = S.tag; if (!T) return;
+    S.tag = null;
+    try { T.ta.remove(); } catch (e) {  }
+    var x = pEl(T.id);
+    if (x && !String(x.v || "").trim()) { d.p = d.p.filter(function (y) { return y.id !== T.id; }); S.psel = S.psel.filter(function (i) { return i !== T.id; }); }
+    else if (x) x.v = String(x.v).replace(/\s+$/, "");
+    paintDia(); paintOv();
+    if (how !== "nopush") push();
+    syncCtx();
+  }
+  function bgPick() { if (!drBack51()) { bk51Warn("照片當底圖"); return; } bgFile.click(); }
+  function bgTake(f) {
+    if (!drBack51()) { bk51Warn("照片當底圖"); return; }
+    if (S.bgUp) { toast("上一張照片還在上傳，等一下"); return; }
+    if (!f || !/^image\/(jpeg|png|gif|webp|bmp)$/.test(f.type || "")) { toast("這不是圖片檔（JPEG、PNG、GIF、WebP）"); return; }
+    shrinkImage(f, function (uri, info) {
+      if (!uri) { toast(info && info.error || "讀不到這個檔案"); return; }
+      var dw = Math.min(info.w, DR_BGW), dh = Math.max(20, Math.round(info.h * dw / info.w));
+      S.bgUp = { uri: uri, dw: dw, dh: dh }; S.qsOff = true;
+      paintBg(); paintFoot(); paintQs();
+      var prep = typeof ocrPrep === "function" ? ocrPrep(f) : null;
+      uploadUri(uri, "圖片").then(function (r) {
+        S.bgUp = null;
+        if (r.fid) { DRW_BGD[r.fid] = uri; if (prep && typeof ocrSrcPut === "function") ocrSrcPut(r.fid, prep); }
+        var had = !!d.bg;
+        d.bg = { url: r.url, fid: r.fid, fname: r.fname || "", w: info.w, h: info.h, dw: dw, dh: dh };
+        drFit(d); resizeSvg(); paintBg(); paintDia(); paintOv(); push();
+        if (typeof edOcrNew === "function") edOcrNew(d.bg);
+        toast(had ? "🖼 照片換好了（畫的東西都還在；Ctrl+Z 可以換回來）" : "🖼 照片放好了（已縮小、檔名換成亂碼）：用上面的工具在照片上畫");
+      }, function (e) {
+        S.bgUp = null; paintBg(); paintFoot(); paintQs();
+        modal({ title: "❌ 照片沒有放進去", lines: [(e && e.message) || "上傳失敗", "請再放一次。一直失敗的話：截圖給開發者，或在 LINE 打「手冊圖片檢查」。"], buttons: [{ label: "知道了", cls: "sm pri" }] });
+      });
+    }, 1600);
+  }
+  bgFile.onchange = function () { if (bgFile.files[0]) bgTake(bgFile.files[0]); bgFile.value = ""; };
+  root.addEventListener("paste", function (e) {
+    var tg = e.target;
+    if (tg && tg.closest && tg.closest(".drw-txt, textarea, input, select, [contenteditable=true]")) return;
+    var items = (e.clipboardData && e.clipboardData.items) || [];
+    for (var i = 0; i < items.length; i++) if (items[i].kind === "file" && items[i].type.indexOf("image/") === 0) { e.preventDefault(); bgTake(items[i].getAsFile()); return; }
+  });
+  var dropOn = function (el) {
+    el.addEventListener("dragover", function (e) { if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], "Files") >= 0) { e.preventDefault(); view.classList.add("hot"); } });
+    el.addEventListener("dragleave", function () { view.classList.remove("hot"); });
+    el.addEventListener("drop", function (e) { var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; view.classList.remove("hot"); if (f) { e.preventDefault(); bgTake(f); } });
+  };
+  dropOn(view); dropOn(qs);
+  qs.appendChild(h("div", { class: "drw-qsh" }, ["這張繪圖還是空的：選一個開始"]));
+  qs.appendChild(h("div", { class: "drw-qsb" }, [
+    h("button", { class: "btn drw-qs1", type: "button", onclick: function () { bgPick(); } }, [h("b", {}, ["🖼 放照片"]), h("small", {}, ["選檔案；也可以點一下下面的畫布按 Ctrl+V 貼上、把照片拖進來"])]),
+    h("button", { class: "btn drw-qs2", type: "button", onclick: function () { var T = drTpl(); d.s = T.s; d.l = T.l; S.qsOff = true; setTool("sel"); drFit(d); resizeSvg(); paintDia(); paintOv(); push(); } }, [h("b", {}, ["🔀 流程圖範本"]), h("small", {}, ["先放「開始 → 第一步」"])]),
+    h("button", { class: "btn drw-qs3", type: "button", onclick: function () { S.qsOff = true; paintQs(); setTool("pen"); stage.focus({ preventScroll: true }); } }, [h("b", {}, ["✏️ 直接畫"]), h("small", {}, ["用畫筆、箭頭、框、圈、字"])])
+  ]));
   function tbtn(label, tip, fn, cls) { var x = h("button", { class: "btn sm" + (cls ? " " + cls : ""), type: "button", title: tip }, [label]); x.addEventListener("mousedown", function (e) { e.preventDefault(); }); x.onclick = function () { act(); fn(); }; return x; }
-  function zoomTo(z) { S.z = Math.max(0.3, Math.min(2.5, z)); DRW_Z.set(d, S.z); resizeSvg(); paintOv(); zl.textContent = Math.round(S.z * 100) + "%"; }
+  function zoomTo(z) { S.z = Math.max(0.3, Math.min(2.5, z)); DRW_Z.set(d, S.z); resizeSvg(); paintBg(); paintOv(); placeTag(); zl.textContent = Math.round(S.z * 100) + "%"; }
   function fitZoom() { var w = view.clientWidth - 4; if (w > 50) zoomTo(Math.min(1, w / (d.W + 30))); }
   var zl = h("span", { class: "drw-z" }, ["100%"]);
-  var lkBtn = tbtn("🔗 連線", "連箭頭：先點一個框，再點要連到的框（也可以直接從框旁邊的藍點拉到另一個框）", function () { S.linkMode = !S.linkMode; S.linkFrom = null; lkBtn.classList.toggle("on", S.linkMode); paintOv(); syncCtx(); });
+  var lkBtn = tbtn("🔗 連線", "連箭頭：先點一個框，再點要連到的框（也可以直接從框旁邊的藍點拉到另一個框）", function () { if (S.tool !== "sel") setTool("sel"); S.linkMode = !S.linkMode; S.linkFrom = null; lkBtn.classList.toggle("on", S.linkMode); paintOv(); syncCtx(); });
   var fullBtn = tbtn("⛶ 放大畫", "整個畫面都拿來畫（上面的格式列還在）；再按一次回來", function () { setFull(!root.classList.contains("full")); });
   var undoB = tbtn("↶", "復原（Ctrl+Z）", undo), redoB = tbtn("↷", "重做（Ctrl+Y）", redo);
-  bar1.appendChild(h("span", { class: "drw-lab" }, ["新增"]));
-  DR_ADD.forEach(function (x) { bar1.appendChild(tbtn(x[1], x[0] === "note" ? "說明框：放旁邊的補充說明（LINE 上會放在下一張卡片）" : "新增一個" + YZ_DRAW_KIND_NAME[x[0]] + "（選著一個框的話：接在它下面、自動連箭頭）", function () { addShape(x[0]); }, "drw-add")); });
-  bar1.appendChild(lkBtn);
-  bar1.appendChild(h("span", { class: "sp" }));
-  [undoB, redoB, tbtn("−", "縮小", function () { zoomTo(S.z / 1.2); }), zl, tbtn("＋", "放大", function () { zoomTo(S.z * 1.2); }), tbtn("符合寬度", "整張放進這一塊的寬度", fitZoom), fullBtn].forEach(function (x) { bar1.appendChild(x); });
+  var TB = {};
+  tools.appendChild(h("span", { class: "drw-lab" }, ["工具"]));
+  DR_TOOLS.forEach(function (x) {
+    var bt = tbtn(x[1], x[3] + "（快速鍵 " + x[2] + "）", function () { setTool(x[0]); }, "drw-tool" + (x[0] === "sel" ? " on" : ""));
+    bt.setAttribute("data-tool", x[0]); bt.setAttribute("aria-pressed", x[0] === "sel" ? "true" : "false");
+    TB[x[0]] = bt; tools.appendChild(bt);
+  });
+  var bgBtn = tbtn("🖼 照片", "照片當底圖：選檔案、Ctrl+V 貼上、把照片拖進來；有照片了：換照片、拿掉照片", function () { if (!d.bg) bgPick(); else { S.bgOn = !S.bgOn; syncCtx(); } }, "drw-bgb");
+  tools.appendChild(bgBtn);
+  tools.appendChild(h("span", { class: "sp" }));
+  [undoB, redoB, tbtn("−", "縮小", function () { zoomTo(S.z / 1.2); }), zl, tbtn("＋", "放大", function () { zoomTo(S.z * 1.2); }), tbtn("符合寬度", "整張放進這一塊的寬度", fitZoom), fullBtn].forEach(function (x) { tools.appendChild(x); });
+  fcb.appendChild(h("span", { class: "drw-lab" }, ["流程圖"]));
+  DR_ADD.forEach(function (x) { fcb.appendChild(tbtn(x[1], x[0] === "note" ? "說明框：放旁邊的補充說明（LINE 上會放在下一張卡片）" : "新增一個" + YZ_DRAW_KIND_NAME[x[0]] + "（選著一個框的話：接在它下面、自動連箭頭）", function () { addShape(x[0]); }, "drw-add")); });
+  fcb.appendChild(lkBtn);
+  function setTool(k) {
+    if (k !== "sel" && !drBack51()) { bk51Warn("繪圖工具"); return; }
+    if (S.tag) closeTag();
+    if (S.txt && k !== "sel") closeText();
+    S.tool = k; S.cur = null;
+    if (k !== "sel") { S.linkMode = false; S.linkFrom = null; lkBtn.classList.remove("on"); S.sel = []; S.psel = []; S.ls = null; S.qsOff = true; S.bgOn = false; }
+    Object.keys(TB).forEach(function (n) { TB[n].classList.toggle("on", n === k); TB[n].setAttribute("aria-pressed", n === k ? "true" : "false"); });
+    stage.setAttribute("data-tool", k);
+    stage.style.cursor = k === "sel" ? "default" : k === "erase" ? "cell" : k === "tag" ? "text" : "crosshair";
+    paintOv(); syncCtx(); paintQs();
+  }
+  function pStyle(kinds, cur, set) {
+    var has = function (f) { return kinds.some(function (k) { return DR_PF[k] && DR_PF[k].indexOf(f) >= 0; }); }, out = [];
+    var sel = function (cls, tip, f, opts) { var s = h("select", { class: "in sm " + cls, title: tip, "aria-label": tip }, opts.map(function (o) { return h("option", { value: o[0] }, [o[1]]); })); s.value = cur(f); s.onchange = function () { act(); set(f, s.value); }; return s; };
+    if (has("c")) {
+      var cw = h("span", { class: "drw-pcs", role: "group", "aria-label": "顏色" });
+      YZ_DRAW_PC_ORDER.forEach(function (k) {
+        var C = YZ_DRAW_PC[k], on = cur("c") === k;
+        var x = tbtn("", "顏色：" + C.label, function () { set("c", k); }, "drw-pc" + (on ? " on" : ""));
+        x.setAttribute("data-pc", k); x.setAttribute("aria-label", "顏色：" + C.label); x.setAttribute("aria-pressed", on ? "true" : "false");
+        x.appendChild(h("i", { style: "background:" + C.c }));
+        cw.appendChild(x);
+      });
+      out.push(cw);
+    }
+    if (has("lw")) out.push(sel("drw-pw", "線的粗細", "lw", YZ_DRAW_PW_ORDER.map(function (k) { return [k, "粗細：" + YZ_DRAW_PW[k].label]; })));
+    if (has("ds")) out.push(sel("drw-pds", "線條：實線、虛線、點線、長虛線", "ds", YZ_DRAW_DASH_ORDER.map(function (k) { return [k, { "": "━ 實線", dash: "╍ 虛線", dot: "┈ 點線", long: "━ ━ 長虛線" }[k]]; })));
+    if (has("ah")) out.push(sel("drw-pah", "箭頭的頭", "ah", [["", "→ 箭頭在終點"], ["start", "← 箭頭在起點"], ["both", "↔ 兩頭都有"], ["none", "— 沒有（直線）"]]));
+    if (has("f")) out.push(sel("drw-pf", "裡面：空的、半透明、塗滿", "f", [["", "裡面空的"], ["half", "裡面半透明"], ["solid", "裡面塗滿"]]));
+    if (has("fs")) out.push(sel("drw-pfs", "字的大小", "fs", YZ_DRAW_FS_ORDER.map(function (k) { return [k, "字：" + YZ_DRAW_FS[k].label]; })));
+    return out;
+  }
+  var HINT = {
+    pen: "✏️ 畫筆：在畫布上按住拖曳＝畫線。Esc＝回到選取。", hl: "🖍 螢光筆：按住拖曳＝畫半透明的粗線（畫重點）。",
+    arrow: "↗ 箭頭：從起點按住拖到要指的地方（按住 Shift：直的、橫的、斜 45 度）。", line: "╱ 直線：從起點按住拖到終點（按住 Shift：直的、橫的、斜 45 度）。",
+    rect: "⬚ 框起來：按住拖一個方框（按住 Shift：正方形；點一下＝放一個預設大小的）。", ell: "⭕ 圈起來：按住拖一個圓圈（按住 Shift：正圓；點一下＝放一個預設大小的）。",
+    tag: "🏷 字加底色：點一下要放的地方，直接打字（Enter 換行；Esc 或點旁邊＝完成）。", erase: "🧽 橡皮擦：按住拖過要擦掉的東西（畫上去的才擦得掉；流程圖的框用「🗑 刪除」）。"
+  };
   function syncCtx() {
     bar2.innerHTML = "";
     undoB.disabled = S.hi <= 0; redoB.disabled = S.hi >= S.hist.length - 1;
-    var ss = S.sel.map(shape).filter(Boolean), l = S.ls ? link(S.ls) : null;
+    bgBtn.classList.toggle("on", !!S.bgOn);
+    var ss = S.sel.map(shape).filter(Boolean), ps = S.psel.map(pEl).filter(Boolean), l = S.ls ? link(S.ls) : null;
     if (S.linkMode) { bar2.appendChild(h("span", { class: "drw-hint" }, [S.linkFrom ? "🔗 再點要連到的那個框（點空白的地方取消）" : "🔗 先點箭頭從哪個框出發"])); return; }
+    if (S.bgOn) {
+      bar2.appendChild(h("span", { class: "drw-lab" }, ["🖼 照片"]));
+      if (d.bg) {
+        bar2.appendChild(h("span", { class: "drw-hint" }, ["原本 " + d.bg.w + "×" + d.bg.h + "（畫布上 " + d.bg.dw + "×" + d.bg.dh + "；放在左上角）"]));
+        bar2.appendChild(tbtn("🔁 換照片", "換一張照片（畫的東西都留著）；也可以直接 Ctrl+V 貼上、拖進來", bgPick));
+        bar2.appendChild(tbtn("🗑 拿掉照片", "只拿掉照片（畫的東西都留著；Ctrl+Z 可以拿回來）", function () { delete d.bg; S.bgOn = false; drFit(d); resizeSvg(); paintBg(); paintDia(); paintOv(); push(); }, "bad"));
+        var back = confirmBtn("↩ 還原成照片", function () { edFromDraw(b, function () { renderForm(); changed(); }); }, "sm");
+        back.title = "變回一般的圖片（這張照片）；畫上去的東西、流程圖的框都會拿掉"; back.classList.add("drw-unb");
+        bar2.appendChild(back);
+      } else {
+        bar2.appendChild(tbtn("🖼 選照片…", "選一張照片當底圖（也可以直接 Ctrl+V 貼上、把照片拖進來）", bgPick, "pri"));
+        bar2.appendChild(h("span", { class: "drw-hint" }, ["照片放在左上角，用上面的工具在照片上畫（照片本身不會被改）"]));
+      }
+      bar2.appendChild(tbtn("✕", "收起來", function () { S.bgOn = false; syncCtx(); }));
+      return;
+    }
     if (l) {
       var rs = h("select", { class: "in sm drw-rs", title: "箭頭怎麼走" }, [["", "自動（直的、橫的、轉一個彎）"], ["line", "直線（斜的也可以）"], ["hv", "先橫再直"], ["vh", "先直再橫"]].map(function (o) { return h("option", { value: o[0] }, [o[1]]); }));
       rs.value = l.st || ""; rs.onchange = function () { act(); if (rs.value) l.st = rs.value; else delete l.st; paintDia(); paintOv(); push(); };
@@ -12499,7 +13243,28 @@ function drawEditor(t, b) {
       [h("span", { class: "drw-lab" }, ["箭頭"]), rs, ah, ds, lw, lcw, lt, tbtn("⇄ 反過來", "箭頭換方向", function () { var x = l.a; l.a = l.b; l.b = x; paintDia(); paintOv(); push(); }), tbtn("🗑 刪除", "刪掉這條箭頭（Delete）", delSel, "bad")].forEach(function (x) { bar2.appendChild(x); });
       return;
     }
-    if (!ss.length) { bar2.appendChild(h("span", { class: "drw-hint" }, ["點一下框＝選起來；拖曳＝移動；拉右下角的白點＝改大小；滑到框上會有藍點，從藍點拉到另一個框＝箭頭；連點兩下＝打字；連點兩下空白的地方＝新增方框。Shift＋點＝多選。"])); return; }
+    if (ps.length && !ss.length) {
+      var kinds = ps.map(function (x) { return x.k; }).filter(function (k, i, a) { return a.indexOf(k) === i; });
+      var nm = ps.length > 1 ? "選了 " + ps.length + " 個" : ps[0].k === "ln" ? (ps[0].ah === "none" ? "直線" : "箭頭") : YZ_DRAW_PK_NAME[ps[0].k];
+      bar2.appendChild(h("span", { class: "drw-lab" }, [nm]));
+      var curP = function (f) { var v = null, same = true; ps.forEach(function (x) { if (DR_PF[x.k].indexOf(f) < 0) return; var y = x[f] || ""; if (v === null) v = y; else if (v !== y) same = false; }); return same && v !== null ? v : ""; };
+      pStyle(kinds, curP, setP).forEach(function (x) { bar2.appendChild(x); });
+      if (ps.length === 1 && ps[0].k === "tag") bar2.appendChild(tbtn("✏️ 改字", "改字（也可以連點兩下）", function () { openTag(ps[0].id); }));
+      bar2.appendChild(tbtn("⬆ 移到最上面", "蓋在別的畫上去的東西上面", function () { zorder(true); }));
+      bar2.appendChild(tbtn("⬇ 移到最下面", "放在別的畫上去的東西下面（照片、流程圖的框還是在更下面）", function () { zorder(false); }));
+      bar2.appendChild(tbtn("⧉ 複製", "複製（Ctrl+D）", dupSel));
+      bar2.appendChild(tbtn("🗑 刪除", "刪掉（Delete）", delSel, "bad"));
+      if (S.tool !== "sel" && HINT[S.tool]) bar2.appendChild(h("span", { class: "drw-hint" }, [HINT[S.tool]]));
+      return;
+    }
+    if (S.tool !== "sel" && !ss.length) {
+      var tk = DR_TKIND[S.tool];
+      bar2.appendChild(h("span", { class: "drw-lab" }, [(DR_TOOLS.filter(function (x) { return x[0] === S.tool; })[0] || ["", ""])[1]]));
+      if (tk) pStyle([tk], function (f) { return S.ts[S.tool][f] || ""; }, function (f, v) { if (v) S.ts[S.tool][f] = v; else delete S.ts[S.tool][f]; syncCtx(); }).forEach(function (x) { bar2.appendChild(x); });
+      if (HINT[S.tool]) bar2.appendChild(h("span", { class: "drw-hint" }, [HINT[S.tool]]));
+      return;
+    }
+    if (!ss.length) { bar2.appendChild(h("span", { class: "drw-hint" }, ["點一下＝選起來；拖曳＝移動；拉白點＝改大小。上面「工具」：畫筆、螢光筆、箭頭、框起來、圈起來、字加底色、橡皮擦；「🖼 照片」：放一張照片在上面畫（也可以 Ctrl+V 貼上、把照片拖進來）。流程圖：滑到框上會有藍點，從藍點拉到另一個框＝箭頭；連點兩下框＝打字。Shift＋點＝多選。"])); return; }
     bar2.appendChild(h("span", { class: "drw-lab" }, [ss.length > 1 ? "選了 " + ss.length + " 個" : YZ_DRAW_KIND_NAME[ss[0].k]]));
     var cw = h("span", { class: "drw-cols" });
     YZ_DRAW_COLORS.forEach(function (c) {
@@ -12529,6 +13294,7 @@ function drawEditor(t, b) {
       am.onchange = function () { act(); var v = am.value; am.value = ""; if (v) align(v); };
       bar2.appendChild(am);
     }
+    if (ps.length) bar2.appendChild(h("span", { class: "drw-hint" }, ["（還選了 " + ps.length + " 個畫上去的東西）"]));
     bar2.appendChild(tbtn("⧉ 複製", "複製選起來的框（連同它們中間的箭頭；Ctrl+D）", dupSel));
     bar2.appendChild(tbtn("🗑 刪除", "刪掉選起來的框（連到它的箭頭也一起刪；Delete）", delSel, "bad"));
   }
@@ -12542,14 +13308,79 @@ function drawEditor(t, b) {
   }
   var raf = 0;
   function later() { if (raf) return; raf = requestAnimationFrame(function () { raf = 0; paintDia(); paintOv(); }); }
+  function clampP(p) { return { x: Math.max(0, p.x), y: Math.max(0, p.y) }; }
+  function snap45(p0, p) { var dx = p.x - p0.x, dy = p.y - p0.y, L = Math.sqrt(dx * dx + dy * dy), a = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * Math.PI / 4; return clampP({ x: p0.x + L * Math.cos(a), y: p0.y + L * Math.sin(a) }); }
+  function dragBox(dr) {
+    var x0 = dr.p0.x, y0 = dr.p0.y, x1 = dr.p.x, y1 = dr.p.y;
+    if (dr.sq) { var s = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); x1 = x0 + (x1 < x0 ? -s : s); y1 = y0 + (y1 < y0 ? -s : s); }
+    return { x: Math.max(0, Math.min(x0, x1)), y: Math.max(0, Math.min(y0, y1)), w: Math.abs(x1 - x0), h: Math.abs(y1 - y0) };
+  }
+  function liveEl(dr) {
+    var st = S.ts[dr.k] || {}, x = { c: st.c, lw: st.lw, ds: st.ds, f: st.f };
+    if (dr.k === "pen" || dr.k === "hl") { x.k = dr.k; x.pts = dr.pts; }
+    else if (dr.k === "arrow" || dr.k === "line") { x.k = "ln"; x.x1 = dr.p0.x; x.y1 = dr.p0.y; x.x2 = dr.p.x; x.y2 = dr.p.y; x.ah = dr.k === "line" ? "none" : st.ah; }
+    else { var B = dragBox(dr); x.k = dr.k; x.x = B.x; x.y = B.y; x.w = B.w; x.h = B.h; }
+    return x;
+  }
+  function paintLive() { if (gLive) gLive.innerHTML = S.mode === "draw" && S.drag ? drPSvg(liveEl(S.drag)) : ""; }
+  function eraseAt(p) {
+    var hit = hitP(p, 8 / S.z);
+    if (!hit) return;
+    d.p = d.p.filter(function (x) { return x.id !== hit; }); S.psel = S.psel.filter(function (i) { return i !== hit; });
+    S.drag.n++; paintDia();
+  }
+  function finishDraw() {
+    var dr = S.drag, k = dr.k, st = S.ts[k] || {}, x = { id: drNewId(d, "p") };
+    if (d.p.length >= YZ_DRAW_P_MAX) { toast("畫上去的東西最多 " + YZ_DRAW_P_MAX + " 個"); return; }
+    if (k === "pen" || k === "hl") {
+      var eps = 0.6, pts = drRdp(dr.pts, eps);
+      while (pts.length > YZ_DRAW_PT_MAX && eps < 50) { eps *= 1.6; pts = drRdp(dr.pts, eps); }
+      var all = 0; d.p.forEach(function (y) { if (y.pts) all += y.pts.length; });
+      if (all + pts.length > YZ_DRAW_PT_ALL) { toast("畫的線太多了：先擦掉一些，或分成兩張繪圖"); return; }
+      x.k = k; x.pts = pts.length ? pts : [Math.round(dr.p0.x), Math.round(dr.p0.y)];
+    } else if (k === "arrow" || k === "line") {
+      var dx = dr.p.x - dr.p0.x, dy = dr.p.y - dr.p0.y;
+      if (Math.sqrt(dx * dx + dy * dy) < 6) { toast(k === "arrow" ? "箭頭：按住拖曳（從起點拖到要指的地方）" : "直線：按住拖曳（從起點拖到終點）"); return; }
+      x.k = "ln"; x.x1 = Math.round(dr.p0.x); x.y1 = Math.round(dr.p0.y); x.x2 = Math.round(dr.p.x); x.y2 = Math.round(dr.p.y);
+      if (k === "line") x.ah = "none"; else if (st.ah) x.ah = st.ah;
+    } else {
+      var B = dragBox(dr);
+      if (B.w < 6 && B.h < 6) B = { x: Math.max(0, dr.p0.x - 60), y: Math.max(0, dr.p0.y - 40), w: 120, h: 80 };
+      x.k = k; x.x = Math.round(B.x); x.y = Math.round(B.y); x.w = Math.max(4, Math.round(B.w)); x.h = Math.max(4, Math.round(B.h));
+      if (st.f) x.f = st.f;
+    }
+    ["c", "lw", "ds"].forEach(function (f) { if (st[f] && DR_PF[x.k].indexOf(f) >= 0) x[f] = st[f]; });
+    d.p.push(x); S.psel = [x.id]; S.sel = []; S.ls = null;
+    paintDia(); paintOv(); push();
+  }
   stage.addEventListener("pointerdown", function (e) {
     if (e.button !== 0 || !svg) return;
+    if (S.tag && e.target === S.tag.ta) return;
     act();
+    if (S.tag) closeTag();
     if (document.activeElement !== stage && !(S.txt && txt.contains(document.activeElement))) stage.focus({ preventScroll: true });
-    var p = pt(e), hd = hitHandle(p), dot = !hd ? hitDot(p) : null, sid = !hd && !dot ? hitShape(p) : null, lid = !hd && !dot && !sid ? hitLink(p) : null;
+    var p = pt(e);
+    if (S.tool !== "sel") {
+      var k = S.tool;
+      try { stage.setPointerCapture(e.pointerId); } catch (x) {  }
+      e.preventDefault();
+      if (k === "erase") { S.mode = "erase"; S.drag = { p0: p, p: p, n: 0 }; eraseAt(p); paintOv(); return; }
+      if (k === "tag") { var hit = hitP(p), hx = hit && pEl(hit); if (hx && hx.k === "tag") { S.psel = [hit]; openTag(hit); } else addTag(clampP(p)); return; }
+      var c = clampP(p);
+      S.mode = "draw"; S.drag = { k: k, p0: c, p: c, pts: [c.x, c.y], sq: e.shiftKey };
+      paintLive();
+      return;
+    }
+    var phd = hitPHandle(p), hd = !phd ? hitHandle(p) : null, dot = !phd && !hd ? hitDot(p) : null, pid = !phd && !hd && !dot ? hitP(p) : null;
+    var sid = !phd && !hd && !dot && !pid ? hitShape(p) : null, lid = !phd && !hd && !dot && !pid && !sid ? hitLink(p) : null;
     var now = Date.now(), dbl = !!(S.lastDown && now - S.lastDown.t < 450 && Math.abs(e.clientX - S.lastDown.x) < 6 && Math.abs(e.clientY - S.lastDown.y) < 6);
     S.lastDown = dbl ? null : { t: now, x: e.clientX, y: e.clientY };
-    if (dbl && !S.linkMode && !hd && !dot) { if (sid) openText(sid); else if (!lid) addShape("box", p); e.preventDefault(); return; }
+    if (dbl && !S.linkMode && !hd && !dot && !phd) {
+      if (pid) { var px = pEl(pid); if (px && px.k === "tag") openTag(pid); }
+      else if (sid) openText(sid);
+      else if (!lid) { if (d.bg) { if (drBack51()) addTag(clampP(p)); else bk51Warn("字加底色"); } else addShape("box", p); }
+      e.preventDefault(); return;
+    }
     if (S.linkMode) {
       if (!sid) { S.linkFrom = null; S.linkMode = false; lkBtn.classList.remove("on"); paintOv(); syncCtx(); return; }
       if (!S.linkFrom) { S.linkFrom = sid; paintOv(); syncCtx(); return; }
@@ -12558,16 +13389,26 @@ function drawEditor(t, b) {
       return;
     }
     S.drag = { p0: p, p: p, moved: false };
-    if (hd) { var s0 = shape(S.sel[0]); S.mode = "resize"; S.drag.h = hd; S.drag.s0 = { x: s0.x, y: s0.y, w: s0.w, h: s0.h }; }
+    var snap = function () {
+      S.drag.st = {}; S.sel.forEach(function (id) { var s = shape(id); if (s) S.drag.st[id] = { x: s.x, y: s.y }; });
+      S.drag.pst = {}; S.psel.forEach(function (id) { var x = pEl(id); if (x) S.drag.pst[id] = JSON.parse(JSON.stringify(x)); });
+    };
+    if (phd) { S.mode = "presize"; S.drag.h = phd; S.drag.x0 = JSON.parse(JSON.stringify(pEl(S.psel[0]))); }
+    else if (hd) { var s0 = shape(S.sel[0]); S.mode = "resize"; S.drag.h = hd; S.drag.s0 = { x: s0.x, y: s0.y, w: s0.w, h: s0.h }; }
     else if (dot) { S.mode = "link"; S.drag.from = dot.id; S.drag.p0 = dot.p; S.drag.to = null; }
+    else if (pid) {
+      if (e.shiftKey) { var at0 = S.psel.indexOf(pid); if (at0 >= 0) S.psel.splice(at0, 1); else S.psel.push(pid); }
+      else if (S.psel.indexOf(pid) < 0) { S.psel = [pid]; S.sel = []; }
+      S.ls = null; S.mode = "move"; snap();
+      if (S.txt) closeText();
+    }
     else if (sid) {
       if (e.shiftKey) { var at = S.sel.indexOf(sid); if (at >= 0) S.sel.splice(at, 1); else S.sel.push(sid); }
-      else if (S.sel.indexOf(sid) < 0) S.sel = [sid];
-      S.ls = null; S.mode = "move"; S.drag.st = {};
-      S.sel.forEach(function (id) { var s = shape(id); if (s) S.drag.st[id] = { x: s.x, y: s.y }; });
+      else if (S.sel.indexOf(sid) < 0) { S.sel = [sid]; S.psel = []; }
+      S.ls = null; S.mode = "move"; snap();
       if (S.txt && S.txt.id !== sid) closeText();
-    } else if (lid) { S.ls = lid; S.sel = []; S.mode = null; S.drag = null; if (S.txt) closeText(); }
-    else { if (!e.shiftKey) S.sel = []; S.ls = null; S.mode = "band"; if (S.txt) closeText(); }
+    } else if (lid) { S.ls = lid; S.sel = []; S.psel = []; S.mode = null; S.drag = null; if (S.txt) closeText(); }
+    else { if (!e.shiftKey) { S.sel = []; S.psel = []; } S.ls = null; S.mode = "band"; if (S.txt) closeText(); }
     if (!S.txt && document.activeElement !== stage) stage.focus({ preventScroll: true });
     try { stage.setPointerCapture(e.pointerId); } catch (x) {  }
     paintOv(); syncCtx();
@@ -12576,10 +13417,22 @@ function drawEditor(t, b) {
   stage.addEventListener("pointermove", function (e) {
     if (!svg) return;
     var p = pt(e);
+    if (S.tool !== "sel") {
+      if (S.tool === "erase") { S.cur = p; if (S.mode === "erase" && S.drag) { var a = S.drag.p, n = Math.max(1, Math.ceil(Math.sqrt((p.x - a.x) * (p.x - a.x) + (p.y - a.y) * (p.y - a.y)) / (4 / S.z))); for (var i = 1; i <= n; i++) eraseAt({ x: a.x + (p.x - a.x) * i / n, y: a.y + (p.y - a.y) * i / n }); S.drag.p = p; } paintOv(); return; }
+      if (S.mode !== "draw" || !S.drag) return;
+      var dr = S.drag;
+      if (dr.k === "pen" || dr.k === "hl") {
+        var evs = e.getCoalescedEvents ? e.getCoalescedEvents() : null; if (!evs || !evs.length) evs = [e];
+        evs.forEach(function (ev) { var q = clampP(pt(ev)), L = dr.pts.length, dx = q.x - dr.pts[L - 2], dy = q.y - dr.pts[L - 1]; if (dx * dx + dy * dy >= (1.2 / S.z) * (1.2 / S.z)) dr.pts.push(Math.round(q.x * 10) / 10, Math.round(q.y * 10) / 10); });
+      } else { dr.sq = e.shiftKey; dr.p = (dr.k === "arrow" || dr.k === "line") && e.shiftKey ? snap45(dr.p0, p) : clampP(p); }
+      paintLive();
+      return;
+    }
     if (!S.drag || !S.mode) {
       var hv = hitShape(p, 10 / S.z);
       if (hv !== S.hov) { S.hov = hv; paintOv(); }
-      stage.style.cursor = hitHandle(p) ? "nwse-resize" : hitDot(p) ? "crosshair" : hv ? "move" : hitLink(p) ? "pointer" : "default";
+      var ph = hitPHandle(p);
+      stage.style.cursor = ph ? (ph === "a" || ph === "b" ? "crosshair" : "nwse-resize") : hitHandle(p) ? "nwse-resize" : hitDot(p) ? "crosshair" : hitP(p) || hv ? "move" : hitLink(p) ? "pointer" : "default";
       return;
     }
     S.drag.p = p;
@@ -12587,6 +13440,7 @@ function drawEditor(t, b) {
     if (Math.abs(dx) + Math.abs(dy) > 2 / S.z) S.drag.moved = true;
     if (S.mode === "move" && S.drag.moved) { moveSel(dx, dy, e.altKey); later(); }
     else if (S.mode === "resize") { resizeSel(dx, dy); later(); }
+    else if (S.mode === "presize") { presize(dx, dy, e.shiftKey); later(); }
     else if (S.mode === "link") { var tg = hitShape(p, 6 / S.z); S.drag.to = tg && tg !== S.drag.from ? tg : null; paintOv(); }
     else if (S.mode === "band") paintOv();
   });
@@ -12595,42 +13449,55 @@ function drawEditor(t, b) {
     var m = S.mode, dr = S.drag;
     S.mode = null; S.drag = null; S.guides = [];
     try { stage.releasePointerCapture(e.pointerId); } catch (x) {  }
+    if (m === "draw") { S.drag = dr; if (e.type === "pointerup") finishDraw(); S.drag = null; paintLive(); paintOv(); syncCtx(); return; }
+    if (m === "erase") { if (dr.n) push(); paintOv(); syncCtx(); return; }
     if (m === "link" && dr.to) addLink(dr.from, dr.to);
     else if (m === "band" && dr.moved) {
       var a = dr.p0, c = dr.p, B = { x: Math.min(a.x, c.x), y: Math.min(a.y, c.y), x2: Math.max(a.x, c.x), y2: Math.max(a.y, c.y) };
       d.s.forEach(function (s) { if (s.x >= B.x && s.y >= B.y && s.x + s.w <= B.x2 && s.y + s.h <= B.y2 && S.sel.indexOf(s.id) < 0) S.sel.push(s.id); });
-    } else if ((m === "move" && dr.moved) || m === "resize") { drFit(d); resizeSvg(); paintDia(); push(); }
+      d.p.forEach(function (x) { var P = drPBox(x); if (P.x >= B.x && P.y >= B.y && P.x + P.w <= B.x2 && P.y + P.h <= B.y2 && S.psel.indexOf(x.id) < 0) S.psel.push(x.id); });
+    } else if ((m === "move" && dr.moved) || m === "resize" || m === "presize") { drFit(d); resizeSvg(); paintDia(); push(); }
     paintOv(); syncCtx();
   }
+  stage.addEventListener("dragstart", function (e) { e.preventDefault(); });
   stage.addEventListener("pointerup", endDrag);
   stage.addEventListener("pointercancel", endDrag);
-  stage.addEventListener("pointerleave", function () { if (!S.drag && S.hov) { S.hov = null; paintOv(); } });
+  stage.addEventListener("pointerleave", function () { var ch = false; if (!S.drag && S.hov) { S.hov = null; ch = true; } if (S.cur && !S.drag) { S.cur = null; ch = true; } if (ch) paintOv(); });
   function addLink(a, c) {
     if (d.l.some(function (l) { return l.a === a && l.b === c; })) { toast("這兩個框已經有箭頭了"); return; }
     var l = { id: drNewId(d, "l"), a: a, b: c }; d.l.push(l);
-    S.ls = l.id; S.sel = [];
+    S.ls = l.id; S.sel = []; S.psel = [];
     paintDia(); paintOv(); push();
   }
   function moveSel(dx, dy, free) {
-    var st = S.drag.st, ids = Object.keys(st); if (!ids.length) return;
-    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    ids.forEach(function (id) { var s = shape(id); if (!s) return; x0 = Math.min(x0, st[id].x); y0 = Math.min(y0, st[id].y); x1 = Math.max(x1, st[id].x + s.w); y1 = Math.max(y1, st[id].y + s.h); });
-    var nx = x0 + dx, ny = y0 + dy, w = x1 - x0, hh = y1 - y0, gs = [];
-    if (!free) {
-      nx = drSnap(nx); ny = drSnap(ny);
-      var tol = 7 / S.z, bx = null, by = null;
-      d.s.forEach(function (o) {
-        if (st[o.id]) return;
-        [[nx + w / 2, o.x + o.w / 2], [nx, o.x], [nx + w, o.x + o.w]].forEach(function (c, i) { var dd = c[1] - c[0]; if (Math.abs(dd) <= tol && (bx === null || Math.abs(dd) < Math.abs(bx.d))) bx = { d: dd, x: c[1], o: o }; });
-        [[ny + hh / 2, o.y + o.h / 2], [ny, o.y], [ny + hh, o.y + o.h]].forEach(function (c) { var dd = c[1] - c[0]; if (Math.abs(dd) <= tol && (by === null || Math.abs(dd) < Math.abs(by.d))) by = { d: dd, y: c[1], o: o }; });
-      });
-      if (bx) { nx += bx.d; gs.push([bx.x, Math.min(ny, bx.o.y) - 10, bx.x, Math.max(ny + hh, bx.o.y + bx.o.h) + 10]); }
-      if (by) { ny += by.d; gs.push([Math.min(nx, by.o.x) - 10, by.y, Math.max(nx + w, by.o.x + by.o.w) + 10, by.y]); }
+    var st = S.drag.st || {}, ids = Object.keys(st), pst = S.drag.pst || {}, pids = Object.keys(pst), ddx = Math.round(dx), ddy = Math.round(dy);
+    if (ids.length) {
+      var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      ids.forEach(function (id) { var s = shape(id); if (!s) return; x0 = Math.min(x0, st[id].x); y0 = Math.min(y0, st[id].y); x1 = Math.max(x1, st[id].x + s.w); y1 = Math.max(y1, st[id].y + s.h); });
+      var nx = x0 + dx, ny = y0 + dy, w = x1 - x0, hh = y1 - y0, gs = [];
+      if (!free) {
+        nx = drSnap(nx); ny = drSnap(ny);
+        var tol = 7 / S.z, bx = null, by = null;
+        d.s.forEach(function (o) {
+          if (st[o.id]) return;
+          [[nx + w / 2, o.x + o.w / 2], [nx, o.x], [nx + w, o.x + o.w]].forEach(function (c) { var dd = c[1] - c[0]; if (Math.abs(dd) <= tol && (bx === null || Math.abs(dd) < Math.abs(bx.d))) bx = { d: dd, x: c[1], o: o }; });
+          [[ny + hh / 2, o.y + o.h / 2], [ny, o.y], [ny + hh, o.y + o.h]].forEach(function (c) { var dd = c[1] - c[0]; if (Math.abs(dd) <= tol && (by === null || Math.abs(dd) < Math.abs(by.d))) by = { d: dd, y: c[1], o: o }; });
+        });
+        if (bx) { nx += bx.d; gs.push([bx.x, Math.min(ny, bx.o.y) - 10, bx.x, Math.max(ny + hh, bx.o.y + bx.o.h) + 10]); }
+        if (by) { ny += by.d; gs.push([Math.min(nx, by.o.x) - 10, by.y, Math.max(nx + w, by.o.x + by.o.w) + 10, by.y]); }
+      }
+      nx = Math.max(0, nx); ny = Math.max(0, ny);
+      S.guides = gs;
+      ids.forEach(function (id) { var s = shape(id); if (s) { s.x = Math.round(st[id].x + nx - x0); s.y = Math.round(st[id].y + ny - y0); } });
+      ddx = Math.round(nx - x0); ddy = Math.round(ny - y0);
+      if (nx + w > d.W || ny + hh > d.H) { drFit(d); resizeSvg(); }
     }
-    nx = Math.max(0, nx); ny = Math.max(0, ny);
-    S.guides = gs;
-    ids.forEach(function (id) { var s = shape(id); if (s) { s.x = Math.round(st[id].x + nx - x0); s.y = Math.round(st[id].y + ny - y0); } });
-    if (nx + w > d.W || ny + hh > d.H) { drFit(d); resizeSvg(); }
+    if (pids.length) {
+      if (!ids.length) { var mx = Infinity, my = Infinity; pids.forEach(function (id) { var m = pMin(pst[id]); mx = Math.min(mx, m.x); my = Math.min(my, m.y); }); ddx = Math.max(ddx, -mx); ddy = Math.max(ddy, -my); }
+      pids.forEach(function (id) { var x = pEl(id); if (x) pMoveFrom(x, pst[id], ddx, ddy); });
+      var ex = false; pids.forEach(function (id) { var x = pEl(id); if (x) { var B = drPBox(x); if (B.x + B.w > d.W || B.y + B.h > d.H) ex = true; } });
+      if (ex) { drFit(d); resizeSvg(); }
+    }
   }
   function resizeSel(dx, dy) {
     var s = shape(S.sel[0]), o = S.drag.s0, hd = S.drag.h; if (!s) return;
@@ -12644,29 +13511,57 @@ function drawEditor(t, b) {
     s.x = Math.round(L); s.y = Math.round(T); s.w = Math.round(R - L); s.h = Math.round(B - T);
     if (s.x + s.w > d.W || s.y + s.h > d.H) { drFit(d); resizeSvg(); }
   }
+  function presize(dx, dy, sq) {
+    var x = pEl(S.psel[0]), o = S.drag.x0, hd = S.drag.h; if (!x) return;
+    if (x.k === "ln") {
+      var fx = hd === "a" ? { x: o.x2, y: o.y2 } : { x: o.x1, y: o.y1 }, q = clampP({ x: (hd === "a" ? o.x1 : o.x2) + dx, y: (hd === "a" ? o.y1 : o.y2) + dy });
+      if (sq) q = snap45(fx, q);
+      if (hd === "a") { x.x1 = Math.round(q.x); x.y1 = Math.round(q.y); } else { x.x2 = Math.round(q.x); x.y2 = Math.round(q.y); }
+    } else {
+      var L = o.x, T = o.y, R = o.x + o.w, B = o.y + o.h;
+      if (hd.indexOf("w") >= 0) L = Math.max(0, o.x + dx);
+      if (hd.indexOf("e") >= 0) R = R + dx;
+      if (hd.indexOf("n") >= 0) T = Math.max(0, o.y + dy);
+      if (hd.indexOf("s") >= 0) B = B + dy;
+      if (R - L < 8) { if (hd.indexOf("w") >= 0) L = R - 8; else R = L + 8; }
+      if (B - T < 8) { if (hd.indexOf("n") >= 0) T = B - 8; else B = T + 8; }
+      x.x = Math.round(L); x.y = Math.round(T); x.w = Math.round(R - L); x.h = Math.round(B - T);
+    }
+    var Bx = drPBox(x); if (Bx.x + Bx.w > d.W || Bx.y + Bx.h > d.H) { drFit(d); resizeSvg(); }
+  }
+  var TKEY = {}; DR_TOOLS.forEach(function (x) { TKEY[x[2].toLowerCase()] = x[0]; });
   stage.addEventListener("keydown", function (e) {
     var k = e.key, mod = e.ctrlKey || e.metaKey;
+    if (e.target !== stage) return;
     act();
     if (mod && (k === "z" || k === "Z") && !e.shiftKey) { e.preventDefault(); undo(); return; }
     if (mod && (k === "y" || k === "Y" || ((k === "z" || k === "Z") && e.shiftKey))) { e.preventDefault(); redo(); return; }
     if (mod && (k === "d" || k === "D")) { e.preventDefault(); dupSel(); return; }
-    if (mod && (k === "a" || k === "A")) { e.preventDefault(); S.sel = d.s.map(function (s) { return s.id; }); S.ls = null; paintOv(); syncCtx(); return; }
+    if (mod && (k === "a" || k === "A")) { e.preventDefault(); if (S.tool !== "sel") setTool("sel"); S.sel = d.s.map(function (s) { return s.id; }); S.psel = d.p.map(function (x) { return x.id; }); S.ls = null; paintOv(); syncCtx(); return; }
     if (k === "Delete" || k === "Backspace") { e.preventDefault(); delSel(); return; }
-    if (k === "Escape") { if (root.classList.contains("full") && !S.sel.length && !S.ls) setFull(false); S.sel = []; S.ls = null; S.linkMode = false; S.linkFrom = null; lkBtn.classList.remove("on"); paintOv(); syncCtx(); return; }
-    if ((k === "Enter" || k === "F2") && S.sel.length === 1) { e.preventDefault(); openText(S.sel[0]); return; }
+    if (k === "Escape") {
+      if (S.tool !== "sel") { setTool("sel"); return; }
+      if (root.classList.contains("full") && !S.sel.length && !S.psel.length && !S.ls) setFull(false);
+      S.sel = []; S.psel = []; S.ls = null; S.linkMode = false; S.linkFrom = null; lkBtn.classList.remove("on"); paintOv(); syncCtx(); return;
+    }
+    if ((k === "Enter" || k === "F2") && S.sel.length === 1 && !S.psel.length) { e.preventDefault(); openText(S.sel[0]); return; }
+    if ((k === "Enter" || k === "F2") && S.psel.length === 1 && !S.sel.length) { var pt1 = pEl(S.psel[0]); if (pt1 && pt1.k === "tag") { e.preventDefault(); openTag(pt1.id); return; } }
+    if (!mod && !e.altKey && k.length === 1 && TKEY[k.toLowerCase()]) { e.preventDefault(); setTool(TKEY[k.toLowerCase()]); return; }
     var mv = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[k];
-    if (mv && S.sel.length) {
+    if (mv && (S.sel.length || S.psel.length)) {
       e.preventDefault();
       var n = e.shiftKey ? 10 : 1;
       S.sel.forEach(function (id) { var s = shape(id); if (s) { s.x = Math.max(0, s.x + mv[0] * n); s.y = Math.max(0, s.y + mv[1] * n); } });
+      S.psel.forEach(function (id) { var x = pEl(id); if (!x) return; var m0 = pMin(x), c0 = JSON.parse(JSON.stringify(x)); pMoveFrom(x, c0, Math.max(mv[0] * n, -m0.x), Math.max(mv[1] * n, -m0.y)); });
       paintDia(); paintOv(); clearTimeout(S.nudge); S.nudge = setTimeout(push, 400);
     }
   });
   root.addEventListener("focusout", function () {
     setTimeout(function () { if (!root.contains(document.activeElement) && DRW.act === d) { DRW.act = null; if (drDirty(b) && ED && !ED.dirty) markDirty(); } }, 200);
   });
-  paintAll(); syncCtx();
-  root._drw = { d: d, undo: undo, redo: redo, add: addShape, sel: function (ids) { S.sel = ids.slice(); S.ls = null; paintOv(); syncCtx(); }, selLink: function (id) { S.ls = id; S.sel = []; paintOv(); syncCtx(); }, text: openText, close: closeText, zoom: zoomTo, fit: fitZoom, full: setFull, align: align, del: delSel, dup: dupSel, link: addLink, state: function () { return S; } };
+  paintAll(); syncCtx(); paintQs();
+  root._drw = { d: d, undo: undo, redo: redo, add: addShape, sel: function (ids) { S.sel = ids.slice(); S.psel = []; S.ls = null; paintOv(); syncCtx(); }, selLink: function (id) { S.ls = id; S.sel = []; S.psel = []; paintOv(); syncCtx(); }, text: openText, close: closeText, zoom: zoomTo, fit: fitZoom, full: setFull, align: align, del: delSel, dup: dupSel, link: addLink, state: function () { return S; },
+    tool: setTool, psel: function (ids) { S.psel = ids.slice(); S.sel = []; S.ls = null; paintOv(); syncCtx(); }, bg: bgTake, tag: openTag, closeTag: closeTag };
   requestAnimationFrame(function () { if (hadZ) zoomTo(S.z); else fitZoom(); });
   return root;
 }
@@ -14297,7 +15192,7 @@ function exPicFrag(F, p, ind) {
     F.pics.push(k);
   } else exPut(F, exP(exR("［圖片" + (cap ? "：" + cap : "") + (EXP.noPics ? "" : "（這張圖這次沒有放進來）") + "］", { color: "6B7280" }), { ind: ind }));
   if (cap) exPut(F, exP(exR(cap), { style: "Caption", ind: ind }));
-  if (o) exPut(F, exP(exR(dr ? "🔀 流程圖的字：\n" : "🔍 圖片裡的字：", { b: 1 }) + exR(o), { style: "HbSmall", ind: ind }));
+  if (o) exPut(F, exP(exR(dr ? "✏️ 繪圖裡的字：\n" : "🔍 圖片裡的字：", { b: 1 }) + exR(o), { style: "HbSmall", ind: ind }));
 }
 function exTextUnits(out, tname, b, hb, cid, bi, tl) {
   var ls = _yzParseLines_(b.v), i = 0, j;
