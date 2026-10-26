@@ -1616,7 +1616,7 @@ function _yzMergeView_(ts) {
   return out;
 }
 var _YZ_MV = typeof WeakMap === "function" ? new WeakMap() : null, _YZ_MV1 = { src: null, hb: null };
-function _yzMvReset_() { if (_YZ_MV) _YZ_MV = new WeakMap(); _YZ_MV1.src = null; _YZ_MV1.hb = null; }
+function _yzMvReset_() { if (_YZ_MV) _YZ_MV = new WeakMap(); _YZ_MV1.src = null; _YZ_MV1.hb = null; if (typeof _yzSgReset_ === "function") _yzSgReset_(); }
 function _yzMvGet_(hb) { return _YZ_MV ? _YZ_MV.get(hb) || null : _YZ_MV1.src === hb ? _YZ_MV1.hb : null; }
 function _yzMvPut_(hb, o) { if (_YZ_MV) _YZ_MV.set(hb, o); else { _YZ_MV1.src = hb; _YZ_MV1.hb = o; } }
 function _yzMergeHb_(hb) {
@@ -2427,6 +2427,166 @@ function _yzMediaSearch_(hb, q, ch, what) {
   return res;
 }
 
+var YZ_SG_CUT = /[\s,;:!?()\[\]{}<>"'`|\\\/*#=+&@^_~、。「」『』【】〔〕《》〈〉…‥—–―·•・●○◎■□◆◇▲△▼▽★☆→←↑↓⇒⇐※“”‘’①-⓿❶-➓]/;
+var YZ_SG_STOP = "的和與及或並且但而則就都也了", YZ_SG_SOFT = "為是在於將把被應需須請要可會能時後前再從由向以至到跟依每各該此其";
+var YZ_SG_WK = { text: 1, ladder: 1, table: 1, drug: 1, draw: 1, note: 1 };
+var YZ_SG_EXT = 8, YZ_SG_LEFT = 3, YZ_SG_LEN = 16;
+var _YZ_SGC = typeof WeakMap === "function" ? new WeakMap() : null, _YZ_SGC1 = { hb: null, m: null };
+function _yzSgReset_() { if (_YZ_SGC) _YZ_SGC = new WeakMap(); _YZ_SGC1.hb = null; _YZ_SGC1.m = null; }
+function _yzSgCorpus_(hb, ch) {
+  var key = ch || "all", m = _YZ_SGC ? _YZ_SGC.get(hb) : (_YZ_SGC1.hb === hb ? _YZ_SGC1.m : null);
+  if (m && m[key]) return m[key];
+  if (!m) { m = {}; if (_YZ_SGC) _YZ_SGC.set(hb, m); else { _YZ_SGC1.hb = hb; _YZ_SGC1.m = m; } }
+  _yzLadderNumberAll_(hb);
+  var C = { chs: [], ts: [], ls: [], ds: [], ps: [] };
+  ((hb && hb.chapters) || []).forEach(function (c) {
+    var ts = ((hb.titles || {})[c.id]) || [];
+    C.chs.push({ id: c.id, v: String(c.name || ""), n: _yzNorm_(c.name), cnt: ts.length, ord: C.chs.length });
+    ts.forEach(function (t) {
+      var us = _yzUnits_(t, ch), ns = us.map(function (u) { return _yzNorm_(u.v); }), ti = C.ts.length;
+      C.ts.push({ id: t.id, v: String(t.name || ""), n: _yzNorm_(t.name), c: c, page: t.page, all: ns.join("\n"), ord: ti });
+      us.forEach(function (u, i) { if (YZ_SG_WK[u.k] && ns[i].trim()) C.ls.push({ v: String(u.v), n: ns[i], ti: ti }); });
+      var sd = {}, sp = {};
+      _yzDocsOf_(t, ch).forEach(function (d) { var lb = String(_yzLinkLabel_(d.x) || "").trim(); if (!lb || sd[d.key]) return; sd[d.key] = 1; C.ds.push({ v: lb, n: _yzNorm_(lb), kind: d.kind, ti: ti, b: d.b, ii: d.ii, key: d.key }); });
+      _yzPicsOf_(t, ch).forEach(function (e) { var k = e.p.fid || e.p.url, cp = String(e.cap || "").trim(); if (!cp || !k || sp[k]) return; sp[k] = 1; C.ps.push({ v: cp, n: _yzNorm_(cp), ti: ti, b: e.b }); });
+    });
+  });
+  m[key] = C;
+  return C;
+}
+function _yzSgCut_(c) { return !c || YZ_SG_CUT.test(c); }
+function _yzSgWords_(C, tk, pre) {
+  var M = {}, okT = {}, out = [], seq = 0, hits = [], avR = {};
+  var stop = function (c) { return !!c && YZ_SG_STOP.indexOf(c) >= 0; }, soft = function (c) { return !!c && YZ_SG_SOFT.indexOf(c) >= 0; };
+  var han = function (c) { return /[\u3400-\u9fff\uf900-\ufaff]/.test(c); };
+  var after = function (n, j, hz) {
+    if (j >= n.length) return "∎";
+    var c = n.charAt(j);
+    if (!_yzSgCut_(c)) return c;
+    if (hz && /\s/.test(c) && /[0-9a-z]/.test(n.charAt(j + 1))) return "#";
+    return "∎";
+  };
+  var add = function (s, v, li, nb, good, r, past) {
+    var e = M[s] || (M[s] = { n: s, v: v, f: 0, li: -1, nb: {}, nbn: 0, good: 0, end: 0, r: r, past: !!past, ord: seq++ });
+    if (e.li !== li) { e.li = li; e.f++; }
+    if (!e.nb[nb]) { e.nb[nb] = 1; e.nbn++; }
+    if (nb === "∎") e.end = 1;
+    if (good) e.good = 1;
+  };
+  C.ls.forEach(function (ln, li) {
+    var n = ln.n, k = n.indexOf(tk);
+    if (k < 0) return;
+    if (pre.length) {
+      if (!(ln.ti in okT)) okT[ln.ti] = pre.every(function (p) { return C.ts[ln.ti].all.indexOf(p) >= 0; });
+      if (!okT[ln.ti]) return;
+    }
+    for (; k >= 0; k = n.indexOf(tk, k + tk.length)) { hits.push([li, k]); avR[after(n, k + tk.length, han(tk.slice(-1)))] = 1; }
+  });
+  var whole = Object.keys(avR).length >= 2;
+  hits.forEach(function (hk) {
+    var li = hk[0], k = hk[1], ln = C.ls[li], n = ln.n, a = k, b = k + tk.length, j, past = false;
+    while (a > 0 && k - a < 24 && !_yzSgCut_(n.charAt(a - 1))) a--;
+    while (b < n.length && b - k < 40 && !_yzSgCut_(n.charAt(b))) b++;
+    for (j = k + tk.length + 1; j <= Math.min(b, k + tk.length + YZ_SG_EXT); j++) {
+      var last = n.charAt(j - 1), nx = j < b ? n.charAt(j) : after(n, j, han(last));
+      if (stop(last)) break;
+      if (soft(last)) past = true;
+      add(n.substring(k, j), ln.v.substring(k, j), li, nx, !past && (nx === "∎" || stop(nx) || soft(nx)), 1, past);
+    }
+    var c1 = after(n, k + tk.length, han(tk.slice(-1)));
+    if (!whole && !(c1 === "∎" || stop(c1) || soft(c1))) return;
+    for (j = k - 1; j >= Math.max(a, k - YZ_SG_LEFT); j--) {
+      if (stop(n.charAt(j)) || soft(n.charAt(j))) break;
+      var pv = j > a ? n.charAt(j - 1) : "∎";
+      add(n.substring(j, k + tk.length), ln.v.substring(j, k + tk.length), li, pv, pv === "∎" || stop(pv) || soft(pv), 0);
+    }
+  });
+  var ok1 = function (e) {
+    var len = e.n.length;
+    if (!e.r && e.f < 2 && len > tk.length + 2) return false;
+    return (e.good && (e.f > 1 || len <= 7 || !han(e.n))) || (e.nbn >= 2 && (!e.past || e.end || e.f >= 3)) || e.nbn >= 3;
+  };
+  Object.keys(M).forEach(function (s) { M[s].ok = ok1(M[s]); });
+  Object.keys(M).forEach(function (s) {
+    var e = M[s], len = s.length;
+    if (len > YZ_SG_LEN || len <= tk.length || !e.ok) return;
+    var base = e.r ? s.slice(0, -1) : s.slice(1), B = M[base];
+    if (!e.end && (base === tk ? whole : B && B.ok && B.r === e.r && B.nbn >= 2)) return;
+    if (/\d/.test(s) && /^[-.\d%°]+$/.test(s.replace(tk, ""))) return;
+    e.v = e.v.replace(/^[-.]+|[-.]+$/g, "");
+    if (e.v.length <= tk.length) return;
+    e.sc = e.f * 100 + (e.r ? 40 : 0) + (e.good ? 15 : 0) - len * 2;
+    out.push(e);
+  });
+  out.sort(function (x, y) { return y.sc - x.sc || x.ord - y.ord; });
+  return out;
+}
+function _yzSuggest_(hb, q, ch, o) {
+  o = o || {};
+  q = String(q === null || q === undefined ? "" : q).replace(/\s+/g, " ").replace(/^ /, "").slice(0, 60);
+  var toks = _yzTokens_(q), res = { q: q, toks: toks, loose: "", items: [] };
+  if (!toks.length || !hb) return res;
+  var C = _yzSgCorpus_(hb, ch), max = o.max || 10, T = [], Cs = [], Ws = [], Ds = [], Ps = [], seenN = {};
+  var has = function (n) { return toks.every(function (tk) { return n.indexOf(tk) >= 0; }); };
+  var rank = function (x, y) { return y.pre - x.pre || x.v.length - y.v.length || x.ord - y.ord; };
+  var pg = _yzPageQuery_(q);
+  if (pg) {
+    C.ts.forEach(function (x) { if (_yzPageHas_(x.page, pg)) T.push({ k: "t", id: x.id, v: x.v, sub: x.c.name + "｜藥戰手冊 " + _yzPageText_(x.page), pre: 0, ord: x.ord }); });
+    res.items = T.slice(0, max);
+    res.toks = [];
+    return res;
+  }
+  C.ts.forEach(function (x) { if (x.v && has(x.n)) T.push({ k: "t", id: x.id, v: x.v, sub: x.c.name, pre: x.n.indexOf(toks[0]) === 0 ? 1 : 0, ord: x.ord }); });
+  C.chs.forEach(function (x) { if (x.v && x.cnt > 0 && has(x.n)) Cs.push({ k: "c", id: x.id, v: x.v, sub: "整章（" + x.cnt + " 篇）", pre: x.n.indexOf(toks[0]) === 0 ? 1 : 0, ord: x.ord }); });
+  T.sort(rank); Cs.sort(rank);
+  var seenD = {}, seenP = {};
+  C.ds.forEach(function (x) { if (seenD[x.n] || !has(x.n)) return; seenD[x.n] = 1; Ds.push({ k: "d", v: x.v, kind: x.kind, sub: (YZ_FILE_NAME[x.kind] || (x.kind === "web" ? "網頁（嵌入）" : "文件")) + "｜" + C.ts[x.ti].v, ti: x.ti, pre: x.n.indexOf(toks[0]) === 0 ? 1 : 0, ord: x.ti }); });
+  C.ps.forEach(function (x) { if (seenP[x.n] || !has(x.n)) return; seenP[x.n] = 1; Ps.push({ k: "p", v: x.v, sub: "照片｜" + C.ts[x.ti].v, ti: x.ti, pre: x.n.indexOf(toks[0]) === 0 ? 1 : 0, ord: x.ti }); });
+  Ds.sort(rank); Ps.sort(rank);
+  var raw = q.trim().split(" "), head = raw.length > 1 ? raw.slice(0, -1).join(" ") + " " : "";
+  _yzSgWords_(C, toks[toks.length - 1], toks.slice(0, -1)).forEach(function (e) { Ws.push({ k: "w", v: head + e.v, n: _yzNorm_(head) + e.n }); });
+  var qn = _yzNorm_(q.trim()), pick = [];
+  var take = function (arr, n) {
+    var got = 0;
+    while (arr.length && got < n && pick.length < max) {
+      var x = arr.shift(), kn = x.n || _yzNorm_(x.v), op = x.k === "t" || x.k === "c", key = op ? x.k + "|" + x.id : "s|" + kn;
+      if (seenN[key] || (!op && seenN["n|" + kn]) || (x.k === "w" && kn === qn)) continue;
+      seenN[key] = 1; seenN["n|" + kn] = 1;
+      pick.push(x); got++;
+    }
+  };
+  take(T, o.nT === undefined ? 4 : o.nT); take(Cs, o.nC === undefined ? 2 : o.nC);
+  take(Ws, o.nW === undefined ? 5 : o.nW); take(Ds, o.nD === undefined ? 2 : o.nD); take(Ps, o.nP === undefined ? 2 : o.nP);
+  take(T, max); take(Ws, max); take(Ds, max); take(Ps, max); take(Cs, max);
+  var ord = { t: 0, c: 1, w: 2, d: 3, p: 4 };
+  pick.forEach(function (x, i) { x.at = i; });
+  pick.sort(function (x, y) { return ord[x.k] - ord[y.k] || x.at - y.at; });
+  res.items = pick.map(function (x) { var y = {}; Object.keys(x).forEach(function (k) { if (k !== "pre" && k !== "n" && k !== "ord" && k !== "at") y[k] = x[k]; }); return y; });
+  if (!pick.length && o.loose) {
+    var last = raw[raw.length - 1], pre = toks.slice(0, -1), fb = null;
+    var whole = function (n2) {
+      return C.ls.some(function (ln) {
+        if (!pre.every(function (p) { return C.ts[ln.ti].all.indexOf(p) >= 0; })) return false;
+        for (var k = ln.n.indexOf(n2); k >= 0; k = ln.n.indexOf(n2, k + 1)) {
+          var j = k + n2.length, c = ln.n.charAt(j);
+          if (c && /\s/.test(c) && /[\u3400-\u9fff]/.test(n2.slice(-1)) && /[0-9a-z]/.test(ln.n.charAt(j + 1))) continue;
+          if (_yzSgCut_(c) || YZ_SG_STOP.indexOf(c) >= 0 || YZ_SG_SOFT.indexOf(c) >= 0) return true;
+        }
+        return false;
+      });
+    };
+    for (var L = last.length - 1; L >= 2; L--) {
+      var r2 = _yzSuggest_(hb, head + last.substring(0, L), ch, { max: max, nT: o.nT, nC: o.nC, nW: o.nW, nD: o.nD, nP: o.nP }), ex = whole(_yzNorm_(last.substring(0, L)));
+      if (ex) { r2.items.unshift({ k: "w", v: r2.q.trim() }); if (r2.items.length > max) r2.items.pop(); }
+      r2.loose = r2.q.trim(); r2.q = q;
+      if (ex || r2.items.some(function (x) { return x.k !== "w"; })) return r2;
+      if (r2.items.length && !fb) fb = r2;
+    }
+    if (fb) return fb;
+  }
+  return res;
+}
+
 function _yzSpans_(segs, o) {
   o = o || {};
   var t = { type: "text", size: o.size || "xs", wrap: true, color: o.color || "#5F6B7A", contents: segs.map(function (g) {
@@ -2460,6 +2620,7 @@ function _yzSearchBubble_(q, hits, more, o) {
     ] });
   });
   if (more > 0) rows.push({ type: "text", text: "還有 " + more + " 筆，請把要找的字打得更精確。", size: "xs", color: "#7B8696", margin: "md", wrap: true });
+  if (o.sug) rows.push({ type: "text", text: "💡 下面那排：你可能要找的（📖 直接打開、🔍 再找一次）", size: "xs", color: "#7B8696", margin: "md", wrap: true });
   return {
     type: "bubble", size: "mega",
     header: _yzHead_("📘 藥戰手冊　搜尋", o.page ? "藥戰手冊 第 " + o.page + " 頁" : "「" + q + "」", (hits.length + more) + " 筆" + (o.page ? "" : "（符合的字會用顏色標出來）")),
@@ -4414,6 +4575,7 @@ function lyDeco(el, b, L) {
   if (L.fs !== 100) { el.style.fontSize = (L.fs / 100).toFixed(2) + "em"; el.classList.add("lyfs"); }
   if (L.w < 100 && (b.t === "img" || b.t === "anim")) { el.style.width = L.w + "%"; el.style.marginLeft = el.style.marginRight = "auto"; el.classList.add("lyw"); }
 }
+var KIND_NAME_W = { text: "文字", ladder: "條文", table: "表格", img: "圖片", anim: "動畫", drug: "藥品卡片", link: "連結" };
 function webArticle(ch, t, o) {
   o = o || {};
   var a = h("article", { class: "art" });
@@ -4442,7 +4604,12 @@ function webArticle(ch, t, o) {
     var bi = _yzBlockInd_(b);
     if (bi) { el.style.marginLeft = (bi * 1.6).toFixed(1) + "em"; el.classList.add("bind"); }
     var lead = !shown || afterHd;
-    var L = o.ly ? { pb: lyVal(b, o.ly, "pb"), kp: lyVal(b, o.ly, "kp"), sb: lyVal(b, o.ly, "sb"), sw: lyVal(b, o.ly, "sw"), w: lyVal(b, o.ly, "w"), fs: lyVal(b, o.ly, "fs") } : null;
+    var L = o.ly ? { pb: lyVal(b, o.ly, "pb"), kp: lyVal(b, o.ly, "kp"), sb: lyVal(b, o.ly, "sb"), sw: lyVal(b, o.ly, "sw"), w: lyVal(b, o.ly, "w"), fs: lyVal(b, o.ly, "fs"), hd: lyVal(b, o.ly, "hd") } : null;
+    if (L && L.hd === 1) {
+      if (o.mark) { var mk = h("div", { class: "lyhd-mk" }, [h("span", { class: "lyhd-b", title: "翻頁的時候隱藏（藥師翻頁看不到；往下捲、LINE 照常）：點一下可以取消" }, ["🙈 隱藏了：第 " + (bIdx + 1) + " 塊（" + (KIND_NAME_W[b.t] || "內容") + "）"])]); o.mark(mk, b, { lead: false, t: t, hid: true }); a.appendChild(mk); }
+      sbL = null;
+      return;
+    }
     if ((L ? L.pb === 1 : b.pb === true) && !lead) el.classList.add("pgbrk");
     if (L ? L.kp === 1 : b.kp === true) el.classList.add("pgkeep");
     if (L) lyDeco(el, b, L);
@@ -4866,9 +5033,10 @@ function pwSet(tid) {
     PW.cur = topId;
     var row = $(".pw-l", bar), ab = $(".pw-i.on", bar);
     if (row && ab && row.scrollWidth > row.clientWidth + 2) {
-      if (first || window.__SHOT) row.style.scrollBehavior = "auto";
+      var now = first || window.__SHOT || (typeof BK !== "undefined" && BK.on);
+      if (now) row.style.scrollBehavior = "auto";
       row.scrollLeft = Math.max(0, ab.offsetLeft - (row.clientWidth - ab.offsetWidth) / 2);
-      if (first || window.__SHOT) row.style.scrollBehavior = "";
+      if (now) row.style.scrollBehavior = "";
     }
   }
 }
@@ -5002,7 +5170,7 @@ function drawHomeFull(root) {
   } else flat();
   var hbt = h("div", { class: "hbtns" }, [
     btn("🔍 搜尋", function () { homeSearch(stage); }, "hfab hs-go"),
-    typeof openLib === "function" ? btn("📁 照片、文件", function () { openLib(); }, "hfab hs-lb") : null
+    typeof openLib === "function" && (typeof libOn !== "function" || libOn()) ? btn("📁 照片、文件", function () { openLib(); }, "hfab hs-lb") : null
   ]);
   var hbz = h("div", { class: "hbz" }, [h("h1", { class: "hlogo2" }, [h("span", { class: "lgb" }, [logoImg()]), h("span", { class: "sr" }, ["手冊目錄　"]), "藥戰手冊"]), hbt]);
   var hbOut = 0;
@@ -5021,7 +5189,7 @@ function drawHomeFull(root) {
   if (WV.pano && WV.pano.refreshAvoid) WV.pano.refreshAvoid();
 }
 function srchEnter(qin, go) {
-  qin.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); go(); } });
+  qin.addEventListener("keydown", function (e) { if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); if (qin._sgEnter && qin._sgEnter()) return; go(); } });
   return qin;
 }
 function homeSearch(stage) {
@@ -5030,10 +5198,11 @@ function homeSearch(stage) {
   var go = function () { var q = qin.value; box.remove(); webSearch(q); };
   var box = h("form", { class: "hsearch", role: "search", onsubmit: function (e) { e.preventDefault(); go(); } }, [
     srchEnter(qin, go), h("button", { class: "btn pri", type: "button", onclick: go }, ["搜尋"]),
-    typeof openLib === "function" ? h("button", { class: "btn hs-lib", type: "button", title: "全部的照片、文件（照章排；可以打字篩選）", onclick: function () { box.remove(); openLib(); } }, ["📁", h("span", { class: "bl" }, [" 照片、文件"])]) : null,
+    typeof openLib === "function" && (typeof libOn !== "function" || libOn()) ? h("button", { class: "btn hs-lib", type: "button", title: "全部的照片、文件（照章排；可以打字篩選）", onclick: function () { box.remove(); openLib(); } }, ["📁", h("span", { class: "bl" }, [" 照片、文件"])]) : null,
     h("button", { class: "btn", type: "button", "aria-label": "關掉搜尋", onclick: function () { box.remove(); } }, ["✕"])
   ]);
   box.addEventListener("keydown", function (e) { if (e.key === "Escape") box.remove(); });
+  if (typeof sgAttach === "function") sgAttach(qin, { host: box, go: function (q) { box.remove(); webSearch(q); }, done: function () { box.remove(); } });
   stage.appendChild(box);
   try { qin.focus(); } catch (e) {  }
 }
@@ -6629,6 +6798,8 @@ function xzAfterClone(root) {
 }
 
 function dxOk() { return typeof bk52Ok === "function" && bk52Ok(); }
+function libCfgHas() { return !!(CFG && "webLib" in CFG) || !!(HB && HB.cfg && "webLib" in HB.cfg); }
+function libOn() { if (CFG && "webLib" in CFG) return CFG.webLib === true; return !!(HB && HB.cfg && HB.cfg.webLib === true); }
 function mdThumb(u, w) { u = String(u || ""); return /^https:\/\/drive\.google\.com\/thumbnail\?id=[A-Za-z0-9_-]+(&sz=w\d+)?$/.test(u) ? u.replace(/&sz=w\d+$/, "") + "&sz=w" + (w || 400) : u; }
 function mdKindName(k) { return k === "web" ? "網頁（嵌入）" : (YZ_FILE_NAME[k] || "檔案"); }
 function mdKindIco(k) { return k === "web" ? "🌐" : (YZ_FILE_ICO[k] || "📄"); }
@@ -6723,45 +6894,61 @@ function dxDocHit(d) {
 }
 
 function srDraw(col) {
-  var q = WV.q, V = vhb(), r = _yzSearch_(V, q, "web"), m = r.page ? { pics: [], docs: [] } : _yzMediaSearch_(V, q, "web"), toks = r.toks;
   var tab = WV.stab === "pic" || WV.stab === "doc" ? WV.stab : "all";
   var head = h("div", {}, []);
   col.appendChild(head);
   var qin = h("input", { class: "in", type: "search", enterkeyhint: "search", placeholder: "搜尋手冊（打字，或打「第14頁」）", value: WV.qv, "aria-label": "搜尋手冊" });
   var go = function () { qin.blur(); webSearch(qin.value); };
-  col.appendChild(pgCard([h("form", { class: "pgsearch", role: "search", onsubmit: function (e) { e.preventDefault(); go(); } }, [srchEnter(qin, go), h("button", { class: "pbtn dark", type: "button", onclick: go }, ["搜尋"])]),
-    h("div", { class: "sr-lib" }, [h("button", { class: "btn sm md-lib", type: "button", onclick: function () { openLib(); } }, ["📁 看全部的照片、文件"])])], { cls: "slim" }));
+  var form = h("form", { class: "pgsearch", role: "search", onsubmit: function (e) { e.preventDefault(); go(); } }, [srchEnter(qin, go), h("button", { class: "pbtn dark", type: "button", onclick: go }, ["搜尋"])]);
+  col.appendChild(pgCard([form, libOn() ? h("div", { class: "sr-lib" }, [h("button", { class: "btn sm md-lib", type: "button", onclick: function () { openLib(); } }, ["📁 看全部的照片、文件"])]) : null], { cls: "slim srch" }));
   var tabs = h("div", { class: "srtabs", role: "tablist", "aria-label": "搜尋結果" }), body = h("div", { class: "srbody" });
   col.appendChild(tabs); col.appendChild(body);
-  var S = { docs: m.docs, extra: [], st: r.page || !dxOk() ? "off" : "wait", err: "" };
-  var paintAll = function () {
-    var nT = r.hits.length + S.extra.length, nP = m.pics.length, nD = S.docs.length;
-    head.innerHTML = "";
-    head.appendChild(pgHead(r.page ? "手冊第 " + r.page + " 頁" : "搜尋「" + q + "」", r.page ? (nT ? "找到 " + nT + " 個標題" : "") : "標題 " + nT + "｜照片 " + nP + "｜文件 " + nD + (S.st === "wait" ? "（文件裡的字找中…）" : "")));
-    tabs.innerHTML = "";
-    tabs.hidden = !!r.page;
-    [["all", "全部", nT], ["pic", "🖼 照片", nP], ["doc", "📄 文件", nD]].forEach(function (x) {
-      tabs.appendChild(h("button", { class: "srtab" + (tab === x[0] ? " on" : ""), type: "button", role: "tab", "aria-selected": tab === x[0] ? "true" : "false", "data-tab": x[0], onclick: function () { tab = WV.stab = x[0]; paintAll(); } }, [x[1], h("b", { class: "srn" }, [String(x[2])])]));
-    });
-    body.innerHTML = "";
-    if (tab === "pic") srPics(body, m.pics, toks);
-    else if (tab === "doc") srDocs(body, S, toks);
-    else srAll(body, r, m, S, toks, function (t2) { tab = WV.stab = t2; paintAll(); topOfView(); });
-  };
-  paintAll();
-  if (S.st === "wait") dxFind(q, function (c) {
-    if (!col.isConnected || WV.view !== "search" || WV.q !== q) return;
-    if (c.st === "ok") {
-      var got = c.docs.map(dxDocHit).filter(Boolean), seenK = {};
-      got.forEach(function (d) { seenK[d.t.id + "|" + d.key] = 1; });
-      S.docs = got.concat(m.docs.filter(function (d) { return !seenK[d.t.id + "|" + d.key]; }));
-      var have = {}; r.hits.forEach(function (x) { have[x.t.id] = 1; });
-      S.extra = [];
-      got.forEach(function (d) { if (d.where !== "doc" || have[d.t.id]) return; have[d.t.id] = 1; S.extra.push(d); });
-      S.st = "ok";
-    } else { S.st = "err"; S.err = c.err || "文件裡的字現在找不到"; }
+  var cur = 0;
+  var run = function (q, live) {
+    var my = ++cur, V = vhb(), r = _yzSearch_(V, q, "web"), m = r.page ? { pics: [], docs: [] } : _yzMediaSearch_(V, q, "web"), toks = r.toks;
+    var S = { docs: m.docs, extra: [], st: r.page || !dxOk() ? "off" : "wait", err: "" };
+    var paintAll = function () {
+      if (my !== cur) return;
+      var nT = r.hits.length + S.extra.length, nP = m.pics.length, nD = S.docs.length;
+      head.innerHTML = "";
+      head.appendChild(pgHead(r.page ? "手冊第 " + r.page + " 頁" : "搜尋「" + q + "」", r.page ? (nT ? "找到 " + nT + " 個標題" : "") : "標題 " + nT + "｜照片 " + nP + "｜文件 " + nD + (S.st === "wait" ? "（文件裡的字找中…）" : "")));
+      tabs.innerHTML = "";
+      tabs.hidden = !!r.page;
+      [["all", "全部", nT], ["pic", "🖼 照片", nP], ["doc", "📄 文件", nD]].forEach(function (x) {
+        tabs.appendChild(h("button", { class: "srtab" + (tab === x[0] ? " on" : ""), type: "button", role: "tab", "aria-selected": tab === x[0] ? "true" : "false", "data-tab": x[0], onclick: function () { tab = WV.stab = x[0]; paintAll(); } }, [x[1], h("b", { class: "srn" }, [String(x[2])])]));
+      });
+      body.innerHTML = "";
+      if (tab === "pic") srPics(body, m.pics, toks);
+      else if (tab === "doc") srDocs(body, S, toks);
+      else srAll(body, r, m, S, toks, function (t2) { tab = WV.stab = t2; paintAll(); topOfView(); });
+    };
     paintAll();
-  });
+    if (S.st !== "wait") return;
+    var ask = function () {
+      if (my !== cur) return;
+      dxFind(q, function (c) {
+        if (my !== cur || !col.isConnected || WV.view !== "search" || WV.q !== q) return;
+        if (c.st === "ok") {
+          var got = c.docs.map(dxDocHit).filter(Boolean), seenK = {};
+          got.forEach(function (d) { seenK[d.t.id + "|" + d.key] = 1; });
+          S.docs = got.concat(m.docs.filter(function (d) { return !seenK[d.t.id + "|" + d.key]; }));
+          var have = {}; r.hits.forEach(function (x) { have[x.t.id] = 1; });
+          S.extra = [];
+          got.forEach(function (d) { if (d.where !== "doc" || have[d.t.id]) return; have[d.t.id] = 1; S.extra.push(d); });
+          S.st = "ok";
+        } else { S.st = "err"; S.err = c.err || "文件裡的字現在找不到"; }
+        paintAll();
+      });
+    };
+    if (live) setTimeout(ask, 700); else ask();
+  };
+  if (typeof sgAttach === "function") sgAttach(qin, { host: form, go: function (q) { qin.blur(); webSearch(q); }, live: function (q) {
+    q = String(q || "").trim().slice(0, 60);
+    if (!q || q === WV.q || !col.isConnected || WV.view !== "search") return;
+    WV.q = q; WV.qv = q;
+    run(q, true);
+  } });
+  run(WV.q, false);
 }
 function srNone(body, msg, sub) { body.appendChild(pgCard([h("div", { class: "pc-t" }, [msg]), sub ? h("div", { class: "pc-note" }, [sub]) : null])); }
 function srAll(body, r, m, S, toks, goTab) {
@@ -7139,7 +7326,103 @@ function dxView(key, label) {
   }, function (x) { box.innerHTML = ""; box.appendChild(h("p", { class: "muted" }, ["⚠ " + (x && x.message || "連不上後端")])); });
 }
 
-var BK = { on: false, k: 0, n: 1, two: false, P: 0, PH: 0, X: 0, Y: 0, G: 0, pitch: 0, busy: false, wLock: false, wAcc: 0, wLast: 0, tabAt: 0, drag: null, keep: null, mt: 0, mo: null };
+var SGN = 0;
+var SG_ICO = { t: "📖", c: "📂", w: "🔍", d: "📄", p: "🖼" };
+function sgAttach(qin, o) {
+  var S = { items: [], toks: [], loose: "", i: -1, q: null, tm: 0, lt: 0, comp: false };
+  var id = "sgl" + (++SGN);
+  var list = h("div", { class: "sgl", id: id, role: "listbox", "aria-label": "你可能要找" });
+  list.hidden = true;
+  qin.setAttribute("role", "combobox"); qin.setAttribute("aria-autocomplete", "list"); qin.setAttribute("aria-expanded", "false"); qin.setAttribute("aria-controls", id); qin.setAttribute("autocomplete", "off");
+  o.host.appendChild(list);
+  var show = function (on) {
+    on = !!on && S.items.length > 0;
+    list.hidden = !on;
+    qin.setAttribute("aria-expanded", on ? "true" : "false");
+    o.host.classList.toggle("sgon", on);
+    var cd = o.host.closest && o.host.closest(".pcard"); if (cd) cd.classList.toggle("sgon", on);
+    if (!on) hi(-1);
+  };
+  var hi = function (i, scroll) {
+    S.i = i;
+    $$(".sgi", list).forEach(function (el, j) { el.classList.toggle("on", j === i); el.setAttribute("aria-selected", j === i ? "true" : "false"); });
+    if (i >= 0) { qin.setAttribute("aria-activedescendant", id + "-" + i); var el = $("#" + id + "-" + i, list); if (el && scroll) { try { el.scrollIntoView({ block: "nearest" }); } catch (e) {  } } }
+    else qin.removeAttribute("aria-activedescendant");
+  };
+  var paint = function () {
+    list.innerHTML = "";
+    if (S.loose) list.appendChild(h("div", { class: "sgl-h" }, ["找不到「" + String(S.q || "").trim() + "」，有「" + S.loose + "」的："]));
+    var prev = "";
+    S.items.forEach(function (x, i) {
+      var grp = x.k === "t" || x.k === "c" ? "o" : "s";
+      var el = h("div", { class: "sgi k-" + x.k + (prev && prev !== grp ? " sep" : ""), id: id + "-" + i, role: "option", "aria-selected": "false" }, [
+        h("span", { class: "sgi-i", "aria-hidden": "true" }, [x.k === "d" ? mdKindIco(x.kind) : SG_ICO[x.k]]),
+        h("span", { class: "sgi-b" }, [h("span", { class: "sgi-t" }, hlNodes(x.v, S.toks)), x.sub ? h("span", { class: "sgi-s" }, [x.sub]) : null]),
+        h("span", { class: "sgi-a", "aria-hidden": "true" }, [grp === "o" ? "打開" : "搜尋"])
+      ]);
+      prev = grp;
+      el.addEventListener("mousedown", function (e) { e.preventDefault(); });
+      el.addEventListener("click", function () { pick(i); });
+      el.addEventListener("mousemove", function () { if (S.i !== i) hi(i); });
+      list.appendChild(el);
+    });
+  };
+  var calc = function (q, loose) { return String(q || "").trim() ? _yzSuggest_(vhb(), q, "web", { max: 10, loose: loose }) : null; };
+  var update = function (force) {
+    if (!qin.isConnected) return;
+    var q = qin.value;
+    if (!force && q === S.q) return;
+    var r = calc(q, !S.comp);
+    if (S.comp && (!r || !r.items.length)) return;
+    S.q = q; S.items = r ? r.items : []; S.toks = r ? (r.loose ? _yzTokens_(r.loose) : r.toks) : []; S.loose = r ? r.loose : "";
+    paint();
+    show(document.activeElement === qin);
+  };
+  var pick = function (i) {
+    var x = S.items[i]; if (!x) return;
+    var toks = S.toks.slice();
+    show(false);
+    if (x.k === "t" || x.k === "c") {
+      if (o.done) o.done();
+      if (x.k === "t") openTitle(x.id, toks.length ? toks : null); else openChapter(x.id);
+      return;
+    }
+    qin.value = x.v; S.q = x.v;
+    clearTimeout(S.lt);
+    o.go(x.v);
+  };
+  var soon = function () {
+    clearTimeout(S.tm); S.tm = setTimeout(function () { update(false); }, 60);
+    if (o.live && !S.comp) { clearTimeout(S.lt); S.lt = setTimeout(function () { if (qin.isConnected) o.live(qin.value); }, 350); }
+  };
+  qin.addEventListener("compositionstart", function () { S.comp = true; });
+  qin.addEventListener("compositionend", function () { S.comp = false; S.q = null; soon(); });
+  qin.addEventListener("input", function (e) { if (e && e.isComposing) S.comp = true; soon(); });
+  qin.addEventListener("focus", function () { if (qin.value.trim()) { if (S.items.length && S.q === qin.value) show(true); else update(true); } });
+  qin.addEventListener("click", function () { if (list.hidden && S.items.length && S.q === qin.value) show(true); });
+  qin.addEventListener("blur", function () { setTimeout(function () { if (document.activeElement !== qin) show(false); }, 150); });
+  qin.addEventListener("keydown", function (e) {
+    if (e.isComposing || e.keyCode === 229) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      if (!S.items.length) return;
+      e.preventDefault();
+      if (list.hidden) { show(true); return; }
+      var n = S.items.length, j = e.key === "ArrowDown" ? (S.i >= n - 1 ? -1 : S.i + 1) : (S.i <= -1 ? n - 1 : S.i - 1);
+      hi(j, true);
+    } else if (e.key === "Escape") {
+      if (!list.hidden) { e.preventDefault(); e.stopPropagation(); show(false); }
+    } else if (e.key === "Tab") show(false);
+  });
+  qin._sgEnter = function () {
+    if (!list.hidden && S.i >= 0 && S.items[S.i]) { pick(S.i); return true; }
+    show(false); clearTimeout(S.lt);
+    return false;
+  };
+  qin._sgClose = function () { show(false); };
+  return { update: update, close: function () { show(false); } };
+}
+
+var BK = { on: false, k: 0, n: 1, two: false, P: 0, PH: 0, X: 0, Y: 0, G: 0, pitch: 0, busy: false, wLock: false, wAcc: 0, wLast: 0, tabAt: 0, drag: null, keep: null, mt: 0, mo: null, jmp: false };
 
 var BK_PC_MQ = "(hover: hover) and (pointer: fine) and (min-width: 761px)";
 function bkDev() {
@@ -7159,8 +7442,8 @@ function bkPref() {
   return CFG.webBook === false ? "scroll" : "book";
 }
 
-var LY_DEF = { pb: 0, kp: 0, sb: 0, sw: 50, w: 100, h: 100, fs: 100, sp: 0 };
-var LY_INH = { t: { pb: 1, kp: 1, sb: 1, sw: 1, w: 1, h: 1, fs: 1, sp: 1 }, m: { pb: 1, kp: 1 } };
+var LY_DEF = { pb: 0, kp: 0, sb: 0, sw: 50, w: 100, h: 100, fs: 100, sp: 0, hd: 0 };
+var LY_INH = { t: { pb: 1, kp: 1, sb: 1, sw: 1, w: 1, h: 1, fs: 1, sp: 1, hd: 1 }, m: { pb: 1, kp: 1 } };
 function lyRaw(o, d, k) { var s = o && o.ly && o.ly[d]; return s && s[k] !== undefined ? s[k] : undefined; }
 function lyGet(o, d, k) {
   var v = lyRaw(o, d, k);
@@ -7193,7 +7476,7 @@ function lyClear(o, d) {
 }
 var LYSP_GAP = 14;
 var LYSP_IN = ["chsec", "pgart", "art", "txtb", "xlinks"];
-function lySpMine(n) { return !!(n && n.nodeType === 1 && n.classList && (n.classList.contains("lysp-pad") || n.classList.contains("lysp-gap"))); }
+function lySpMine(n) { return !!(n && n.nodeType === 1 && n.classList && (n.classList.contains("lysp-pad") || n.classList.contains("lysp-gap") || n.classList.contains("lyhd-mk"))); }
 function lySpMut(m) {
   var t = m.target;
   if (t && t.nodeType === 1 && t.closest && t.closest(".xemb")) return false;
@@ -7205,6 +7488,7 @@ function lySpClear(flow) {
   $$(".lysp-on", flow).forEach(function (e) { e.classList.remove("lysp-on"); e.style.removeProperty("width"); });
   $$(".lysp-brk", flow).forEach(function (e) { e.classList.remove("lysp-brk"); });
   $$(".lysp-nob", flow).forEach(function (e) { e.classList.remove("lysp-nob"); });
+  $$(".lysp-fit", flow).forEach(function (e) { e.classList.remove("lysp-fit"); e.style.removeProperty("--lyfit"); });
 }
 function lySpPrev(el, flow) {
   for (var x = el; x && x !== flow; x = x.parentNode) {
@@ -7215,6 +7499,12 @@ function lySpPrev(el, flow) {
   return null;
 }
 function lySpHd(el) { return !!(el && el.classList && (el.classList.contains("chsec-h") || el.classList.contains("mghd"))); }
+function lySpTop(el) {
+  if (!el || !el.classList) return false;
+  if (el.classList.contains("pgh") || el.classList.contains("pgpath") || el.classList.contains("pgdev")) return true;
+  var f = el.firstElementChild;
+  return !el.className && !!(f && f.classList && f.classList.contains("pgh"));
+}
 function lySpread(flow, g) {
   if (!flow) return false;
   lySpClear(flow);
@@ -7222,20 +7512,43 @@ function lySpread(flow, g) {
   if (!g || !g.two || !els.length) return false;
   var doc = flow.ownerDocument, cg = 2 * g.X + g.G;
   var colAt = function (x, fr) { return Math.max(0, Math.floor((x - fr.left + 4) / g.pitch)); };
-  els.forEach(function (e) {
-    var p0 = lySpPrev(e, flow), hd = lySpHd(p0) ? p0 : e;
-    hd.classList.add("lysp-brk");
-    e.classList.add("lysp-on");
+  var place = function (hd) {
+    if (lySpPrev(hd, flow)) hd.classList.add("lysp-brk");
     var fr = flow.getBoundingClientRect(), rs = hd.getClientRects();
-    if (!rs.length) return;
+    if (!rs.length) return -1;
     var c = colAt(rs[0].left, fr);
     if (c % 2 === 1) {
       var pad = doc.createElement("div"); pad.className = "lysp-pad"; pad.setAttribute("aria-hidden", "true");
       hd.parentNode.insertBefore(pad, hd);
       fr = flow.getBoundingClientRect(); rs = hd.getClientRects();
-      if (!rs.length) return;
+      if (!rs.length) return -1;
       c = colAt(rs[0].left, fr);
     }
+    return c;
+  };
+  var unplace = function (hd) { hd.classList.remove("lysp-brk"); var pv = hd.previousElementSibling; if (pv && pv.classList.contains("lysp-pad")) pv.remove(); };
+  els.forEach(function (e) {
+    var p0 = lySpPrev(e, flow), grp = [];
+    for (var p = p0; p && (lySpHd(p) || lySpTop(p)) && grp.length < 6; p = lySpPrev(p, flow)) grp.push(p);
+    var hd = grp.length ? grp[grp.length - 1] : e;
+    e.classList.add("lysp-on");
+    var c = place(hd);
+    if (c < 0) return;
+    if (hd !== e) {
+      var f0 = flow.getBoundingClientRect(), q = e.getClientRects()[0];
+      if (!q || colAt(q.left, f0) !== c) {
+        e.classList.add("lysp-fit"); e.style.setProperty("--lyfit", "40px");
+        f0 = flow.getBoundingClientRect(); q = e.getClientRects()[0];
+        var av = q && colAt(q.left, f0) === c ? Math.floor(g.fh - (q.top - f0.top) - 4) : 0;
+        if (av >= Math.max(160, g.fh * 0.45)) e.style.setProperty("--lyfit", av + "px");
+        else {
+          e.classList.remove("lysp-fit"); e.style.removeProperty("--lyfit");
+          unplace(hd); hd = e; c = place(e);
+          if (c < 0) return;
+        }
+      }
+    }
+    var fr = flow.getBoundingClientRect();
     var r = e.getBoundingClientRect(), off = Math.max(0, r.left - fr.left - c * g.pitch);
     e.style.width = Math.max(40, Math.floor(2 * g.fw + cg - off)) + "px";
     r = e.getBoundingClientRect();
@@ -7435,7 +7748,7 @@ function bkGo(k, anc) {
   if (BK.two) k -= k % 2;
   BK.k = k;
   BK.flow.style.transform = "translateX(" + (-k * BK.pitch) + "px)";
-  if (anc && anc.el) BK.anc = anc; else if (!anc) BK.anc = bkAnchor(k);
+  if (anc && anc.el) { BK.anc = anc; BK.jmp = true; } else if (!anc) { BK.anc = bkAnchor(k); BK.jmp = false; }
   var ae = document.activeElement;
   if (ae && ae !== document.body && BK.flow.contains(ae) && !bkShown(bkColOf(ae))) { try { BK.el.focus({ preventScroll: true }); } catch (e) {  } }
   bkPaint();
@@ -7444,8 +7757,28 @@ function bkPaint() {
   var k = BK.k, n = BK.n, last = BK.two ? k + 2 >= n : k + 1 >= n;
   BK.prev.disabled = k <= 0; BK.next.disabled = last;
   BK.el.setAttribute("data-k", String(k)); BK.el.setAttribute("data-n", String(n));
-  if (WV.cid && !WV.tid && BK.secs && BK.secs.length) { var tid = bkCurSec(); if (tid) pwSet(tid); }
+  bkBar(k);
   bkEager();
+}
+function bkBar(k) {
+  if (!(WV.cid && !WV.tid && BK.secs && BK.secs.length)) return;
+  var tid = (!BK.jmp && bkBarSec(k)) || bkCurSec();
+  if (tid) pwSet(tid);
+}
+function bkBarSec(k) {
+  var f = BK.flow; if (!f || !BK.pitch) return "";
+  var fr = f.getBoundingClientRect(), k2 = k + (BK.two ? 1 : 0), fw = BK.g ? BK.g.fw : 0;
+  var vis = function (q) { var c = Math.floor((q.left - fr.left + 4) / BK.pitch); return q.height > 0 && c >= k && c <= k2; };
+  var area = function (el) { var v = 0; Array.prototype.forEach.call(el.getClientRects(), function (q) { if (vis(q)) v += q.width * q.height; }); return v; };
+  var best = "", bv = 0;
+  $$(".chsec", f).forEach(function (s) {
+    var v = area(s);
+    if (!v) return;
+    $$(".lysp-gap, .lysp-pad", s).forEach(function (g) { v -= area(g); });
+    $$(".xemb.lysp-on", s).forEach(function (e) { var q = e.getBoundingClientRect(); if (vis(q) && fw) v += Math.max(0, q.width - fw) * q.height; });
+    if (v > bv + 1) { bv = v; best = s.getAttribute("data-tid") || ""; }
+  });
+  return best;
 }
 function bkEager() {
   var lo = BK.k - (BK.two ? 2 : 1), hi = BK.k + (BK.two ? 5 : 2);
@@ -7504,6 +7837,7 @@ function bkSlide(dir, dx) {
   var k0 = BK.k, fx = BK.fx, P = BK.P + 30;
   fx.innerHTML = "";
   var v = bkView(dir > 0 ? k0 : k0 - 1, "s");
+  if (dir < 0) { BK.jmp = false; bkBar(k0 - 1); }
   v.style.transform = "translateX(" + (dir > 0 ? Math.min(0, dx) : -P + Math.max(0, dx)) + "px)";
   fx.appendChild(v);
   bkAfterClone(fx);
@@ -11635,7 +11969,8 @@ function blockEditor(t, b, i) {
   cpB.title = "複製這一塊（文字、圖片、表格…格式都帶著）：到要放的標題，點一下某一塊，按最上面的「📌 貼上整塊」（會放在那一塊後面）";
   var lead1 = (t.blocks || []).filter(function (x) { return !_yzOnlyHide_(x, "web"); })[0] === b;
   var lyN = b.ly && typeof b.ly === "object" ? ["p", "t", "m"].filter(function (k) { return b.ly[k] && typeof b.ly[k] === "object" && Object.keys(b.ly[k]).length; }) : [];
-  var pbTag = b.pb === true || b.kp === true || lyN.length ? h("button", { class: "btn sm pbtag", type: "button", title: "網頁翻頁的設定：按了打開「📖 翻頁預覽」（在那裡改）", onclick: function () { pbOpen({ tid: t.id, b: b }); } }, [[b.pb === true ? (lead1 ? "✂ 換頁（第一塊不用）" : "✂ 網頁從這裡換頁") : "", b.kp === true ? "🔗 不切開" : "", lyN.length ? "🎨 畫布（" + lyN.map(function (k) { return { p: "電腦", t: "平板", m: "手機" }[k]; }).join("、") + "自己排）" : ""].filter(Boolean).join("・")]) : null;
+  var hdN = typeof lyVal === "function" ? ["p", "t", "m"].filter(function (k) { return lyVal(b, k, "hd") === 1; }) : [];
+  var pbTag = b.pb === true || b.kp === true || lyN.length ? h("button", { class: "btn sm pbtag", type: "button", title: "網頁翻頁的設定：按了打開「📖 翻頁預覽」（在那裡改）", onclick: function () { pbOpen({ tid: t.id, b: b }); } }, [[b.pb === true ? (lead1 ? "✂ 換頁（第一塊不用）" : "✂ 網頁從這裡換頁") : "", b.kp === true ? "🔗 不切開" : "", hdN.length ? "🙈 翻頁時隱藏（" + hdN.map(function (k) { return { p: "電腦", t: "平板", m: "手機" }[k]; }).join("、") + "）" : "", lyN.length ? "🎨 畫布（" + lyN.map(function (k) { return { p: "電腦", t: "平板", m: "手機" }[k]; }).join("、") + "自己排）" : ""].filter(Boolean).join("・")]) : null;
   var head = h("div", { class: "bh" }, [(b.t === "img" && b.draw ? "繪圖" : b.t === "table" && tbIsRt(b) && (b.rows || []).every(function (r) { return (r || []).length === 1; }) ? "框" : KIND_NAME[b.t]) + "　#" + (i + 1), visSel, pbTag, h("span", { class: "sp" }),
     mrg, indLbl, decB, incB, brkBtn, cpB, btn("▲", function () { moveBlock(t, i, -1); }), btn("▼", function () { moveBlock(t, i, 1); }), delBtn]);
   var body = h("div", { class: "bb2" });
@@ -14303,6 +14638,7 @@ try { PBV.cv = localStorage.getItem("yz_pbcv") === "1"; } catch (e) {  }
 function bk46Ok() { return backAtLeast(12, 13); }
 function bk52Ly() { return backAtLeast(12, 19); }
 function bk53Sp() { return backAtLeast(12, 20); }
+function bk54Hd() { return backAtLeast(12, 21); }
 function bk46Warn(what) {
   modal({ title: "⚠ 還不能用「" + what + "」", lines: ["藥戰手冊專案（Apps Script）的「02_藥戰手冊」還是舊的（第 46 批以前）：設了存不進去。", "請先把第 46 批的 02 貼上，「部署 → 管理部署作業 → ✏️ → 版本選新版本 → 部署」，再重新整理這一頁。"], buttons: [{ label: "知道了", cls: "sm pri" }] });
 }
@@ -14652,7 +14988,7 @@ function pbOwner(b) {
 }
 function pbNextB(el) {
   var n = el && el.parentNode && el.parentNode.classList && el.parentNode.classList.contains("lysb") ? el.parentNode.nextElementSibling : el && el.nextElementSibling;
-  while (n && !(n.getAttribute && n.getAttribute("data-pbk") === "b")) { if (n.classList && n.classList.contains("lysb")) return null; if (n.getAttribute && (n.classList.contains("note") || n.classList.contains("pgline") || n.classList.contains("foot"))) return null; n = n.nextElementSibling; }
+  while (n && !(n.getAttribute && n.getAttribute("data-pbk") === "b" && !n.classList.contains("lyhd-mk"))) { if (n.classList && n.classList.contains("lysb")) return null; if (n.getAttribute && (n.classList.contains("note") || n.classList.contains("pgline") || n.classList.contains("foot"))) return null; n = n.nextElementSibling; }
   return n && n._pbB && !n._pbB.mgh ? n : null;
 }
 function pbPick(el, cx, cy, xe) {
@@ -14695,6 +15031,11 @@ function pbPick(el, cx, cy, xe) {
       if (!ow) stale = true;
       else {
         head = "「" + (ow.t.name || "（還沒有標題）") + "」第 " + (ow.i + 1) + " 塊（" + (b.t === "img" && b.draw ? "繪圖" : KIND_NAME[b.t] || "內容") + "）";
+        if (info.hid) {
+          items.push(note("🙈 這一塊翻頁的時候隱藏：藥師翻頁看不到（後面的接上來）；往下捲的看、LINE、上面那一條照常"));
+          items.push(tog("🙈 翻頁時隱藏這一塊", true, function (on) { pbLyDo(b, "hd", on ? 1 : 0, on ? "🙈 翻頁時隱藏這一塊" : "已取消隱藏（翻頁也放這一塊）"); }, "pbm-hd"));
+          items.push(h("button", { type: "button", class: "btn sm pbm-go", role: "menuitem", onclick: function () { var tid = ow.t.id, bi = ow.i; pbClose(); pbGotoBlock(tid, bi); } }, ["✏️ 到編輯器改這一塊"]));
+        } else {
         if (info.lead) items.push(note("這一篇的第一塊：要換頁，點上面的標題（整篇從新的一頁開始）"));
         else items.push(tog("✂ 從這裡換到新的一頁", pbOn(b), function (on) { pbSetB(el, b, "pb", on); }, "pbm-pb"));
         items.push(tog("🔗 這一塊不要切開（放不下就整塊換到下一頁）", lyOk ? lyVal(b, d, "kp") === 1 : b.kp === true, function (on) { pbSetB(el, b, "kp", on); }, "pbm-kp"));
@@ -14722,9 +15063,12 @@ function pbPick(el, cx, cy, xe) {
             h("button", { type: "button", class: "btn sm pbm-v", "aria-label": "字小一點", onclick: function () { pbLyDo(b, "fs", Math.max(60, fs - 10), "字 " + Math.max(60, fs - 10) + "%"); } }, ["A−"]),
             h("b", { class: "pbm-fv" }, [fs + "%"]),
             h("button", { type: "button", class: "btn sm pbm-v", "aria-label": "字大一點", onclick: function () { pbLyDo(b, "fs", Math.min(180, fs + 10), "字 " + Math.min(180, fs + 10) + "%"); } }, ["A＋"])]));
+          if (bk54Hd()) items.push(tog("🙈 翻頁時隱藏這一塊（往下捲、LINE 照常）", lyVal(b, d, "hd") === 1, function (on) { pbLyDo(b, "hd", on ? 1 : 0, on ? "🙈 翻頁時隱藏這一塊" : "已取消隱藏"); }, "pbm-hd"));
+          else items.push(note("🙈 翻頁時隱藏這一塊：Apps Script 的 02 換成第 54 批以後才可以選"));
           items.push(h("button", { type: "button", class: "btn sm pbm-o pbm-auto", role: "menuitem", onclick: function () { pbLyAuto(b); } }, [d === "p" ? "↺ 這一塊照自動" : "↺ 這一塊照電腦的"]));
         }
         items.push(h("button", { type: "button", class: "btn sm pbm-go", role: "menuitem", onclick: function () { var tid = ow.t.id, bi = ow.i; pbClose(); pbGotoBlock(tid, bi); } }, ["✏️ 到編輯器改這一塊"]));
+        }
       }
     }
   }
@@ -14862,7 +15206,7 @@ function pbTools() {
 function pbPageBlocks(k) {
   var out = [];
   if (!PBV.flow) return out;
-  $$("[data-pbk=b]", PBV.flow).forEach(function (el) { var b = el._pbB; if (b && !b.mgh && pbCol(el) === k && out.indexOf(b) < 0 && pbOwner(b)) out.push(b); });
+  $$("[data-pbk=b]", PBV.flow).forEach(function (el) { var b = el._pbB; if (b && !b.mgh && !el.classList.contains("lyhd-mk") && pbCol(el) === k && out.indexOf(b) < 0 && pbOwner(b)) out.push(b); });
   return out;
 }
 function pbPageFs(k, dv) {
@@ -14914,6 +15258,7 @@ function pbCvMove(e) {
   var xe = t && t.closest ? t.closest("[data-pbx]") : null;
   if (xe !== PBV.hovX) { PBV.hovX = xe; PBV.hov = null; }
   var el = t && t.closest ? t.closest("[data-pbk=b]") : null;
+  if (el && el.classList.contains("lyhd-mk")) el = null;
   if (el && PBV.flow.contains(el)) pbCvShow(el);
 }
 function pbDragStart(e, el, kind) {
@@ -17466,6 +17811,8 @@ function drawSettings() {
   var vcm = h("input", { class: "in", type: "number", min: "4", max: "30", value: String(c.webVidCm || 12), style: "width:80px", "aria-label": "網頁的影片最寬幾公分" });
   vcm.onchange = function () { var v = Math.max(4, Math.min(30, parseInt(vcm.value, 10) || 12)); vcm.value = String(v); save({ webVidCm: v }, vcm); };
   box.appendChild(settingRow("網頁的影片最寬（公分）", "影片最寬＝深色那一條的寬，而且不超過這裡的公分數（4～30，預設 12）。手機比較窄：照手機的寬。螢幕不一樣，實際量起來會差一點", h("div", { class: "sw2" }, [vcm, h("span", { class: "muted" }, ["公分"])])));
+  box.appendChild(settingRow("📁 照片、文件的按鍵", "預設關著（第 54 批先關）。打開＝首頁標誌下面「📁 照片、文件」、搜尋框旁邊的「📁」、搜尋結果上面「📁 看全部的照片、文件」都出來（藥師重新打開網頁才換）。搜尋結果的「🖼 照片／📄 文件」分頁一直都有",
+    typeof libCfgHas === "function" && libCfgHas() ? tog(libOn(), function (v, el) { save({ webLib: v }, el); }, "📁 照片、文件的按鍵") : h("span", { class: "muted", style: "font-size:12.5px" }, ["（02 換成第 54 批以後才可以設）"])));
   row("webBook", "網頁看手冊：翻頁（💻 電腦）", "開著＝像一本書，一頁一頁翻（兩頁）。關掉＝整篇往下捲。全部的人一樣（藥師不能自己換）。編輯器的「📜 翻頁／捲動」也改得到");
   box.appendChild(settingRow("網頁看手冊：翻頁（📱 手機）", "開著＝一頁一頁翻。關掉（第 47 批先關）＝整篇往下捲。全部的人一樣；電腦的視窗拉得很窄，也照這一個" + (typeof c.webBookT === "boolean" ? "" : "（後端還沒換成第 52 批：平板也照這一個）"), typeof c.webBookM === "boolean" ? tog(c.webBookM === true, function (v, el) { save({ webBookM: v }, el); }, "網頁看手冊：翻頁（手機）") : h("span", { class: "muted" }, ["（後端還沒換成第 47 批：手機、平板跟電腦一樣）"])));
   box.appendChild(settingRow("網頁看手冊：翻頁（平板）", "iPad、Android 平板（程式自動認）。開著＝翻頁：橫拿兩頁（像書）、直拿一頁。關掉＝整篇往下捲。全部的人一樣；還沒設過的時候照手機的", typeof c.webBookT === "boolean" ? tog(c.webBookT === true, function (v, el) { save({ webBookT: v }, el); }, "網頁看手冊：翻頁（平板）") : h("span", { class: "muted" }, ["（後端還沒換成第 52 批：平板照手機的）"])));
